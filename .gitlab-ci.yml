@@ -1,0 +1,13 @@
+image: python:3.6.6
+
+stages:
+  - test
+
+pytest:
+  stage: test
+  before_script:
+    - pip install pipenv
+  script:
+    - pipenv install --dev
+    - cd tests/
+    - pipenv run pytest -x -v
