@@ -1,0 +1,11 @@
+{
+  "production": {
+    "app_function": "app.app",
+    "aws_region": "eu-central-1",
+    "memory_size": 128,
+    "profile_name": "default",
+    "project_name": "sentinelhub-openeo",
+    "runtime": "python3.6",
+    "s3_bucket": "shopeneoproduction"
+  }
+}

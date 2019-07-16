@@ -4,6 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [dev-packages]
+zappa = "*"
 
 [requires]
 python_version = "3.6"

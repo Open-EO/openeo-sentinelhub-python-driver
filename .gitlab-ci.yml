@@ -2,6 +2,7 @@ image: python:3.6.6
 
 stages:
   - test
+  - deploy
 
 pytest:
   stage: test
@@ -11,3 +12,22 @@ pytest:
     - pipenv install --dev
     - cd tests/
     - pipenv run pytest -x -v
+
+deploy-production:
+  stage: deploy
+  when: manual
+  before_script:
+    # configure aws access credentials:
+    - mkdir -p ~/.aws
+    - echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
+    - echo -e "[default]\naws_access_key_id=$PROD_AWS_ACCESS_KEY_ID\naws_secret_access_key=$PROD_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
+    # `pipenv run` doesn't currently set $VIRTUAL_ENV, and zappa is failing because of it. The workaround is to use .venv/ in
+    # a project itself, and set it explicitly: https://github.com/Miserlou/Zappa/issues/1443#issuecomment-374174824
+    - export PIPENV_VENV_IN_PROJECT=true
+    - pip install --upgrade pipenv
+    - export VIRTUAL_ENV=.venv/
+  script:
+    - PIPENV_IGNORE_VIRTUALENVS=1 pipenv install --dev
+    # create zappa_settings.json on-the-fly:
+    - cp zappa_settings.json.template zappa_settings.json
+    - pipenv run zappa deploy production || pipenv run zappa update production
