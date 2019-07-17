@@ -1,7 +1,16 @@
+import flask
 from flask import Flask, url_for
+import os
+
+
+from dynamodb import Persistence
 
 
 app = Flask(__name__)
+app.url_map.strict_slashes = False
+
+
+URL_ROOT = os.environ.get('URL_ROOT', '').rstrip('/')
 
 
 @app.route('/', methods=["GET"])
@@ -36,6 +45,38 @@ def get_endpoints():
             "methods": list(rule.methods - set(["OPTIONS", "HEAD"])),
         })
     return endpoints
+
+
+@app.route('/process_graphs', methods=["GET", "POST"])
+def api_process_graphs():
+    if flask.request.method in ['GET', 'HEAD']:
+        process_graphs = []
+        links = []
+        for record_id, record in Persistence.items("process_graphs"):
+            process_graphs.append({
+                "id": record_id,
+                "title": record.get("title", None),
+                "description": record.get("description", None),
+            })
+            links.append({
+                "href": "{}/process_graphs/{}".format(URL_ROOT, record_id),
+                "title": record.get("title", None),
+            })
+        return {
+            "process_graphs": process_graphs,
+            "links": links,
+        }, 200
+
+    elif flask.request.method == 'POST':
+        # !!! input validation is missing!
+        data = flask.request.get_json()
+        record_id = Persistence.create("process_graphs", data)
+
+        # add requested headers to 201 response:
+        response = flask.make_response('', 201)
+        response.headers['Location'] = '/process_graphs/{}'.format(record_id)
+        response.headers['OpenEO-Identifier'] = record_id
+        return response
 
 
 if __name__ == '__main__':
