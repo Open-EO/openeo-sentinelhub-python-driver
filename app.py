@@ -70,7 +70,7 @@ def api_process_graphs():
     elif flask.request.method == 'POST':
         # !!! input validation is missing!
         data = flask.request.get_json()
-        record_id = Persistence.create("process_graphs", data)
+        record_id = Persistence.create(Persistence.ET_PROCESS_GRAPHS, data)
 
         # add requested headers to 201 response:
         response = flask.make_response('', 201)

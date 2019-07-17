@@ -2,6 +2,9 @@
   "production": {
     "app_function": "app.app",
     "aws_region": "eu-central-1",
+    "environment_variables": {
+      "DYNAMODB_PRODUCTION": "yes"
+    },
     "memory_size": 128,
     "profile_name": "default",
     "project_name": "sentinelhub-openeo",

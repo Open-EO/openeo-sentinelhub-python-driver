@@ -5,6 +5,7 @@ name = "pypi"
 
 [dev-packages]
 zappa = "*"
+pylint = "*"
 
 [requires]
 python_version = "3.6"
@@ -13,3 +14,4 @@ python_version = "3.6"
 flask = "*"
 pytest = "*"
 uuid = "*"
+boto3 = "*"
