@@ -1,6 +1,7 @@
 import flask
 from flask import Flask, url_for
 import os
+from udf import execute_udf
 
 
 from dynamodb import Persistence
@@ -46,30 +47,44 @@ def get_endpoints():
         })
     return endpoints
 
-
-@app.route('/process_graphs', methods=["GET", "POST"])
-def api_process_graphs():
+@app.route('/process_graphs', methods=["GET","POST"])
+@app.route('/process_graphs/<process_graph_id>', methods=["GET", "DELETE", "PATCH"])
+def api_process_graphs(process_graph_id=None):
     if flask.request.method in ['GET', 'HEAD']:
-        process_graphs = []
-        links = []
-        for record_id, record in Persistence.items("process_graphs"):
-            process_graphs.append({
-                "id": record_id,
-                "title": record.get("title", None),
-                "description": record.get("description", None),
-            })
-            links.append({
-                "href": "{}/process_graphs/{}".format(URL_ROOT, record_id),
-                "title": record.get("title", None),
-            })
-        return {
-            "process_graphs": process_graphs,
-            "links": links,
-        }, 200
+        if process_graph_id is None:
+            print(process_graph_id)
+            process_graphs = []
+            links = []
+            for record_id, record in Persistence.items("process_graphs"):
+                print("RECORD:",record);
+                continue
+                process_graphs.append({
+                    "id": record_id,
+                    "title": record.get("title", None),
+                    "description": record.get("description", None),
+                })
+                links.append({
+                    "href": "{}/process_graphs/{}".format(URL_ROOT, record_id),
+                    "title": record.get("title", None),
+                })
+            return {
+                "process_graphs": process_graphs,
+                "links": links,
+            }, 200
+        else:
+            process_graph = Persistence.get_graph_by_id(Persistence.ET_PROCESS_GRAPHS,process_graph_id)
+            return {
+                "title": None,
+                "description": None,
+                "process_graph": process_graph
+            }, 200
 
     elif flask.request.method == 'POST':
         # !!! input validation is missing!
-        data = flask.request.get_json()
+        # print(flask.request.form)
+        data = flask.request.form
+        print("Data:",data)
+        if data is None: return flask.make_response('Empty request', 404)
         record_id = Persistence.create(Persistence.ET_PROCESS_GRAPHS, data)
 
         # add requested headers to 201 response:
@@ -78,6 +93,24 @@ def api_process_graphs():
         response.headers['OpenEO-Identifier'] = record_id
         return response
 
+    elif flask.request.method == 'DELETE':
+        print("DELETING!!!\n")
+        # print(flask.request.data)
+        Persistence.delete(Persistence.ET_PROCESS_GRAPHS,process_graph_id)
+        return flask.make_response('The process graph has been successfully deleted.', 204)
+
+    elif flask.request.method == 'PATCH':
+        print("PATCHING!\n")
+        data = flask.request.form
+        Persistence.replace_graph(Persistence.ET_PROCESS_GRAPHS,process_graph_id,data)
+        return flask.make_response('The process graph data has been updated successfully.', 204)
+
+@app.route('/jobs/<job_id>/results', methods=['POST'])
+def process_batch_job(job_id):
+    data = {'udf':'import sys\nfor i in range(5):\n\tprint(i)\na = sys.argv[1]\nreturn "script executed with arg %s" % a'}
+    result = execute_udf(data)
+
 
 if __name__ == '__main__':
     app.run()
+
