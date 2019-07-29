@@ -8,6 +8,7 @@ services:
   pytest:
     build: ..
     command: bash -c "/wait-for-it.sh dynamodb:8000 -- && cd /tests/ && pytest -s"
+      # - sudo chmod +x wait-for-it.sh
     # volumes:
     #   - static-content:/usr/src/app/public
     # depends_on:
