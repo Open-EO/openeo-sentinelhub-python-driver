@@ -1,5 +1,6 @@
 import flask
-from flask import Flask, url_for
+from flask import Flask, url_for, jsonify
+from flask_marshmallow import Marshmallow
 import os
 from udf import execute_udf
 
@@ -104,6 +105,57 @@ def api_process_graphs(process_graph_id=None):
         data = flask.request.form
         Persistence.replace_graph(Persistence.ET_PROCESS_GRAPHS,process_graph_id,data)
         return flask.make_response('The process graph data has been updated successfully.', 204)
+
+@app.route('/jobs', methods=['GET','POST'])
+def api_jobs():
+    if flask.request.method == 'GET':
+        process_graphs = []
+        links = []
+
+        for record_id, record in Persistence.items("jobs"):
+            print("RECORD:",record);
+            continue
+            jobs.append({
+                "id": record_id,
+                "title": record.get("title", None),
+                "description": record.get("description", None),
+            })
+            links.append({
+                "href": "{}/jobs/{}".format(URL_ROOT, record_id),
+                "title": record.get("title", None),
+            })
+        return {
+            "jobs": jobs,
+            "links": links,
+        }, 200
+
+    elif flask.request.method == 'POST':
+        data = flask.request.form
+        print("Data:",data)
+        if data is None: return flask.make_response('Empty request', 404)
+
+        record_id = Persistence.create(Persistence.ET_JOBS, data)
+
+        # add requested headers to 201 response:
+        response = flask.make_response('', 201)
+        response.headers['Location'] = '/process_graphs/{}'.format(record_id)
+        response.headers['OpenEO-Identifier'] = record_id
+        return response
+
+@app.route('/jobs/<job_id>', methods=['GET','POST','PATCH','DELETE'])
+def batch_job(job_id):
+    if flask.request.method == 'GET':
+        pass
+
+    elif flask.request.method == 'POST':
+        pass
+
+    elif flask.request.method == 'PATCH':
+        pass
+
+    elif flask.request.method == 'DELETE':
+        pass
+ 
 
 @app.route('/jobs/<job_id>/results', methods=['POST'])
 def process_batch_job(job_id):
