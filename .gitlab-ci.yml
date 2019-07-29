@@ -1,6 +1,6 @@
 image:
   name: docker/compose:1.24.1
-  entrypoint: ["/bin/sh", "-c"]
+  entrypoint: ["/bin/sh","-l","-c"]
 
 services:
   - docker:dind
@@ -12,6 +12,7 @@ stages:
 pytest:
   stage: test
   script:
+    - usermod -aG docker gitlab-runner
     - cd tests/
     - docker-compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from pytest
 
