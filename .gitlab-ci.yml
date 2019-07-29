@@ -1,5 +1,5 @@
 image:
-  name: docker/compose
+  name: docker/compose:1.24.1
   entrypoint: ["/bin/sh", "-c"]
 
 services:
