@@ -3,6 +3,7 @@ from flask import Flask, url_for, jsonify
 from flask_marshmallow import Marshmallow
 import os
 from udf import execute_udf
+from schemas import ProcessGraphsRequest
 
 
 from dynamodb import Persistence
@@ -29,19 +30,12 @@ def api_root():
 def get_endpoints():
     """
         Returns a list of endpoints (url and allowed methods). Endpoints which
-        require parameters are filtered out.
+        require parameters are not filtered out because openEO documentation includes them.
     """
     endpoints = []
 
-    def requires_params(rule):
-        defaults = rule.defaults if rule.defaults is not None else ()
-        arguments = rule.arguments if rule.arguments is not None else ()
-        return len(defaults) < len(arguments)
-
     for rule in app.url_map.iter_rules():
-        if requires_params(rule):
-            continue
-        url = url_for(rule.endpoint, **(rule.defaults or {}))
+        url = rule.rule
         endpoints.append({
             "path": url,
             "methods": list(rule.methods - set(["OPTIONS", "HEAD"])),
@@ -162,6 +156,15 @@ def process_batch_job(job_id):
     data = {'udf':'import sys\nfor i in range(5):\n\tprint(i)\na = sys.argv[1]\nreturn "script executed with arg %s" % a'}
     result = execute_udf(data)
 
+
+@app.route("/test", methods=["GET","POST"])
+def test():
+    print("Test json schema and graph validation")
+    process_graph_schema = ProcessGraphsRequest()
+    print(flask.request.get_json())
+    result = process_graph_schema.validate(flask.request.get_json())
+    print(result)
+    return flask.make_response(result, 201)
 
 if __name__ == '__main__':
     app.run()
