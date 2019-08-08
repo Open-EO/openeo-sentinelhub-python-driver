@@ -3,7 +3,8 @@ from flask import Flask, url_for, jsonify
 from flask_marshmallow import Marshmallow
 import os
 from udf import execute_udf
-from schemas import ProcessGraphsRequest
+from schemas import PostPGSchema,PostJobsSchema, PGValidationSchema
+import datetime
 
 
 from dynamodb import Persistence
@@ -47,12 +48,9 @@ def get_endpoints():
 def api_process_graphs(process_graph_id=None):
     if flask.request.method in ['GET', 'HEAD']:
         if process_graph_id is None:
-            print(process_graph_id)
             process_graphs = []
             links = []
             for record_id, record in Persistence.items("process_graphs"):
-                print("RECORD:",record);
-                continue
                 process_graphs.append({
                     "id": record_id,
                     "title": record.get("title", None),
@@ -67,19 +65,20 @@ def api_process_graphs(process_graph_id=None):
                 "links": links,
             }, 200
         else:
-            process_graph = Persistence.get_graph_by_id(Persistence.ET_PROCESS_GRAPHS,process_graph_id)
-            return {
-                "title": None,
-                "description": None,
-                "process_graph": process_graph
-            }, 200
+            process_graph = Persistence.get_by_id(Persistence.ET_PROCESS_GRAPHS,process_graph_id)
+            process_graph["id"] = process_graph_id
+            return process_graph, 200
 
     elif flask.request.method == 'POST':
-        # !!! input validation is missing!
-        # print(flask.request.form)
-        data = flask.request.form
-        print("Data:",data)
-        if data is None: return flask.make_response('Empty request', 404)
+        data = flask.request.get_json()
+
+        process_graph_schema = PostPGSchema()
+        errors = process_graph_schema.validate(data)
+
+        if errors:
+            # Response procedure for validation will depend on how openeo_pg_parser_python will work
+            return flask.make_response('Invalid request', 404)
+
         record_id = Persistence.create(Persistence.ET_PROCESS_GRAPHS, data)
 
         # add requested headers to 201 response:
@@ -89,15 +88,20 @@ def api_process_graphs(process_graph_id=None):
         return response
 
     elif flask.request.method == 'DELETE':
-        print("DELETING!!!\n")
-        # print(flask.request.data)
         Persistence.delete(Persistence.ET_PROCESS_GRAPHS,process_graph_id)
         return flask.make_response('The process graph has been successfully deleted.', 204)
 
     elif flask.request.method == 'PATCH':
-        print("PATCHING!\n")
-        data = flask.request.form
-        Persistence.replace_graph(Persistence.ET_PROCESS_GRAPHS,process_graph_id,data)
+        data = flask.request.get_json()
+
+        process_graph_schema = PostPGSchema()
+        errors = process_graph_schema.validate(data)
+
+        if errors:
+            # Response procedure for validation will depend on how openeo_pg_parser_python will work
+            return flask.make_response('Invalid request', 404)
+
+        Persistence.replace(Persistence.ET_PROCESS_GRAPHS,process_graph_id,data)
         return flask.make_response('The process graph data has been updated successfully.', 204)
 
 @app.route('/jobs', methods=['GET','POST'])
@@ -107,8 +111,6 @@ def api_jobs():
         links = []
 
         for record_id, record in Persistence.items("jobs"):
-            print("RECORD:",record);
-            continue
             jobs.append({
                 "id": record_id,
                 "title": record.get("title", None),
@@ -124,9 +126,17 @@ def api_jobs():
         }, 200
 
     elif flask.request.method == 'POST':
-        data = flask.request.form
-        print("Data:",data)
-        if data is None: return flask.make_response('Empty request', 404)
+        data = flask.request.get_json()
+        
+        process_graph_schema = PostJobsSchema()
+        errors = process_graph_schema.validate(data)
+
+        if errors:
+            # Response procedure for validation will depend on how openeo_pg_parser_python will work
+            return flask.make_response('Invalid request', 404)
+
+        data["status"] = "submitted"
+        data["submitted"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
         record_id = Persistence.create(Persistence.ET_JOBS, data)
 
@@ -136,35 +146,50 @@ def api_jobs():
         response.headers['OpenEO-Identifier'] = record_id
         return response
 
-@app.route('/jobs/<job_id>', methods=['GET','POST','PATCH','DELETE'])
+@app.route('/jobs/<job_id>', methods=['GET','PATCH','DELETE'])
 def batch_job(job_id):
     if flask.request.method == 'GET':
-        pass
-
-    elif flask.request.method == 'POST':
-        pass
+        job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+        process_graph["id"] = process_graph_id
+        return process_graph, 200
 
     elif flask.request.method == 'PATCH':
-        pass
+        data = flask.request.get_json()
+        
+        process_graph_schema = PostJobsSchema()
+        errors = process_graph_schema.validate(data)
+
+        if errors:
+            # Response procedure for validation will depend on how openeo_pg_parser_python will work
+            return flask.make_response('Invalid request', 404)
+
+        data["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        Persistence.replace(Persistence.ET_JOBS,job_id,data)
+        return flask.make_response('Changes to the job applied successfully.', 204)
 
     elif flask.request.method == 'DELETE':
-        pass
- 
-
-@app.route('/jobs/<job_id>/results', methods=['POST'])
-def process_batch_job(job_id):
-    data = {'udf':'import sys\nfor i in range(5):\n\tprint(i)\na = sys.argv[1]\nreturn "script executed with arg %s" % a'}
-    result = execute_udf(data)
+        Persistence.delete(Persistence.ET_JOBS,job_id)
+        return flask.make_response('The job has been successfully deleted.', 204)
 
 
-@app.route("/test", methods=["GET","POST"])
-def test():
-    print("Test json schema and graph validation")
-    process_graph_schema = ProcessGraphsRequest()
-    print(flask.request.get_json())
-    result = process_graph_schema.validate(flask.request.get_json())
-    print(result)
-    return flask.make_response(result, 201)
+
+@app.route('/validation', methods=["GET"])
+def validate_process_graph():
+    data = flask.request.get_json()
+    
+    process_graph_schema = PGValidationSchema()
+    errors = process_graph_schema.validate(data)
+
+    return {
+        "errors": errors,
+    }, 200
+
+
+# @app.route('/jobs/<job_id>/results', methods=['POST'])
+# def process_batch_job(job_id):
+#     data = {'udf':'import sys\nfor i in range(5):\n\tprint(i)\na = sys.argv[1]\nreturn "script executed with arg %s" % a'}
+#     result = execute_udf(data)
 
 if __name__ == '__main__':
     app.run()

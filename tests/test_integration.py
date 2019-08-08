@@ -6,11 +6,8 @@ os.environ["DYNAMODB_PRODUCTION"] = "testing"
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import app
 
-print("TEST INTEGRATION")
-
 @pytest.fixture
 def app_client():
-    print("CREATING FIXTURE!!!!!")
     app.testing = True
     return app.test_client()
 
@@ -18,7 +15,6 @@ def app_client():
 ###################################
 
 def test_root(app_client):
-    print("TESTING!!!!!")
     """
         Test root ('/') endpoint:
           - response must contain all the required keys
@@ -45,5 +41,4 @@ def test_root(app_client):
         "path": "/",
         "methods": ["GET"],
     }
-    # print("ENDPOINTS:",actual["endpoints"])
     assert expected_endpoint in actual["endpoints"]

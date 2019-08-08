@@ -15,7 +15,6 @@ class Persistence(object):
     print("Production?",DYNAMODB_PRODUCTION)
     dynamodb = boto3.client('dynamodb') if DYNAMODB_PRODUCTION else \
         boto3.client('dynamodb', endpoint_url=endpoint_url,region_name="eu-central-1",aws_access_key_id="AKIAIOSFODNN7EXAMPLE",aws_secret_access_key="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
-    print("It didn't connect, did it?")
 
 
     # entity types correspond to DynamoDB tables:
@@ -43,27 +42,22 @@ class Persistence(object):
     def items(cls, entity_type):
         paginator = cls.dynamodb.get_paginator('scan')
         for page in paginator.paginate(TableName=entity_type):
-            print("Page items")
-            print(page["Items"])
             for item in page["Items"]:
                 yield item['id']['S'], json.loads(item['data']['S'])
 
     @classmethod
     def delete(cls, entity_type, record_id):
-        # record_id = json.loads(data)["id"]
-        print("cls.items:")
-        print(list(cls.items(entity_type)))
         cls.dynamodb.delete_item(TableName=entity_type, Key={'id':{'S':record_id}})
 
     @classmethod
-    def get_graph_by_id(cls,entity_type,id):
+    def get_by_id(cls,entity_type,id):
         graph = cls.dynamodb.get_item(TableName=entity_type, Key={'id':{'S':record_id}})
         return graph
 
     @classmethod
-    def replace_graph(cls,entity_type,id,data):
-        graph = cls.dynamodb.update_item(TableName=entity_type, Key={'id':{'S':record_id}}, UpdateExpression="SET data = :new_data", ExpressionAttributeValues={':new_data':data})
-        return graph
+    def replace(cls,entity_type,id,data):
+        new_data = cls.dynamodb.update_item(TableName=entity_type, Key={'id':{'S':record_id}}, UpdateExpression="SET data = :new_data", ExpressionAttributeValues={':new_data':data})
+        return new_data
 
     @classmethod
     def ensure_table_exists(cls, tableName):
