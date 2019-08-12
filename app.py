@@ -186,11 +186,6 @@ def validate_process_graph():
     }, 200
 
 
-# @app.route('/jobs/<job_id>/results', methods=['POST'])
-# def process_batch_job(job_id):
-#     data = {'udf':'import sys\nfor i in range(5):\n\tprint(i)\na = sys.argv[1]\nreturn "script executed with arg %s" % a'}
-#     result = execute_udf(data)
-
 if __name__ == '__main__':
     app.run()
 
