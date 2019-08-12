@@ -2,7 +2,6 @@ import flask
 from flask import Flask, url_for, jsonify
 from flask_marshmallow import Marshmallow
 import os
-from udf import execute_udf
 from schemas import PostPGSchema,PostJobsSchema, PGValidationSchema
 import datetime
 
