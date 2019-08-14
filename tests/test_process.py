@@ -51,6 +51,6 @@ def test_process_load_collection(app_client):
             },
         },
     }
-    r = app_client.post('/result', data=json.dumps(data), content_type='image/png')
+    r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
     assert r.status_code == 200
     assert r.data == b'asdf'
