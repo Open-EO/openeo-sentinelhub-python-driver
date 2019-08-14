@@ -42,7 +42,7 @@ def get_endpoints():
         })
     return endpoints
 
-@app.route('/process_graphs', methods=["GET","POST"])
+@app.route('/process_graphs', methods=["GET", "POST"])
 @app.route('/process_graphs/<process_graph_id>', methods=["GET", "DELETE", "PATCH"])
 def api_process_graphs(process_graph_id=None):
     if flask.request.method in ['GET', 'HEAD']:
@@ -106,7 +106,7 @@ def api_process_graphs(process_graph_id=None):
 @app.route('/jobs', methods=['GET','POST'])
 def api_jobs():
     if flask.request.method == 'GET':
-        process_graphs = []
+        jobs = []
         links = []
 
         for record_id, record in Persistence.items("jobs"):
@@ -126,7 +126,7 @@ def api_jobs():
 
     elif flask.request.method == 'POST':
         data = flask.request.get_json()
-        
+
         process_graph_schema = PostJobsSchema()
         errors = process_graph_schema.validate(data)
 
@@ -146,15 +146,15 @@ def api_jobs():
         return response
 
 @app.route('/jobs/<job_id>', methods=['GET','PATCH','DELETE'])
-def batch_job(job_id):
+def api_batch_job(job_id):
     if flask.request.method == 'GET':
-        job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
-        process_graph["id"] = process_graph_id
-        return process_graph, 200
+        job = Persistence.get_by_id(Persistence.ET_JOBS, job_id)
+        job["id"] = job_id
+        return job, 200
 
     elif flask.request.method == 'PATCH':
         data = flask.request.get_json()
-        
+
         process_graph_schema = PostJobsSchema()
         errors = process_graph_schema.validate(data)
 
@@ -176,7 +176,7 @@ def batch_job(job_id):
 @app.route('/validation', methods=["GET"])
 def validate_process_graph():
     data = flask.request.get_json()
-    
+
     process_graph_schema = PGValidationSchema()
     errors = process_graph_schema.validate(data)
 
