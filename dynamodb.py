@@ -10,14 +10,21 @@ import uuid
 logging.basicConfig(level=logging.INFO)
 
 
+FAKE_AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
+FAKE_AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+
+
 # we use local DynamoDB by default, to avoid using AWS for testing by mistake
 DYNAMODB_PRODUCTION = os.environ.get('DYNAMODB_PRODUCTION', '').lower() in ["true", "1", "yes"]
-endpoint_url = 'http://dynamodb:8000' if os.environ.get('DYNAMODB_PRODUCTION', '') == "testing" else 'http://localhost:8000'
-log(INFO, "Initializing DynamoDB (url: {}, production: {})...".format(endpoint_url, DYNAMODB_PRODUCTION))
+DYNAMODB_LOCAL_URL = os.environ.get('DYNAMODB_LOCAL_URL', 'http://localhost:8000')
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', FAKE_AWS_ACCESS_KEY_ID)
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', FAKE_AWS_SECRET_ACCESS_KEY)
+
+log(INFO, "Initializing DynamoDB (url: {}, production: {})...".format(DYNAMODB_LOCAL_URL, DYNAMODB_PRODUCTION))
 
 class Persistence(object):
     dynamodb = boto3.client('dynamodb') if DYNAMODB_PRODUCTION else \
-        boto3.client('dynamodb', endpoint_url=endpoint_url,region_name="eu-central-1",aws_access_key_id="AKIAIOSFODNN7EXAMPLE",aws_secret_access_key="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
+        boto3.client('dynamodb', endpoint_url=DYNAMODB_LOCAL_URL,region_name="eu-central-1",aws_access_key_id=AWS_ACCESS_KEY_ID,aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
 
 
     # entity types correspond to DynamoDB tables:

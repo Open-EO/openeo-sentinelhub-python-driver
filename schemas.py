@@ -8,7 +8,7 @@ def validate_graph_with_known_processes(graph):
 	if not valid:
 		raise ValidationError("Invalid process graph")
 
-class PostPGSchema(Schema):
+class PostProcessGraphsSchema(Schema):
 	"""
 	Request body
 	POST /process_graphs and PATCH /process_graphs
