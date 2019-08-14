@@ -1,7 +1,7 @@
 from marshmallow import Schema, fields, validates, ValidationError, validate
 from openeo_pg_parser_python.validate_process_graph import validate_graph
 
-class PostPGSchema(Schema):
+class PostProcessGraphsSchema(Schema):
 	"""
 	Request body
 	POST /process_graphs and PATCH /process_graphs

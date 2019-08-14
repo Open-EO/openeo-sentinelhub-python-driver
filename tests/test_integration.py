@@ -2,7 +2,7 @@ import json
 import pytest
 
 import sys, os
-os.environ["DYNAMODB_PRODUCTION"] = "testing"
+os.environ["DYNAMODB_URL"] = "http://dynamodb:8000"
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import app
 
@@ -20,7 +20,7 @@ def test_root(app_client):
           - response must contain all the required keys
           - list of endpoints must contain at least ourselves
     """
-    r = app_client.get('http://dynamodb:8000')
+    r = app_client.get('/')
 
     assert r.status_code == 200
     actual = json.loads(r.data.decode('utf-8'))

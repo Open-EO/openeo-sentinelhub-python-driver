@@ -2,9 +2,8 @@ import flask
 from flask import Flask, url_for, jsonify
 from flask_marshmallow import Marshmallow
 import os
-from schemas import PostPGSchema,PostJobsSchema, PGValidationSchema
+from schemas import PostProcessGraphsSchema,PostJobsSchema, PGValidationSchema
 import datetime
-
 
 from dynamodb import Persistence
 
@@ -29,13 +28,17 @@ def api_root():
 
 def get_endpoints():
     """
-        Returns a list of endpoints (url and allowed methods). Endpoints which
-        require parameters are not filtered out because openEO documentation includes them.
+        Returns a list of endpoints (url and allowed methods).
     """
     endpoints = []
+    omitted_urls = ["/static/<path:filename>"]
 
     for rule in app.url_map.iter_rules():
         url = rule.rule
+
+        if url in omitted_urls:
+            continue
+            
         endpoints.append({
             "path": url,
             "methods": list(rule.methods - set(["OPTIONS", "HEAD"])),
@@ -71,12 +74,12 @@ def api_process_graphs(process_graph_id=None):
     elif flask.request.method == 'POST':
         data = flask.request.get_json()
 
-        process_graph_schema = PostPGSchema()
+        process_graph_schema = PostProcessGraphsSchema()
         errors = process_graph_schema.validate(data)
 
         if errors:
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
-            return flask.make_response('Invalid request', 404)
+            return flask.make_response('Invalid request', 400)
 
         record_id = Persistence.create(Persistence.ET_PROCESS_GRAPHS, data)
 
@@ -93,12 +96,12 @@ def api_process_graphs(process_graph_id=None):
     elif flask.request.method == 'PATCH':
         data = flask.request.get_json()
 
-        process_graph_schema = PostPGSchema()
+        process_graph_schema = PostProcessGraphsSchema()
         errors = process_graph_schema.validate(data)
 
         if errors:
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
-            return flask.make_response('Invalid request', 404)
+            return flask.make_response('Invalid request', 400)
 
         Persistence.replace(Persistence.ET_PROCESS_GRAPHS,process_graph_id,data)
         return flask.make_response('The process graph data has been updated successfully.', 204)
@@ -132,7 +135,7 @@ def api_jobs():
 
         if errors:
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
-            return flask.make_response('Invalid request', 404)
+            return flask.make_response('Invalid request', 400)
 
         data["status"] = "submitted"
         data["submitted"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -160,7 +163,7 @@ def batch_job(job_id):
 
         if errors:
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
-            return flask.make_response('Invalid request', 404)
+            return flask.make_response('Invalid request', 400)
 
         data["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
