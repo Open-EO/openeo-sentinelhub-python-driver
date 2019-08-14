@@ -2,8 +2,9 @@ import flask
 from flask import Flask, url_for, jsonify
 from flask_marshmallow import Marshmallow
 import os
-from schemas import PostPGSchema,PostJobsSchema, PGValidationSchema
+from schemas import PostPGSchema, PostJobsSchema, PostResultSchema, PGValidationSchema
 import datetime
+import requests
 
 
 from dynamodb import Persistence
@@ -144,6 +145,29 @@ def api_jobs():
         response.headers['Location'] = '/process_graphs/{}'.format(record_id)
         response.headers['OpenEO-Identifier'] = record_id
         return response
+
+
+@app.route('/result', methods=['POST'])
+def api_result():
+    if flask.request.method == 'POST':
+        data = flask.request.get_json()
+
+        schema = PostResultSchema()
+        errors = schema.validate(data)
+
+        # if errors:
+        #     return flask.make_response('Invalid request: {}'.format(errors), 400)
+
+        # !!! for now we simply always request some dummy data from SH and return it:
+        url = 'https://services.sentinel-hub.com/ogc/wms/cd280189-7c51-45a6-ab05-f96a76067710?service=WMS&request=GetMap&layers=1_TRUE_COLOR&styles=&format=image%2Fpng&transparent=true&version=1.1.1&showlogo=false&name=Sentinel-2%20L1C&width=512&height=512&pane=activeLayer&maxcc=100&evalscriptoverrides=&time=2019-08-09%2F2019-08-09&srs=EPSG%3A3857&bbox=1252344.2714243277,5165920.119625352,1330615.7883883484,5244191.636589374'
+        r = requests.get(url)
+        r.raise_for_status()
+
+        # pass the result back directly:
+        response = flask.make_response(r.content, 200)
+        response.headers['Content-Type'] = r.headers['Content-Type']
+        return response
+
 
 @app.route('/jobs/<job_id>', methods=['GET','PATCH','DELETE'])
 def api_batch_job(job_id):

@@ -36,6 +36,19 @@ class PostJobsSchema(Schema):
 	def validate_process_graph(self, graph):
 		validate_graph_with_known_processes(graph)
 
+class PostResultSchema(Schema):
+	"""
+	Request body
+	POST /result
+	"""
+	process_graph = fields.Dict(required=True)
+	budget = fields.Number(allow_none=True)
+	plan = fields.Str(allow_none=True)
+
+	@validates("process_graph")
+	def validate_process_graph(self, graph):
+		validate_graph_with_known_processes(graph)
+
 class PGValidationSchema(Schema):
 	"""
 	Request body
