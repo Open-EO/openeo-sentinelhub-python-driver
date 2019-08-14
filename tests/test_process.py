@@ -9,16 +9,26 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import app
 
 
+FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), 'fixtures')
+
+
 @pytest.fixture
 def app_client():
     app.testing = True
     return app.test_client()
 
 
+@pytest.fixture
+def s2l1c_truecolor_32x32_png():
+    filename = os.path.join(FIXTURES_FOLDER, 's2l1c_truecolor_32x32.png')
+    assert os.path.isfile(filename), "Please run tests/fixtures/load_fixtures.sh!"
+    return open(filename, 'rb').read()
+
+
 ###################################
 
 @responses.activate
-def test_process_load_collection(app_client):
+def test_process_load_collection(app_client, s2l1c_truecolor_32x32_png):
     """
         Test load_collection process
     """
@@ -28,7 +38,7 @@ def test_process_load_collection(app_client):
     responses.add(
         responses.GET,
         sh_url_regex,
-        body='asdf',
+        body=s2l1c_truecolor_32x32_png,
         match_querystring=True,
         status=200,
     )
@@ -38,7 +48,7 @@ def test_process_load_collection(app_client):
             "loadco1": {
                 "process_id": "load_collection",
                 "arguments": {
-                    "id": "Sentinel-1",
+                    "id": "S2L1C",
                     "spatial_extent": {
                         "west": 16.1,
                         "east": 16.6,
@@ -53,4 +63,4 @@ def test_process_load_collection(app_client):
     }
     r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
     assert r.status_code == 200
-    assert r.data == b'asdf'
+    assert r.data == s2l1c_truecolor_32x32_png
