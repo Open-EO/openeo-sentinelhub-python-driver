@@ -1,0 +1,12 @@
+version: '3'
+
+# This file helps run services so we can run integration tests.
+
+services:
+  dynamodb:
+    image: amazon/dynamodb-local
+    ports:
+      - '8000:8000'
+    # Instead od using in-memory DB, we could also persist data:
+    #   -sharedDb -dbPath /home/dynamodblocal/data/
+    command: -jar DynamoDBLocal.jar -inMemory -port 8000

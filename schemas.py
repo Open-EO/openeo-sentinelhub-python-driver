@@ -1,6 +1,13 @@
 from marshmallow import Schema, fields, validates, ValidationError, validate
 from openeo_pg_parser_python.validate_process_graph import validate_graph
 
+def validate_graph_with_known_processes(graph):
+	valid = validate_graph(graph, [
+		{"id": "load_collection", "parameters": {"id": {}, "spatial_extent": {}}}
+	])
+	if not valid:
+		raise ValidationError("Invalid process graph")
+
 class PostProcessGraphsSchema(Schema):
 	"""
 	Request body
@@ -11,10 +18,8 @@ class PostProcessGraphsSchema(Schema):
 	process_graph = fields.Dict(required=True)
 
 	@validates("process_graph")
-	def validate_process_graph(self,graph):
-		valid = validate_graph(graph,[{"id":"test","parameters":{"id": {}}}])
-		if not valid:
-			raise ValidationError("Invalid process graph")
+	def validate_process_graph(self, graph):
+		validate_graph_with_known_processes(graph)
 
 class PostJobsSchema(Schema):
 	"""
@@ -25,13 +30,24 @@ class PostJobsSchema(Schema):
 	description = fields.Str(allow_none=True)
 	title = fields.Str(allow_none=True)
 	plan = fields.Str(allow_none=True)
-	budget = fields.Str(allow_none=True)
+	budget = fields.Number(allow_none=True)
 
 	@validates("process_graph")
-	def validate_process_graph(self,graph):
-		valid = validate_graph(graph,[{"id":"test","parameters":{"id": {}}}])
-		if not valid:
-			raise ValidationError("Invalid process graph")
+	def validate_process_graph(self, graph):
+		validate_graph_with_known_processes(graph)
+
+class PostResultSchema(Schema):
+	"""
+	Request body
+	POST /result
+	"""
+	process_graph = fields.Dict(required=True)
+	budget = fields.Number(allow_none=True)
+	plan = fields.Str(allow_none=True)
+
+	@validates("process_graph")
+	def validate_process_graph(self, graph):
+		validate_graph_with_known_processes(graph)
 
 class PGValidationSchema(Schema):
 	"""
@@ -41,10 +57,8 @@ class PGValidationSchema(Schema):
 	process_graph = fields.Dict(required=True)
 
 	@validates("process_graph")
-	def validate_process_graph(self,graph):
-		valid = validate_graph(graph,[{"id":"test","parameters":{"id": {}}}])
-		if not valid:
-			raise ValidationError("Invalid process graph")
+	def validate_process_graph(self, graph):
+		validate_graph_with_known_processes(graph)
 
 
 # CORRECT

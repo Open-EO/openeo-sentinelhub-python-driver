@@ -6,6 +6,7 @@ name = "pypi"
 [dev-packages]
 zappa = "*"
 pylint = "*"
+responses = "*"
 
 [requires]
 python_version = "3.6"
@@ -17,3 +18,4 @@ uuid = "*"
 boto3 = "*"
 flask-marshmallow = "*"
 openeo-pg-parser-python = {git = "https://github.com/Open-EO/openeo-pg-parser-python.git"}
+requests = "*"

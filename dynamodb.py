@@ -1,26 +1,30 @@
 import boto3
 from boto3.dynamodb.conditions import Attr,Key
 import json
+import logging
 from logging import log, INFO
 import os
 import uuid
 
+
+logging.basicConfig(level=logging.INFO)
+
+
 FAKE_AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
 FAKE_AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
+
 # we use local DynamoDB by default, to avoid using AWS for testing by mistake
 DYNAMODB_PRODUCTION = os.environ.get('DYNAMODB_PRODUCTION', '').lower() in ["true", "1", "yes"]
-
-log(INFO, "Production: {}".format(DYNAMODB_PRODUCTION))
-
-DYNAMODB_URL = os.environ.get('DYNAMODB_URL', 'http://localhost:8000')
-
+DYNAMODB_LOCAL_URL = os.environ.get('DYNAMODB_LOCAL_URL', 'http://localhost:8000')
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', FAKE_AWS_ACCESS_KEY_ID)
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', FAKE_AWS_SECRET_ACCESS_KEY)
 
+log(INFO, "Initializing DynamoDB (url: {}, production: {})...".format(DYNAMODB_LOCAL_URL, DYNAMODB_PRODUCTION))
+
 class Persistence(object):
     dynamodb = boto3.client('dynamodb') if DYNAMODB_PRODUCTION else \
-        boto3.client('dynamodb', endpoint_url=DYNAMODB_URL,region_name="eu-central-1",aws_access_key_id=AWS_ACCESS_KEY_ID,aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+        boto3.client('dynamodb', endpoint_url=DYNAMODB_LOCAL_URL,region_name="eu-central-1",aws_access_key_id=AWS_ACCESS_KEY_ID,aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
 
 
     # entity types correspond to DynamoDB tables:
@@ -66,6 +70,7 @@ class Persistence(object):
 
     @classmethod
     def ensure_table_exists(cls, tableName):
+        log(INFO, "Ensuring DynamoDB table exists: '{}'.".format(tableName))
         try:
             cls.dynamodb.create_table(
                 AttributeDefinitions=[
@@ -90,4 +95,4 @@ class Persistence(object):
 
 Persistence.ensure_table_exists(Persistence.ET_PROCESS_GRAPHS)
 Persistence.ensure_table_exists(Persistence.ET_JOBS)
-
+log(INFO, "DynamoDB initialized.")
