@@ -1,13 +1,17 @@
 version: '3'
 # This file helps run services so we can run integration tests.
-# For testing: docker-compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from pytest 
+# For testing: docker-compose up --abort-on-container-exit --exit-code-from pytest
 # To see exit code: echo Exit Code is %errorlevel%
 # For usage: docker-compose up -d
 
 services:
+
   pytest:
-    build: ..
-    command: bash -c "/wait-for-it.sh dynamodb:8000 -- && cd /tests/ && pytest -s"
+    build:
+      context: ..
+      dockerfile: tests/Dockerfile.pytest
+    command: bash -c "/wait-for-it.sh dynamodb:8000 -- && cd /tests/ && DYNAMODB_LOCAL_URL='http://dynamodb:8000' pytest -x"
+
   dynamodb:
     image: amazon/dynamodb-local
     ports:
