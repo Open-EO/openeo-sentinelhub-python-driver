@@ -1,0 +1,22 @@
+version: '3'
+# This file helps run services so we can run integration tests.
+# For testing: docker-compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from pytest 
+# To see exit code: echo Exit Code is %errorlevel%
+# For usage: docker-compose up -d
+
+services:
+  pytest:
+    build: ..
+    command: bash -c "/wait-for-it.sh dynamodb:8000 -- && cd /tests/ && pytest -s"
+  dynamodb:
+    image: amazon/dynamodb-local
+    ports:
+      - '8000:8000'
+    # Instead od using in-memory DB, we could also persist data:
+    #   -sharedDb -dbPath /home/dynamodblocal/data/
+    # volumes:
+    #   - static-content:/usr/src/app
+    command: -jar DynamoDBLocal.jar -inMemory -port 8000
+
+# volumes:
+#   static-content:

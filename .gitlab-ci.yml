@@ -1,4 +1,9 @@
-image: python:3.6.6
+image:
+  name: docker/compose:1.24.1
+  entrypoint: ["/bin/sh","-l","-c"]
+
+services:
+  - docker:dind
 
 stages:
   - test
@@ -6,12 +11,9 @@ stages:
 
 pytest:
   stage: test
-  before_script:
-    - pip install pipenv
   script:
-    - pipenv install --dev
     - cd tests/
-    - pipenv run pytest -x -v
+    - docker-compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from pytest --build
 
 deploy-production:
   stage: deploy
