@@ -2,7 +2,6 @@ import json
 import pytest
 
 import sys, os
-os.environ["DYNAMODB_LOCAL_URL"] = "http://dynamodb:8000"
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import app
 
