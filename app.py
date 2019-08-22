@@ -75,6 +75,7 @@ def api_process_graphs(process_graph_id=None):
 
     elif flask.request.method == 'POST':
         data = flask.request.get_json()
+        print(data)
 
         process_graph_schema = PostProcessGraphsSchema()
         errors = process_graph_schema.validate(data)
@@ -182,6 +183,11 @@ def api_batch_job(job_id):
         return job, 200
 
     elif flask.request.method == 'PATCH':
+
+        current_job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+        if current_job["status"] in ["queued","running"]:
+            return flask.make_response('openEO error: JobLocked', 400)
+
         data = flask.request.get_json()
 
         process_graph_schema = PostJobsSchema()
@@ -193,6 +199,7 @@ def api_batch_job(job_id):
 
         data["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
+
         Persistence.replace(Persistence.ET_JOBS,job_id,data)
         return flask.make_response('Changes to the job applied successfully.', 204)
 
@@ -200,6 +207,31 @@ def api_batch_job(job_id):
         Persistence.delete(Persistence.ET_JOBS,job_id)
         return flask.make_response('The job has been successfully deleted.', 204)
 
+
+@app.route('jobs/<job_id>/results', methods=['POST','GET'])
+def add_job_to_queue(job_id):
+    if flask.request.method == "POST":
+        job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+
+        if job["status"] in ["queued","running"]:
+            return flask.make_response('openEO error: JobLocked', 400)
+
+        job["status"] = "queued"
+        job["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        Persistence.replace(Persistence.ET_JOBS,job_id,job)
+
+        Persistence.add_to_queue(job_id)
+
+        return flask.make_response('The creation of the resource has been queued successfully.', 202)
+
+    elif flask.request.method == "GET":
+        # authorization
+        queue_job = Persistence.get_by_id(Persistence.ET_QUEUE,job_id)
+
+        if queue_job["status"] != "finished":
+            return flask.make_response('openEO error: JobNotFinished', 400)
+
+        return {}, 200
 
 
 @app.route('/validation', methods=["GET"])

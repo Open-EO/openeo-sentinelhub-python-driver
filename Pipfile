@@ -18,3 +18,4 @@ uuid = "*"
 boto3 = "*"
 flask-marshmallow = "*"
 openeo-pg-parser-python = {git = "https://github.com/Open-EO/openeo-pg-parser-python.git"}
+requests = "*"
