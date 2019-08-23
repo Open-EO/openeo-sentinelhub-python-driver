@@ -3,7 +3,11 @@
     "app_function": "app.app",
     "aws_region": "eu-central-1",
     "environment_variables": {
-      "DYNAMODB_PRODUCTION": "yes"
+      "DYNAMODB_PRODUCTION": "@@DYNAMODB_PRODUCTION@@",
+      "DYNAMODB_LOCAL_URL": "@@DYNAMODB_LOCAL_URL@@",
+      "AWS_ACCESS_KEY_ID": "@@AWS_ACCESS_KEY_ID@@",
+      "AWS_SECRET_ACCESS_KEY": "@@AWS_SECRET_ACCESS_KEY@@",
+      "S3_DATA_BUCKET": "@@S3_DATA_BUCKET@@"
     },
     "memory_size": 128,
     "profile_name": "default",
