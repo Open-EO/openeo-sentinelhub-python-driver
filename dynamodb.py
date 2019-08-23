@@ -29,8 +29,8 @@ class Persistence(object):
 
 
     # entity types correspond to DynamoDB tables:
-    ET_PROCESS_GRAPHS = 'process_graphs'
-    ET_JOBS = 'jobs'
+    ET_PROCESS_GRAPHS = 'shopeneo_process_graphs'
+    ET_JOBS = 'shopeneo_jobs'
 
     @classmethod
     def create(cls, entity_type, data):
