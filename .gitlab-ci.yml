@@ -39,3 +39,4 @@ deploy-production:
     - sed -i "s#@@AWS_SECRET_ACCESS_KEY@@#$PRODDATA_AWS_SECRET_ACCESS_KEY#g" zappa_settings.json
     - sed -i "s/@@S3_DATA_BUCKET@@/$PRODDATA_S3_BUCKET/g" zappa_settings.json
     - pipenv run zappa deploy production || pipenv run zappa update production
+    - pipenv run bash -c "DYNAMODB_PRODUCTION=yes python dynamodb.py"
