@@ -10,3 +10,35 @@ services:
     # Instead od using in-memory DB, we could also persist data:
     #   -sharedDb -dbPath /home/dynamodblocal/data/
     command: -jar DynamoDBLocal.jar -inMemory -port 8000
+
+  minio:
+    image: minio/minio
+    ports:
+      - '9000:9000'
+    volumes:
+      - minio-data:/export
+    command: server /export
+    environment:
+      MINIO_ACCESS_KEY: DOESNT_MATTER
+      MINIO_SECRET_KEY: DOESNT_MATTER
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    
+  createbuckets:
+      image: minio/mc
+      depends_on:
+        - minio
+      entrypoint: >
+        /bin/sh -c "
+        /usr/bin/mc config host add myminio http://minio:9000 DOESNT_MATTER DOESNT_MATTER;
+        /usr/bin/mc rm -r --force myminio/somebucketname;
+        /usr/bin/mc mb myminio/somebucketname;
+        /usr/bin/mc policy download myminio/somebucketname;
+        exit 0;"
+
+
+volumes:
+  minio-data:
