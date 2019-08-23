@@ -242,9 +242,9 @@ def add_job_to_queue(job_id):
             return flask.make_response('openEO error: JobNotFinished', 400)
 
         if queue_job["status"] == "error":
-            return flask.make_response('...the error log', 424)
+            return flask.make_response(queue_job["errors"], 424)
 
-        return {}, 200
+        return flask.make_response(queue_job["download_url"], 200)
 
     elif flask.request.method == "DELETE":
         job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
