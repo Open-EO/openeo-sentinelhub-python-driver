@@ -208,7 +208,7 @@ def api_batch_job(job_id):
         return flask.make_response('The job has been successfully deleted.', 204)
 
 
-@app.route('jobs/<job_id>/results', methods=['POST','GET'])
+@app.route('/jobs/<job_id>/results', methods=['POST','GET'])
 def add_job_to_queue(job_id):
     if flask.request.method == "POST":
         job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
@@ -228,8 +228,11 @@ def add_job_to_queue(job_id):
         # authorization
         queue_job = Persistence.get_by_id(Persistence.ET_QUEUE,job_id)
 
-        if queue_job["status"] != "finished":
+        if queue_job["status"] not in ["finished","error"]:
             return flask.make_response('openEO error: JobNotFinished', 400)
+
+        if queue_job["status"] == "error":
+            return flask.make_response('openEO error: JobNotFinished', 424)
 
         return {}, 200
 
