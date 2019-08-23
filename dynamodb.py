@@ -90,3 +90,19 @@ class Persistence(object):
         except cls.dynamodb.exceptions.ResourceInUseException:
             log(INFO, "DynamoDB table '{}' already exists, ignoring.".format(tableName))
             pass
+
+
+if __name__ == "__main__":
+
+    # To create tables, run:
+    #   $ pipenv shell
+    #   <shell> $ DYNAMODB_PRODUCTION=yes ./dynamodb.py
+    #
+    # Currently it is not posible to create tables from the Lambda because the
+    # boto3 version included is too old, and we can't upload newer one (creating
+    # tables doesn't work if we do that)
+
+    log(INFO, "Initializing DynamoDB (url: {}, production: {})...".format(DYNAMODB_LOCAL_URL, DYNAMODB_PRODUCTION))
+    Persistence.ensure_table_exists(Persistence.ET_PROCESS_GRAPHS)
+    Persistence.ensure_table_exists(Persistence.ET_JOBS)
+    log(INFO, "DynamoDB initialized.")
