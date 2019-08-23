@@ -20,8 +20,6 @@ DYNAMODB_LOCAL_URL = os.environ.get('DYNAMODB_LOCAL_URL', 'http://localhost:8000
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', FAKE_AWS_ACCESS_KEY_ID)
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', FAKE_AWS_SECRET_ACCESS_KEY)
 
-log(INFO, "Initializing DynamoDB (url: {}, production: {})...".format(DYNAMODB_LOCAL_URL, DYNAMODB_PRODUCTION))
-
 class Persistence(object):
     dynamodb = boto3.client('dynamodb') if DYNAMODB_PRODUCTION else \
         boto3.client('dynamodb', endpoint_url=DYNAMODB_LOCAL_URL,region_name="eu-central-1",aws_access_key_id=AWS_ACCESS_KEY_ID,aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
@@ -92,7 +90,3 @@ class Persistence(object):
         except cls.dynamodb.exceptions.ResourceInUseException:
             log(INFO, "DynamoDB table '{}' already exists, ignoring.".format(tableName))
             pass
-
-Persistence.ensure_table_exists(Persistence.ET_PROCESS_GRAPHS)
-Persistence.ensure_table_exists(Persistence.ET_JOBS)
-log(INFO, "DynamoDB initialized.")
