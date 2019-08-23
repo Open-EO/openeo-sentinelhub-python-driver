@@ -31,8 +31,6 @@ class Persistence(object):
     # entity types correspond to DynamoDB tables:
     ET_PROCESS_GRAPHS = 'process_graphs'
     ET_JOBS = 'jobs'
-    ET_QUEUE = 'queue'
-
 
     @classmethod
     def create(cls, entity_type, data):
@@ -44,7 +42,7 @@ class Persistence(object):
             TableName=entity_type,
             Item={
                 'id': {'S': record_id},
-                'data': {'S': json.dumps(data)},
+                'content': {'S': json.dumps(data)},
             },
         )
         return record_id
@@ -54,7 +52,7 @@ class Persistence(object):
         paginator = cls.dynamodb.get_paginator('scan')
         for page in paginator.paginate(TableName=entity_type):
             for item in page["Items"]:
-                yield item['id']['S'], json.loads(item['data']['S'])
+                yield item['id']['S'], json.loads(item['content']['S'])
 
     @classmethod
     def delete(cls, entity_type, record_id):
@@ -67,22 +65,8 @@ class Persistence(object):
 
     @classmethod
     def replace(cls,entity_type,record_id,data):
-        new_data = cls.dynamodb.update_item(TableName=entity_type, Key={'id':{'S':record_id}}, UpdateExpression="SET data = :new_data", ExpressionAttributeValues={':new_data':data})
+        new_data = cls.dynamodb.update_item(TableName=entity_type, Key={'id':{'S':record_id}}, UpdateExpression="SET content = :new_content", ExpressionAttributeValues={':new_content': {'S': data}})
         return new_data
-
-    @classmethod
-    def add_to_queue(cls,job_id):
-        cls.dynamodb.put_item(
-            TableName=Persistence.ET_QUEUE,
-            Item={
-                'id': {'S': job_id},
-                'status': {'S': "queued"},
-                'time_submitted': {'S': datetime.datetime.now(datetime.timezone.utc).isoformat()},
-                'results_path': {'S': "...path to the results in an S3 bucket"},
-                'url': {'S': "...url for downloading processed data"},
-                'error': {'S': ""},
-            },
-        )
 
     @classmethod
     def ensure_table_exists(cls, tableName):
@@ -110,5 +94,4 @@ class Persistence(object):
 
 Persistence.ensure_table_exists(Persistence.ET_PROCESS_GRAPHS)
 Persistence.ensure_table_exists(Persistence.ET_JOBS)
-Persistence.ensure_table_exists(Persistence.ET_QUEUE)
 log(INFO, "DynamoDB initialized.")

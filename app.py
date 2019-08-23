@@ -6,6 +6,7 @@ from schemas import PostProcessGraphsSchema, PostJobsSchema, PostResultSchema, P
 import datetime
 import requests
 from logging import log, INFO, WARN
+import json
 
 from dynamodb import Persistence
 
@@ -33,7 +34,7 @@ def get_endpoints():
         Returns a list of endpoints (url and allowed methods).
     """
     endpoints = []
-    omitted_urls = ["/static/<path:filename>","/create_tables"]
+    omitted_urls = ["/static/<path:filename>"]
 
     for rule in app.url_map.iter_rules():
         url = rule.rule
@@ -75,7 +76,6 @@ def api_process_graphs(process_graph_id=None):
 
     elif flask.request.method == 'POST':
         data = flask.request.get_json()
-        print(data)
 
         process_graph_schema = PostProcessGraphsSchema()
         errors = process_graph_schema.validate(data)
@@ -167,6 +167,10 @@ def api_jobs():
 
         data["status"] = "submitted"
         data["submitted"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        data["errors"] = None,
+        data["results_path"] = "<some_path>"
+        data["download_url"] = "<some_url>"
+        data["should_be_cancelled"] = False
 
         record_id = Persistence.create(Persistence.ET_JOBS, data)
 
@@ -185,9 +189,10 @@ def api_batch_job(job_id):
         return job, 200
 
     elif flask.request.method == 'PATCH':
-
         current_job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
-        if current_job["status"] in ["queued","running","finished","error"]:
+        current_content = json.loads(current_job["Item"]["content"]["S"])
+
+        if current_content["status"] in ["queued","running"]:
             return flask.make_response('openEO error: JobLocked', 400)
 
         data = flask.request.get_json()
@@ -200,9 +205,10 @@ def api_batch_job(job_id):
             return flask.make_response('Invalid request', 400)
 
         data["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        data["status"] = "submitted"
 
 
-        Persistence.replace(Persistence.ET_JOBS,job_id,data)
+        Persistence.replace(Persistence.ET_JOBS,job_id,json.dumps(data))
         return flask.make_response('Changes to the job applied successfully.', 204)
 
     elif flask.request.method == 'DELETE':
@@ -210,23 +216,27 @@ def api_batch_job(job_id):
         return flask.make_response('The job has been successfully deleted.', 204)
 
 
-@app.route('/jobs/<job_id>/results', methods=['POST','GET'])
+@app.route('/jobs/<job_id>/results', methods=['POST','GET','DELETE'])
 def add_job_to_queue(job_id):
     if flask.request.method == "POST":
         job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+        data = json.loads(job["Item"]["content"]["S"])
 
-        if job["status"] in ["queued","running"]:
+        if data["status"] in ["queued","running"]:
             return flask.make_response('openEO error: JobLocked', 400)
 
-        job["status"] = "queued"
-        job["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        Persistence.replace(Persistence.ET_JOBS,job_id,job)
+        data["status"] = "queued"
+        data["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+
+        Persistence.replace(Persistence.ET_JOBS,job_id,json.dumps(data))
 
         return flask.make_response('The creation of the resource has been queued successfully.', 202)
 
     elif flask.request.method == "GET":
         # authorization
-        queue_job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+        job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+        queue_job = json.loads(job["Item"]["content"]["S"])
 
         if queue_job["status"] not in ["finished","error"]:
             return flask.make_response('openEO error: JobNotFinished', 400)
@@ -235,6 +245,18 @@ def add_job_to_queue(job_id):
             return flask.make_response('...the error log', 424)
 
         return {}, 200
+
+    elif flask.request.method == "DELETE":
+        job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+        data = json.loads(job["Item"]["content"]["S"])
+
+        if data["status"] in ["queued","running"]:
+            data["should_be_cancelled"] = True
+            Persistence.replace(Persistence.ET_JOBS,job_id,json.dumps(data))
+            return flask.make_response('Processing the job has been successfully canceled.', 200)
+
+        return flask.make_response('Job is not queued or running.', 400)
+
 
 
 @app.route('/validation', methods=["GET"])
@@ -252,3 +274,4 @@ def validate_process_graph():
 if __name__ == '__main__':
     app.run()
 
+# curl -d "{\"process_graph\": {\"smth\": {\"process_id\": \"load_collection\", \"arguments\": {\"id\": {}, \"spatial_extent\": {}}}}}" -H "Content-Type: application/json" -X POST http://127.0.0.1:5000/jobs
