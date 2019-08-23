@@ -19,13 +19,8 @@ services:
       - minio-data:/export
     command: server /export
     environment:
-      MINIO_ACCESS_KEY: DOESNT_MATTER
-      MINIO_SECRET_KEY: DOESNT_MATTER
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
+      MINIO_ACCESS_KEY: admin
+      MINIO_SECRET_KEY: admin
     
   createbuckets:
       image: minio/mc
@@ -33,10 +28,10 @@ services:
         - minio
       entrypoint: >
         /bin/sh -c "
-        /usr/bin/mc config host add myminio http://minio:9000 DOESNT_MATTER DOESNT_MATTER;
-        /usr/bin/mc rm -r --force myminio/somebucketname;
-        /usr/bin/mc mb myminio/somebucketname;
-        /usr/bin/mc policy download myminio/somebucketname;
+        /usr/bin/mc config host add myminio http://minio:9000 admin admin;
+        /usr/bin/mc rm -r --force myminio/openeo_results;
+        /usr/bin/mc mb myminio/openeo_results;
+        /usr/bin/mc policy download myminio/openeo_results;
         exit 0;"
 
 
