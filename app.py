@@ -33,7 +33,7 @@ def get_endpoints():
         Returns a list of endpoints (url and allowed methods).
     """
     endpoints = []
-    omitted_urls = ["/static/<path:filename>"]
+    omitted_urls = ["/static/<path:filename>","/utils/create_tables"]
 
     for rule in app.url_map.iter_rules():
         url = rule.rule
@@ -213,6 +213,11 @@ def validate_process_graph():
         "errors": errors,
     }, 200
 
+@app.route('/utils/create_tables', methods=['GET'])
+def create_dynamoby_tables():
+    Persistence.ensure_table_exists(Persistence.ET_PROCESS_GRAPHS)
+    Persistence.ensure_table_exists(Persistence.ET_JOBS)
+    return {}, 200
 
 if __name__ == '__main__':
     app.run()
