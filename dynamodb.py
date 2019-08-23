@@ -107,7 +107,6 @@ class Persistence(object):
             log(INFO, "Successfully created DynamoDB table '{}'.".format(tableName))
         except cls.dynamodb.exceptions.ResourceInUseException:
             log(INFO, "DynamoDB table '{}' already exists, ignoring.".format(tableName))
-            pass
 
 Persistence.ensure_table_exists(Persistence.ET_PROCESS_GRAPHS)
 Persistence.ensure_table_exists(Persistence.ET_JOBS)

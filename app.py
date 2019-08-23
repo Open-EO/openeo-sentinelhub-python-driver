@@ -33,7 +33,7 @@ def get_endpoints():
         Returns a list of endpoints (url and allowed methods).
     """
     endpoints = []
-    omitted_urls = ["/static/<path:filename>"]
+    omitted_urls = ["/static/<path:filename>","/create_tables"]
 
     for rule in app.url_map.iter_rules():
         url = rule.rule
@@ -109,6 +109,31 @@ def api_process_graphs(process_graph_id=None):
         Persistence.replace(Persistence.ET_PROCESS_GRAPHS,process_graph_id,data)
         return flask.make_response('The process graph data has been updated successfully.', 204)
 
+
+
+@app.route('/result', methods=['POST'])
+def api_result():
+    if flask.request.method == 'POST':
+        data = flask.request.get_json()
+
+        schema = PostResultSchema()
+        errors = schema.validate(data)
+
+        if errors:
+            log(WARN, "Invalid request: {}".format(errors))
+            return flask.make_response('Invalid request: {}'.format(errors), 400)
+
+        # !!! for now we simply always request some dummy data from SH and return it:
+        url = 'https://services.sentinel-hub.com/ogc/wms/cd280189-7c51-45a6-ab05-f96a76067710?service=WMS&request=GetMap&layers=1_TRUE_COLOR&styles=&format=image%2Fpng&transparent=true&version=1.1.1&showlogo=false&name=Sentinel-2%20L1C&width=512&height=512&pane=activeLayer&maxcc=100&evalscriptoverrides=&time=2019-08-09%2F2019-08-09&srs=EPSG%3A3857&bbox=1252344.2714243277,5165920.119625352,1330615.7883883484,5244191.636589374'
+        r = requests.get(url)
+        r.raise_for_status()
+
+        # pass the result back directly:
+        response = flask.make_response(r.content, 200)
+        response.headers['Content-Type'] = r.headers['Content-Type']
+        return response
+
+
 @app.route('/jobs', methods=['GET','POST'])
 def api_jobs():
     if flask.request.method == 'GET':
@@ -152,29 +177,6 @@ def api_jobs():
         return response
 
 
-@app.route('/result', methods=['POST'])
-def api_result():
-    if flask.request.method == 'POST':
-        data = flask.request.get_json()
-
-        schema = PostResultSchema()
-        errors = schema.validate(data)
-
-        if errors:
-            log(WARN, "Invalid request: {}".format(errors))
-            return flask.make_response('Invalid request: {}'.format(errors), 400)
-
-        # !!! for now we simply always request some dummy data from SH and return it:
-        url = 'https://services.sentinel-hub.com/ogc/wms/cd280189-7c51-45a6-ab05-f96a76067710?service=WMS&request=GetMap&layers=1_TRUE_COLOR&styles=&format=image%2Fpng&transparent=true&version=1.1.1&showlogo=false&name=Sentinel-2%20L1C&width=512&height=512&pane=activeLayer&maxcc=100&evalscriptoverrides=&time=2019-08-09%2F2019-08-09&srs=EPSG%3A3857&bbox=1252344.2714243277,5165920.119625352,1330615.7883883484,5244191.636589374'
-        r = requests.get(url)
-        r.raise_for_status()
-
-        # pass the result back directly:
-        response = flask.make_response(r.content, 200)
-        response.headers['Content-Type'] = r.headers['Content-Type']
-        return response
-
-
 @app.route('/jobs/<job_id>', methods=['GET','PATCH','DELETE'])
 def api_batch_job(job_id):
     if flask.request.method == 'GET':
@@ -185,7 +187,7 @@ def api_batch_job(job_id):
     elif flask.request.method == 'PATCH':
 
         current_job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
-        if current_job["status"] in ["queued","running"]:
+        if current_job["status"] in ["queued","running","finished","error"]:
             return flask.make_response('openEO error: JobLocked', 400)
 
         data = flask.request.get_json()
@@ -220,19 +222,17 @@ def add_job_to_queue(job_id):
         job["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
         Persistence.replace(Persistence.ET_JOBS,job_id,job)
 
-        Persistence.add_to_queue(job_id)
-
         return flask.make_response('The creation of the resource has been queued successfully.', 202)
 
     elif flask.request.method == "GET":
         # authorization
-        queue_job = Persistence.get_by_id(Persistence.ET_QUEUE,job_id)
+        queue_job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
 
         if queue_job["status"] not in ["finished","error"]:
             return flask.make_response('openEO error: JobNotFinished', 400)
 
         if queue_job["status"] == "error":
-            return flask.make_response('openEO error: JobNotFinished', 424)
+            return flask.make_response('...the error log', 424)
 
         return {}, 200
 
