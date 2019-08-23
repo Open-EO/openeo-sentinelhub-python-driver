@@ -57,19 +57,24 @@ class Persistence(object):
         cls.dynamodb.delete_item(TableName=entity_type, Key={'id':{'S':record_id}})
 
     @classmethod
-    def get_by_id(cls,entity_type,id):
+    def get_by_id(cls, entity_type, record_id):
         graph = cls.dynamodb.get_item(TableName=entity_type, Key={'id':{'S':record_id}})
         return graph
 
     @classmethod
-    def replace(cls,entity_type,id,data):
+    def replace(cls, entity_type, record_id, data):
         new_data = cls.dynamodb.update_item(TableName=entity_type, Key={'id':{'S':record_id}}, UpdateExpression="SET data = :new_data", ExpressionAttributeValues={':new_data':data})
         return new_data
 
     @classmethod
-    def ensure_table_exists(cls, tableName):
-        log(INFO, "Ensuring DynamoDB table exists: '{}'.".format(tableName))
+    def ensure_table_exists(cls, table_name, stream_enabled=False):
+        log(INFO, "Ensuring DynamoDB table exists: '{}'.".format(table_name))
         try:
+            if stream_enabled:
+                stream_specification={'StreamEnabled': True, 'StreamViewType': 'KEYS_ONLY'}
+            else:
+                stream_specification={'StreamEnabled': False}
+
             cls.dynamodb.create_table(
                 AttributeDefinitions=[
                     {
@@ -83,12 +88,13 @@ class Persistence(object):
                         'KeyType': 'HASH',
                     },
                 ],
-                TableName=tableName,
+                TableName=table_name,
                 BillingMode='PAY_PER_REQUEST',  # we use on-demand pricing
+                StreamSpecification=stream_specification,
             )
-            log(INFO, "Successfully created DynamoDB table '{}'.".format(tableName))
+            log(INFO, "Successfully created DynamoDB table '{}'.".format(table_name))
         except cls.dynamodb.exceptions.ResourceInUseException:
-            log(INFO, "DynamoDB table '{}' already exists, ignoring.".format(tableName))
+            log(INFO, "DynamoDB table '{}' already exists, ignoring.".format(table_name))
             pass
 
 
@@ -104,5 +110,5 @@ if __name__ == "__main__":
 
     log(INFO, "Initializing DynamoDB (url: {}, production: {})...".format(DYNAMODB_LOCAL_URL, DYNAMODB_PRODUCTION))
     Persistence.ensure_table_exists(Persistence.ET_PROCESS_GRAPHS)
-    Persistence.ensure_table_exists(Persistence.ET_JOBS)
+    Persistence.ensure_table_exists(Persistence.ET_JOBS, True)
     log(INFO, "DynamoDB initialized.")
