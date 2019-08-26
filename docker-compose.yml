@@ -19,20 +19,21 @@ services:
       - minio-data:/export
     command: server /export
     environment:
-      MINIO_ACCESS_KEY: local_s3_credentials
-      MINIO_SECRET_KEY: local_s3_credentials
+      MINIO_ACCESS_KEY: localS3Credentials
+      MINIO_SECRET_KEY: localS3Credentials
     
   createbuckets:
-      image: minio/mc
-      depends_on:
-        - minio
-      entrypoint: >
-        /bin/sh -c "
-        /usr/bin/mc config host add myminio http://minio:9000 local_s3_credentials local_s3_credentials;
-        /usr/bin/mc rm -r --force myminio/openeo_results;
-        /usr/bin/mc mb myminio/openeo_results;
-        /usr/bin/mc policy download myminio/openeo_results;
-        exit 0;"
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add myS3 http://minio:9000 localS3Credentials localS3Credentials;
+      /usr/bin/mc rm -r --force myS3/results;
+      /usr/bin/mc mb myS3/results;
+      /usr/bin/mc policy download myS3/results;
+      exit 0;
+      "
 
 
 volumes:
