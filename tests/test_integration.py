@@ -5,8 +5,6 @@ import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import app
 
-DYNAMODB_LOCAL_URL = os.environ.get('DYNAMODB_LOCAL_URL', 'http://localhost:8000')
-app.config["APPLICATION_ROOT"] = DYNAMODB_LOCAL_URL
 
 @pytest.fixture
 def app_client():
