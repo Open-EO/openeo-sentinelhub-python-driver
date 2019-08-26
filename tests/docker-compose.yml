@@ -22,5 +22,29 @@ services:
     #   - static-content:/usr/src/app
     command: -jar DynamoDBLocal.jar -inMemory -port 8000
 
-# volumes:
-#   static-content:
+  minio:
+    image: minio/minio
+    ports:
+      - '9000:9000'
+    volumes:
+      - minio-data:/export
+    command: server /export
+    environment:
+      MINIO_ACCESS_KEY: localS3Credentials
+      MINIO_SECRET_KEY: localS3Credentials
+    
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add openEo http://minio:9000 localS3Credentials localS3Credentials;
+      /usr/bin/mc rm -r --force openEo/results;
+      /usr/bin/mc mb openEo/results;
+      /usr/bin/mc policy download openEo/results;
+      exit 0;
+      "
+
+volumes:
+  minio-data:
