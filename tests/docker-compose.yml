@@ -10,7 +10,7 @@ services:
     build:
       context: ..
       dockerfile: tests/Dockerfile.pytest
-    command: bash -c "/wait-for-it.sh dynamodb:8000 -- && cd /tests/ && DYNAMODB_LOCAL_URL='http://dynamodb:8000' pytest -x"
+    command: bash -c "/wait-for-it.sh dynamodb:8000 -- &&  python dynamodb.py && cd /tests/ && DYNAMODB_LOCAL_URL='http://dynamodb:8000' pytest -x"
 
   dynamodb:
     image: amazon/dynamodb-local
