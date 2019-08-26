@@ -21,6 +21,3 @@ services:
     # volumes:
     #   - static-content:/usr/src/app
     command: -jar DynamoDBLocal.jar -inMemory -port 8000
-
-# volumes:
-#   static-content:

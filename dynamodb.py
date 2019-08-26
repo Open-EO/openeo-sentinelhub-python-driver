@@ -96,6 +96,15 @@ class Persistence(object):
         except cls.dynamodb.exceptions.ResourceInUseException:
             log(INFO, "DynamoDB table '{}' already exists, ignoring.".format(table_name))
 
+    @classmethod
+    def delete_table(cls, table_name):
+        try:
+            #TableName=
+            cls.dynamodb.delete_table(TableName=table_name)
+            log(INFO, "Table {} Successfully deleted.".format(table_name))
+        except:
+            log(INFO, "Table {} does not exists.".format(table_name))
+
 
 if __name__ == "__main__":
 

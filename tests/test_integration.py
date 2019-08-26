@@ -4,12 +4,28 @@ import pytest
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import app
+from dynamodb import Persistence
 
 
 @pytest.fixture
 def app_client():
     app.testing = True
     return app.test_client()
+
+def setup_function(function):
+    """ setup any state tied to the execution of the given function.
+    Invoked for every test function in the module.
+    """
+    Persistence.ensure_table_exists(Persistence.ET_PROCESS_GRAPHS)
+    Persistence.ensure_table_exists(Persistence.ET_JOBS, True)
+
+
+def teardown_function(function):
+    """ teardown any state that was previously setup with a setup_function
+    call.
+    """
+    Persistence.delete_table(Persistence.ET_PROCESS_GRAPHS)
+    Persistence.delete_table(Persistence.ET_JOBS)
 
 
 ###################################
@@ -122,7 +138,7 @@ def test_manage_batch_jobs(app_client):
 
     r = app_client.get("/jobs/{}".format(record_id))
 
-    assert r.status_code == 400
+    assert r.status_code == 404
 
 def test_process_batch_job(app_client):
     """
@@ -154,15 +170,17 @@ def test_process_batch_job(app_client):
     record_id = r.headers["OpenEO-Identifier"]
 
     r = app_client.delete("/jobs/{}/results".format(record_id))
+    actual = json.loads(r.data.decode('utf-8'))
     assert r.status_code == 400
-    assert r.data.decode("utf-8")  == "Job is not queued or running."
+    assert actual["message"]  == "Job is not queued or running."
 
     r = app_client.post("/jobs/{}/results".format(record_id))
     assert r.status_code == 202
 
     r = app_client.post("/jobs/{}/results".format(record_id))
+    actual = json.loads(r.data.decode('utf-8'))
     assert r.status_code == 400
-    assert r.data.decode('utf-8') == "Job already queued or running."
+    assert actual["message"] == "Job already queued or running."
 
     r = app_client.get("/jobs/{}".format(record_id))
     actual = json.loads(r.data.decode('utf-8'))
@@ -170,8 +188,9 @@ def test_process_batch_job(app_client):
     assert actual["status"] in ["queued"]
 
     r = app_client.get("/jobs/{}/results".format(record_id))
-    assert r.status_code == 400
-    assert r.data.decode('utf-8') == "openEO error: JobNotFinished"
+    actual = json.loads(r.data.decode('utf-8'))
+    assert r.status_code == 503
+    assert  actual["message"] == "openEO error: JobNotFinished"
 
     r = app_client.delete("/jobs/{}/results".format(record_id))
     assert r.status_code == 200

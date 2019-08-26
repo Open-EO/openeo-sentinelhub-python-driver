@@ -191,7 +191,12 @@ def api_batch_job(job_id):
         job = Persistence.get_by_id(Persistence.ET_JOBS, job_id)
 
         if "Item" not in job:
-            return flask.make_response("Batch job doesn't exist.", 400)
+            return flask.make_response(jsonify(
+                id = job_id,
+                code = 404,
+                message = "Batch job doesn't exist.",
+                links = []
+                ), 404)
 
         data = json.loads(job["Item"]["content"]["S"])
 
@@ -211,7 +216,12 @@ def api_batch_job(job_id):
         current_content = json.loads(current_job["Item"]["content"]["S"])
 
         if current_content["status"] in ["queued","running"]:
-            return flask.make_response('openEO error: JobLocked', 400)
+            return flask.make_response(jsonify(
+                id = job_id,
+                code = 400,
+                message = 'openEO error: JobLocked',
+                links = []
+                ), 400)
 
         data = flask.request.get_json()
 
@@ -245,16 +255,20 @@ def add_job_to_queue(job_id):
 
         data = json.loads(job["Item"]["content"]["S"])
 
-        if data["status"] in ["queued","running"]:
-            return flask.make_response('Job already queued or running.', 400)
+        if data["status"] in ["submitted","finished","canceled","error"]:
+            data["status"] = "queued"
+            data["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-        data["status"] = "queued"
-        data["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            Persistence.replace(Persistence.ET_JOBS,job_id,json.dumps(data))
 
-
-        Persistence.replace(Persistence.ET_JOBS,job_id,json.dumps(data))
-
-        return flask.make_response('The creation of the resource has been queued successfully.', 202)
+            return flask.make_response('The creation of the resource has been queued successfully.', 202)
+        else:
+            return flask.make_response(jsonify(
+                id = job_id,
+                code = 400,
+                message = 'Job already queued or running.',
+                links = []
+                ), 400)
 
     elif flask.request.method == "GET":
         # authorization
@@ -262,10 +276,20 @@ def add_job_to_queue(job_id):
         queue_job = json.loads(job["Item"]["content"]["S"])
 
         if queue_job["status"] not in ["finished","error"]:
-            return flask.make_response('openEO error: JobNotFinished', 400)
+            return flask.make_response(jsonify(
+                id = job_id,
+                code = 503,
+                message = 'openEO error: JobNotFinished',
+                links = []
+                ), 503)
 
         if queue_job["status"] == "error":
-            return flask.make_response(queue_job["errors"], 424)
+            return flask.make_response(jsonify(
+                id = job_id,
+                code = 424,
+                message = queue_job["errors"],
+                links = []
+                ), 424)
 
         return flask.make_response(jsonify(
             id = job_id,
@@ -283,7 +307,12 @@ def add_job_to_queue(job_id):
             Persistence.replace(Persistence.ET_JOBS,job_id,json.dumps(data))
             return flask.make_response('Processing the job has been successfully canceled.', 200)
 
-        return flask.make_response('Job is not queued or running.', 400)
+        return flask.make_response(jsonify(
+            id = job_id,
+            code = 400,
+            message = 'Job is not queued or running.',
+            links = []
+            ), 400)
 
 
 
@@ -301,4 +330,4 @@ def validate_process_graph():
 if __name__ == '__main__':
     app.run()
 
-# curl -d "{\"process_graph\": {\"smth\": {\"process_id\": \"load_collection\", \"arguments\": {\"id\": {}, \"spatial_extent\": {}}}}}" -H "Content-Type: application/json" -X POST http://127.0.0.1:5000/jobs
+# curl -d "{\"process_graph\": {\"smth\": {\"process_id\": \"load_collection\", \"arguments\": {\"id\": {}, \"spatial_extent\": {}}}}}" -H "Content-Type: application/json" -I POST http://127.0.0.1:5000/jobs
