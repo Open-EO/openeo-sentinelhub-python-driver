@@ -19,8 +19,8 @@ services:
       - minio-data:/export
     command: server /export
     environment:
-      MINIO_ACCESS_KEY: admin
-      MINIO_SECRET_KEY: admin
+      MINIO_ACCESS_KEY: local_s3_credentials
+      MINIO_SECRET_KEY: local_s3_credentials
     
   createbuckets:
       image: minio/mc
@@ -28,7 +28,7 @@ services:
         - minio
       entrypoint: >
         /bin/sh -c "
-        /usr/bin/mc config host add myminio http://minio:9000 admin admin;
+        /usr/bin/mc config host add myminio http://minio:9000 local_s3_credentials local_s3_credentials;
         /usr/bin/mc rm -r --force myminio/openeo_results;
         /usr/bin/mc mb myminio/openeo_results;
         /usr/bin/mc policy download myminio/openeo_results;
