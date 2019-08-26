@@ -34,7 +34,7 @@ def get_endpoints():
         Returns a list of endpoints (url and allowed methods).
     """
     endpoints = []
-    omitted_urls = ["/static/<path:filename>","/utils/create_tables"]
+    omitted_urls = ["/static/<path:filename>"]
 
     for rule in app.url_map.iter_rules():
         url = rule.rule
@@ -124,7 +124,7 @@ def api_result():
             return flask.make_response('Invalid request: {}'.format(errors), 400)
 
         # !!! for now we simply always request some dummy data from SH and return it:
-        url = 'https://services.sentinel-hub.com/ogc/wms/cd280189-7c51-45a6-ab05-f96a76067710?service=WMS&request=GetMap&layers=1_TRUE_COLOR&styles=&format=image%2Fpng&transparent=true&version=1.1.1&showlogo=false&name=Sentinel-2%20L1C&width=512&height=512&pane=activeLayer&maxcc=100&evalscriptoverrides=&time=2019-08-09%2F2019-08-09&srs=EPSG%3A3857&bbox=1252344.2714243277,5165920.119625352,1330615.7883883484,5244191.636589374'
+        url = 'https://services.sentinel-hub.com/ogc/wms/cd280189-7c51-45a6-ab05-f96a76067710?service=WMS&request=GetMap&layers=1_TRUE_COLOR&styles=&format=image%2Fpng&transparent=true&version=1.1.1&showlogo=false&name=Sentinel-2%20L1C&width=512&height=512&pane=activeLayer&maxcc=100&evalscriptoverrides=&time=2017-01-01%2F2017-02-01&srs=EPSG%3A4326&bbox=16.1,47.2,16.6,48.6'
         r = requests.get(url)
         r.raise_for_status()
 
@@ -269,12 +269,6 @@ def validate_process_graph():
     return {
         "errors": errors,
     }, 200
-
-@app.route('/utils/create_tables', methods=['GET'])
-def create_dynamoby_tables():
-    Persistence.ensure_table_exists(Persistence.ET_PROCESS_GRAPHS)
-    Persistence.ensure_table_exists(Persistence.ET_JOBS)
-    return {}, 200
 
 if __name__ == '__main__':
     app.run()
