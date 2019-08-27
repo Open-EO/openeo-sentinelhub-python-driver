@@ -260,12 +260,7 @@ def add_job_to_queue(job_id):
 
             Persistence.replace(Persistence.ET_JOBS,job_id,json.dumps(data))
 
-            return flask.make_response(jsonify(
-                id = job_id,
-                code = 202,
-                message = 'The creation of the resource has been queued successfully.',
-                links = []
-                ), 202)
+            return flask.make_response('The creation of the resource has been queued successfully.', 202)
         else:
             return flask.make_response(jsonify(
                 id = job_id,
