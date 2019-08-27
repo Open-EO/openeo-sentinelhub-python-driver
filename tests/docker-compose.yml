@@ -39,10 +39,10 @@ services:
       - minio
     entrypoint: >
       /bin/sh -c "
-      /usr/bin/mc config host add openEo http://minio:9000 AKIAIOSFODNN7EXAMPLE wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY;
-      /usr/bin/mc rm -r --force openEo/results;
-      /usr/bin/mc mb openEo/results;
-      /usr/bin/mc policy download openEo/results;
+      /usr/bin/mc config host add openEoAlias http://minio:9000 AKIAIOSFODNN7EXAMPLE wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY;
+      /usr/bin/mc rm -r --force openEoAlias/results;
+      /usr/bin/mc mb openEoAlias/results;
+      /usr/bin/mc policy download openEoAlias/results;
       exit 0;
       "
 
