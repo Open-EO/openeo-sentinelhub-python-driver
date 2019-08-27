@@ -39,6 +39,7 @@ services:
       - minio
     entrypoint: >
       /bin/sh -c "
+      sleep 20;
       /usr/bin/mc config host add openEo http://minio:9000 AKIAIOSFODNN7EXAMPLE wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY --api s3v4;
       /usr/bin/mc rm -r --force openEo/results;
       /usr/bin/mc mb openEo/results;
