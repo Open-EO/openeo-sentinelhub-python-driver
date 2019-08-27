@@ -136,7 +136,6 @@ def api_result():
 
 @app.route('/jobs', methods=['GET','POST'])
 def api_jobs():
-    # "Advertising needs to be added!"
     if flask.request.method == 'GET':
         jobs = []
         links = []
@@ -271,7 +270,6 @@ def add_job_to_queue(job_id):
                 ), 400)
 
     elif flask.request.method == "GET":
-        # authorization
         job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
         queue_job = json.loads(job["Item"]["content"]["S"])
 

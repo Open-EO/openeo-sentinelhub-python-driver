@@ -13,17 +13,11 @@ def app_client():
     return app.test_client()
 
 def setup_function(function):
-    """ setup any state tied to the execution of the given function.
-    Invoked for every test function in the module.
-    """
     Persistence.ensure_table_exists(Persistence.ET_PROCESS_GRAPHS)
     Persistence.ensure_table_exists(Persistence.ET_JOBS, True)
 
 
 def teardown_function(function):
-    """ teardown any state that was previously setup with a setup_function
-    call.
-    """
     Persistence.delete_table(Persistence.ET_PROCESS_GRAPHS)
     Persistence.delete_table(Persistence.ET_JOBS)
 
