@@ -1,3 +1,5 @@
 .vscode
 .env
 zappa_settings.json
+__pycache__
+.pytest_cache

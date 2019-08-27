@@ -5,6 +5,7 @@ import logging
 from logging import log, INFO
 import os
 import uuid
+import datetime
 
 
 logging.basicConfig(level=logging.INFO)
@@ -29,7 +30,6 @@ class Persistence(object):
     ET_PROCESS_GRAPHS = 'shopeneo_process_graphs'
     ET_JOBS = 'shopeneo_jobs'
 
-
     @classmethod
     def create(cls, entity_type, data):
         """
@@ -40,7 +40,7 @@ class Persistence(object):
             TableName=entity_type,
             Item={
                 'id': {'S': record_id},
-                'data': {'S': json.dumps(data)},
+                'content': {'S': json.dumps(data)},
             },
         )
         return record_id
@@ -50,7 +50,7 @@ class Persistence(object):
         paginator = cls.dynamodb.get_paginator('scan')
         for page in paginator.paginate(TableName=entity_type):
             for item in page["Items"]:
-                yield item['id']['S'], json.loads(item['data']['S'])
+                yield item['id']['S'], json.loads(item['content']['S'])
 
     @classmethod
     def delete(cls, entity_type, record_id):
@@ -63,7 +63,7 @@ class Persistence(object):
 
     @classmethod
     def replace(cls, entity_type, record_id, data):
-        new_data = cls.dynamodb.update_item(TableName=entity_type, Key={'id':{'S':record_id}}, UpdateExpression="SET data = :new_data", ExpressionAttributeValues={':new_data':data})
+        new_data = cls.dynamodb.update_item(TableName=entity_type, Key={'id':{'S':record_id}}, UpdateExpression="SET content = :new_content", ExpressionAttributeValues={':new_content': {'S': data}})
         return new_data
 
     @classmethod
@@ -95,7 +95,15 @@ class Persistence(object):
             log(INFO, "Successfully created DynamoDB table '{}'.".format(table_name))
         except cls.dynamodb.exceptions.ResourceInUseException:
             log(INFO, "DynamoDB table '{}' already exists, ignoring.".format(table_name))
-            pass
+
+    @classmethod
+    def delete_table(cls, table_name):
+        try:
+            #TableName=
+            cls.dynamodb.delete_table(TableName=table_name)
+            log(INFO, "Table {} Successfully deleted.".format(table_name))
+        except:
+            log(INFO, "Table {} does not exists.".format(table_name))
 
 
 if __name__ == "__main__":

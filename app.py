@@ -6,6 +6,7 @@ from schemas import PostProcessGraphsSchema, PostJobsSchema, PostResultSchema, P
 import datetime
 import requests
 from logging import log, INFO, WARN
+import json
 
 from dynamodb import Persistence
 
@@ -108,47 +109,6 @@ def api_process_graphs(process_graph_id=None):
         Persistence.replace(Persistence.ET_PROCESS_GRAPHS,process_graph_id,data)
         return flask.make_response('The process graph data has been updated successfully.', 204)
 
-@app.route('/jobs', methods=['GET','POST'])
-def api_jobs():
-    if flask.request.method == 'GET':
-        jobs = []
-        links = []
-
-        for record_id, record in Persistence.items("jobs"):
-            jobs.append({
-                "id": record_id,
-                "title": record.get("title", None),
-                "description": record.get("description", None),
-            })
-            links.append({
-                "href": "{}/jobs/{}".format(URL_ROOT, record_id),
-                "title": record.get("title", None),
-            })
-        return {
-            "jobs": jobs,
-            "links": links,
-        }, 200
-
-    elif flask.request.method == 'POST':
-        data = flask.request.get_json()
-
-        process_graph_schema = PostJobsSchema()
-        errors = process_graph_schema.validate(data)
-
-        if errors:
-            # Response procedure for validation will depend on how openeo_pg_parser_python will work
-            return flask.make_response('Invalid request', 400)
-
-        data["status"] = "submitted"
-        data["submitted"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-
-        record_id = Persistence.create(Persistence.ET_JOBS, data)
-
-        # add requested headers to 201 response:
-        response = flask.make_response('', 201)
-        response.headers['Location'] = '/process_graphs/{}'.format(record_id)
-        response.headers['OpenEO-Identifier'] = record_id
-        return response
 
 
 @app.route('/result', methods=['POST'])
@@ -174,14 +134,28 @@ def api_result():
         return response
 
 
-@app.route('/jobs/<job_id>', methods=['GET','PATCH','DELETE'])
-def api_batch_job(job_id):
+@app.route('/jobs', methods=['GET','POST'])
+def api_jobs():
     if flask.request.method == 'GET':
-        job = Persistence.get_by_id(Persistence.ET_JOBS, job_id)
-        job["id"] = job_id
-        return job, 200
+        jobs = []
+        links = []
 
-    elif flask.request.method == 'PATCH':
+        for record_id, record in Persistence.items(Persistence.ET_JOBS):
+            jobs.append({
+                "id": record_id,
+                "title": record.get("title", None),
+                "description": record.get("description", None),
+            })
+            links.append({
+                "href": "{}/jobs/{}".format(URL_ROOT, record_id),
+                "title": record.get("title", None),
+            })
+        return {
+            "jobs": jobs,
+            "links": links,
+        }, 200
+
+    elif flask.request.method == 'POST':
         data = flask.request.get_json()
 
         process_graph_schema = PostJobsSchema()
@@ -191,14 +165,152 @@ def api_batch_job(job_id):
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
             return flask.make_response('Invalid request', 400)
 
-        data["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-        Persistence.replace(Persistence.ET_JOBS,job_id,data)
+        data["status"] = "submitted"
+        data["submitted"] = timestamp,
+        data["updated"] = timestamp,
+        data["errors"] = None,
+        data["results_path"] = None,
+        data["download_url"] = None,
+        data["should_be_cancelled"] = False
+
+        record_id = Persistence.create(Persistence.ET_JOBS, data)
+
+        # add requested headers to 201 response:
+        response = flask.make_response('', 201)
+        response.headers['Location'] = '/process_graphs/{}'.format(record_id)
+        response.headers['OpenEO-Identifier'] = record_id
+        return response
+
+
+@app.route('/jobs/<job_id>', methods=['GET','PATCH','DELETE'])
+def api_batch_job(job_id):
+    if flask.request.method == 'GET':
+        job = Persistence.get_by_id(Persistence.ET_JOBS, job_id)
+
+        if "Item" not in job:
+            return flask.make_response(jsonify(
+                id = job_id,
+                code = 404,
+                message = "Batch job doesn't exist.",
+                links = []
+                ), 404)
+
+        data = json.loads(job["Item"]["content"]["S"])
+
+
+        return flask.make_response(jsonify(
+            id = job_id,
+            title = data["title"] if "title" in data else None,
+            description = data["description"] if "description" in data else None,
+            process_graph = data["process_graph"],
+            status = data["status"],
+            error = data["errors"],
+            submitted = data["submitted"],
+            ), 200)
+
+    elif flask.request.method == 'PATCH':
+        current_job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+        current_content = json.loads(current_job["Item"]["content"]["S"])
+
+        if current_content["status"] in ["queued","running"]:
+            return flask.make_response(jsonify(
+                id = job_id,
+                code = 400,
+                message = 'openEO error: JobLocked',
+                links = []
+                ), 400)
+
+        data = flask.request.get_json()
+
+        process_graph_schema = PostJobsSchema()
+        errors = process_graph_schema.validate(data)
+
+        if errors:
+            # Response procedure for validation will depend on how openeo_pg_parser_python will work
+            return flask.make_response('Invalid request', 400)
+
+
+        for key in data:
+            current_content[key] = data[key]
+
+        current_content["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        current_content["status"] = "submitted"
+
+        Persistence.replace(Persistence.ET_JOBS,job_id,json.dumps(current_content))
         return flask.make_response('Changes to the job applied successfully.', 204)
 
     elif flask.request.method == 'DELETE':
         Persistence.delete(Persistence.ET_JOBS,job_id)
         return flask.make_response('The job has been successfully deleted.', 204)
+
+
+@app.route('/jobs/<job_id>/results', methods=['POST','GET','DELETE'])
+def add_job_to_queue(job_id):
+    if flask.request.method == "POST":
+        job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+
+
+        data = json.loads(job["Item"]["content"]["S"])
+
+        if data["status"] in ["submitted","finished","canceled","error"]:
+            data["status"] = "queued"
+            data["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+            Persistence.replace(Persistence.ET_JOBS,job_id,json.dumps(data))
+
+            return flask.make_response('The creation of the resource has been queued successfully.', 202)
+        else:
+            return flask.make_response(jsonify(
+                id = job_id,
+                code = 400,
+                message = 'Job already queued or running.',
+                links = []
+                ), 400)
+
+    elif flask.request.method == "GET":
+        job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+        queue_job = json.loads(job["Item"]["content"]["S"])
+
+        if queue_job["status"] not in ["finished","error"]:
+            return flask.make_response(jsonify(
+                id = job_id,
+                code = 503,
+                message = 'openEO error: JobNotFinished',
+                links = []
+                ), 503)
+
+        if queue_job["status"] == "error":
+            return flask.make_response(jsonify(
+                id = job_id,
+                code = 424,
+                message = queue_job["errors"],
+                links = []
+                ), 424)
+
+        return flask.make_response(jsonify(
+            id = job_id,
+            title = queue_job["title"] if "title" in queue_job else None,
+            description = queue_job["description"] if "description" in queue_job else None,
+            updated = queue_job["updated"],
+            links = queue_job["download_url"]), 200)
+
+    elif flask.request.method == "DELETE":
+        job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+        data = json.loads(job["Item"]["content"]["S"])
+
+        if data["status"] in ["queued","running"]:
+            data["should_be_cancelled"] = True
+            Persistence.replace(Persistence.ET_JOBS,job_id,json.dumps(data))
+            return flask.make_response('Processing the job has been successfully canceled.', 200)
+
+        return flask.make_response(jsonify(
+            id = job_id,
+            code = 400,
+            message = 'Job is not queued or running.',
+            links = []
+            ), 400)
 
 
 
@@ -216,3 +328,4 @@ def validate_process_graph():
 if __name__ == '__main__':
     app.run()
 
+# curl -d "{\"process_graph\": {\"smth\": {\"process_id\": \"load_collection\", \"arguments\": {\"id\": {}, \"spatial_extent\": {}}}}}" -H "Content-Type: application/json" -I POST http://127.0.0.1:5000/jobs
