@@ -201,7 +201,7 @@ def api_batch_job(job_id):
             description = job["description"]['S'],
             process_graph = job["process_graph"]['S'],
             status = job["status"]['S'],
-            error = job["errors"]['S'],
+            error = job["error_msg"]['S'],
             submitted = job["submitted"]['S'],
             ), 200)
 
