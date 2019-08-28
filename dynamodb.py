@@ -42,15 +42,15 @@ class Persistence(object):
                 'id': {'S': record_id},
                 'process_graph': {'S': json.dumps(data.get("process_graph"))},
                 'title': {'S': str(data.get("title"))},
-                'description': {'S': str(data.get("title"))},
-                'plan': {'S': str(data.get("title"))},
-                'budget': {'S': str(data.get("title"))},
-                'status': {'S': str(data.get("title"))},
-                'submitted': {'S': str(data.get("title"))},
-                'updated': {'S': str(data.get("title"))},
-                'should_be_cancelled': {'S': str(data.get("title"))},
-                'error_msg': {'S': str(data.get("title"))},
-                'results': {'S': json.dumps(data.get("title"))},
+                'description': {'S': str(data.get("description"))},
+                'plan': {'S': str(data.get("plan"))},
+                'budget': {'S': str(data.get("budget"))},
+                'current_status': {'S': str(data.get("current_status"))},
+                'submitted': {'S': str(data.get("submitted"))},
+                'last_updated': {'S': str(data.get("updated"))},
+                'should_be_cancelled': {'S': str(data.get("should_be_cancelled"))},
+                'error_msg': {'S': str(data.get("error_msg"))},
+                'results': {'S': json.dumps(data.get("results"))},
             },
         )
         return record_id
@@ -68,11 +68,25 @@ class Persistence(object):
 
     @classmethod
     def get_by_id(cls, entity_type, record_id):
-        item = cls.dynamodb.get_item(TableName=entity_type, Key={'id':{'S':record_id}})
+        item = cls.dynamodb.get_item(TableName=entity_type, Key={'id':{'S':record_id}}).get("Item")
+
+        if item is None:
+            return None
+        
+        for key,value in item.items():
+            item[key] = value['S']
+
         return item
+
 
     @classmethod
     def update_key(cls, entity_type, record_id, key, new_value):
+        if not isinstance(new_value, str):
+            if isinstance(new_value, dict) or isinstance(new_value, list):
+                new_value = json.dumps(new_value)
+            else:
+                new_value = str(new_value)
+
         updated_item = cls.dynamodb.update_item(TableName=entity_type, Key={'id':{'S':record_id}}, UpdateExpression="SET {} = :new_content".format(key), ExpressionAttributeValues={':new_content': {'S': new_value}})
         return updated_item
 
