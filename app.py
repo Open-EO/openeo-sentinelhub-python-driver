@@ -184,9 +184,9 @@ def api_jobs():
 @app.route('/jobs/<job_id>', methods=['GET','PATCH','DELETE'])
 def api_batch_job(job_id):
     if flask.request.method == 'GET':
-        job = Persistence.get_by_id(Persistence.ET_JOBS, job_id)
+        job = Persistence.get_by_id(Persistence.ET_JOBS, job_id).get("Item")
 
-        if "Item" not in job:
+        if job is None:
             return flask.make_response(jsonify(
                 id = job_id,
                 code = 404,
@@ -206,7 +206,7 @@ def api_batch_job(job_id):
             ), 200)
 
     elif flask.request.method == 'PATCH':
-        current_job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+        current_job = Persistence.get_by_id(Persistence.ET_JOBS,job_id).get("Item")
 
         if current_content["status"] in ["queued","running"]:
             return flask.make_response(jsonify(
@@ -243,7 +243,7 @@ def api_batch_job(job_id):
 @app.route('/jobs/<job_id>/results', methods=['POST','GET','DELETE'])
 def add_job_to_queue(job_id):
     if flask.request.method == "POST":
-        job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+        job = Persistence.get_by_id(Persistence.ET_JOBS,job_id).get("Item")
 
         if job["status"] in ["submitted","finished","canceled","error"]:
             timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -260,7 +260,7 @@ def add_job_to_queue(job_id):
                 ), 400)
 
     elif flask.request.method == "GET":
-        job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+        job = Persistence.get_by_id(Persistence.ET_JOBS,job_id).get("Item")
 
         if job["status"] not in ["finished","error"]:
             return flask.make_response(jsonify(
@@ -286,7 +286,7 @@ def add_job_to_queue(job_id):
             links = []), 200)
 
     elif flask.request.method == "DELETE":
-        job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+        job = Persistence.get_by_id(Persistence.ET_JOBS,job_id).get("Item")
 
         if job["status"] in ["queued","running"]:
             Persistence.update_key(Persistence.ET_JOBS, job_id, "should_be_cancelled", True)
