@@ -40,7 +40,17 @@ class Persistence(object):
             TableName=entity_type,
             Item={
                 'id': {'S': record_id},
-                'content': {'S': json.dumps(data)},
+                'process_graph': {'S': json.dumps(data.get("process_graph"))},
+                'title': {'S': str(data.get("title"))},
+                'description': {'S': str(data.get("title"))},
+                'plan': {'S': str(data.get("title"))},
+                'budget': {'S': str(data.get("title"))},
+                'status': {'S': str(data.get("title"))},
+                'submitted': {'S': str(data.get("title"))},
+                'updated': {'S': str(data.get("title"))},
+                'should_be_cancelled': {'S': str(data.get("title"))},
+                'error_msg': {'S': str(data.get("title"))},
+                'results': {'S': json.dumps(data.get("title"))},
             },
         )
         return record_id
@@ -50,7 +60,7 @@ class Persistence(object):
         paginator = cls.dynamodb.get_paginator('scan')
         for page in paginator.paginate(TableName=entity_type):
             for item in page["Items"]:
-                yield item['id']['S'], json.loads(item['content']['S'])
+                yield item['id']['S'], item
 
     @classmethod
     def delete(cls, entity_type, record_id):
@@ -58,13 +68,13 @@ class Persistence(object):
 
     @classmethod
     def get_by_id(cls, entity_type, record_id):
-        graph = cls.dynamodb.get_item(TableName=entity_type, Key={'id':{'S':record_id}})
-        return graph
+        item = cls.dynamodb.get_item(TableName=entity_type, Key={'id':{'S':record_id}})
+        return item
 
     @classmethod
-    def replace(cls, entity_type, record_id, data):
-        new_data = cls.dynamodb.update_item(TableName=entity_type, Key={'id':{'S':record_id}}, UpdateExpression="SET content = :new_content", ExpressionAttributeValues={':new_content': {'S': data}})
-        return new_data
+    def update_key(cls, entity_type, record_id, key, new_value):
+        updated_item = cls.dynamodb.update_item(TableName=entity_type, Key={'id':{'S':record_id}}, UpdateExpression="SET {} = :new_content".format(key), ExpressionAttributeValues={':new_content': {'S': new_value}})
+        return updated_item
 
     @classmethod
     def ensure_table_exists(cls, table_name, stream_enabled=False):

@@ -170,9 +170,6 @@ def api_jobs():
         data["status"] = "submitted"
         data["submitted"] = timestamp,
         data["updated"] = timestamp,
-        data["errors"] = None,
-        data["results_path"] = None,
-        data["download_url"] = None,
         data["should_be_cancelled"] = False
 
         record_id = Persistence.create(Persistence.ET_JOBS, data)
@@ -197,22 +194,19 @@ def api_batch_job(job_id):
                 links = []
                 ), 404)
 
-        data = json.loads(job["Item"]["content"]["S"])
-
 
         return flask.make_response(jsonify(
             id = job_id,
-            title = data["title"] if "title" in data else None,
-            description = data["description"] if "description" in data else None,
-            process_graph = data["process_graph"],
-            status = data["status"],
-            error = data["errors"],
-            submitted = data["submitted"],
+            title = job["title"]['S'],
+            description = job["description"]['S'],
+            process_graph = job["process_graph"]['S'],
+            status = job["status"]['S'],
+            error = job["errors"]['S'],
+            submitted = job["submitted"]['S'],
             ), 200)
 
     elif flask.request.method == 'PATCH':
         current_job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
-        current_content = json.loads(current_job["Item"]["content"]["S"])
 
         if current_content["status"] in ["queued","running"]:
             return flask.make_response(jsonify(
@@ -233,12 +227,12 @@ def api_batch_job(job_id):
 
 
         for key in data:
-            current_content[key] = data[key]
+            Persistence.update_key(Persistence.ET_JOBS,job_id,key,data[key])
 
-        current_content["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        current_content["status"] = "submitted"
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        Persistence.update_key(Persistence.ET_JOBS, job_id, "updated", timestamp)
+        Persistence.update_key(Persistence.ET_JOBS, job_id, "status", "submitted")
 
-        Persistence.replace(Persistence.ET_JOBS,job_id,json.dumps(current_content))
         return flask.make_response('Changes to the job applied successfully.', 204)
 
     elif flask.request.method == 'DELETE':
@@ -251,14 +245,10 @@ def add_job_to_queue(job_id):
     if flask.request.method == "POST":
         job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
 
-
-        data = json.loads(job["Item"]["content"]["S"])
-
-        if data["status"] in ["submitted","finished","canceled","error"]:
-            data["status"] = "queued"
-            data["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-
-            Persistence.replace(Persistence.ET_JOBS,job_id,json.dumps(data))
+        if job["status"] in ["submitted","finished","canceled","error"]:
+            timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            Persistence.update_key(Persistence.ET_JOBS, job_id, "updated", timestamp)
+            Persistence.update_key(Persistence.ET_JOBS, job_id, "status", "queued")
 
             return flask.make_response('The creation of the resource has been queued successfully.', 202)
         else:
@@ -271,9 +261,8 @@ def add_job_to_queue(job_id):
 
     elif flask.request.method == "GET":
         job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
-        queue_job = json.loads(job["Item"]["content"]["S"])
 
-        if queue_job["status"] not in ["finished","error"]:
+        if job["status"] not in ["finished","error"]:
             return flask.make_response(jsonify(
                 id = job_id,
                 code = 503,
@@ -281,28 +270,26 @@ def add_job_to_queue(job_id):
                 links = []
                 ), 503)
 
-        if queue_job["status"] == "error":
+        if job["status"] == "error":
             return flask.make_response(jsonify(
                 id = job_id,
                 code = 424,
-                message = queue_job["errors"],
+                message = job.get("error_msg"),
                 links = []
                 ), 424)
 
         return flask.make_response(jsonify(
             id = job_id,
-            title = queue_job["title"] if "title" in queue_job else None,
-            description = queue_job["description"] if "description" in queue_job else None,
-            updated = queue_job["updated"],
-            links = queue_job["download_url"]), 200)
+            title = job["title"]['S'],
+            description = job["description"]['S'],
+            updated = job["updated"]['S'],
+            links = []), 200)
 
     elif flask.request.method == "DELETE":
         job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
-        data = json.loads(job["Item"]["content"]["S"])
 
-        if data["status"] in ["queued","running"]:
-            data["should_be_cancelled"] = True
-            Persistence.replace(Persistence.ET_JOBS,job_id,json.dumps(data))
+        if job["status"] in ["queued","running"]:
+            Persistence.update_key(Persistence.ET_JOBS, job_id, "should_be_cancelled", True)
             return flask.make_response('Processing the job has been successfully canceled.', 200)
 
         return flask.make_response(jsonify(
