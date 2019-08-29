@@ -63,9 +63,6 @@ class Persistence(object):
                 for key,value in item.items():
                     data_type = list(value)[0]
                     item[key] = value[data_type]
-                print("******************************")
-                print(item)
-                print("******************************")
                 yield item
 
     @classmethod
