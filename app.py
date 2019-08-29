@@ -142,7 +142,7 @@ def api_jobs():
 
         for record in Persistence.items(Persistence.ET_JOBS):
             jobs.append({
-                "id": record.get("id"),
+                "id": record["id"],
                 "title": record.get("title", None),
                 "description": record.get("description", None),
             })

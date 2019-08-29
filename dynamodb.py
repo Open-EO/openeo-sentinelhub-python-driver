@@ -85,13 +85,16 @@ class Persistence(object):
 
     @classmethod
     def update_key(cls, entity_type, record_id, key, new_value):
+        data_type = 'S'
         if not isinstance(new_value, str):
             if isinstance(new_value, dict) or isinstance(new_value, list):
                 new_value = json.dumps(new_value)
+            elif key == "should_be_cancelled":
+                data_type = 'BOOL'
             else:
                 new_value = str(new_value)
 
-        updated_item = cls.dynamodb.update_item(TableName=entity_type, Key={'id':{'S':record_id}}, UpdateExpression="SET {} = :new_content".format(key), ExpressionAttributeValues={':new_content': {'S': new_value}})
+        updated_item = cls.dynamodb.update_item(TableName=entity_type, Key={'id':{'S':record_id}}, UpdateExpression="SET {} = :new_content".format(key), ExpressionAttributeValues={':new_content': {data_type: new_value}})
         return updated_item
 
     @classmethod
