@@ -140,14 +140,14 @@ def api_jobs():
         jobs = []
         links = []
 
-        for record_id, record in Persistence.items(Persistence.ET_JOBS):
+        for record in Persistence.items(Persistence.ET_JOBS):
             jobs.append({
-                "id": record_id,
+                "id": record.get("id"),
                 "title": record.get("title", None),
                 "description": record.get("description", None),
             })
             links.append({
-                "href": "{}/jobs/{}".format(URL_ROOT, record_id),
+                "href": "{}/jobs/{}".format(URL_ROOT, record.get("id")),
                 "title": record.get("title", None),
             })
         return {
@@ -198,7 +198,7 @@ def api_batch_job(job_id):
             id = job_id,
             title = job["title"],
             description = job["description"],
-            process_graph = job["process_graph"],
+            process_graph = json.loads(job["process_graph"]),
             status = job["current_status"],
             error = job["error_msg"],
             submitted = job["submitted"],

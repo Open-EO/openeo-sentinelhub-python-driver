@@ -48,7 +48,7 @@ class Persistence(object):
                 'current_status': {'S': str(data.get("current_status"))},
                 'submitted': {'S': str(data.get("submitted"))},
                 'last_updated': {'S': str(data.get("updated"))},
-                'should_be_cancelled': {'S': str(data.get("should_be_cancelled"))},
+                'should_be_cancelled': {'BOOL': data.get("should_be_cancelled")},
                 'error_msg': {'S': str(data.get("error_msg"))},
                 'results': {'S': json.dumps(data.get("results"))},
             },
@@ -60,7 +60,13 @@ class Persistence(object):
         paginator = cls.dynamodb.get_paginator('scan')
         for page in paginator.paginate(TableName=entity_type):
             for item in page["Items"]:
-                yield item['id']['S'], item
+                for key,value in item.items():
+                    data_type = list(value)[0]
+                    item[key] = value[data_type]
+                print("******************************")
+                print(item)
+                print("******************************")
+                yield item
 
     @classmethod
     def delete(cls, entity_type, record_id):
@@ -74,7 +80,8 @@ class Persistence(object):
             return None
         
         for key,value in item.items():
-            item[key] = value['S']
+            data_type = list(value)[0]
+            item[key] = value[data_type]
 
         return item
 

@@ -91,7 +91,7 @@ def test_manage_batch_jobs(app_client):
 
     assert r.status_code == 200
     assert actual["status"] == "submitted"
-    assert json.loads(actual["process_graph"]) == data["process_graph"]
+    assert actual["process_graph"] == data["process_graph"]
     assert actual["id"] == record_id
 
     bbox2 = {
@@ -123,7 +123,7 @@ def test_manage_batch_jobs(app_client):
     actual = json.loads(r.data.decode('utf-8'))
 
     assert r.status_code == 200
-    assert json.loads(actual["process_graph"]) == data2["process_graph"]
+    assert actual["process_graph"] == data2["process_graph"]
     assert actual["title"] == data2["title"]
 
     r = app_client.delete("/jobs/{}".format(record_id))
@@ -188,4 +188,5 @@ def test_process_batch_job(app_client):
 
     r = app_client.delete("/jobs/{}/results".format(record_id))
     assert r.status_code == 200
+
 
