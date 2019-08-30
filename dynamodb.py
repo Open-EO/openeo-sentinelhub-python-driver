@@ -47,7 +47,7 @@ class Persistence(object):
                 'budget': {'S': str(data.get("budget"))},
                 'current_status': {'S': str(data.get("current_status"))},
                 'submitted': {'S': str(data.get("submitted"))},
-                'last_updated': {'S': str(data.get("updated"))},
+                'last_updated': {'S': str(data.get("last_updated"))},
                 'should_be_cancelled': {'BOOL': data.get("should_be_cancelled")},
                 'error_msg': {'S': str(data.get("error_msg"))},
                 'results': {'S': json.dumps(data.get("results"))},
@@ -75,7 +75,7 @@ class Persistence(object):
 
         if item is None:
             return None
-        
+
         for key,value in item.items():
             data_type = list(value)[0]
             item[key] = value[data_type]
