@@ -22,9 +22,16 @@ AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', FAKE_AWS_ACCESS_KEY_ID)
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', FAKE_AWS_SECRET_ACCESS_KEY)
 
 class Persistence(object):
-    dynamodb = boto3.client('dynamodb') if DYNAMODB_PRODUCTION else \
-        boto3.client('dynamodb', endpoint_url=DYNAMODB_LOCAL_URL,region_name="eu-central-1",aws_access_key_id=AWS_ACCESS_KEY_ID,aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
-
+    dynamodb = boto3.client('dynamodb',
+        region_name="eu-central-1",
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    ) if DYNAMODB_PRODUCTION else boto3.client('dynamodb',
+        endpoint_url=DYNAMODB_LOCAL_URL,
+        region_name="eu-central-1",
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+    )
 
     # entity types correspond to DynamoDB tables:
     ET_PROCESS_GRAPHS = 'shopeneo_process_graphs'
