@@ -23,6 +23,8 @@ Then the REST API server can be run:
 
 # Examples
 
+## REST
+
 List all jobs:
 ```
 $ curl http://localhost:5000/jobs/
@@ -144,4 +146,31 @@ $ curl http://localhost:5000/jobs/6520894b-d41d-40d1-bcff-67eafab4eced
 And start it:
 ```
 $ curl -X POST http://localhost:5000/jobs/6520894b-d41d-40d1-bcff-67eafab4eced/results
+```
+
+## AWS
+
+While executing the examples, we can check the data of the jobs in DynamoDB by using AWS CLI tool:
+```
+$ aws dynamodb --endpoint http://localhost:8000 scan --table-name shopeneo_jobs
+```
+
+Similarly, S3 can be inspected:
+```
+$ aws s3 --endpoint http://localhost:9000 ls
+2019-08-30 12:44:38 com.sinergise.openeo.results
+$ aws s3 --endpoint http://localhost:9000 ls s3://com.sinergise.openeo.results
+                    PRE 41a32a56-29bd-42d7-9c27-5af98a3421a8/
+$ aws s3 --endpoint http://localhost:9000 ls s3://com.sinergise.openeo.results/41a32a56-29bd-42d7-9c27-5af98a3421a8/
+2019-08-30 12:44:38      73206 result-0.tiff
+```
+
+And results downloaded to local filesystem if needed:
+```
+$ mkdir /tmp/results
+$ aws s3 --endpoint http://localhost:9000 sync s3://com.sinergise.openeo.results/41a32a56-29bd-42d7-9c27-5af98a3421a8/ /tmp/results
+download: s3://com.sinergise.openeo.results/41a32a56-29bd-42d7-9c27-5af98a3421a8/result-0.tiff to /tmp/asdf/result-0.tiff
+$ gdalinfo /tmp/results/result-0.tiff
+Driver: GTiff/GeoTIFF
+...
 ```
