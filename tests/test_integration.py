@@ -189,3 +189,4 @@ def test_process_batch_job(app_client):
     r = app_client.delete("/jobs/{}/results".format(record_id))
     assert r.status_code == 200
 
+
