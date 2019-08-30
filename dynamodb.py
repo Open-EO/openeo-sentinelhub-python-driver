@@ -40,7 +40,17 @@ class Persistence(object):
             TableName=entity_type,
             Item={
                 'id': {'S': record_id},
-                'content': {'S': json.dumps(data)},
+                'process_graph': {'S': json.dumps(data.get("process_graph"))},
+                'title': {'S': str(data.get("title"))},
+                'description': {'S': str(data.get("description"))},
+                'plan': {'S': str(data.get("plan"))},
+                'budget': {'S': str(data.get("budget"))},
+                'current_status': {'S': str(data.get("current_status"))},
+                'submitted': {'S': str(data.get("submitted"))},
+                'last_updated': {'S': str(data.get("updated"))},
+                'should_be_cancelled': {'BOOL': data.get("should_be_cancelled")},
+                'error_msg': {'S': str(data.get("error_msg"))},
+                'results': {'S': json.dumps(data.get("results"))},
             },
         )
         return record_id
@@ -50,7 +60,10 @@ class Persistence(object):
         paginator = cls.dynamodb.get_paginator('scan')
         for page in paginator.paginate(TableName=entity_type):
             for item in page["Items"]:
-                yield item['id']['S'], json.loads(item['content']['S'])
+                for key,value in item.items():
+                    data_type = list(value)[0]
+                    item[key] = value[data_type]
+                yield item
 
     @classmethod
     def delete(cls, entity_type, record_id):
@@ -58,13 +71,31 @@ class Persistence(object):
 
     @classmethod
     def get_by_id(cls, entity_type, record_id):
-        graph = cls.dynamodb.get_item(TableName=entity_type, Key={'id':{'S':record_id}})
-        return graph
+        item = cls.dynamodb.get_item(TableName=entity_type, Key={'id':{'S':record_id}}).get("Item")
+
+        if item is None:
+            return None
+        
+        for key,value in item.items():
+            data_type = list(value)[0]
+            item[key] = value[data_type]
+
+        return item
+
 
     @classmethod
-    def replace(cls, entity_type, record_id, data):
-        new_data = cls.dynamodb.update_item(TableName=entity_type, Key={'id':{'S':record_id}}, UpdateExpression="SET content = :new_content", ExpressionAttributeValues={':new_content': {'S': data}})
-        return new_data
+    def update_key(cls, entity_type, record_id, key, new_value):
+        data_type = 'S'
+        if not isinstance(new_value, str):
+            if isinstance(new_value, dict) or isinstance(new_value, list):
+                new_value = json.dumps(new_value)
+            elif key == "should_be_cancelled":
+                data_type = 'BOOL'
+            else:
+                new_value = str(new_value)
+
+        updated_item = cls.dynamodb.update_item(TableName=entity_type, Key={'id':{'S':record_id}}, UpdateExpression="SET {} = :new_content".format(key), ExpressionAttributeValues={':new_content': {data_type: new_value}})
+        return updated_item
 
     @classmethod
     def ensure_table_exists(cls, table_name, stream_enabled=False):
