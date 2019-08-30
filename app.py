@@ -55,7 +55,7 @@ def api_process_graphs(process_graph_id=None):
         if process_graph_id is None:
             process_graphs = []
             links = []
-            for record_id, record in Persistence.items("process_graphs"):
+            for record_id, record in Persistence.items(Persistence.ET_PROCESS_GRAPHS):
                 process_graphs.append({
                     "id": record_id,
                     "title": record.get("title", None),
@@ -163,13 +163,13 @@ def api_jobs():
 
         if errors:
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
-            return flask.make_response('Invalid request', 400)
+            return flask.make_response('Invalid request: {}'.format(errors), 400)
 
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-        data["status"] = "submitted"
+        data["current_status"] = "submitted"
         data["submitted"] = timestamp,
-        data["updated"] = timestamp,
+        data["last_updated"] = timestamp,
         data["errors"] = None,
         data["results_path"] = None,
         data["download_url"] = None,
@@ -205,7 +205,7 @@ def api_batch_job(job_id):
             title = data["title"] if "title" in data else None,
             description = data["description"] if "description" in data else None,
             process_graph = data["process_graph"],
-            status = data["status"],
+            status = data["current_status"],  # "status" is reserved word in DynamoDB
             error = data["errors"],
             submitted = data["submitted"],
             ), 200)
@@ -214,7 +214,7 @@ def api_batch_job(job_id):
         current_job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
         current_content = json.loads(current_job["Item"]["content"]["S"])
 
-        if current_content["status"] in ["queued","running"]:
+        if current_content["current_status"] in ["queued","running"]:
             return flask.make_response(jsonify(
                 id = job_id,
                 code = 400,
@@ -235,8 +235,8 @@ def api_batch_job(job_id):
         for key in data:
             current_content[key] = data[key]
 
-        current_content["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        current_content["status"] = "submitted"
+        current_content["last_updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        current_content["current_status"] = "submitted"
 
         Persistence.replace(Persistence.ET_JOBS,job_id,json.dumps(current_content))
         return flask.make_response('Changes to the job applied successfully.', 204)
@@ -254,9 +254,9 @@ def add_job_to_queue(job_id):
 
         data = json.loads(job["Item"]["content"]["S"])
 
-        if data["status"] in ["submitted","finished","canceled","error"]:
-            data["status"] = "queued"
-            data["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        if data["current_status"] in ["submitted","finished","canceled","error"]:
+            data["current_status"] = "queued"
+            data["last_updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
             Persistence.replace(Persistence.ET_JOBS,job_id,json.dumps(data))
 
@@ -273,7 +273,7 @@ def add_job_to_queue(job_id):
         job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
         queue_job = json.loads(job["Item"]["content"]["S"])
 
-        if queue_job["status"] not in ["finished","error"]:
+        if queue_job["current_status"] not in ["finished","error"]:
             return flask.make_response(jsonify(
                 id = job_id,
                 code = 503,
@@ -281,7 +281,7 @@ def add_job_to_queue(job_id):
                 links = []
                 ), 503)
 
-        if queue_job["status"] == "error":
+        if queue_job["current_status"] == "error":
             return flask.make_response(jsonify(
                 id = job_id,
                 code = 424,
@@ -293,14 +293,14 @@ def add_job_to_queue(job_id):
             id = job_id,
             title = queue_job["title"] if "title" in queue_job else None,
             description = queue_job["description"] if "description" in queue_job else None,
-            updated = queue_job["updated"],
+            updated = queue_job["last_updated"],  # "updated" is a reserved word in DynamoDB
             links = queue_job["download_url"]), 200)
 
     elif flask.request.method == "DELETE":
         job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
         data = json.loads(job["Item"]["content"]["S"])
 
-        if data["status"] in ["queued","running"]:
+        if data["current_status"] in ["queued","running"]:
             data["should_be_cancelled"] = True
             Persistence.replace(Persistence.ET_JOBS,job_id,json.dumps(data))
             return flask.make_response('Processing the job has been successfully canceled.', 200)

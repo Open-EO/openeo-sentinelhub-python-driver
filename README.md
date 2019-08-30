@@ -1,0 +1,147 @@
+## Running locally
+
+First, python libraries need to be installed:
+```
+$ pipenv install
+```
+
+The DynamoDB and S3 images can be run either from this project, or from `openeo-sentinelhub-python-workers` project. In both cases:
+```
+$ docker-compose up -d
+```
+
+Tables on DynamoDB need to be created manually:
+```
+$ pipenv shell
+<pipenv> $ python dynamodp.py
+```
+
+Then the REST API server can be run:
+```
+<pipenv> $ python app.py
+```
+
+# Examples
+
+List all jobs:
+```
+$ curl http://localhost:5000/jobs/
+```
+
+Create a job:
+```
+POST /jobs HTTP/1.1
+Content-Type: application/json
+
+{
+  "process_graph": {
+    "loadco1": {
+      "process_id": "load_collection",
+      "arguments": {
+        "id": "S2L1C",
+        "spatial_extent": {
+          "west": 12.32271,
+          "east": 12.33572,
+          "north": 42.07112,
+          "south": 42.06347
+        },
+        "temporal_extent": "2019-08-17"
+      }
+    },
+    "ndvi1": {
+      "process_id": "ndvi",
+      "arguments": {
+        "data": {"from_node": "loadco1"}
+      }
+    },
+    "result1": {
+      "process_id": "save_result",
+      "arguments": {
+        "data": {"from_node": "ndvi1"},
+        "format": "gtiff"
+      },
+      "result": True
+    }
+  }
+}
+```
+
+Using curl:
+```bash
+$ curl -i -X POST -H "Content-Type: application/json" -d '{"process_graph": {"loadco1": {"process_id": "load_collection", "arguments": {"id": "S2L1C", "temporal_extent": "2019-08-17", "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347}}}, "ndvi1": {"process_id": "ndvi", "arguments": {"data": {"from_node": "loadco1"}}}, "result1": {"process_id": "save_result", "arguments": {"data": {"from_node": "ndvi1"}, "format": "gtiff"}, "result": true}}}' http://localhost:5000/jobs/
+```
+
+Listing all jobs should now include the new job: (note that id will be different)
+```
+$ curl http://localhost:5000/jobs/
+{
+  "jobs": [
+    {
+      "description": null,
+      "id": "6520894b-d41d-40d1-bcff-67eafab4eced",
+      "title": null
+    }
+  ],
+  "links": [
+    {
+      "href": "/jobs/6520894b-d41d-40d1-bcff-67eafab4eced",
+      "title": null
+    }
+  ]
+}
+```
+
+Taking the job id, we can check job details:
+```
+$ curl http://localhost:5000/jobs/6520894b-d41d-40d1-bcff-67eafab4eced
+{
+  "description": null,
+  "error": [
+    null
+  ],
+  "id": "6520894b-d41d-40d1-bcff-67eafab4eced",
+  "process_graph": {
+    "loadco1": {
+      "arguments": {
+        "id": "S2L1C",
+        "spatial_extent": {
+          "east": 12.33572,
+          "north": 42.07112,
+          "south": 42.06347,
+          "west": 12.32271
+        },
+        "temporal_extent": "2019-08-17"
+      },
+      "process_id": "load_collection"
+    },
+    "ndvi1": {
+      "arguments": {
+        "data": {
+          "from_node": "loadco1"
+        }
+      },
+      "process_id": "ndvi"
+    },
+    "result1": {
+      "arguments": {
+        "data": {
+          "from_node": "ndvi1"
+        },
+        "format": "gtiff"
+      },
+      "process_id": "save_result",
+      "result": true
+    }
+  },
+  "status": "submitted",
+  "submitted": [
+    "2019-08-30T09:18:12.250595+00:00"
+  ],
+  "title": null
+}
+```
+
+And start it:
+```
+$ curl -X POST http://localhost:5000/jobs/6520894b-d41d-40d1-bcff-67eafab4eced/results
+```

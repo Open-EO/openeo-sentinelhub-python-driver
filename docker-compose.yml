@@ -5,6 +5,7 @@ version: '3'
 services:
   dynamodb:
     image: amazon/dynamodb-local
+    container_name: dynamodb
     ports:
       - '8000:8000'
     # Instead od using in-memory DB, we could also persist data:
@@ -13,6 +14,7 @@ services:
 
   minio:
     image: minio/minio
+    container_name: minio
     ports:
       - '9000:9000'
     volumes:
@@ -21,9 +23,10 @@ services:
     environment:
       MINIO_ACCESS_KEY: AKIAIOSFODNN7EXAMPLE
       MINIO_SECRET_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-    
+
   createbuckets:
     image: minio/mc
+    container_name: createbuckets
     depends_on:
       - minio
     entrypoint: >
