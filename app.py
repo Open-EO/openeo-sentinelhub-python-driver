@@ -7,6 +7,7 @@ import datetime
 import requests
 from logging import log, INFO, WARN
 import json
+import boto3
 
 from dynamodb import Persistence
 
@@ -16,6 +17,7 @@ app.url_map.strict_slashes = False
 
 
 URL_ROOT = os.environ.get('URL_ROOT', '').rstrip('/')
+RESULTS_S3_BUCKET_NAME = os.environ.get('RESULTS_S3_BUCKET_NAME', 'com.sinergise.openeo.results')
 
 
 @app.route('/', methods=["GET"])
@@ -201,6 +203,7 @@ def api_batch_job(job_id):
             process_graph = json.loads(job["process_graph"]),
             status = job["current_status"],  # "status" is reserved word in DynamoDB
             error = job["error_msg"],
+            results = job["results"],
             submitted = job["submitted"],
             ), 200)
 
@@ -273,16 +276,37 @@ def add_job_to_queue(job_id):
             return flask.make_response(jsonify(
                 id = job_id,
                 code = 424,
-                message = job.get("error_msg"),
+                message = job["error_msg"],
                 links = []
                 ), 424)
 
+        s3 = boto3.client('s3')
+        links = []
+        results = json.loads(job["results"])
+        for result in results:
+            # create signed url:
+            filename = result["filename"]
+            object_key = '{}/{}'.format(job_id, os.path.basename(filename))
+            url = s3.generate_presigned_url(
+                ClientMethod='get_object',
+                Params={
+                    'Bucket': RESULTS_S3_BUCKET_NAME,
+                    'Key': object_key,
+                }
+            )
+            mime_type = result["type"]
+            links.append({
+                'href': url,
+                'type': mime_type,
+            })
+
         return flask.make_response(jsonify(
-            id = job_id,
-            title = job["title"],
-            description = job["description"],
-            updated = job["last_updated"],  # "updated" is a reserved word in DynamoDB
-            links = []), 200)
+                id = job_id,
+                title = job["title"],
+                description = job["description"],
+                updated = job["last_updated"],  # "updated" is a reserved word in DynamoDB
+                links = links,
+            ), 200)
 
     elif flask.request.method == "DELETE":
         job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
@@ -313,5 +337,3 @@ def validate_process_graph():
 
 if __name__ == '__main__':
     app.run()
-
-# curl -d "{\"process_graph\": {\"smth\": {\"process_id\": \"load_collection\", \"arguments\": {\"id\": {}, \"spatial_extent\": {}}}}}" -H "Content-Type: application/json" -I POST http://127.0.0.1:5000/jobs
