@@ -199,8 +199,8 @@ def api_batch_job(job_id):
         status = job["current_status"]
         return flask.make_response(jsonify(
             id = job_id,
-            title = job["title"],
-            description = job["description"],
+            title = job.get("title", None),
+            description = job.get("description", None),
             process_graph = json.loads(job["process_graph"]),
             status = status,  # "status" is reserved word in DynamoDB
             error = {
@@ -306,8 +306,8 @@ def add_job_to_queue(job_id):
 
         return flask.make_response(jsonify(
                 id = job_id,
-                title = job["title"],
-                description = job["description"],
+                title = job.get("title", None),
+                description = job.get("description", None),
                 updated = job["last_updated"],  # "updated" is a reserved word in DynamoDB
                 links = links,
             ), 200)
