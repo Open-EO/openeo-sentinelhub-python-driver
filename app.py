@@ -178,7 +178,7 @@ def api_jobs():
 
         # add requested headers to 201 response:
         response = flask.make_response('', 201)
-        response.headers['Location'] = '/process_graphs/{}'.format(record_id)
+        response.headers['Location'] = '/jobs/{}'.format(record_id)
         response.headers['OpenEO-Identifier'] = record_id
         return response
 
