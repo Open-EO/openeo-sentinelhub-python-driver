@@ -8,6 +8,7 @@ import requests
 from logging import log, INFO, WARN
 import json
 import boto3
+from slugify import slugify
 
 from dynamodb import Persistence
 
@@ -195,16 +196,19 @@ def api_batch_job(job_id):
                 links = []
                 ), 404)
 
-
+        status = job["current_status"]
         return flask.make_response(jsonify(
             id = job_id,
             title = job["title"],
             description = job["description"],
             process_graph = json.loads(job["process_graph"]),
-            status = job["current_status"],  # "status" is reserved word in DynamoDB
-            error = job["error_msg"],
-            results = job["results"],
+            status = status,  # "status" is reserved word in DynamoDB
+            error = {
+                    "code": slugify(job["error_msg"]),  # we do not have error codes
+                    "message": job["error_msg"],
+                } if status == "error" else None,
             submitted = job["submitted"],
+            updated = job["last_updated"],
             ), 200)
 
     elif flask.request.method == 'PATCH':
