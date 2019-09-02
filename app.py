@@ -170,8 +170,8 @@ def api_jobs():
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
         data["current_status"] = "submitted"
-        data["submitted"] = timestamp,
-        data["last_updated"] = timestamp,
+        data["submitted"] = timestamp
+        data["last_updated"] = timestamp
         data["should_be_cancelled"] = False
 
         record_id = Persistence.create(Persistence.ET_JOBS, data)
