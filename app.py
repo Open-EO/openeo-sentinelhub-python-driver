@@ -178,7 +178,7 @@ def api_jobs():
 
         # add requested headers to 201 response:
         response = flask.make_response('', 201)
-        response.headers['Location'] = '/process_graphs/{}'.format(record_id)
+        response.headers['Location'] = '/jobs/{}'.format(record_id)
         response.headers['OpenEO-Identifier'] = record_id
         return response
 
@@ -195,16 +195,16 @@ def api_batch_job(job_id):
                 links = []
                 ), 404)
 
-
+        status = job["current_status"]
         return flask.make_response(jsonify(
             id = job_id,
-            title = job["title"],
-            description = job["description"],
+            title = job.get("title", None),
+            description = job.get("description", None),
             process_graph = json.loads(job["process_graph"]),
-            status = job["current_status"],  # "status" is reserved word in DynamoDB
-            error = job["error_msg"],
-            results = job["results"],
+            status = status,  # "status" is reserved word in DynamoDB
+            error = job["error_msg"] if status == "error" else None,
             submitted = job["submitted"],
+            updated = job["last_updated"],
             ), 200)
 
     elif flask.request.method == 'PATCH':
@@ -302,8 +302,8 @@ def add_job_to_queue(job_id):
 
         return flask.make_response(jsonify(
                 id = job_id,
-                title = job["title"],
-                description = job["description"],
+                title = job.get("title", None),
+                description = job.get("description", None),
                 updated = job["last_updated"],  # "updated" is a reserved word in DynamoDB
                 links = links,
             ), 200)
