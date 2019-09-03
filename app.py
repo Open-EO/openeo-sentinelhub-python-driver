@@ -8,7 +8,6 @@ import requests
 from logging import log, INFO, WARN
 import json
 import boto3
-from slugify import slugify
 
 from dynamodb import Persistence
 
@@ -203,10 +202,7 @@ def api_batch_job(job_id):
             description = job.get("description", None),
             process_graph = json.loads(job["process_graph"]),
             status = status,  # "status" is reserved word in DynamoDB
-            error = {
-                    "code": slugify(job["error_msg"]),  # we do not have error codes
-                    "message": job["error_msg"],
-                } if status == "error" else None,
+            error = job["error_msg"] if status == "error" else None,
             submitted = job["submitted"],
             updated = job["last_updated"],
             ), 200)
