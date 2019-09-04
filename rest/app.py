@@ -9,9 +9,9 @@ import requests
 from logging import log, INFO, WARN
 import json
 import boto3
+import sys
 
 from dynamodb import Persistence
-
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
@@ -25,6 +25,7 @@ RESULTS_S3_BUCKET_NAME = os.environ.get('RESULTS_S3_BUCKET_NAME', 'com.sinergise
 
 
 @app.route('/', methods=["GET"])
+@cross_origin()
 def api_root():
     return {
         "api_version": "0.4.1",
@@ -338,15 +339,5 @@ def validate_process_graph():
         "errors": errors,
     }, 200
 
-@app.route('/.well-known/openeo', methods=['GET'])
-def well_known():
-    return flask.make_response(jsonify(
-        versions = [{
-            "api_version": "0.4.1",
-            "production": False,
-            "url": flask.request.url_root
-        }]
-        ), 200)
-
 if __name__ == '__main__':
-    app.run()
+    app.run(ssl_context='adhoc')
