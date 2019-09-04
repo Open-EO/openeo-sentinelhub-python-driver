@@ -1,7 +1,7 @@
 import flask
 from flask import Flask, url_for, jsonify
 from flask_marshmallow import Marshmallow
-from flask_cors import CORS, cross_origin
+from flask_cors import CORS
 import os
 from schemas import PostProcessGraphsSchema, PostJobsSchema, PostResultSchema, PGValidationSchema
 import datetime
