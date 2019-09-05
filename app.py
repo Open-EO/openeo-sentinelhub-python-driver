@@ -8,6 +8,7 @@ import requests
 from logging import log, INFO, WARN
 import json
 import boto3
+import glob
 
 from dynamodb import Persistence
 
@@ -322,6 +323,50 @@ def add_job_to_queue(job_id):
             links = []
             ), 400)
 
+
+@app.route('/collections', methods=['GET'])
+def available_collections():
+    files = glob.iglob("collection_information/*.json")
+    collections,links = [],[]
+
+    for file in files:
+        with open(file) as f:
+            data = json.load(f,)
+            basic_info = {
+                "stac_version": data["stac_version"],
+                "id": data["id"],
+                "description": data["description"],
+                "license": data["license"],
+                "extent": data["extent"],
+                "links": data["links"],
+                "title": data.get("title"),
+                "keywords": data.get("keywords"),
+                "version": data.get("version"),
+                "providers": data.get("providers"),
+            }
+            collections.append(basic_info)
+
+
+    return flask.make_response(jsonify(
+        collections = collections,
+        links = links
+        ), 200)
+
+
+@app.route('/collections/<collection_id>', methods=['GET'])
+def collection_information(collection_id):
+    if not os.path.isfile("collection_information/{}.json".format(collection_id)):
+        return flask.make_response(jsonify(
+            id = collection_id,
+            code = 404,
+            message = 'Collection does not exist.',
+            links = []
+            ), 404)
+
+    with open("collection_information/{}.json".format(collection_id)) as f:
+        collection_information = json.load(f,)
+
+    return flask.make_response(collection_information, 200)
 
 
 @app.route('/validation', methods=["GET"])
