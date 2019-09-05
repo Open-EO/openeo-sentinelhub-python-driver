@@ -326,18 +326,17 @@ def add_job_to_queue(job_id):
 
 @app.route('/processes', methods=['GET'])
 def available_processes():
-    processes,links = [], []
-
     files = glob.iglob("process_definitions/*.json")
-
+    processes = []
     for file in files:
         with open(file) as f:
-            processes.append(json.load(f,))
+            processes.append(json.load(f))
 
     return flask.make_response(jsonify(
-        processes = processes,
-        links = links
+            processes = processes,
+            links = [],
         ), 200)
+
 
 
 @app.route('/validation', methods=["GET"])
