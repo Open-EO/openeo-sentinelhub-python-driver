@@ -9,6 +9,7 @@ from logging import log, INFO, WARN
 import json
 import boto3
 import glob
+import re
 
 from dynamodb import Persistence
 
@@ -32,6 +33,12 @@ def api_root():
     }
 
 
+def replace_arrows(matchobj):
+    s = list(matchobj.group(0))
+    s[0] = "{"
+    s[-1] = "}"
+    return "".join(s)
+
 def get_endpoints():
     """
         Returns a list of endpoints (url and allowed methods).
@@ -44,6 +51,8 @@ def get_endpoints():
 
         if url in omitted_urls:
             continue
+
+        url,_= re.subn("\<[^>]*\>",replace_arrows,url)
 
         endpoints.append({
             "path": url,
@@ -181,6 +190,7 @@ def api_jobs():
         response = flask.make_response('', 201)
         response.headers['Location'] = '/jobs/{}'.format(record_id)
         response.headers['OpenEO-Identifier'] = record_id
+        response.headers["Access-Control-Expose-Headers"] = "*"
         return response
 
 
