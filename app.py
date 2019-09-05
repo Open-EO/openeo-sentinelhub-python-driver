@@ -9,6 +9,7 @@ import requests
 from logging import log, INFO, WARN
 import json
 import boto3
+import glob
 
 from dynamodb import Persistence
 
@@ -324,6 +325,21 @@ def add_job_to_queue(job_id):
             message = 'Job is not queued or running.',
             links = []
             ), 400)
+
+
+@app.route('/processes', methods=['GET'])
+def available_processes():
+    files = glob.iglob("process_definitions/*.json")
+    processes = []
+    for file in files:
+        with open(file) as f:
+            processes.append(json.load(f))
+
+    return flask.make_response(jsonify(
+            processes = processes,
+            links = [],
+        ), 200)
+
 
 
 @app.route('/validation', methods=["GET"])
