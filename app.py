@@ -133,16 +133,56 @@ def api_result():
 
         if errors:
             log(WARN, "Invalid request: {}".format(errors))
-            return flask.make_response('Invalid request: {}'.format(errors), 400)
+            return flask.make_response(jsonify(
+                id = None,
+                code = 400,
+                message = errors,
+                links = []
+                ), 400)
 
-        # !!! for now we simply always request some dummy data from SH and return it:
-        url = 'https://services.sentinel-hub.com/ogc/wms/cd280189-7c51-45a6-ab05-f96a76067710?service=WMS&request=GetMap&layers=1_TRUE_COLOR&styles=&format=image%2Fpng&transparent=true&version=1.1.1&showlogo=false&name=Sentinel-2%20L1C&width=512&height=512&pane=activeLayer&maxcc=100&evalscriptoverrides=&time=2017-01-01%2F2017-02-01&srs=EPSG%3A4326&bbox=16.1,47.2,16.6,48.6'
-        r = requests.get(url)
-        r.raise_for_status()
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        data["current_status"] = "queued"
+        data["submitted"] = timestamp
+        data["last_updated"] = timestamp
+        data["should_be_cancelled"] = False
 
-        # pass the result back directly:
-        response = flask.make_response(r.content, 200)
+        job_id = Persistence.create(Persistence.ET_JOBS, data)
+
+        for check in range(300):
+            job = Persistence.get_by_id(Persistence.ET_JOBS, record_id)
+
+            if job["current_status"] == "finished":
+                break
+
+            if job["current_status"] == "error":
+                return flask.make_response(jsonify(
+                    id = None,
+                    code = 400,
+                    message = job["error_msg"],
+                    links = []
+                ), 400)
+
+            time.sleep(0.1)
+        else:
+            return flask.make_response(jsonify(
+                id = None,
+                code = 408,
+                message = "openEO error: RequestTimeout",
+                links = []
+                ), 408)
+
+        s3 = boto3.client('s3')
+        links = []
+        result = json.loads(job["results"])[0]
+
+        filename = result["filename"]
+        object_key = '{}/{}'.format(job_id, os.path.basename(filename))
+
+        file = s3.get_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key)
+
+        response = flask.make_response(file, 200)
         response.headers['Content-Type'] = r.headers['Content-Type']
+        response.mime_type = result["type"]
         return response
 
 
