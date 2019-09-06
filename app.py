@@ -3,7 +3,7 @@ from flask import Flask, url_for, jsonify
 from flask_marshmallow import Marshmallow
 from flask_cors import CORS
 import os
-from schemas import PostProcessGraphsSchema, PostJobsSchema, PostResultSchema, PGValidationSchema, PatchJobsSchema
+from schemas import PostProcessGraphsSchema, PostJobsSchema, PostResultSchema, PGValidationSchema, PatchProcessGraphsSchema, PatchJobsSchema
 import datetime
 import requests
 from logging import log, INFO, WARN
@@ -94,7 +94,12 @@ def api_process_graphs(process_graph_id=None):
 
         if errors:
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
-            return flask.make_response('Invalid request', 400)
+            return flask.make_response(jsonify(
+                id = process_graph_id,
+                code = 400,
+                message = errors,
+                links = []
+                ), 400)
 
         record_id = Persistence.create(Persistence.ET_PROCESS_GRAPHS, data)
 
@@ -102,6 +107,7 @@ def api_process_graphs(process_graph_id=None):
         response = flask.make_response('', 201)
         response.headers['Location'] = '/process_graphs/{}'.format(record_id)
         response.headers['OpenEO-Identifier'] = record_id
+        response.headers["Access-Control-Expose-Headers"] = "*"
         return response
 
     elif flask.request.method == 'DELETE':
@@ -111,14 +117,21 @@ def api_process_graphs(process_graph_id=None):
     elif flask.request.method == 'PATCH':
         data = flask.request.get_json()
 
-        process_graph_schema = PostProcessGraphsSchema()
+        process_graph_schema = PatchProcessGraphsSchema()
         errors = process_graph_schema.validate(data)
 
         if errors:
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
-            return flask.make_response('Invalid request', 400)
+            return flask.make_response(jsonify(
+                id = process_graph_id,
+                code = 400,
+                message = errors,
+                links = []
+                ), 400)
 
-        Persistence.replace(Persistence.ET_PROCESS_GRAPHS,process_graph_id,data)
+        for key in data:
+            Persistence.update_key(Persistence.ET_PROCESS_GRAPHS,process_graph_id,key,data[key])
+            
         return flask.make_response('The process graph data has been updated successfully.', 204)
 
 

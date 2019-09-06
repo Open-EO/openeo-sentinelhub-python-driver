@@ -14,11 +14,24 @@ def validate_graph_with_known_processes(graph):
 class PostProcessGraphsSchema(Schema):
 	"""
 	Request body
-	POST /process_graphs and PATCH /process_graphs
+	POST /process_graphs
 	"""
 	title = fields.Str(allow_none=True)
 	description = fields.Str(allow_none=True)
 	process_graph = fields.Dict(required=True)
+
+	@validates("process_graph")
+	def validate_process_graph(self, graph):
+		validate_graph_with_known_processes(graph)
+
+class PatchProcessGraphsSchema(Schema):
+	"""
+	Request body
+	PATCH /process_graphs
+	"""
+	title = fields.Str(allow_none=True)
+	description = fields.Str(allow_none=True)
+	process_graph = fields.Dict(allow_none=True)
 
 	@validates("process_graph")
 	def validate_process_graph(self, graph):

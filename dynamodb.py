@@ -43,18 +43,26 @@ class Persistence(object):
             Creates a new record and returns its record ID (UUID).
         """
         record_id = str(uuid.uuid4())
-        item = {
-            'id': {'S': record_id},
-            'process_graph': {'S': json.dumps(data.get("process_graph"))},
-            'plan': {'S': str(data.get("plan"))},
-            'budget': {'S': str(data.get("budget"))},
-            'current_status': {'S': str(data.get("current_status"))},
-            'submitted': {'S': str(data.get("submitted"))},
-            'last_updated': {'S': str(data.get("last_updated"))},
-            'should_be_cancelled': {'BOOL': data.get("should_be_cancelled")},
-            'error_msg': {'S': str(data.get("error_msg"))},
-            'results': {'S': json.dumps(data.get("results"))},
-        }
+        
+        if entity_type == cls.ET_JOBS:
+            item = {
+                'id': {'S': record_id},
+                'process_graph': {'S': json.dumps(data.get("process_graph"))},
+                'plan': {'S': str(data.get("plan"))},
+                'budget': {'S': str(data.get("budget"))},
+                'current_status': {'S': str(data.get("current_status"))},
+                'submitted': {'S': str(data.get("submitted"))},
+                'last_updated': {'S': str(data.get("last_updated"))},
+                'should_be_cancelled': {'BOOL': data.get("should_be_cancelled")},
+                'error_msg': {'S': str(data.get("error_msg"))},
+                'results': {'S': json.dumps(data.get("results"))},
+            }
+        elif entity_type == cls.ET_PROCESS_GRAPHS:
+            item = {
+                'id': {'S': record_id},
+                'process_graph': {'S': json.dumps(data.get("process_graph"))},
+            }
+
         if data.get("title"):
             item["title"] = {'S': str(data.get("title"))}
         if data.get("description"):
