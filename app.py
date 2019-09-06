@@ -206,9 +206,9 @@ def api_result():
             filename = result["filename"]
             object_key = '{}/{}'.format(job_id, os.path.basename(filename))
 
-            file = s3.get_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key)
-
-            response = flask.make_response(file, 200)
+            s3_object = s3.get_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key)
+            content = s3_object['Body'].read()
+            response = flask.make_response(content, 200)
             response.mimetype = result["type"]
             return response
 
