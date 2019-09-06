@@ -163,11 +163,11 @@ def api_result():
         Persistence.delete_item(Persistence.ET_JOBS,job_id)
 
         if job["current_status"] == "finished":
-            if len(job["results"]) < 1:
+            if len(job["results"]) != 1:
                 return flask.make_response(jsonify(
                     id = None,
                     code = 400,
-                    message = "Specified process graph yielded no result.",
+                    message = "This endpoint can only succeed if process graph yields exactly one result, instead it received: {}.".format(len(job["results"])),
                     links = []
                     ), 400)
 
