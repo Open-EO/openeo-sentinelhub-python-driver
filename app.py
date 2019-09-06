@@ -182,7 +182,6 @@ def api_result():
                 object_keys.append({'Key': object_key})
 
             file = s3.get_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key[0]['Key'])
-            s3.delete_objects(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key)
 
             response = flask.make_response(file, 200)
             response.mimetype = result["type"]
