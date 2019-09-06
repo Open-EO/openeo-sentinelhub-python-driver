@@ -176,14 +176,14 @@ def api_result():
         n_checks = int(REQUEST_TIMEOUT/period)
 
         for _ in range(n_checks):
-            job = Persistence.get_by_id(Persistence.ET_JOBS, record_id)
+            job = Persistence.get_by_id(Persistence.ET_JOBS, job_id)
 
             if job["current_status"] in ["finished","error"]:
                 break
 
             time.sleep(0.5)
 
-        Persistence.delete_item(Persistence.ET_JOBS,job_id)
+        Persistence.delete_item(Persistence.ET_JOBS, job_id)
 
         if job["current_status"] == "finished":
             if len(job["results"]) != 1:
