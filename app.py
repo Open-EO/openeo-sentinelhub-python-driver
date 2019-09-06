@@ -9,7 +9,6 @@ from logging import log, INFO, WARN
 import json
 import boto3
 import glob
-import re
 
 from dynamodb import Persistence
 
@@ -32,13 +31,6 @@ def api_root():
         "endpoints": get_endpoints(),
     }
 
-
-def replace_arrows(matchobj):
-    s = list(matchobj.group(0))
-    s[0] = "{"
-    s[-1] = "}"
-    return "".join(s)
-
 def get_endpoints():
     """
         Returns a list of endpoints (url and allowed methods).
@@ -52,7 +44,12 @@ def get_endpoints():
         if url in omitted_urls:
             continue
 
-        url,_= re.subn("\<[^>]*\>",replace_arrows,url)
+        # OpenEO Web Client assumes that the URLs returned will be in the same form as specified in the
+        # docs. To accomodate it we simply substitute arrows (around parameters) for curly braces:
+        url = url.translate(str.maketrans({
+          "<": "{",
+          ">": "}",
+        }))
 
         endpoints.append({
             "path": url,
