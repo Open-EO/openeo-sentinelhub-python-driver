@@ -118,7 +118,6 @@ def api_process_graphs(process_graph_id=None):
         response = flask.make_response('', 201)
         response.headers['Location'] = '/process_graphs/{}'.format(record_id)
         response.headers['OpenEO-Identifier'] = record_id
-        response.headers["Access-Control-Expose-Headers"] = "*"
         return response
 
     elif flask.request.method == 'DELETE':
@@ -214,7 +213,6 @@ def api_jobs():
         response = flask.make_response('', 201)
         response.headers['Location'] = '/jobs/{}'.format(record_id)
         response.headers['OpenEO-Identifier'] = record_id
-        response.headers["Access-Control-Expose-Headers"] = "*"
         return response
 
 
