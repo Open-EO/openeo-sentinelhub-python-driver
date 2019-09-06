@@ -34,7 +34,6 @@ def api_root():
         "endpoints": get_endpoints(),
     }
 
-
 def get_endpoints():
     """
         Returns a list of endpoints (url and allowed methods).
@@ -47,6 +46,13 @@ def get_endpoints():
 
         if url in omitted_urls:
             continue
+
+        # OpenEO Web Client assumes that the URLs returned will be in the same form as specified in the
+        # docs. To accomodate it we simply substitute arrows (around parameters) for curly braces:
+        url = url.translate(str.maketrans({
+          "<": "{",
+          ">": "}",
+        }))
 
         endpoints.append({
             "path": url,
@@ -184,6 +190,7 @@ def api_jobs():
         response = flask.make_response('', 201)
         response.headers['Location'] = '/jobs/{}'.format(record_id)
         response.headers['OpenEO-Identifier'] = record_id
+        response.headers["Access-Control-Expose-Headers"] = "*"
         return response
 
 
