@@ -1,6 +1,7 @@
 import flask
 from flask import Flask, url_for, jsonify
 from flask_marshmallow import Marshmallow
+from flask_cors import CORS
 import os
 from schemas import PostProcessGraphsSchema, PostJobsSchema, PostResultSchema, PGValidationSchema
 import datetime
@@ -16,15 +17,17 @@ from dynamodb import Persistence
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 
-URL_ROOT = os.environ.get('URL_ROOT', '').rstrip('/')
+
 RESULTS_S3_BUCKET_NAME = os.environ.get('RESULTS_S3_BUCKET_NAME', 'com.sinergise.openeo.results')
 
 
 @app.route('/', methods=["GET"])
 def api_root():
     return {
-        "api_version": "0.4.1",
+        "api_version": "0.4.2",
         "backend_version": "0.0.1",
         "title": "Sentinel Hub OpenEO",
         "description": "Sentinel Hub OpenEO by [Sinergise](https://sinergise.com)",
@@ -349,6 +352,16 @@ def validate_process_graph():
     return {
         "errors": errors,
     }, 200
+
+@app.route('/.well-known/openeo', methods=['GET'])
+def well_known():
+    return flask.make_response(jsonify(
+        versions = [{
+            "api_version": "0.4.2",
+            "production": False,
+            "url": flask.request.url_root
+        }]
+        ), 200)
 
 if __name__ == '__main__':
     app.run()
