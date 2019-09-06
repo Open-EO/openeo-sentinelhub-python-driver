@@ -3,7 +3,7 @@ from flask import Flask, url_for, jsonify
 from flask_marshmallow import Marshmallow
 from flask_cors import CORS
 import os
-from schemas import PostProcessGraphsSchema, PostJobsSchema, PostResultSchema, PGValidationSchema
+from schemas import PostProcessGraphsSchema, PostJobsSchema, PostResultSchema, PGValidationSchema, PatchJobsSchema
 import datetime
 import requests
 from logging import log, INFO, WARN
@@ -224,12 +224,17 @@ def api_batch_job(job_id):
 
         data = flask.request.get_json()
 
-        process_graph_schema = PostJobsSchema()
+        process_graph_schema = PatchJobsSchema()
         errors = process_graph_schema.validate(data)
 
         if errors:
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
-            return flask.make_response('Invalid request', 400)
+            return flask.make_response(jsonify(
+                id = job_id,
+                code = 400,
+                message = errors,
+                links = []
+                ), 400)
 
 
         for key in data:
