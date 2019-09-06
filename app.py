@@ -163,15 +163,26 @@ def api_result():
         Persistence.delete_item(Persistence.ET_JOBS,job_id)
 
         if job["current_status"] == "finished":
+            if len(job["results"]) < 1:
+                return flask.make_response(jsonify(
+                    id = None,
+                    code = 400,
+                    message = "Specified process graph yielded no result.",
+                    links = []
+                    ), 400)
+
             s3 = boto3.client('s3')
-            links = []
-            result = json.loads(job["results"])[0]
 
-            filename = result["filename"]
-            object_key = '{}/{}'.format(job_id, os.path.basename(filename))
+            results = json.loads(job["results"])
+            object_keys = []
 
-            file = s3.get_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key)
-            s3.delete_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key)
+            for result in results:
+                filename = result["filename"]
+                object_key = '{}/{}'.format(job_id, os.path.basename(filename))
+                object_keys.append({'Key': object_key})
+
+            file = s3.get_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key[0]['Key'])
+            s3.delete_objects(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key)
 
             response = flask.make_response(file, 200)
             response.mimetype = result["type"]
