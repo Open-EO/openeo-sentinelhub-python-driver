@@ -22,6 +22,18 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 
 
 RESULTS_S3_BUCKET_NAME = os.environ.get('RESULTS_S3_BUCKET_NAME', 'com.sinergise.openeo.results')
+REQUEST_TIMEOUT = 30 # In seconds
+
+
+@app.after_request
+def after_request(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Headers'] = 'Accept, Content-Type'  # missing websockets-specific headers
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, DELETE, PUT, PATCH, OPTIONS'
+    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Expose-Headers
+    response.headers['Access-Control-Expose-Headers'] = 'OpenEO-Costs, Location, OpenEO-Identifier'
+    response.headers['Access-Control-Max-Age'] = '3600'  # https://damon.ghost.io/killing-cors-preflight-requests-on-a-react-spa/
+    return response
 
 
 @app.route('/', methods=["GET"])
@@ -107,7 +119,6 @@ def api_process_graphs(process_graph_id=None):
         response = flask.make_response('', 201)
         response.headers['Location'] = '/process_graphs/{}'.format(record_id)
         response.headers['OpenEO-Identifier'] = record_id
-        response.headers["Access-Control-Expose-Headers"] = "*"
         return response
 
     elif flask.request.method == 'DELETE':
@@ -131,7 +142,7 @@ def api_process_graphs(process_graph_id=None):
 
         for key in data:
             Persistence.update_key(Persistence.ET_PROCESS_GRAPHS,process_graph_id,key,data[key])
-            
+
         return flask.make_response('The process graph data has been updated successfully.', 204)
 
 
@@ -146,17 +157,73 @@ def api_result():
 
         if errors:
             log(WARN, "Invalid request: {}".format(errors))
-            return flask.make_response('Invalid request: {}'.format(errors), 400)
+            return flask.make_response(jsonify(
+                id = None,
+                code = 400,
+                message = errors,
+                links = []
+                ), 400)
 
-        # !!! for now we simply always request some dummy data from SH and return it:
-        url = 'https://services.sentinel-hub.com/ogc/wms/cd280189-7c51-45a6-ab05-f96a76067710?service=WMS&request=GetMap&layers=1_TRUE_COLOR&styles=&format=image%2Fpng&transparent=true&version=1.1.1&showlogo=false&name=Sentinel-2%20L1C&width=512&height=512&pane=activeLayer&maxcc=100&evalscriptoverrides=&time=2017-01-01%2F2017-02-01&srs=EPSG%3A4326&bbox=16.1,47.2,16.6,48.6'
-        r = requests.get(url)
-        r.raise_for_status()
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        data["current_status"] = "queued"
+        data["submitted"] = timestamp
+        data["last_updated"] = timestamp
+        data["should_be_cancelled"] = False
 
-        # pass the result back directly:
-        response = flask.make_response(r.content, 200)
-        response.headers['Content-Type'] = r.headers['Content-Type']
-        return response
+        job_id = Persistence.create(Persistence.ET_JOBS, data)
+
+        period = 0.5 # In seconds
+        n_checks = int(REQUEST_TIMEOUT/period)
+
+        for _ in range(n_checks):
+            job = Persistence.get_by_id(Persistence.ET_JOBS, record_id)
+
+            if job["current_status"] in ["finished","error"]:
+                break
+
+            time.sleep(0.5)
+
+        Persistence.delete_item(Persistence.ET_JOBS,job_id)
+
+        if job["current_status"] == "finished":
+            if len(job["results"]) != 1:
+                return flask.make_response(jsonify(
+                    id = None,
+                    code = 400,
+                    message = "This endpoint can only succeed if process graph yields exactly one result, instead it received: {}.".format(len(job["results"])),
+                    links = []
+                    ), 400)
+
+            s3 = boto3.client('s3')
+
+            results = json.loads(job["results"])
+            object_keys = []
+
+            for result in results:
+                filename = result["filename"]
+                object_key = '{}/{}'.format(job_id, os.path.basename(filename))
+                object_keys.append({'Key': object_key})
+
+            file = s3.get_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key[0]['Key'])
+
+            response = flask.make_response(file, 200)
+            response.mimetype = result["type"]
+            return response
+
+        if job["current_status"] == "error":
+            return flask.make_response(jsonify(
+                id = None,
+                code = 400,
+                message = job["error_msg"],
+                links = []
+            ), 400)
+
+        return flask.make_response(jsonify(
+            id = None,
+            code = 408,
+            message = "openEO error: RequestTimeout",
+            links = []
+            ), 408)
 
 
 @app.route('/jobs', methods=['GET','POST'])
@@ -203,7 +270,6 @@ def api_jobs():
         response = flask.make_response('', 201)
         response.headers['Location'] = '/jobs/{}'.format(record_id)
         response.headers['OpenEO-Identifier'] = record_id
-        response.headers["Access-Control-Expose-Headers"] = "*"
         return response
 
 
