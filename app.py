@@ -187,17 +187,17 @@ def api_result():
         Persistence.delete(Persistence.ET_JOBS, job_id)
 
         if job["current_status"] == "finished":
-            if len(job["results"]) != 1:
+            results = json.loads(job["results"])
+            if len(results) != 1:
                 return flask.make_response(jsonify(
                     id = None,
                     code = 400,
-                    message = "This endpoint can only succeed if process graph yields exactly one result, instead it received: {}.".format(len(job["results"])),
+                    message = "This endpoint can only succeed if process graph yields exactly one result, instead it received: {}.".format(len(results)),
                     links = []
                     ), 400)
 
             s3 = boto3.client('s3')
 
-            results = json.loads(job["results"])
             object_keys = []
 
             for result in results:
