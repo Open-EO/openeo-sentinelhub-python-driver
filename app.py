@@ -24,6 +24,17 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 RESULTS_S3_BUCKET_NAME = os.environ.get('RESULTS_S3_BUCKET_NAME', 'com.sinergise.openeo.results')
 
 
+@app.after_request
+def after_request(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Headers'] = 'Accept, Content-Type'  # missing websockets-specific headers
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, DELETE, PUT, PATCH, OPTIONS'
+    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Expose-Headers
+    response.headers['Access-Control-Expose-Headers'] = 'OpenEO-Costs, Location, OpenEO-Identifier'
+    response.headers['Access-Control-Max-Age'] = '3600'  # https://damon.ghost.io/killing-cors-preflight-requests-on-a-react-spa/
+    return response
+
+
 @app.route('/', methods=["GET"])
 def api_root():
     return {
@@ -107,7 +118,6 @@ def api_process_graphs(process_graph_id=None):
         response = flask.make_response('', 201)
         response.headers['Location'] = '/process_graphs/{}'.format(record_id)
         response.headers['OpenEO-Identifier'] = record_id
-        response.headers["Access-Control-Expose-Headers"] = "*"
         return response
 
     elif flask.request.method == 'DELETE':
@@ -131,7 +141,7 @@ def api_process_graphs(process_graph_id=None):
 
         for key in data:
             Persistence.update_key(Persistence.ET_PROCESS_GRAPHS,process_graph_id,key,data[key])
-            
+
         return flask.make_response('The process graph data has been updated successfully.', 204)
 
 
@@ -203,7 +213,6 @@ def api_jobs():
         response = flask.make_response('', 201)
         response.headers['Location'] = '/jobs/{}'.format(record_id)
         response.headers['OpenEO-Identifier'] = record_id
-        response.headers["Access-Control-Expose-Headers"] = "*"
         return response
 
 
