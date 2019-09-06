@@ -1,8 +1,9 @@
 import flask
 from flask import Flask, url_for, jsonify
 from flask_marshmallow import Marshmallow
+from flask_cors import CORS
 import os
-from schemas import PostProcessGraphsSchema, PostJobsSchema, PostResultSchema, PGValidationSchema, PatchProcessGraphsSchema
+from schemas import PostProcessGraphsSchema, PostJobsSchema, PostResultSchema, PGValidationSchema, PatchProcessGraphsSchema, PatchJobsSchema
 import datetime
 import requests
 from logging import log, INFO, WARN
@@ -16,21 +17,22 @@ from dynamodb import Persistence
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 
-URL_ROOT = os.environ.get('URL_ROOT', '').rstrip('/')
+
 RESULTS_S3_BUCKET_NAME = os.environ.get('RESULTS_S3_BUCKET_NAME', 'com.sinergise.openeo.results')
 
 
 @app.route('/', methods=["GET"])
 def api_root():
     return {
-        "api_version": "0.4.1",
+        "api_version": "0.4.2",
         "backend_version": "0.0.1",
         "title": "Sentinel Hub OpenEO",
         "description": "Sentinel Hub OpenEO by [Sinergise](https://sinergise.com)",
         "endpoints": get_endpoints(),
     }
-
 
 def get_endpoints():
     """
@@ -44,6 +46,13 @@ def get_endpoints():
 
         if url in omitted_urls:
             continue
+
+        # OpenEO Web Client assumes that the URLs returned will be in the same form as specified in the
+        # docs. To accomodate it we simply substitute arrows (around parameters) for curly braces:
+        url = url.translate(str.maketrans({
+          "<": "{",
+          ">": "}",
+        }))
 
         endpoints.append({
             "path": url,
@@ -194,6 +203,7 @@ def api_jobs():
         response = flask.make_response('', 201)
         response.headers['Location'] = '/jobs/{}'.format(record_id)
         response.headers['OpenEO-Identifier'] = record_id
+        response.headers["Access-Control-Expose-Headers"] = "*"
         return response
 
 
@@ -234,12 +244,17 @@ def api_batch_job(job_id):
 
         data = flask.request.get_json()
 
-        process_graph_schema = PostJobsSchema()
+        process_graph_schema = PatchJobsSchema()
         errors = process_graph_schema.validate(data)
 
         if errors:
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
-            return flask.make_response('Invalid request', 400)
+            return flask.make_response(jsonify(
+                id = job_id,
+                code = 400,
+                message = errors,
+                links = []
+                ), 400)
 
 
         for key in data:
@@ -337,6 +352,51 @@ def add_job_to_queue(job_id):
             ), 400)
 
 
+@app.route('/collections', methods=['GET'])
+def available_collections():
+    files = glob.iglob("collection_information/*.json")
+    collections = []
+
+    for file in files:
+        with open(file) as f:
+            data = json.load(f)
+            basic_info = {
+                "stac_version": data["stac_version"],
+                "id": data["id"],
+                "description": data["description"],
+                "license": data["license"],
+                "extent": data["extent"],
+                "links": data["links"],
+                "title": data.get("title"),
+                "keywords": data.get("keywords"),
+                "version": data.get("version"),
+                "providers": data.get("providers"),
+            }
+            collections.append(basic_info)
+
+
+    return flask.make_response(jsonify(
+        collections = collections,
+        links = []
+        ), 200)
+
+
+@app.route('/collections/<collection_id>', methods=['GET'])
+def collection_information(collection_id):
+    if not os.path.isfile("collection_information/{}.json".format(collection_id)):
+        return flask.make_response(jsonify(
+            id = collection_id,
+            code = 404,
+            message = 'Collection does not exist.',
+            links = []
+            ), 404)
+
+    with open("collection_information/{}.json".format(collection_id)) as f:
+        collection_information = json.load(f)
+
+    return flask.make_response(collection_information, 200)
+
+
 @app.route('/processes', methods=['GET'])
 def available_processes():
     files = glob.iglob("process_definitions/*.json")
@@ -362,6 +422,16 @@ def validate_process_graph():
     return {
         "errors": errors,
     }, 200
+
+@app.route('/.well-known/openeo', methods=['GET'])
+def well_known():
+    return flask.make_response(jsonify(
+        versions = [{
+            "api_version": "0.4.2",
+            "production": False,
+            "url": flask.request.url_root
+        }]
+        ), 200)
 
 if __name__ == '__main__':
     app.run()

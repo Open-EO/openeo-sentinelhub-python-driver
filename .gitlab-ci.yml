@@ -23,7 +23,7 @@ deploy-production:
     # configure aws access credentials:
     - mkdir -p ~/.aws
     - echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
-    - echo -e "[default]\naws_access_key_id=$PROD_AWS_ACCESS_KEY_ID\naws_secret_access_key=$PROD_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
+    - echo -e "[default]\naws_access_key_id=$PRODZAPPA_AWS_ACCESS_KEY_ID\naws_secret_access_key=$PRODZAPPA_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
     # `pipenv run` doesn't currently set $VIRTUAL_ENV, and zappa is failing because of it. The workaround is to use .venv/ in
     # a project itself, and set it explicitly: https://github.com/Miserlou/Zappa/issues/1443#issuecomment-374174824
     - export PIPENV_VENV_IN_PROJECT=true
@@ -39,5 +39,7 @@ deploy-production:
     - sed -i "s#@@AWS_SECRET_ACCESS_KEY@@#$PRODDATA_AWS_SECRET_ACCESS_KEY#g" zappa_settings.json
     - sed -i "s/@@S3_DATA_BUCKET@@/$PRODDATA_S3_BUCKET/g" zappa_settings.json
     - pipenv run zappa deploy production || pipenv run zappa update production
-    - echo -e "[default]\naws_access_key_id=$PRODDATA_AWS_ACCESS_KEY_ID\naws_secret_access_key=$PRODDATA_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
+    # ensure tables are created:
+    - export AWS_ACCESS_KEY_ID="$PRODDATA_AWS_ACCESS_KEY_ID"
+    - export AWS_SECRET_ACCESS_KEY="$PRODDATA_AWS_SECRET_ACCESS_KEY"
     - pipenv run bash -c "DYNAMODB_PRODUCTION=yes python dynamodb.py"
