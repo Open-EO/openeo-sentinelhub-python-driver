@@ -22,6 +22,7 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 
 
 RESULTS_S3_BUCKET_NAME = os.environ.get('RESULTS_S3_BUCKET_NAME', 'com.sinergise.openeo.results')
+REQUEST_TIMEOUT = 30 # In seconds
 
 
 @app.route('/', methods=["GET"])
@@ -148,42 +149,48 @@ def api_result():
 
         job_id = Persistence.create(Persistence.ET_JOBS, data)
 
-        for check in range(300):
+        period = 0.5 # In seconds
+        n_checks = int(REQUEST_TIMEOUT/period)
+
+        for _ in range(n_checks):
             job = Persistence.get_by_id(Persistence.ET_JOBS, record_id)
 
-            if job["current_status"] == "finished":
+            if job["current_status"] in ["finished","error"]:
                 break
 
-            if job["current_status"] == "error":
-                return flask.make_response(jsonify(
-                    id = None,
-                    code = 400,
-                    message = job["error_msg"],
-                    links = []
-                ), 400)
+            time.sleep(0.5)
 
-            time.sleep(0.1)
-        else:
+        Persistence.delete_item(Persistence.ET_JOBS,job_id)
+
+        if job["current_status"] == "finished":
+            s3 = boto3.client('s3')
+            links = []
+            result = json.loads(job["results"])[0]
+
+            filename = result["filename"]
+            object_key = '{}/{}'.format(job_id, os.path.basename(filename))
+
+            file = s3.get_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key)
+            s3.delete_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key)
+
+            response = flask.make_response(file, 200)
+            response.mimetype = result["type"]
+            return response
+
+        if job["current_status"] == "error":
             return flask.make_response(jsonify(
                 id = None,
-                code = 408,
-                message = "openEO error: RequestTimeout",
+                code = 400,
+                message = job["error_msg"],
                 links = []
-                ), 408)
+            ), 400)
 
-        s3 = boto3.client('s3')
-        links = []
-        result = json.loads(job["results"])[0]
-
-        filename = result["filename"]
-        object_key = '{}/{}'.format(job_id, os.path.basename(filename))
-
-        file = s3.get_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key)
-
-        response = flask.make_response(file, 200)
-        response.headers['Content-Type'] = r.headers['Content-Type']
-        response.mime_type = result["type"]
-        return response
+        return flask.make_response(jsonify(
+            id = None,
+            code = 408,
+            message = "openEO error: RequestTimeout",
+            links = []
+            ), 408)
 
 
 @app.route('/jobs', methods=['GET','POST'])
