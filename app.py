@@ -1,8 +1,9 @@
 import flask
 from flask import Flask, url_for, jsonify
 from flask_marshmallow import Marshmallow
+from flask_cors import CORS
 import os
-from schemas import PostProcessGraphsSchema, PostJobsSchema, PostResultSchema, PGValidationSchema
+from schemas import PostProcessGraphsSchema, PostJobsSchema, PostResultSchema, PGValidationSchema, PatchJobsSchema
 import datetime
 import requests
 from logging import log, INFO, WARN
@@ -16,15 +17,17 @@ from dynamodb import Persistence
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 
-URL_ROOT = os.environ.get('URL_ROOT', '').rstrip('/')
+
 RESULTS_S3_BUCKET_NAME = os.environ.get('RESULTS_S3_BUCKET_NAME', 'com.sinergise.openeo.results')
 
 
 @app.route('/', methods=["GET"])
 def api_root():
     return {
-        "api_version": "0.4.1",
+        "api_version": "0.4.2",
         "backend_version": "0.0.1",
         "title": "Sentinel Hub OpenEO",
         "description": "Sentinel Hub OpenEO by [Sinergise](https://sinergise.com)",
@@ -221,12 +224,17 @@ def api_batch_job(job_id):
 
         data = flask.request.get_json()
 
-        process_graph_schema = PostJobsSchema()
+        process_graph_schema = PatchJobsSchema()
         errors = process_graph_schema.validate(data)
 
         if errors:
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
-            return flask.make_response('Invalid request', 400)
+            return flask.make_response(jsonify(
+                id = job_id,
+                code = 400,
+                message = errors,
+                links = []
+                ), 400)
 
 
         for key in data:
@@ -369,6 +377,21 @@ def collection_information(collection_id):
     return flask.make_response(collection_information, 200)
 
 
+@app.route('/processes', methods=['GET'])
+def available_processes():
+    files = glob.iglob("process_definitions/*.json")
+    processes = []
+    for file in files:
+        with open(file) as f:
+            processes.append(json.load(f))
+
+    return flask.make_response(jsonify(
+            processes = processes,
+            links = [],
+        ), 200)
+
+
+
 @app.route('/validation', methods=["GET"])
 def validate_process_graph():
     data = flask.request.get_json()
@@ -379,6 +402,16 @@ def validate_process_graph():
     return {
         "errors": errors,
     }, 200
+
+@app.route('/.well-known/openeo', methods=['GET'])
+def well_known():
+    return flask.make_response(jsonify(
+        versions = [{
+            "api_version": "0.4.2",
+            "production": False,
+            "url": flask.request.url_root
+        }]
+        ), 200)
 
 if __name__ == '__main__':
     app.run()
