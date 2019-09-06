@@ -87,7 +87,7 @@ def api_process_graphs(process_graph_id=None):
                     "description": record.get("description", None),
                 })
                 links.append({
-                    "href": "{}/process_graphs/{}".format(URL_ROOT, record_id),
+                    "href": "{}/process_graphs/{}".format(flask.request.url_root, record_id),
                     "title": record.get("title", None),
                 })
             return {
@@ -198,14 +198,11 @@ def api_result():
 
             s3 = boto3.client('s3')
 
-            object_keys = []
+            result = results[0]
+            filename = result["filename"]
+            object_key = '{}/{}'.format(job_id, os.path.basename(filename))
 
-            for result in results:
-                filename = result["filename"]
-                object_key = '{}/{}'.format(job_id, os.path.basename(filename))
-                object_keys.append({'Key': object_key})
-
-            file = s3.get_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key[0]['Key'])
+            file = s3.get_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key)
 
             response = flask.make_response(file, 200)
             response.mimetype = result["type"]
@@ -240,7 +237,7 @@ def api_jobs():
                 "description": record.get("description", None),
             })
             links.append({
-                "href": "{}/jobs/{}".format(URL_ROOT, record.get("id")),
+                "href": "{}/jobs/{}".format(flask.request.url_root, record.get("id")),
                 "title": record.get("title", None),
             })
         return {
