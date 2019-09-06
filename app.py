@@ -10,6 +10,7 @@ from logging import log, INFO, WARN
 import json
 import boto3
 import glob
+import time
 
 from dynamodb import Persistence
 
@@ -183,7 +184,7 @@ def api_result():
 
             time.sleep(0.5)
 
-        Persistence.delete_item(Persistence.ET_JOBS, job_id)
+        Persistence.delete(Persistence.ET_JOBS, job_id)
 
         if job["current_status"] == "finished":
             if len(job["results"]) != 1:
