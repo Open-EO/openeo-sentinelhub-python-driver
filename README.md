@@ -62,7 +62,7 @@ Content-Type: application/json
         "data": {"from_node": "ndvi1"},
         "format": "gtiff"
       },
-      "result": True
+      "result": true
     }
   }
 }
