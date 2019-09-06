@@ -196,7 +196,11 @@ def api_result():
                     links = []
                     ), 400)
 
-            s3 = boto3.client('s3')
+            s3 = boto3.client('s3',
+                region_name="eu-central-1",
+                aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+                aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+            )
 
             result = results[0]
             filename = result["filename"]
@@ -373,7 +377,11 @@ def add_job_to_queue(job_id):
                 links = []
                 ), 424)
 
-        s3 = boto3.client('s3')
+        s3 = boto3.client('s3',
+            region_name="eu-central-1",
+            aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+            aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+        )
         links = []
         results = json.loads(job["results"])
         for result in results:
