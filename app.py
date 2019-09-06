@@ -327,11 +327,11 @@ def add_job_to_queue(job_id):
 @app.route('/collections', methods=['GET'])
 def available_collections():
     files = glob.iglob("collection_information/*.json")
-    collections,links = [],[]
+    collections = []
 
     for file in files:
         with open(file) as f:
-            data = json.load(f,)
+            data = json.load(f)
             basic_info = {
                 "stac_version": data["stac_version"],
                 "id": data["id"],
@@ -349,7 +349,7 @@ def available_collections():
 
     return flask.make_response(jsonify(
         collections = collections,
-        links = links
+        links = []
         ), 200)
 
 
@@ -364,7 +364,7 @@ def collection_information(collection_id):
             ), 404)
 
     with open("collection_information/{}.json".format(collection_id)) as f:
-        collection_information = json.load(f,)
+        collection_information = json.load(f)
 
     return flask.make_response(collection_information, 200)
 
