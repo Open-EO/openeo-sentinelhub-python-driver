@@ -1,0 +1,18 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+pandas = "==0.24.2"
+python-dotenv = "*"
+xarray = "*"
+gdal = "==2.2.2"
+boto3 = "*"
+eo-learn-core = "*"
+eo-learn-io = "*"
+
+[requires]
+python_version = "3.6"

@@ -6,18 +6,21 @@ services:
   - docker:dind
 
 stages:
-  # - test
+  - test
   - deploy
 
 pytest:
   stage: test
   script:
-    - cd tests/
+    - cd rest/tests/
     - docker-compose up --abort-on-container-exit --exit-code-from pytest --build
 
-deploy-production:
+deploy-production-rest-lambda:
   stage: deploy
   when: manual
+  only:
+    variables:
+      - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+([.][^.]+)?$/
   image: python:3.6.6
   before_script:
     # configure aws access credentials:
@@ -30,6 +33,7 @@ deploy-production:
     - pip install --upgrade pipenv
     - export VIRTUAL_ENV=.venv/
   script:
+    - cd rest/
     - PIPENV_IGNORE_VIRTUALENVS=1 pipenv install --dev
     # create zappa_settings.json on-the-fly:
     - cp zappa_settings.json.template zappa_settings.json
@@ -43,3 +47,25 @@ deploy-production:
     - export AWS_ACCESS_KEY_ID="$PRODDATA_AWS_ACCESS_KEY_ID"
     - export AWS_SECRET_ACCESS_KEY="$PRODDATA_AWS_SECRET_ACCESS_KEY"
     - pipenv run bash -c "DYNAMODB_PRODUCTION=yes python dynamodb.py"
+
+deploy-production-workers-ecr:
+  stage: deploy
+  when: manual
+  only:
+    variables:
+      - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+([.][^.]+)?$/
+  variables:
+    CI_REGISTRY_IMAGE: shopeneo/workers
+  before_script:
+    # configure aws access credentials:
+    - mkdir -p ~/.aws
+    - echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
+    - echo -e "[default]\naws_access_key_id=$PRODWORKERS_AWS_ACCESS_KEY_ID\naws_secret_access_key=$PRODWORKERS_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
+    - apk add --update python python-dev py-pip
+    - pip install awscli
+  script:
+    - cd workers/
+    - $(aws ecr get-login --no-include-email --region eu-central-1)
+    - docker build -t "$CI_REGISTRY/$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG" -t "$CI_REGISTRY/$CI_REGISTRY_IMAGE:latest" --build-arg VERSION=$CI_COMMIT_TAG --build-arg VCS_REF=$CI_COMMIT_SHA --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') .
+    - docker push "$CI_REGISTRY/$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"
+    - docker push "$CI_REGISTRY/$CI_REGISTRY_IMAGE:latest"
