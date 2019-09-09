@@ -9,15 +9,15 @@ stages:
   # - test
   - deploy
 
-# pytest:
-#   stage: test
-#   script:
-#     - cd tests/
-#     - docker-compose up --abort-on-container-exit --exit-code-from pytest --build
+pytest:
+  stage: test
+  script:
+    - cd tests/
+    - docker-compose up --abort-on-container-exit --exit-code-from pytest --build
 
 deploy-production:
   stage: deploy
-  # when: manual
+  when: manual
   image: python:3.6.6
   before_script:
     # configure aws access credentials:
