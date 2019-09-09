@@ -12,7 +12,6 @@ stages:
 pytest:
   stage: test
   script:
-    - cd rest/tests/
     - docker-compose up --abort-on-container-exit --exit-code-from pytest --build
 
 deploy-production-rest-lambda:

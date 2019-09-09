@@ -2,7 +2,7 @@ import json
 import pytest
 
 import sys, os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rest"))
 from app import app
 from dynamodb import Persistence
 
@@ -189,4 +189,41 @@ def test_process_batch_job(app_client):
     r = app_client.delete("/jobs/{}/results".format(record_id))
     assert r.status_code == 200
 
+@pytest.mark.skip(reason="We need to mock the request")
+def test_result(app_client):
+    """
+         - test /result endpoint
+    """
+    format_type = "gtiff"
+    bbox = {
+        "west": 16.1,
+        "east": 16.6,
+        "north": 48.6,
+        "south": 47.2
+    }
+    data = {
+        "process_graph": {
+            "loadco1": {
+                "process_id": "load_collection",
+                "arguments": {
+                    "id": "S2L1C",
+                    "spatial_extent": bbox,
+                    "temporal_extent": ["2017-01-01", "2017-02-01"],
+                },
+            },
+            "save1": {
+                "process_id": "save_result",
+                "arguments": {
+                    "data": {"from_node": "loadco1"},
+                    "format": format_type,
+                },
+                "result": True,
+            },
+        },
+    }
+
+    r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
+    actual = json.loads(r.data.decode('utf-8'))
+
+    assert r.status_code == 408
 

@@ -2,7 +2,7 @@
 # we need to convert Pipfile(.lock) to requirements.txt, so that we can use
 # pip install. This intermediate build container takes care of that:
 FROM python:3.6-buster as python-requirements
-COPY ./Pipfile ./Pipfile.lock /src/
+COPY ./workers/Pipfile ./workers/Pipfile.lock /src/
 WORKDIR /src/
 RUN \
     pip install --upgrade pipenv && \
@@ -21,4 +21,4 @@ RUN \
     pip install -r /requirements.txt && \
     pip install GDAL===2.4.0
 COPY . /src/
-CMD ["/usr/local/bin/python", "main.py"]
+CMD ["/usr/local/bin/python", "./workers/main.py"]
