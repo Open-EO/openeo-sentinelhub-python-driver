@@ -12,21 +12,21 @@ services:
       dockerfile: ./tests/Dockerfile.pytest
     command: bash -c "./wait-for-it.sh dynamodb:8000 -- && ./wait-for-it.sh minio:9000 -- && DYNAMODB_LOCAL_URL='http://dynamodb:8000' pytest -x"
 
-  workers:
-    image: shopeneo/workers
-    container_name: workers
-    build:
-      context: .
-      dockerfile: workers/Dockerfile
-    depends_on:
-        - createbuckets
-        - dynamodb
-    environment:
-      # SH details should be specified in .env file:
-      SENTINELHUB_INSTANCE_ID: "${SENTINELHUB_INSTANCE_ID}"
-      SENTINELHUB_LAYER_ID: "${SENTINELHUB_LAYER_ID}"
-      # S3 details - in our case, we connect to minio container:
-      DATA_AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
-      DATA_AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-      DATA_AWS_S3_ENDPOINT_URL: http://minio:9000
-      DYNAMODB_LOCAL_URL: http://dynamodb:8000
+  # workers:
+  #   image: shopeneo/workers
+  #   container_name: workers
+  #   build:
+  #     context: .
+  #     dockerfile: workers/Dockerfile
+  #   depends_on:
+  #       - createbuckets
+  #       - dynamodb
+  #   environment:
+  #     # SH details should be specified in .env file:
+  #     SENTINELHUB_INSTANCE_ID: "${SENTINELHUB_INSTANCE_ID}"
+  #     SENTINELHUB_LAYER_ID: "${SENTINELHUB_LAYER_ID}"
+  #     # S3 details - in our case, we connect to minio container:
+  #     DATA_AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+  #     DATA_AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+  #     DATA_AWS_S3_ENDPOINT_URL: http://minio:9000
+  #     DYNAMODB_LOCAL_URL: http://dynamodb:8000

@@ -21,4 +21,4 @@ RUN \
     pip install -r /requirements.txt && \
     pip install GDAL===2.4.0
 COPY . /src/
-CMD ["/usr/local/bin/python", "./workers/main.py"]
+# CMD ["/usr/local/bin/python", "./workers/main.py"]

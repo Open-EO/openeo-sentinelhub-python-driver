@@ -50,24 +50,24 @@ services:
       /usr/bin/mc policy set public openEo/com.sinergise.openeo.results;
       "
 
-  # workers:
-  #   image: shopeneo/workers
-  #   container_name: workers
-  #   build:
-  #     context: .
-  #     dockerfile: workers/Dockerfile
-  #   depends_on:
-  #       - createbuckets
-  #       - dynamodb
-  #   environment:
-  #     # SH details should be specified in .env file:
-  #     SENTINELHUB_INSTANCE_ID: "${SENTINELHUB_INSTANCE_ID}"
-  #     SENTINELHUB_LAYER_ID: "${SENTINELHUB_LAYER_ID}"
-  #     # S3 details - in our case, we connect to minio container:
-  #     DATA_AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
-  #     DATA_AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-  #     DATA_AWS_S3_ENDPOINT_URL: http://minio:9000
-  #     DYNAMODB_LOCAL_URL: http://dynamodb:8000
+  workers:
+    image: shopeneo/workers
+    container_name: workers
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+    depends_on:
+        - createbuckets
+    environment:
+      # SH details should be specified in .env file:
+      SENTINELHUB_INSTANCE_ID: "${SENTINELHUB_INSTANCE_ID}"
+      SENTINELHUB_LAYER_ID: "${SENTINELHUB_LAYER_ID}"
+      # S3 details - in our case, we connect to minio container:
+      DATA_AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+      DATA_AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+      DATA_AWS_S3_ENDPOINT_URL: http://minio:9000
+      DYNAMODB_LOCAL_URL: http://dynamodb:8000
+    command: bash -c "cd workers && dir && chmod +x ./wait-for-it.sh && ./wait-for-it.sh dynamodb:8000 -- && dir && python ../rest/dynamodb.py && python main.py"
 
 volumes:
   minio-data:
