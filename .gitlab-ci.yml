@@ -60,7 +60,7 @@ deploy-production-workers-ecr:
     # configure aws access credentials:
     - mkdir -p ~/.aws
     - echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
-    - echo -e "[default]\naws_access_key_id=$PROD_AWS_ACCESS_KEY_ID\naws_secret_access_key=$PROD_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
+    - echo -e "[default]\naws_access_key_id=$PRODWORKERS_AWS_ACCESS_KEY_ID\naws_secret_access_key=$PRODWORKERS_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
     - apk add --update python python-dev py-pip
     - pip install awscli
   script:
