@@ -6,14 +6,14 @@ services:
   - docker:dind
 
 stages:
-  # - test
+  - test
   - deploy
 
-# pytest:
-#   stage: test
-#   script:
-#     - cd rest/tests/
-#     - docker-compose up --abort-on-container-exit --exit-code-from pytest --build
+pytest:
+  stage: test
+  script:
+    - cd rest/tests/
+    - docker-compose up --abort-on-container-exit --exit-code-from pytest --build
 
 deploy-production-rest-lambda:
   stage: deploy
