@@ -20,5 +20,5 @@ RUN \
     export C_INCLUDE_PATH=/usr/include/gdal && \
     pip install -r /requirements.txt && \
     pip install GDAL===2.4.0
-COPY . /src/
+# COPY . /src/
 # CMD ["/usr/local/bin/python", "./workers/main.py"]
