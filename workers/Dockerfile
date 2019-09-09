@@ -13,6 +13,7 @@ RUN \
 FROM python:3.6-buster
 COPY --from=python-requirements /requirements.txt /requirements.txt
 WORKDIR /src/
+COPY . /src/
 RUN \
     apt-get update && \
     apt-get install -y -q python3-gdal libgdal-dev && \
@@ -20,5 +21,5 @@ RUN \
     export C_INCLUDE_PATH=/usr/include/gdal && \
     pip install -r /requirements.txt && \
     pip install GDAL===2.4.0
-COPY . /src/
+#COPY . /src/
 # CMD ["/usr/local/bin/python", "./workers/main.py"]
