@@ -189,7 +189,7 @@ def test_process_batch_job(app_client):
     r = app_client.delete("/jobs/{}/results".format(record_id))
     assert r.status_code == 200
 
-@pytest.mark.skip(reason="We need to mock the request")
+# @pytest.mark.skip(reason="We need to mock the request")
 def test_result(app_client):
     """
          - test /result endpoint
@@ -224,6 +224,7 @@ def test_result(app_client):
 
     r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
     actual = json.loads(r.data.decode('utf-8'))
+    print(actual)
 
     assert r.status_code == 408
 
