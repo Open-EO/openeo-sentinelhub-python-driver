@@ -56,12 +56,14 @@ deploy-production-workers-ecr:
       - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+$/
   variables:
     CI_REGISTRY_IMAGE: shopeneo/workers
+    ECS_CLUSTER: shopeneoworkers
+    ECS_SERVICE: shopeneoworkers-service
   before_script:
     # configure aws access credentials:
     - mkdir -p ~/.aws
     - echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
     - echo -e "[default]\naws_access_key_id=$PRODWORKERS_AWS_ACCESS_KEY_ID\naws_secret_access_key=$PRODWORKERS_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
-    - apk add --update python python-dev py-pip jq
+    - apk add --update python python-dev py-pip
     - pip install awscli
   script:
     - cd workers/
@@ -70,6 +72,6 @@ deploy-production-workers-ecr:
     - docker build -t "$CI_REGISTRY/$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG" -t "$CI_REGISTRY/$CI_REGISTRY_IMAGE:latest" --build-arg VERSION=$CI_COMMIT_TAG --build-arg VCS_REF=$CI_COMMIT_SHA --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') .
     - docker push "$CI_REGISTRY/$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"
     - docker push "$CI_REGISTRY/$CI_REGISTRY_IMAGE:latest"
-    # because we use docker image version `latest`, there is no need to update the ECS task definition,
-    # we just need to force-update the service:
-    - aws ecs update-service --cluster shopeneoworkers --service shopeneoworkers-service --force-new-deployment
+    # We assume here that ECS task definition uses docker image version `latest`, so there is no
+    # need to update the ECS task definition. We just force-update the service:
+    - aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --force-new-deployment
