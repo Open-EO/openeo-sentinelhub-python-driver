@@ -89,7 +89,7 @@ services:
       DATA_AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
       DATA_AWS_S3_ENDPOINT_URL: http://minio:9000
       DYNAMODB_LOCAL_URL: http://dynamodb:8000
-    command: bash -c "dir && cd workers && python ../rest/dynamodb.py && python main.py"
+    command: bash -c "cd workers && python ../rest/dynamodb.py && python main.py"
 
 volumes:
   minio-data:
