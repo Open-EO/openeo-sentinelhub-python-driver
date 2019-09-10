@@ -140,34 +140,36 @@ def test_process_batch_job(app_client):
     """
 
     data = {
-        "loadco1": {
-        "process_id": "load_collection",
-          "arguments": {
-            "id": "S2L1C",
-            "spatial_extent": {
-              "west": 12.32271,
-              "east": 12.33572,
-              "north": 42.07112,
-              "south": 42.06347
+        "process_graph": {
+            "loadco1": {
+            "process_id": "load_collection",
+              "arguments": {
+                "id": "S2L1C",
+                "spatial_extent": {
+                  "west": 12.32271,
+                  "east": 12.33572,
+                  "north": 42.07112,
+                  "south": 42.06347
+                },
+                "temporal_extent": "2019-08-17"
+              }
             },
-            "temporal_extent": "2019-08-17"
+            "ndvi1": {
+              "process_id": "ndvi",
+              "arguments": {
+                "data": {"from_node": "loadco1"}
+              }
+            },
+            "result1": {
+              "process_id": "save_result",
+              "arguments": {
+                "data": {"from_node": "ndvi1"},
+                "format": "gtiff"
+              },
+              "result": True
+            }
           }
-        },
-        "ndvi1": {
-          "process_id": "ndvi",
-          "arguments": {
-            "data": {"from_node": "loadco1"}
-          }
-        },
-        "result1": {
-          "process_id": "save_result",
-          "arguments": {
-            "data": {"from_node": "ndvi1"},
-            "format": "gtiff"
-          },
-          "result": True
         }
-      }
 
     r = app_client.post("/jobs", data=json.dumps(data), content_type='application/json')
     assert r.status_code == 201
@@ -204,40 +206,41 @@ def test_result(app_client):
     """
          - test /result endpoint
     """
-    format_type = "gtiff"
     data = {
-        "loadco1": {
-          "process_id": "load_collection",
-          "arguments": {
-            "id": "S2L1C",
-            "spatial_extent": {
-              "west": 12.32271,
-              "east": 12.33572,
-              "north": 42.07112,
-              "south": 42.06347
+        "process_graph": {
+            "loadco1": {
+            "process_id": "load_collection",
+              "arguments": {
+                "id": "S2L1C",
+                "spatial_extent": {
+                  "west": 12.32271,
+                  "east": 12.33572,
+                  "north": 42.07112,
+                  "south": 42.06347
+                },
+                "temporal_extent": "2019-08-17"
+              }
             },
-            "temporal_extent": "2019-08-17"
+            "ndvi1": {
+              "process_id": "ndvi",
+              "arguments": {
+                "data": {"from_node": "loadco1"}
+              }
+            },
+            "result1": {
+              "process_id": "save_result",
+              "arguments": {
+                "data": {"from_node": "ndvi1"},
+                "format": "gtiff"
+              },
+              "result": True
+            }
           }
-        },
-        "ndvi1": {
-          "process_id": "ndvi",
-          "arguments": {
-            "data": {"from_node": "loadco1"}
-          }
-        },
-        "result1": {
-          "process_id": "save_result",
-          "arguments": {
-            "data": {"from_node": "ndvi1"},
-            "format": "gtiff"
-          },
-          "result": True
         }
-    }
 
     r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
-    actual = json.loads(r.data.decode('utf-8'))
-    print(actual)
+    # actual = json.loads(r.data.decode('utf-8'))
+    # print(r.data)
 
-    assert r.status_code == 408
+    assert r.status_code == 200
 

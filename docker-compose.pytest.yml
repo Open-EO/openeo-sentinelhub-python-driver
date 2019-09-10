@@ -12,7 +12,7 @@ services:
       dockerfile: ./tests/Dockerfile.pytest
     depends_on:
       - dynamodb
-    command: bash -c "./wait-for-it.sh dynamodb:8000 -- && ./wait-for-it.sh minio:9000 -- && DYNAMODB_LOCAL_URL='http://dynamodb:8000' pytest -x"
+    command: bash -c "./wait-for-it.sh dynamodb:8000 -- && ./wait-for-it.sh minio:9000 -- && DATA_AWS_S3_ENDPOINT_URL='http://minio:9000' && DYNAMODB_LOCAL_URL='http://dynamodb:8000' pytest -x"
 
   # workers:
   #   image: shopeneo/workers
