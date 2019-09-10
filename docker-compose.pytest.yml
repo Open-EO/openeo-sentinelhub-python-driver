@@ -13,6 +13,10 @@ services:
     depends_on:
       dynamodb:
         condition: service_healthy
+      minio:
+        condition: service_healthy
+      # createbuckets:
+      #     condition: service_healthy
     command: bash -c "DATA_AWS_S3_ENDPOINT_URL='http://minio:9000' && DYNAMODB_LOCAL_URL='http://dynamodb:8000' pytest -x"
 
   # workers:

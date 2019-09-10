@@ -23,9 +23,9 @@ services:
     command: -jar DynamoDBLocal.jar -inMemory -port 8000
     healthcheck:
       test: ["CMD", "curl", "-s", "http://localhost:8000"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
-      retries: 10
+      retries: 30
 
   minio:
     image: minio/minio
@@ -39,9 +39,9 @@ services:
       MINIO_SECRET_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
     healthcheck:
       test: ["CMD", "curl", "-s", "http://localhost:9000"]
-      interval: 30s
+      interval: 10s
       timeout: 10s
-      retries: 10
+      retries: 30
     
   createbuckets:
     image: minio/mc
@@ -58,8 +58,14 @@ services:
       /usr/bin/mc mb openEo/com.sinergise.openeo.results;
       echo 'But it looks ok anyway.';
       /usr/bin/mc policy set public openEo/com.sinergise.openeo.results;
-      export CREATEBUCKETS_DONE="yes"  
+      export S3_DONE="yes";
       "
+    # healthcheck:
+    #   test: ["CMD", "true"]
+    #   # test: ["CMD-SHELL", "if [ -z $${S3_DONE+x} ]; then false; else true;"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 300
 
   workers:
     image: shopeneo/workers
@@ -68,9 +74,11 @@ services:
       context: .
       dockerfile: workers/Dockerfile
     depends_on:
-        createbuckets:
-          condition: service_started
+        # createbuckets:
+        #   condition: service_healthy
         dynamodb:
+          condition: service_healthy
+        minio:
           condition: service_healthy
     environment:
       # SH details should be specified in .env file:
