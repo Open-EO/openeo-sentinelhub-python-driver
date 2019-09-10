@@ -52,7 +52,7 @@ services:
       /usr/bin/mc mb openEo/com.sinergise.openeo.results;
       echo 'But it looks ok anyway.';
       /usr/bin/mc policy set public openEo/com.sinergise.openeo.results;
-      sleep 2000;
+      tail -f /dev/null;
       "
 
   workers:
