@@ -239,8 +239,6 @@ def test_result(app_client):
         }
 
     r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
-    # actual = json.loads(r.data.decode('utf-8'))
-    # print(r.data)
 
     assert r.status_code == 200
 

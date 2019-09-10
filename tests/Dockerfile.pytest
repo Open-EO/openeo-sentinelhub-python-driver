@@ -2,6 +2,5 @@ FROM python:3.6.6
 ADD . /
 WORKDIR /tests
 RUN pip3 install pipenv
-RUN chmod +x wait-for-it.sh
 RUN pipenv install --system --deploy --dev
 RUN ./load_fixtures.sh

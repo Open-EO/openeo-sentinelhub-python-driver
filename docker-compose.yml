@@ -6,12 +6,6 @@ version: "2.4"
 
 services:
 
-  # pytest:
-  #   build:
-  #     context: .
-  #     dockerfile: ./tests/Dockerfile.pytest
-  #   command: bash -c "./wait-for-it.sh dynamodb:8000 -- && ./wait-for-it.sh minio:9000 -- && cd .. &&  DYNAMODB_LOCAL_URL='http://dynamodb:8000' python ../rest/dynamodb.py && cd /tests/ && DYNAMODB_LOCAL_URL='http://dynamodb:8000' pytest -x"
-
   dynamodb:
     image: amazon/dynamodb-local
     ports:
@@ -58,14 +52,8 @@ services:
       /usr/bin/mc mb openEo/com.sinergise.openeo.results;
       echo 'But it looks ok anyway.';
       /usr/bin/mc policy set public openEo/com.sinergise.openeo.results;
-      export S3_DONE="yes";
+      sleep 2000;
       "
-    # healthcheck:
-    #   test: ["CMD", "true"]
-    #   # test: ["CMD-SHELL", "if [ -z $${S3_DONE+x} ]; then false; else true;"]
-    #   interval: 30s
-    #   timeout: 10s
-    #   retries: 300
 
   workers:
     image: shopeneo/workers
@@ -74,8 +62,6 @@ services:
       context: .
       dockerfile: workers/Dockerfile
     depends_on:
-        # createbuckets:
-        #   condition: service_healthy
         dynamodb:
           condition: service_healthy
         minio:

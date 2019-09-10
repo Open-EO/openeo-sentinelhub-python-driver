@@ -12,7 +12,7 @@ stages:
 pytest:
   stage: test
   script:
-    - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml up --abort-on-container-exit --exit-code-from pytest --build
+    - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml up --exit-code-from pytest --build
 
 deploy-production-rest-lambda:
   stage: deploy
