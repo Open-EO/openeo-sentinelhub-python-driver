@@ -161,5 +161,5 @@ if __name__ == "__main__":
 
     log(INFO, "Initializing DynamoDB (url: {}, production: {})...".format(DYNAMODB_LOCAL_URL, DYNAMODB_PRODUCTION))
     Persistence.ensure_table_exists(Persistence.ET_PROCESS_GRAPHS)
-    Persistence.ensure_table_exists(Persistence.ET_JOBS, True)
+    Persistence.ensure_table_exists(Persistence.ET_JOBS)
     log(INFO, "DynamoDB initialized.")
