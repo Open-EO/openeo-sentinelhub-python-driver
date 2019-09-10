@@ -17,7 +17,7 @@ services:
         condition: service_healthy
       # createbuckets:
       #     condition: service_healthy
-    command: bash -c "echo '***********************************************Running pytest command!!!!!!!***********************************************' && DATA_AWS_S3_ENDPOINT_URL='http://minio:9000' DYNAMODB_LOCAL_URL='http://dynamodb:8000' pytest -s"
+    command: bash -c "echo '***********************************************Running pytest command!!!!!!!***********************************************' && DATA_AWS_S3_ENDPOINT_URL='http://minio:9000' DYNAMODB_LOCAL_URL='http://dynamodb:8000' pytest -x"
 
   # workers:
   #   image: shopeneo/workers

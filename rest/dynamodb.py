@@ -154,6 +154,10 @@ class Persistence(object):
         except:
             log(INFO, "Table {} does not exists.".format(table_name))
 
+    @classmethod
+    def clear_table(cls, table_name):
+        for item in cls.items(table_name):
+            cls.delete(table_name,item["id"])
 
 if __name__ == "__main__":
 

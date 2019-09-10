@@ -31,9 +31,6 @@ AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', FAKE_AWS_ACCESS_KEY_ID)
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', FAKE_AWS_SECRET_ACCESS_KEY)
 S3_LOCAL_URL = os.environ.get('DATA_AWS_S3_ENDPOINT_URL', 'http://localhost:9000')
 
-print(S3_LOCAL_URL)
-
-
 @app.after_request
 def after_request(response):
     response.headers['Access-Control-Allow-Origin'] = '*'
@@ -203,8 +200,6 @@ def api_result():
                     message = "This endpoint can only succeed if process graph yields exactly one result, instead it received: {}.".format(len(results)),
                     links = []
                     ), 400)
-
-            print(os.environ.get('AWS_ACCESS_KEY_ID'),os.environ.get('AWS_SECRET_ACCESS_KEY'))
 
             s3 = boto3.client('s3',
                 endpoint_url=S3_LOCAL_URL,
