@@ -1,4 +1,4 @@
-version: '3'
+version: "2.4"
 # This file helps run services so we can run integration tests.
 # For testing: docker-compose up --abort-on-container-exit --exit-code-from pytest
 # To see exit code: echo Exit Code is %errorlevel%
@@ -21,6 +21,11 @@ services:
     # volumes:
     #   - static-content:/usr/src/app
     command: -jar DynamoDBLocal.jar -inMemory -port 8000
+    healthcheck:
+      test: ["CMD", "curl", "-s", "http://localhost:8000"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
 
   minio:
     image: minio/minio
@@ -32,15 +37,20 @@ services:
     environment:
       MINIO_ACCESS_KEY: AKIAIOSFODNN7EXAMPLE
       MINIO_SECRET_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+    healthcheck:
+      test: ["CMD", "curl", "-s", "http://localhost:9000"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
     
   createbuckets:
     image: minio/mc
     container_name: createbuckets
     depends_on:
-      - minio
+      minio:
+        condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      sleep 10;
       /usr/bin/mc config host add openEo http://minio:9000 AKIAIOSFODNN7EXAMPLE wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY --api s3v4;
       /usr/bin/mc rm --recursive --force openEo/com.sinergise.openeo.results;
       /usr/bin/mc rm --force openEo/com.sinergise.openeo.results;
@@ -48,6 +58,7 @@ services:
       /usr/bin/mc mb openEo/com.sinergise.openeo.results;
       echo 'But it looks ok anyway.';
       /usr/bin/mc policy set public openEo/com.sinergise.openeo.results;
+      export CREATEBUCKETS_DONE="yes"  
       "
 
   workers:
@@ -57,7 +68,10 @@ services:
       context: .
       dockerfile: workers/Dockerfile
     depends_on:
-        - createbuckets
+        createbuckets:
+          condition: service_started
+        dynamodb:
+          condition: service_healthy
     environment:
       # SH details should be specified in .env file:
       SENTINELHUB_INSTANCE_ID: "${SENTINELHUB_INSTANCE_ID}"

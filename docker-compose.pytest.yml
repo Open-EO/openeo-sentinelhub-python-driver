@@ -1,4 +1,4 @@
-version: '3'
+version: "2.4"
 # This file helps run services so we can run integration tests.
 # For testing: docker-compose up --abort-on-container-exit --exit-code-from pytest
 # To see exit code: echo Exit Code is %errorlevel%
@@ -13,7 +13,7 @@ services:
     depends_on:
       dynamodb:
         condition: service_healthy
-    command: bash -c "./wait-for-it.sh dynamodb:8000 -- && ./wait-for-it.sh minio:9000 -- && DATA_AWS_S3_ENDPOINT_URL='http://minio:9000' && DYNAMODB_LOCAL_URL='http://dynamodb:8000' pytest -x"
+    command: bash -c "DATA_AWS_S3_ENDPOINT_URL='http://minio:9000' && DYNAMODB_LOCAL_URL='http://dynamodb:8000' pytest -x"
 
   # workers:
   #   image: shopeneo/workers
