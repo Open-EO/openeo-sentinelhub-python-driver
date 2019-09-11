@@ -32,6 +32,11 @@ class load_collectionEOTask(ProcessEOTask):
         patch = None
         INPUT_BANDS = None
         band_aliases = {}
+        # EOLearn expects the date strings not to include `Z` at the end, so we
+        # fix input here. Note that this implementation is not 100% correct,
+        # because we should also be accepting strings with *only time*, and the
+        # relevant spec is ISO 3339.
+        temporal_extent = [t.rstrip('Z') for t in arguments['temporal_extent']]
         if arguments['id'] == 'S2L1C':
             INPUT_BANDS = AwsConstants.S2_L1C_BANDS
             patch = S2L1CWCSInput(
@@ -45,7 +50,7 @@ class load_collectionEOTask(ProcessEOTask):
                 resx='10m', # resolution x
                 resy='10m', # resolution y
                 maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
-            ).execute(EOPatch(), time_interval=arguments['temporal_extent'], bbox=bbox)
+            ).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)
             band_aliases = {
                 "nir": "B08",
                 "red": "B04",
