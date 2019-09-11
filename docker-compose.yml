@@ -46,8 +46,7 @@ services:
     entrypoint: >
       /bin/sh -c "
       /usr/bin/mc config host add openEo http://minio:9000 AKIAIOSFODNN7EXAMPLE wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY --api s3v4;
-      /usr/bin/mc rm --recursive --force openEo/com.sinergise.openeo.results;
-      /usr/bin/mc rm --force openEo/com.sinergise.openeo.results;
+      /usr/bin/mc rb --force openEo/com.sinergise.openeo.results;
       echo 'Now the error will be reported:';
       /usr/bin/mc mb openEo/com.sinergise.openeo.results;
       echo 'But it looks ok anyway.';
