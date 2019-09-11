@@ -26,17 +26,28 @@ class load_collectionEOTask(ProcessEOTask):
             CRS(crs),  # we support whatever sentinelhub-py supports
         )
 
+    @staticmethod
+    def _clean_temporal_extent(temporal_extent):
+        # EOLearn expects the date strings not to include `Z` at the end, so we
+        # fix input here. It also doesn't deal with None, so we fix this.
+        # Note that this implementation is still not 100% correct, because we should
+        # also be accepting strings with *only time* for example.
+        # https://eo-learn.readthedocs.io/en/latest/eolearn.io.sentinelhub_service.html#eolearn.io.sentinelhub_service.SentinelHubOGCInput.execute
+        result = [None if t is None else t.rstrip('Z') for t in temporal_extent]
+        if result[0] is None:
+            result[0] = '1970-01-01'
+        if result[1] is None:
+            result[1] = 'latest'
+        return result
+
     def process(self, arguments):
         spatial_extent = arguments['spatial_extent']
         bbox = load_collectionEOTask._convert_bbox(spatial_extent)
         patch = None
         INPUT_BANDS = None
         band_aliases = {}
-        # EOLearn expects the date strings not to include `Z` at the end, so we
-        # fix input here. Note that this implementation is not 100% correct,
-        # because we should also be accepting strings with *only time*, and the
-        # relevant spec is ISO 3339.
-        temporal_extent = [None if t is None else t.rstrip('Z') for t in arguments['temporal_extent']]
+        temporal_extent = load_collectionEOTask._clean_temporal_extent(arguments['temporal_extent'])
+
         if arguments['id'] == 'S2L1C':
             INPUT_BANDS = AwsConstants.S2_L1C_BANDS
             patch = S2L1CWCSInput(
