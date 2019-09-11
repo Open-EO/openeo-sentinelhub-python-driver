@@ -20,7 +20,7 @@ deploy-production-rest-lambda:
   when: manual
   only:
     variables:
-      - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+([.][^.]+)?$/
+      - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+$/
   image: python:3.6.6
   before_script:
     # configure aws access credentials:
@@ -53,9 +53,11 @@ deploy-production-workers-ecr:
   when: manual
   only:
     variables:
-      - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+([.][^.]+)?$/
+      - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+$/
   variables:
     CI_REGISTRY_IMAGE: shopeneo/workers
+    ECS_CLUSTER: shopeneoworkers
+    ECS_SERVICE: shopeneoworkers-service
   before_script:
     # configure aws access credentials:
     - mkdir -p ~/.aws
@@ -65,7 +67,11 @@ deploy-production-workers-ecr:
     - pip install awscli
   script:
     - cd workers/
+    # build and publish docker image:
     - $(aws ecr get-login --no-include-email --region eu-central-1)
     - docker build -t "$CI_REGISTRY/$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG" -t "$CI_REGISTRY/$CI_REGISTRY_IMAGE:latest" --build-arg VERSION=$CI_COMMIT_TAG --build-arg VCS_REF=$CI_COMMIT_SHA --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') .
     - docker push "$CI_REGISTRY/$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"
     - docker push "$CI_REGISTRY/$CI_REGISTRY_IMAGE:latest"
+    # We assume here that ECS task definition uses docker image version `latest`, so there is no
+    # need to update the ECS task definition. We just force-update the service:
+    - aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --force-new-deployment
