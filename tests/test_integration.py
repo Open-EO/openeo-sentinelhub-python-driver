@@ -14,7 +14,7 @@ def app_client():
 
 def setup_function(function):
     Persistence.ensure_table_exists(Persistence.ET_PROCESS_GRAPHS)
-    Persistence.ensure_table_exists(Persistence.ET_JOBS)
+    Persistence.ensure_table_exists(Persistence.ET_JOBS, True)
 
 
 def teardown_function(function):
