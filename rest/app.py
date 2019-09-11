@@ -85,14 +85,14 @@ def api_process_graphs(process_graph_id=None):
         if process_graph_id is None:
             process_graphs = []
             links = []
-            for record_id, record in Persistence.items(Persistence.ET_PROCESS_GRAPHS):
+            for record in Persistence.items(Persistence.ET_PROCESS_GRAPHS):
                 process_graphs.append({
-                    "id": record_id,
+                    "id": record["id"],
                     "title": record.get("title", None),
                     "description": record.get("description", None),
                 })
                 links.append({
-                    "href": "{}/process_graphs/{}".format(flask.request.url_root, record_id),
+                    "href": "{}/process_graphs/{}".format(flask.request.url_root, record["id"]),
                     "title": record.get("title", None),
                 })
             return {

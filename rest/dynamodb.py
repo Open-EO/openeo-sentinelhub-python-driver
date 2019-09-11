@@ -116,14 +116,9 @@ class Persistence(object):
         return updated_item
 
     @classmethod
-    def ensure_table_exists(cls, table_name, stream_enabled=False):
+    def ensure_table_exists(cls, table_name):
         log(INFO, "Ensuring DynamoDB table exists: '{}'.".format(table_name))
         try:
-            if stream_enabled:
-                stream_specification={'StreamEnabled': True, 'StreamViewType': 'KEYS_ONLY'}
-            else:
-                stream_specification={'StreamEnabled': False}
-
             cls.dynamodb.create_table(
                 AttributeDefinitions=[
                     {
@@ -139,7 +134,6 @@ class Persistence(object):
                 ],
                 TableName=table_name,
                 BillingMode='PAY_PER_REQUEST',  # we use on-demand pricing
-                StreamSpecification=stream_specification,
             )
             log(INFO, "Successfully created DynamoDB table '{}'.".format(table_name))
         except cls.dynamodb.exceptions.ResourceInUseException:
@@ -171,5 +165,5 @@ if __name__ == "__main__":
 
     log(INFO, "Initializing DynamoDB (url: {}, production: {})...".format(DYNAMODB_LOCAL_URL, DYNAMODB_PRODUCTION))
     Persistence.ensure_table_exists(Persistence.ET_PROCESS_GRAPHS)
-    Persistence.ensure_table_exists(Persistence.ET_JOBS, True)
+    Persistence.ensure_table_exists(Persistence.ET_JOBS)
     log(INFO, "DynamoDB initialized.")
