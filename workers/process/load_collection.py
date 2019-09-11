@@ -36,7 +36,7 @@ class load_collectionEOTask(ProcessEOTask):
         # fix input here. Note that this implementation is not 100% correct,
         # because we should also be accepting strings with *only time*, and the
         # relevant spec is ISO 3339.
-        temporal_extent = [t.rstrip('Z') for t in arguments['temporal_extent']]
+        temporal_extent = [None if t is None else t.rstrip('Z') for t in arguments['temporal_extent']]
         if arguments['id'] == 'S2L1C':
             INPUT_BANDS = AwsConstants.S2_L1C_BANDS
             patch = S2L1CWCSInput(
