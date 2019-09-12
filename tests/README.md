@@ -11,11 +11,11 @@ The tests need fixtures which are not saved in the repository, but must instead 
 
 Procedure for running tests:
 ```
+$ docker-compose up -d
+$ cd tests/
+$ ./load_fixtures.sh
 $ pipenv shell
-<shell> $ docker-compose up -d
-<shell> $ cd tests/
 <shell> $ pipenv install --dev
-<shell> $ ./load_fixtures.sh
 <shell> $ pytest -x -v
 ```
 
