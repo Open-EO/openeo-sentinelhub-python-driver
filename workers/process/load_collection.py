@@ -7,7 +7,7 @@ from eolearn.core import FeatureType, EOPatch
 from eolearn.io import S2L1CWCSInput
 
 
-from ._common import ProcessEOTask
+from ._common import ProcessEOTask, InvalidInputError
 
 
 SENTINELHUB_INSTANCE_ID = os.environ.get('SENTINELHUB_INSTANCE_ID', None)
@@ -15,11 +15,20 @@ SENTINELHUB_LAYER_ID = os.environ.get('SENTINELHUB_LAYER_ID', None)
 
 
 def _clean_temporal_extent(temporal_extent):
-    # EOLearn expects the date strings not to include `Z` at the end, so we
-    # fix input here. It also doesn't deal with None, so we fix this.
-    # Note that this implementation is still not 100% correct, because we should
-    # also be accepting strings with *only time* for example.
-    # https://eo-learn.readthedocs.io/en/latest/eolearn.io.sentinelhub_service.html#eolearn.io.sentinelhub_service.SentinelHubOGCInput.execute
+    """
+        EOLearn expects the date strings not to include `Z` at the end, so we
+        fix input here. It also doesn't deal with None, so we fix this.
+        Note that this implementation is still not 100% correct, because we should
+        also be accepting strings with *only time* for example.
+        https://eo-learn.readthedocs.io/en/latest/eolearn.io.sentinelhub_service.html#eolearn.io.sentinelhub_service.SentinelHubOGCInput.execute
+    """
+
+    # Check that only one of the intervals is None: (if any)
+    # https://open-eo.github.io/openeo-api/processreference/#load_collection
+    # > Also supports open intervals by setting one of the boundaries to null, but never both.
+    if temporal_extent == [None, None]:
+        raise InvalidInputError("Only one boundary in temporal_extent can be set to null")
+
     result = [None if t is None else t.rstrip('Z') for t in temporal_extent]
     if result[0] is None:
         result[0] = '1970-01-01'

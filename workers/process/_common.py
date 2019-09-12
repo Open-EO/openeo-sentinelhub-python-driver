@@ -7,6 +7,10 @@ class ExecFailedError(Exception):
         self.msg = msg
 
 
+class InvalidInputError(ExecFailedError):
+    pass
+
+
 class ProcessEOTask(EOTask):
     """ Original EOTask (eolearn package) uses constructor and execute() to
         process data.

@@ -84,8 +84,11 @@ def worker_proc(jobs_queue, results_queue, worker_number):
         error_msg = None
         try:
             results = _execute_process_graph(job["process_graph"], job["job_id"])
+        except process.InvalidInputError as ex:
+            logger.exception("Job exec failed - invalid input: {}".format(ex.msg))
+            error_msg = ex.msg
         except process.ExecFailedError as ex:
-            logger.exception("Job exec failed")
+            logger.exception("Job exec failed: {}".format(ex.msg))
             error_msg = ex.msg
         except Exception as ex:
             logger.exception("Unknown exception while executing process graph")
