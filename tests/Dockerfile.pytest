@@ -1,5 +1,7 @@
 FROM python:3.6.6
 ADD . /
+RUN chmod +x download-process-definitions.sh
+RUN ./download-process-definitions.sh
 WORKDIR /tests
 RUN pip3 install pipenv
 RUN pipenv install --system --deploy --dev
