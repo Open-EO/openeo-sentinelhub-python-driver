@@ -25,6 +25,11 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 RESULTS_S3_BUCKET_NAME = os.environ.get('RESULTS_S3_BUCKET_NAME', 'com.sinergise.openeo.results')
 REQUEST_TIMEOUT = 30 # In seconds
 
+FAKE_AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
+FAKE_AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', FAKE_AWS_ACCESS_KEY_ID)
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', FAKE_AWS_SECRET_ACCESS_KEY)
+S3_LOCAL_URL = os.environ.get('DATA_AWS_S3_ENDPOINT_URL', 'http://localhost:9000')
 
 @app.after_request
 def after_request(response):
@@ -197,9 +202,10 @@ def api_result():
                     ), 400)
 
             s3 = boto3.client('s3',
+                endpoint_url=S3_LOCAL_URL,
                 region_name="eu-central-1",
-                aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
-                aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+                aws_access_key_id=AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
             )
 
             result = results[0]

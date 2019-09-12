@@ -2,7 +2,7 @@ import json
 import pytest
 
 import sys, os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rest"))
 from app import app
 from dynamodb import Persistence
 
@@ -18,8 +18,8 @@ def setup_function(function):
 
 
 def teardown_function(function):
-    Persistence.delete_table(Persistence.ET_PROCESS_GRAPHS)
-    Persistence.delete_table(Persistence.ET_JOBS)
+    Persistence.clear_table(Persistence.ET_PROCESS_GRAPHS)
+    Persistence.clear_table(Persistence.ET_JOBS)
 
 
 ###################################
@@ -139,25 +139,37 @@ def test_process_batch_job(app_client):
          - test /jobs/job_id/results endpoints
     """
 
-    bbox = {
-        "west": 16.1,
-        "east": 16.6,
-        "north": 48.6,
-        "south": 47.2
-    }
     data = {
         "process_graph": {
             "loadco1": {
-                "process_id": "load_collection",
-                "arguments": {
-                    "id": "S2L1C",
-                    "spatial_extent": bbox,
-                    "temporal_extent": ["2017-01-01", "2017-02-01"],
+            "process_id": "load_collection",
+              "arguments": {
+                "id": "S2L1C",
+                "spatial_extent": {
+                  "west": 12.32271,
+                  "east": 12.33572,
+                  "north": 42.07112,
+                  "south": 42.06347
                 },
-                "result": True,
+                "temporal_extent": "2019-08-17"
+              }
             },
-        },
-    }
+            "ndvi1": {
+              "process_id": "ndvi",
+              "arguments": {
+                "data": {"from_node": "loadco1"}
+              }
+            },
+            "result1": {
+              "process_id": "save_result",
+              "arguments": {
+                "data": {"from_node": "ndvi1"},
+                "format": "gtiff"
+              },
+              "result": True
+            }
+          }
+        }
 
     r = app_client.post("/jobs", data=json.dumps(data), content_type='application/json')
     assert r.status_code == 201
@@ -189,4 +201,44 @@ def test_process_batch_job(app_client):
     r = app_client.delete("/jobs/{}/results".format(record_id))
     assert r.status_code == 200
 
+# @pytest.mark.skip(reason="We need to mock the request")
+def test_result(app_client):
+    """
+         - test /result endpoint
+    """
+    data = {
+        "process_graph": {
+            "loadco1": {
+            "process_id": "load_collection",
+              "arguments": {
+                "id": "S2L1C",
+                "spatial_extent": {
+                  "west": 12.32271,
+                  "east": 12.33572,
+                  "north": 42.07112,
+                  "south": 42.06347
+                },
+                "temporal_extent": "2019-08-17"
+              }
+            },
+            "ndvi1": {
+              "process_id": "ndvi",
+              "arguments": {
+                "data": {"from_node": "loadco1"}
+              }
+            },
+            "result1": {
+              "process_id": "save_result",
+              "arguments": {
+                "data": {"from_node": "ndvi1"},
+                "format": "gtiff"
+              },
+              "result": True
+            }
+          }
+        }
+
+    r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
+
+    assert r.status_code == 200
 
