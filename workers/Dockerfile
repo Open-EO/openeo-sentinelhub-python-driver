@@ -11,17 +11,14 @@ RUN \
 
 # Python 3.6 on Debian buster:
 FROM python:3.6-buster
+COPY --from=python-requirements /requirements.txt /requirements.txt
 RUN \
     apt-get update && \
     apt-get install -y -q python3-gdal libgdal-dev && \
     export CPLUS_INCLUDE_PATH=/usr/include/gdal && \
     export C_INCLUDE_PATH=/usr/include/gdal && \
+    pip install -r /requirements.txt && \
     pip install GDAL===2.4.0
-COPY --from=python-requirements /requirements.txt /requirements.txt
-# GDAL is already installed (different version), so we ignore it:
-RUN \
-    sed -i "s/gdal==2.2.2/gdal==2.4.0/g" /requirements.txt && \
-    pip install -r /requirements.txt
 WORKDIR /src/
 COPY ./rest/dynamodb.py /src/createtables.py
 COPY ./workers/ /src/
