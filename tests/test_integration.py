@@ -240,5 +240,5 @@ def test_result(app_client):
 
     r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
 
-    assert r.status_code == 999
+    assert r.status_code == 200
 
