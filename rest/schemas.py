@@ -2,12 +2,14 @@ from marshmallow import Schema, fields, validates, ValidationError, validate
 from openeo_pg_parser_python.validate_process_graph import validate_graph
 
 def validate_graph_with_known_processes(graph):
-	# process graph validation does not work yet, so it is best if we disable it:
-	valid = True
-	# valid = validate_graph(graph, [
-	# 	{"id": "load_collection", "parameters": {"id": {}, "spatial_extent": {}}},
-	# 	{"id": "ndvi", "parameters": {"id": {}, "spatial_extent": {}}},
-	# ])
+	files = glob.iglob("process_definitions/*.json")
+	process_definitions = []
+	for file in files:
+	    with open(file) as f:
+	        process_definitions.append(json.load(f))
+	        
+	valid = validate_graph(graph, process_definitions)
+	
 	if not valid:
 		raise ValidationError("Invalid process graph")
 
