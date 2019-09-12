@@ -34,6 +34,8 @@ deploy-production-rest-lambda:
     - pip install --upgrade pipenv
     - export VIRTUAL_ENV=.venv/
   script:
+    - chmod +x download-process-definitions.sh
+    - ./download-process-definitions.sh
     - cd rest/
     - PIPENV_IGNORE_VIRTUALENVS=1 pipenv install --dev
     # create zappa_settings.json on-the-fly:
