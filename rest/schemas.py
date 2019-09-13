@@ -3,6 +3,7 @@ from openeo_pg_parser_python.validate_process_graph import validate_graph
 import glob
 import json
 import os
+import copy
 
 def validate_graph_with_known_processes(graph):
 	path_to_current_file = os.path.realpath(__file__)
@@ -15,12 +16,12 @@ def validate_graph_with_known_processes(graph):
 		with open(file) as f:
 			process_definitions.append(json.load(f))
 
-	valid = validate_graph(graph, process_definitions)
-
-	print("Process graph valid?",valid)
-
-	if not valid:
-		raise ValidationError("Invalid process graph")
+	try:
+		valid = validate_graph(copy.deepcopy(graph), process_definitions)
+		if not valid:
+			raise ValidationError("Invalid process graph")
+	except Exception as e:
+		raise ValidationError("Invalid process graph: " + str(e))
 
 
 class PostProcessGraphsSchema(Schema):
