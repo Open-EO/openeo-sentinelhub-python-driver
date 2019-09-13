@@ -17,6 +17,7 @@ def validate_graph_with_known_processes(graph):
 			process_definitions.append(json.load(f))
 
 	try:
+		# validate_graph() changes process graph input, so we need to pass a cloned object:
 		valid = validate_graph(copy.deepcopy(graph), process_definitions)
 		if not valid:
 			raise ValidationError("Invalid process graph")
