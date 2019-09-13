@@ -5,7 +5,7 @@ import re
 import urllib.parse as urlparse
 
 import sys, os
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '..'))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '../rest'))
 from app import app
 
 
