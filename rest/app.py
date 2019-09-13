@@ -193,11 +193,18 @@ def api_result():
 
         if job["current_status"] == "finished":
             results = json.loads(job["results"])
-            if len(results) != 1:
+            if len(results) != 1 and not job["error_msg"]:
                 return flask.make_response(jsonify(
                     id = None,
                     code = 400,
                     message = "This endpoint can only succeed if process graph yields exactly one result, instead it received: {}.".format(len(results)),
+                    links = []
+                    ), 400)
+            elif job["error_msg"]:
+                return flask.make_response(jsonify(
+                    id = None,
+                    code = 400,
+                    message = job["error_msg"],
                     links = []
                     ), 400)
 
@@ -384,9 +391,10 @@ def add_job_to_queue(job_id):
                 ), 424)
 
         s3 = boto3.client('s3',
+            endpoint_url=S3_LOCAL_URL,
             region_name="eu-central-1",
-            aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
-            aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
         )
         links = []
         results = json.loads(job["results"])
@@ -512,4 +520,4 @@ def well_known():
         ), 200)
 
 if __name__ == '__main__':
-    app.run()
+    app.run(ssl_context='adhoc')

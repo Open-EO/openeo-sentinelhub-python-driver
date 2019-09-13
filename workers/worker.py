@@ -64,6 +64,9 @@ def _execute_process_graph(process_graph, job_id):
     workflow = EOWorkflow(tasks)
 
     result = workflow.execute({})
+    print("==============================================================")
+    print(result)
+    print("==============================================================")
 
     return result_task.results
 
@@ -92,6 +95,9 @@ def worker_proc(jobs_queue, results_queue, worker_number):
             error_msg = ex.msg
         except Exception as ex:
             logger.exception("Unknown exception while executing process graph")
+            error_msg = str(ex)
+        except ValueError as ex:
+            logger.exception("Job exec failed: {}".format(ex.msg))
             error_msg = str(ex)
         finally:
             results_queue.put((job["job_id"], results, error_msg,))
