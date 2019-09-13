@@ -6,7 +6,6 @@ sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__f
 from app import app
 from dynamodb import Persistence
 
-
 @pytest.fixture
 def app_client():
     app.testing = True

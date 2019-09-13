@@ -1,15 +1,29 @@
 from marshmallow import Schema, fields, validates, ValidationError, validate
 from openeo_pg_parser_python.validate_process_graph import validate_graph
+import glob
+import json
+import os
+import copy
 
 def validate_graph_with_known_processes(graph):
-	# process graph validation does not work yet, so it is best if we disable it:
-	valid = True
-	# valid = validate_graph(graph, [
-	# 	{"id": "load_collection", "parameters": {"id": {}, "spatial_extent": {}}},
-	# 	{"id": "ndvi", "parameters": {"id": {}, "spatial_extent": {}}},
-	# ])
-	if not valid:
-		raise ValidationError("Invalid process graph")
+	path_to_current_file = os.path.realpath(__file__)
+	current_directory = os.path.dirname(path_to_current_file)
+	path_to_files = os.path.join(current_directory, "process_definitions/*.json")
+
+	files = glob.iglob(path_to_files)
+	process_definitions = []
+	for file in files:
+		with open(file) as f:
+			process_definitions.append(json.load(f))
+
+	try:
+		# validate_graph() changes process graph input, so we need to pass a cloned object:
+		valid = validate_graph(copy.deepcopy(graph), process_definitions)
+		if not valid:
+			raise ValidationError("Invalid process graph")
+	except Exception as e:
+		raise ValidationError("Invalid process graph: " + str(e))
+
 
 class PostProcessGraphsSchema(Schema):
 	"""
