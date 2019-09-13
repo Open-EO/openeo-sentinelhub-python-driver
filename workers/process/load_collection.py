@@ -1,4 +1,5 @@
 import os
+import datetime
 import numpy as np
 import xarray as xr
 from sentinelhub import CustomUrlParam, BBox, CRS
@@ -33,7 +34,8 @@ def _clean_temporal_extent(temporal_extent):
     if result[0] is None:
         result[0] = '1970-01-01'
     if result[1] is None:
-        result[1] = 'latest'
+        # result[1] = 'latest'  # currently this doesn't work
+        result[1] = datetime.datetime.utcnow().isoformat()
     return result
 
 

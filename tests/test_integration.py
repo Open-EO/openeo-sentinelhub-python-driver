@@ -127,7 +127,7 @@ def test_manage_batch_jobs(app_client):
     assert actual["title"] == data2["title"]
 
     r = app_client.delete("/jobs/{}".format(record_id))
-    
+
     assert r.status_code == 204
 
     r = app_client.get("/jobs/{}".format(record_id))
@@ -218,7 +218,7 @@ def test_result(app_client):
                   "north": 42.07112,
                   "south": 42.06347
                 },
-                "temporal_extent": "2019-08-17"
+                "temporal_extent": ["2019-08-16", "2019-08-18"]
               }
             },
             "ndvi1": {
