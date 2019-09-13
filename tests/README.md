@@ -5,7 +5,9 @@ Requirements:
 - pipenv
 - Docker + docker-compose
 
-First copy `.env.example` to `.env` in the root directory of the project and enter valid variables. 
+First copy `.env.example` to `.env` in the root directory of the project and enter valid variables.
+
+Make sure process definitions have been downloaded. 
 
 The tests need fixtures which are not saved in the repository, but must instead be fetched from Sentinel Hub (by using `load_fixtures.sh`).
 

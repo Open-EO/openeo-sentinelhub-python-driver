@@ -1,19 +1,26 @@
 ## Running locally
 
-First, python libraries need to be installed:
-```
-$ pipenv install
-```
-
-The DynamoDB and S3 images can be run either from this project, or from `openeo-sentinelhub-python-workers` project. In both cases:
+First, start up all services:
 ```
 $ docker-compose up -d
+```
+
+Download definitions of defined processes:
+```
+$ chmod +x download-process-definitions.sh
+$ ./download-process-definitions.sh
+```
+
+Then, python libraries need to be installed:
+```
+$ cd rest/
+$ pipenv install
 ```
 
 Tables on DynamoDB need to be created manually:
 ```
 $ pipenv shell
-<pipenv> $ python dynamodp.py
+<pipenv> $ python dynamodb.py
 ```
 
 Then the REST API server can be run:
