@@ -86,8 +86,8 @@ def worker_proc(jobs_queue, results_queue, worker_number):
         try:
             results = _execute_process_graph(job["process_graph"], job["job_id"])
         except Exception as ex:
-            logger.exception("Job exec failed: {}".format(ex.message))
-            error_msg = ex.message
+            logger.exception("Job exec failed: {}".format(str(ex)))
+            error_msg = str(ex)
             error_code = ex.error_code if hasattr(ex, "error_code") else 500
         finally:
             results_queue.put((job["job_id"], results, error_msg, error_code))
