@@ -60,11 +60,16 @@ class save_resultEOTask(ProcessEOTask):
         output_options = arguments.get('options', {})
 
         if output_format != 'gtiff':
-            raise ExecFailedError('save_result: supported formats are: "GTiff"')
+            error = ExecFailedError('save_result: supported formats are: "GTiff"')
+            error.code = 500
         if output_options != {}:
-            raise ExecFailedError('save_result: output options are currently not supported')
+            error = ExecFailedError('save_result: output options are currently not supported')
+            error.code = 500
         if not isinstance(data, xr.DataArray):
-            raise ExecFailedError('save_result: only cubes can be saved currently')
+            error = ExecFailedError('save_result: only cubes can be saved currently')
+            error.code = 500
+        if error:
+            raise error
 
         # https://stackoverflow.com/a/33950009
         tmp_job_dir = os.path.join("/tmp", self.job_id)
