@@ -55,6 +55,7 @@ class Persistence(object):
                 'last_updated': {'S': str(data.get("last_updated"))},
                 'should_be_cancelled': {'BOOL': data.get("should_be_cancelled")},
                 'error_msg': {'S': str(data.get("error_msg"))},
+                'error_code': {'S': str(data.get("error_code"))},
                 'results': {'S': json.dumps(data.get("results"))},
             }
         elif entity_type == cls.ET_PROCESS_GRAPHS:
@@ -67,6 +68,7 @@ class Persistence(object):
             item["title"] = {'S': str(data.get("title"))}
         if data.get("description"):
             item["description"] = {'S': str(data.get("description"))}
+
         cls.dynamodb.put_item(
             TableName=entity_type,
             Item=item,
@@ -109,6 +111,8 @@ class Persistence(object):
                 new_value = json.dumps(new_value)
             elif key == "should_be_cancelled":
                 data_type = 'BOOL'
+            elif key == "error_code":
+                data_type = 'N'
             else:
                 new_value = str(new_value)
 

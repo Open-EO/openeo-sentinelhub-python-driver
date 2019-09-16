@@ -94,7 +94,7 @@ def main():
                 except queue.Empty:
                     break
                 try:
-                    JobsPersistence.update_running_to_finished(job_id, results, error_msg)
+                    JobsPersistence.update_running_to_finished(job_id, results, error_msg, error_code)
                     logger.info("Job {} finished.".format(job_id))
                 except:
                     logger.exception("Unknown error saving results, job will hang indefinitely! {}".format(job_id))

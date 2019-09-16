@@ -53,16 +53,17 @@ class JobsPersistence(object):
         return updated_item
 
     @classmethod
-    def update_running_to_finished(cls, record_id, results, error_msg=None):
+    def update_running_to_finished(cls, record_id, results, error_msg=None, error_code=None):
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         # depending on whether error_msg is set, update either results or error_msg field:
         if error_msg:
-            update_expression="SET current_status = :new_status, error_msg = :error_msg, last_updated = :timestamp"
+            update_expression="SET current_status = :new_status, error_msg = :error_msg, error_code = :error_code, last_updated = :timestamp"
             values={
                 ':old_status': {'S': "running"},
                 ':new_status': {'S': "error"},
                 ':timestamp': {'S': timestamp},
                 ':error_msg': {'S': error_msg},
+                ':error_code': {'S': str(error_code)},
             }
         else:
             update_expression="SET current_status = :new_status, results = :results, last_updated = :timestamp"

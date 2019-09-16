@@ -193,18 +193,11 @@ def api_result():
 
         if job["current_status"] == "finished":
             results = json.loads(job["results"])
-            if len(results) != 1 and not job["error_msg"]:
+            if len(results) != 1:
                 return flask.make_response(jsonify(
                     id = None,
                     code = 400,
                     message = "This endpoint can only succeed if process graph yields exactly one result, instead it received: {}.".format(len(results)),
-                    links = []
-                    ), 400)
-            elif job["error_msg"]:
-                return flask.make_response(jsonify(
-                    id = None,
-                    code = 400,
-                    message = job["error_msg"],
                     links = []
                     ), 400)
 
@@ -228,7 +221,7 @@ def api_result():
         if job["current_status"] == "error":
             return flask.make_response(jsonify(
                 id = None,
-                code = 400,
+                code = job["error_code"],
                 message = job["error_msg"],
                 links = []
             ), 400)
@@ -385,7 +378,7 @@ def add_job_to_queue(job_id):
         if job["current_status"] == "error":
             return flask.make_response(jsonify(
                 id = job_id,
-                code = 424,
+                code = job["error_code"],
                 message = job["error_msg"],
                 links = []
                 ), 424)
