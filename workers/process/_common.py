@@ -5,10 +5,16 @@ from eolearn.core import EOTask
 class ExecFailedError(Exception):
     def __init__(self, msg):
         self.msg = msg
+        self.error_code = 400
 
 
 class InvalidInputError(ExecFailedError):
     pass
+
+class ServiceFailure(ExecFailedError):
+    def __init__(self, msg):
+        self.msg = msg
+        self.error_code = 500
 
 
 class ProcessEOTask(EOTask):

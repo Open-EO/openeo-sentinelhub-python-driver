@@ -8,7 +8,7 @@ from eolearn.core import FeatureType, EOPatch
 from eolearn.io import S2L1CWCSInput
 
 
-from ._common import ProcessEOTask, InvalidInputError
+from ._common import ProcessEOTask, InvalidInputError, ServiceFailure
 
 
 SENTINELHUB_INSTANCE_ID = os.environ.get('SENTINELHUB_INSTANCE_ID', None)
@@ -28,9 +28,7 @@ def _clean_temporal_extent(temporal_extent):
     # https://open-eo.github.io/openeo-api/processreference/#load_collection
     # > Also supports open intervals by setting one of the boundaries to null, but never both.
     if temporal_extent == [None, None]:
-        temporal_extent_error = InvalidInputError("Only one boundary in temporal_extent can be set to null")
-        temporal_extent_error.error_code = 500
-        raise temporal_extent_error
+        raise InvalidInputError("Only one boundary in temporal_extent can be set to null")
 
     result = [None if t is None else t.rstrip('Z') for t in temporal_extent]
     if result[0] is None:
@@ -64,26 +62,28 @@ class load_collectionEOTask(ProcessEOTask):
 
         if arguments['id'] == 'S2L1C':
             INPUT_BANDS = AwsConstants.S2_L1C_BANDS
-            patch = S2L1CWCSInput(
-                instance_id=SENTINELHUB_INSTANCE_ID,
-                layer=SENTINELHUB_LAYER_ID,
-                feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
-                custom_url_params={
-                    # custom url for specific bands:
-                    CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(INPUT_BANDS)),
-                },
-                resx='10m', # resolution x
-                resy='10m', # resolution y
-                maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
-            ).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)
+            try:
+                patch = S2L1CWCSInput(
+                    instance_id=SENTINELHUB_INSTANCE_ID,
+                    layer=SENTINELHUB_LAYER_ID,
+                    feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
+                    custom_url_params={
+                        # custom url for specific bands:
+                        CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(INPUT_BANDS)),
+                    },
+                    resx='10m', # resolution x
+                    resy='10m', # resolution y
+                    maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
+                ).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)
+            except Exception as ex:
+                raise ServiceFailure("EOPatch creation failed: {}".format(str(ex)))
+
             band_aliases = {
                 "nir": "B08",
                 "red": "B04",
             }
         else:
-            unknown_collection_exception = Exception("Unknown collection id!")
-            unknown_collection_exception.error_code = 500
-            raise unknown_collection_exception
+            raise InvalidInputError("Unknown collection id!")
 
 
         # apart from all the bands, we also want to have access to "IS_DATA", which
