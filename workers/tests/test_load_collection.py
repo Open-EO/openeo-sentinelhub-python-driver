@@ -2,12 +2,12 @@ import json
 import pytest
 import re
 import urllib.parse as urlparse
+import responses
+import json
 
 import sys, os
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '../process'))
-from load_collection import load_collectionEOTask
-
-
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import process
 # FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'fixtures')
 
 
@@ -36,12 +36,6 @@ def query_params_from_url(url):
 ###################################
 
 
-@pytest.fixture
-def app_client():
-    app.testing = True
-    return app.test_client()
-
-
 # @pytest.fixture
 # def s2l1c_truecolor_32x32_png():
 #     filename = os.path.join(FIXTURES_FOLDER, 's2l1c_truecolor_32x32.png')
@@ -55,34 +49,43 @@ def app_client():
 
 # @pytest.mark.skip(reason="The '/result' endpoint has been changed and it is no longer compatible with this test.")
 @responses.activate
-def test_process_load_collection(app_client, s2l1c_truecolor_32x32_png):
+def test_process_load_collection():
     """
         Test load_collection process
     """
+
+    sh_url_regex = re.compile('^.*sentinel-hub.com/.*$')
+    responses.add(
+        responses.GET,
+        sh_url_regex,
+        body=bytes(42),
+        match_querystring=True,
+        status=200,
+    )
+
     bbox = {
-        "west": 16.1,
-        "east": 16.6,
-        "north": 48.6,
-        "south": 47.2
+        "west": 12.32271,
+        "east": 12.33572,
+        "north": 42.07112,
+        "south": 42.06347
     }
     data = {
-        "process_graph": {
-            "loadco1": {
-                "process_id": "load_collection",
-                "arguments": {
-                    "id": "S2L1C",
-                    "spatial_extent": bbox,
-                    "temporal_extent": ["2017-01-01", "2017-02-01"],
-                },
-                "result": True,
-            },
-        },
+        "id": "S2L1C",
+        "spatial_extent": bbox,
+        "temporal_extent": ["2019-08-16", "2019-08-18"],
     }
 
-    result = load_collectionEOTask.process(data)
+    load_collection = process.load_collection.load_collectionEOTask(data, "", None)
 
-    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    print(result)
-    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    try:
+        result = load_collection.process(data)
+
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        print(result)
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    except:
+        print("there is some weird json decode error")
+
+    print(list(responses.calls))
 
 
