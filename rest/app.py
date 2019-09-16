@@ -513,4 +513,4 @@ def well_known():
         ), 200)
 
 if __name__ == '__main__':
-    app.run(ssl_context='adhoc')
+    app.run()
