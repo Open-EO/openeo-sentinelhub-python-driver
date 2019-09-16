@@ -1,15 +1,14 @@
 import json
 import pytest
-import responses
 import re
 import urllib.parse as urlparse
 
 import sys, os
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '../rest'))
-from app import app
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '../process'))
+from load_collection import load_collectionEOTask
 
 
-FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'fixtures')
+# FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'fixtures')
 
 
 ###################################
@@ -43,34 +42,23 @@ def app_client():
     return app.test_client()
 
 
-@pytest.fixture
-def s2l1c_truecolor_32x32_png():
-    filename = os.path.join(FIXTURES_FOLDER, 's2l1c_truecolor_32x32.png')
-    assert os.path.isfile(filename), "Please run tests/fixtures/load_fixtures.sh!"
-    return open(filename, 'rb').read()
+# @pytest.fixture
+# def s2l1c_truecolor_32x32_png():
+#     filename = os.path.join(FIXTURES_FOLDER, 's2l1c_truecolor_32x32.png')
+#     assert os.path.isfile(filename), "Please run tests/fixtures/load_fixtures.sh!"
+#     return open(filename, 'rb').read()
 
 
 ###################################
 # tests:
 ###################################
 
-@pytest.mark.skip(reason="The '/result' endpoint has been changed and it is no longer compatible with this test.")
+# @pytest.mark.skip(reason="The '/result' endpoint has been changed and it is no longer compatible with this test.")
 @responses.activate
 def test_process_load_collection(app_client, s2l1c_truecolor_32x32_png):
     """
         Test load_collection process
     """
-
-    # mock response from sentinel-hub:
-    sh_url_regex = re.compile('^.*sentinel-hub.com/.*$')
-    responses.add(
-        responses.GET,
-        sh_url_regex,
-        body=s2l1c_truecolor_32x32_png,
-        match_querystring=True,
-        status=200,
-    )
-
     bbox = {
         "west": 16.1,
         "east": 16.6,
@@ -90,13 +78,11 @@ def test_process_load_collection(app_client, s2l1c_truecolor_32x32_png):
             },
         },
     }
-    r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
 
-    assert len(responses.calls) == 1
+    result = load_collectionEOTask.process(data)
 
-    params = query_params_from_url(responses.calls[0].request.url)
-    assert_wms_bbox_matches(params, 'EPSG:4326', **bbox)
-    assert params['time'] == '2017-01-01/2017-02-01'
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    print(result)
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
-    assert r.status_code == 200
-    assert r.data == s2l1c_truecolor_32x32_png
+
