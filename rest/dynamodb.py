@@ -111,8 +111,6 @@ class Persistence(object):
                 new_value = json.dumps(new_value)
             elif key == "should_be_cancelled":
                 data_type = 'BOOL'
-            elif key == "error_code":
-                data_type = 'N'
             else:
                 new_value = str(new_value)
 
