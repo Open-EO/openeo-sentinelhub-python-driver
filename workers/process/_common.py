@@ -11,7 +11,7 @@ class ExecFailedError(Exception):
 class InvalidInputError(ExecFailedError):
     pass
 
-class ServiceFailure(ExecFailedError):
+class ServiceFailure(Exception):
     def __init__(self, msg):
         self.msg = msg
         self.error_code = 500
