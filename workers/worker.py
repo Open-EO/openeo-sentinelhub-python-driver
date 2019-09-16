@@ -63,10 +63,7 @@ def _execute_process_graph(process_graph, job_id):
 
     workflow = EOWorkflow(tasks)
 
-    result = workflow.execute({})
-    print("==============================================================")
-    print(result)
-    print("==============================================================")
+    result = workflow.execute({},monitor=True)
 
     return result_task.results
 
@@ -85,8 +82,11 @@ def worker_proc(jobs_queue, results_queue, worker_number):
         # try to execute job's process graph:
         results = None
         error_msg = None
+        error_code = 200
         try:
+            logger.info("start exec")
             results = _execute_process_graph(job["process_graph"], job["job_id"])
+            logger.info("stop exec")
         except process.InvalidInputError as ex:
             logger.exception("Job exec failed - invalid input: {}".format(ex.msg))
             error_msg = ex.msg
@@ -94,10 +94,22 @@ def worker_proc(jobs_queue, results_queue, worker_number):
             logger.exception("Job exec failed: {}".format(ex.msg))
             error_msg = ex.msg
         except Exception as ex:
+            logger.info("~~~~~~~~~~~~~~~~~~~~~~~~")
+            logger.info(ex.args)
+            logger.info("~~~~~~~~~~~~~~~~~~~~~~~~")
             logger.exception("Unknown exception while executing process graph")
             error_msg = str(ex)
+            error_code = ex.error_code
+            logger.info(error_code)
         except ValueError as ex:
+            logger.info("~~~~~~~~~~~~~~~~~~~~~~~~")
+            logger.info(ex.args)
+            logger.info("~~~~~~~~~~~~~~~~~~~~~~~~")
             logger.exception("Job exec failed: {}".format(ex.msg))
             error_msg = str(ex)
+            error_code = ex.error_code
+            logger.info(error_code)
+        except:
+            logger.exception("Somethinh went wrong")
         finally:
-            results_queue.put((job["job_id"], results, error_msg,))
+            results_queue.put((job["job_id"], results, error_msg, error_code))

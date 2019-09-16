@@ -28,7 +28,9 @@ def _clean_temporal_extent(temporal_extent):
     # https://open-eo.github.io/openeo-api/processreference/#load_collection
     # > Also supports open intervals by setting one of the boundaries to null, but never both.
     if temporal_extent == [None, None]:
-        raise InvalidInputError("Only one boundary in temporal_extent can be set to null")
+        temporal_extent_error = InvalidInputError("Only one boundary in temporal_extent can be set to null")
+        temporal_extent_error.error_code = 500
+        raise temporal_extent_error
 
     result = [None if t is None else t.rstrip('Z') for t in temporal_extent]
     if result[0] is None:
@@ -79,7 +81,9 @@ class load_collectionEOTask(ProcessEOTask):
                 "red": "B04",
             }
         else:
-            raise Exception("Unknown collection id!")
+            unknown_collection_exception = Exception("Unknown collection id!")
+            unknown_collection_exception.error_code = 500
+            raise unknown_collection_exception
 
 
         # apart from all the bands, we also want to have access to "IS_DATA", which

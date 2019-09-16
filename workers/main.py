@@ -90,7 +90,7 @@ def main():
             # write results:
             while True:
                 try:
-                    job_id, results, error_msg = results_queue.get(False)
+                    job_id, results, error_msg, error_code = results_queue.get(False)
                 except queue.Empty:
                     break
                 try:

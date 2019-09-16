@@ -76,10 +76,10 @@ class ProcessEOTask(EOTask):
 
     def execute(self, *prev_results):
         self._update_arguments_with_data(prev_results)
-        try:
-            return self.process(self._arguments_with_data)
-        except Exception:
-            self.logger.exception("Task failed")
+        # try:
+        return self.process(self._arguments_with_data)
+        # except Exception:
+        #     self.logger.exception("Task failed")
 
     def process(self, arguments_with_data):
         """ Each process EOTask should implement this function instead of using
