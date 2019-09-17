@@ -4,11 +4,13 @@ import re
 import urllib.parse as urlparse
 import responses
 import json
+from copy import deepcopy
 
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-# FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'fixtures')
+from process._common import InvalidInputError
+FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), 'fixtures')
 
 
 ###################################
@@ -17,9 +19,8 @@ import process
 
 
 def assert_wms_bbox_matches(wms_params, crs, west, east, north, south):
-    assert wms_params['version'] == '1.1.1'  # for now we only support this version
-    assert wms_params['srs'] == crs  # WMS 1.1.1 uses 'srs', WMS 1.3.0 uses 'crs'
-    assert wms_params['bbox'] == '{west},{south},{east},{north}'.format(west=west, east=east, north=north, south=south)
+    assert wms_params['srsname'] == crs
+    assert wms_params['bbox'] == '{south},{west},{north},{east}'.format(west=west, east=east, north=north, south=south)
 
 
 def query_params_from_url(url):
@@ -30,35 +31,55 @@ def query_params_from_url(url):
         result[k.lower()] = unprocessed_params[k][0]
     return result
 
+def modify_value(data,key,value):
+    data2 = deepcopy(data)
+    data2[key] = value
+    return data2
+
 
 ###################################
 # fixtures:
 ###################################
 
 
-# @pytest.fixture
-# def s2l1c_truecolor_32x32_png():
-#     filename = os.path.join(FIXTURES_FOLDER, 's2l1c_truecolor_32x32.png')
-#     assert os.path.isfile(filename), "Please run tests/fixtures/load_fixtures.sh!"
-#     return open(filename, 'rb').read()
+@pytest.fixture
+def response_01():
+    filename = os.path.join(FIXTURES_FOLDER, 'response_load_collection01.json')
+    assert os.path.isfile(filename), "Please run tests/fixtures/load_fixtures.sh!"
+    return json.load(open(filename))
+
+@pytest.fixture
+def response_02():
+    filename = os.path.join(FIXTURES_FOLDER, 'response_load_collection02.tiff')
+    assert os.path.isfile(filename), "Please run tests/fixtures/load_fixtures.sh!"
+    return open(filename, 'rb').read()
+
 
 
 ###################################
 # tests:
 ###################################
 
-# @pytest.mark.skip(reason="The '/result' endpoint has been changed and it is no longer compatible with this test.")
 @responses.activate
-def test_process_load_collection():
+def test_process_load_collection(response_01, response_02):
     """
         Test load_collection process
     """
 
-    sh_url_regex = re.compile('^.*sentinel-hub.com/.*$')
+    sh_url_regex01 = re.compile('^.*sentinel-hub.com/ogc/wfs/.*$')
     responses.add(
         responses.GET,
-        sh_url_regex,
-        body=bytes(42),
+        sh_url_regex01,
+        body=json.dumps(response_01),
+        match_querystring=True,
+        status=200,
+    )
+
+    sh_url_regex02 = re.compile('^.*sentinel-hub.com/ogc/wcs/.*$')
+    responses.add(
+        responses.GET,
+        sh_url_regex02,
+        body=response_02,
         match_querystring=True,
         status=200,
     )
@@ -77,15 +98,22 @@ def test_process_load_collection():
 
     load_collection = process.load_collection.load_collectionEOTask(data, "", None)
 
-    try:
-        result = load_collection.process(data)
+    #####################################################################
+    result = load_collection.process(data)
+    assert len(responses.calls) == 2
+    params = query_params_from_url(responses.calls[0].request.url)
+    assert_wms_bbox_matches(params, 'EPSG:4326', **bbox)
+    #####################################################################
 
-        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        print(result)
-        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    except:
-        print("there is some weird json decode error")
+    with pytest.raises(Exception) as ex:
+        # Fail if wrong collection id
+        args = modify_value(data, "id", "non-existent")
+        result = load_collection.process(args)
+    assert ex.value.args[0] == "Unknown collection id!"
 
-    print(list(responses.calls))
+    with pytest.raises(InvalidInputError) as ex:
+        # Fail if incorrect temporal_extent
+        args = modify_value(data,"temporal_extent",[None,None])
+        result = load_collection.process(args)
 
 

@@ -2,7 +2,9 @@ FROM python:3.6.6
 ADD . /
 RUN chmod +x download-process-definitions.sh
 RUN ./download-process-definitions.sh
+RUN ./load_fixtures.sh
 WORKDIR /tests
 RUN pip3 install pipenv
 RUN pipenv install --system --deploy --dev
-RUN ./load_fixtures.sh
+RUN cd ..
+WORKDIR /workers/tests
