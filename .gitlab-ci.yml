@@ -13,7 +13,6 @@ pytest:
   stage: test
   script:
     - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml up --exit-code-from pytest --build
-    - docker exec workers pytest
   after_script:
     - docker-compose down -v
 
