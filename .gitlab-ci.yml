@@ -12,9 +12,10 @@ stages:
 pytest:
   stage: test
   script:
-    - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml up --build
-    - docker exec workers pytest
+    - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml up --exit-code-from pytest --build
   after_script:
+    - docker start workers
+    - docker exec workers pytest
     - docker-compose down -v
 
 deploy-production-rest-lambda:
