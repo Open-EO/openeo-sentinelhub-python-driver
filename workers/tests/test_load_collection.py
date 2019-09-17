@@ -99,6 +99,8 @@ def test_process_load_collection(response_01, response_02):
         "temporal_extent": ["2019-08-16", "2019-08-18"],
     }
 
+    assert False
+
     load_collection = process.load_collection.load_collectionEOTask(data, "", None)
 
     #####################################################################
@@ -118,5 +120,6 @@ def test_process_load_collection(response_01, response_02):
         # Fail if incorrect temporal_extent
         args = modify_value(data,"temporal_extent",[None,None])
         result = load_collection.process(args)
+
 
 
