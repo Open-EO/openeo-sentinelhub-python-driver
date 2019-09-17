@@ -13,9 +13,8 @@ pytest:
   stage: test
   script:
     - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml up --exit-code-from pytest --build
+    - docker run -w /src/ shopeneo/workers "./load-fixtures.sh; pytest -x"
   after_script:
-    - docker start workers
-    - docker exec workers sh -c 'pytest; exit $?'
     - docker-compose down -v
 
 deploy-production-rest-lambda:

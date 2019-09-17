@@ -22,5 +22,4 @@ RUN \
 WORKDIR /src/
 COPY ./rest/dynamodb.py /src/createtables.py
 COPY ./workers/ /src/
-RUN ./load_fixtures.sh
 CMD ["/bin/bash", "-c", "python ./createtables.py && python main.py"]
