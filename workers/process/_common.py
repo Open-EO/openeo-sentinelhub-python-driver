@@ -5,16 +5,23 @@ from eolearn.core import EOTask
 class ExecFailedError(Exception):
     def __init__(self, msg):
         self.msg = msg
-        self.error_code = 400
 
+class UserError(ExecFailedError):
+    http_code = 400
 
-class InvalidInputError(ExecFailedError):
-    pass
+class Internal(ExecFailedError):
+    error_code = "Internal"
+    http_code = 500
 
-class ServiceFailure(Exception):
-    def __init__(self, msg):
-        self.msg = msg
-        self.error_code = 500
+class ProcessArgumentInvalid(UserError):
+    error_code = "ProcessArgumentInvalid"
+
+class VariableValueMissing(UserError):
+    error_code: "VariableValueMissing"
+
+class StorageFailure(Internal):
+    error_code = "StorageFailure"
+
 
 
 class ProcessEOTask(EOTask):

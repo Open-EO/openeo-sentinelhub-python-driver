@@ -224,12 +224,12 @@ def api_result():
                 code = job["error_code"],
                 message = job["error_msg"],
                 links = []
-            ), 400)
+            ), job["http_code"])
 
         return flask.make_response(jsonify(
             id = None,
-            code = 408,
-            message = "openEO error: RequestTimeout",
+            code = "Timeout",
+            message = "Request timed out.",
             links = []
             ), 408)
 
@@ -311,8 +311,8 @@ def api_batch_job(job_id):
         if current_job["current_status"] in ["queued","running"]:
             return flask.make_response(jsonify(
                 id = job_id,
-                code = 400,
-                message = 'openEO error: JobLocked',
+                code = "JobLocked",
+                message = 'Job is locked due to a queued or running batch computation.',
                 links = []
                 ), 400)
 
@@ -370,10 +370,10 @@ def add_job_to_queue(job_id):
         if job["current_status"] not in ["finished","error"]:
             return flask.make_response(jsonify(
                 id = job_id,
-                code = 503,
-                message = 'openEO error: JobNotFinished',
+                code = 'JobNotFinished',
+                message = 'Job has not finished computing the results yet. Please try again later.',
                 links = []
-                ), 503)
+                ), 400)
 
         if job["current_status"] == "error":
             return flask.make_response(jsonify(

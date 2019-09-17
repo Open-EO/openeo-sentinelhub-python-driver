@@ -90,11 +90,11 @@ def main():
             # write results:
             while True:
                 try:
-                    job_id, results, error_msg, error_code = results_queue.get(False)
+                    job_id, results, error_msg, error_code, http_code = results_queue.get(False)
                 except queue.Empty:
                     break
                 try:
-                    JobsPersistence.update_running_to_finished(job_id, results, error_msg, error_code)
+                    JobsPersistence.update_running_to_finished(job_id, results, error_msg, error_code, http_code)
                     logger.info("Job {} finished.".format(job_id))
                 except:
                     logger.exception("Unknown error saving results, job will hang indefinitely! {}".format(job_id))

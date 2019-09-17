@@ -8,7 +8,7 @@ from eolearn.core import FeatureType, EOPatch
 from eolearn.io import S2L1CWCSInput
 
 
-from ._common import ProcessEOTask, InvalidInputError, ServiceFailure
+from ._common import ProcessEOTask, ProcessArgumentInvalid, Internal
 
 
 SENTINELHUB_INSTANCE_ID = os.environ.get('SENTINELHUB_INSTANCE_ID', None)
@@ -28,7 +28,7 @@ def _clean_temporal_extent(temporal_extent):
     # https://open-eo.github.io/openeo-api/processreference/#load_collection
     # > Also supports open intervals by setting one of the boundaries to null, but never both.
     if temporal_extent == [None, None]:
-        raise InvalidInputError("Only one boundary in temporal_extent can be set to null")
+        raise ProcessArgumentInvalid("The argument 'temporal_extent' in process 'load_collection' is invalid: Only one boundary can be set to null")
 
     result = [None if t is None else t.rstrip('Z') for t in temporal_extent]
     if result[0] is None:
@@ -76,14 +76,14 @@ class load_collectionEOTask(ProcessEOTask):
                     maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
                 ).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)
             except Exception as ex:
-                raise ServiceFailure("EOPatch creation failed: {}".format(str(ex)))
+                raise Internal("Server error: EOPatch creation failed: {}".format(str(ex)))
 
             band_aliases = {
                 "nir": "B08",
                 "red": "B04",
             }
         else:
-            raise InvalidInputError("Unknown collection id!")
+            raise ProcessArgumentInvalid("The argument 'id' in process 'load_collection' is invalid: unknown collection id")
 
 
         # apart from all the bands, we also want to have access to "IS_DATA", which
