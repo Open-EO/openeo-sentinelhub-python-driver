@@ -25,7 +25,6 @@ def assert_wms_bbox_matches(wms_params, crs, west, east, north, south):
     assert wms_params['srsname'] == crs
     assert wms_params['bbox'] == '{south},{west},{north},{east}'.format(west=west, east=east, north=north, south=south)
 
-
 def query_params_from_url(url):
     parsed = urlparse.urlparse(url)
     unprocessed_params = urlparse.parse_qs(parsed.query)
@@ -98,8 +97,6 @@ def test_process_load_collection(response_01, response_02):
         "spatial_extent": bbox,
         "temporal_extent": ["2019-08-16", "2019-08-18"],
     }
-
-    assert False
 
     load_collection = process.load_collection.load_collectionEOTask(data, "", None)
 
