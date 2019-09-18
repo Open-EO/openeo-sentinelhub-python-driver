@@ -99,8 +99,10 @@ class Persistence(object):
 
         for key,value in item.items():
             data_type = list(value)[0]
-            item[key] = value[data_type]
-
+            if key == "http_code":
+                item[key] = int(value[data_type])
+            else:
+                item[key] = value[data_type]
         return item
 
 
