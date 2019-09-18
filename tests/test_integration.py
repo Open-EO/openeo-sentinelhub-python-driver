@@ -116,7 +116,7 @@ def test_manage_batch_jobs(app_client):
 
     r = app_client.patch("/jobs/{}".format(record_id), data=json.dumps(data2), content_type='application/json')
 
-    assert r.status == "204 NO CONTENT"
+    assert r.status_code == 204
 
     r = app_client.get("/jobs/{}".format(record_id))
     actual = json.loads(r.data.decode('utf-8'))
@@ -177,7 +177,7 @@ def test_process_batch_job(app_client):
     r = app_client.delete("/jobs/{}/results".format(record_id))
     actual = json.loads(r.data.decode('utf-8'))
     assert r.status_code == 400
-    assert actual["message"]  == "Job is not queued or running."
+    assert actual["code"]  == "JobNotStarted"
 
     r = app_client.post("/jobs/{}/results".format(record_id))
     assert r.status_code == 202
@@ -185,7 +185,7 @@ def test_process_batch_job(app_client):
     r = app_client.post("/jobs/{}/results".format(record_id))
     actual = json.loads(r.data.decode('utf-8'))
     assert r.status_code == 400
-    assert actual["message"] == "Job already queued or running."
+    assert actual["code"] == "JobLocked"
 
     r = app_client.get("/jobs/{}".format(record_id))
     actual = json.loads(r.data.decode('utf-8'))
@@ -194,8 +194,8 @@ def test_process_batch_job(app_client):
 
     r = app_client.get("/jobs/{}/results".format(record_id))
     actual = json.loads(r.data.decode('utf-8'))
-    assert r.status_code == 503
-    assert  actual["message"] == "openEO error: JobNotFinished"
+    assert r.status_code == 400
+    assert  actual["code"] == "JobNotFinished"
 
     r = app_client.delete("/jobs/{}/results".format(record_id))
     assert r.status_code == 200
