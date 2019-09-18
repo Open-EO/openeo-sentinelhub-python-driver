@@ -13,7 +13,7 @@ pytest:
   stage: test
   script:
     - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml up --exit-code-from pytest --build
-    - docker run --rm -w="/src/" shopeneo/workers bash -c "./load_fixtures.sh; pytest -x"
+    - docker run --rm -w="/src/" shopeneo/workers bash -c "pip install pytest; pip install responses; ./load_fixtures.sh; pytest -x"
   after_script:
     - docker-compose down -v
 

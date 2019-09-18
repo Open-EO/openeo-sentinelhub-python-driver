@@ -4,6 +4,8 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+pytest = "*"
+responses = "*"
 
 [packages]
 pandas = "==0.24.2"
@@ -13,8 +15,6 @@ gdal = "==2.2.2"
 boto3 = "*"
 eo-learn-core = "*"
 eo-learn-io = "*"
-pytest = "*"
-responses = "*"
 
 [requires]
 python_version = "3.6"
