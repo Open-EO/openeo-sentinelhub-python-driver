@@ -56,7 +56,7 @@ class Persistence(object):
                 'should_be_cancelled': {'BOOL': data.get("should_be_cancelled")},
                 'error_msg': {'S': str(data.get("error_msg"))},
                 'error_code': {'S': str(data.get("error_code"))},
-                'http_code': {'N':data.get("http_code", 200)},
+                'http_code': {'N':data.get("http_code", "200")},
                 'results': {'S': json.dumps(data.get("results"))},
             }
         elif entity_type == cls.ET_PROCESS_GRAPHS:
@@ -114,6 +114,7 @@ class Persistence(object):
                 data_type = 'BOOL'
             elif key == "http_code":
                 data_type = 'N'
+                new_value = str(new_value)
             else:
                 new_value = str(new_value)
 

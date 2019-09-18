@@ -64,7 +64,7 @@ class JobsPersistence(object):
                 ':timestamp': {'S': timestamp},
                 ':error_msg': {'S': error_msg},
                 ':error_code': {'S': str(error_code)},
-                ':http_code': {'S': http_code},
+                ':http_code': {'S': str(http_code)},
             }
         else:
             update_expression="SET current_status = :new_status, results = :results, last_updated = :timestamp"

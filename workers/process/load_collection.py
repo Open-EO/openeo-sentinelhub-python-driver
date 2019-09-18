@@ -28,7 +28,9 @@ def _clean_temporal_extent(temporal_extent):
     # https://open-eo.github.io/openeo-api/processreference/#load_collection
     # > Also supports open intervals by setting one of the boundaries to null, but never both.
     if temporal_extent == [None, None]:
-        raise ProcessArgumentInvalid("The argument 'temporal_extent' in process 'load_collection' is invalid: Only one boundary can be set to null")
+        raise ProcessArgumentInvalid("The argument 'temporal_extent' in process 'load_collection' is invalid: Only one boundary can be set to null.")
+    if not isinstance(temporal_extent,list) or len(temporal_extent) != 2:
+        raise ProcessArgumentInvalid("The argument 'temporal_extent' in process 'load_collection' is invalid: The interval has to be specified as an array with exactly two elements.")
 
     result = [None if t is None else t.rstrip('Z') for t in temporal_extent]
     if result[0] is None:

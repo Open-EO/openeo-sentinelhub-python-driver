@@ -283,16 +283,16 @@ def api_jobs():
 
 @app.route('/jobs/<job_id>', methods=['GET','PATCH','DELETE'])
 def api_batch_job(job_id):
-    if flask.request.method == 'GET':
-        job = Persistence.get_by_id(Persistence.ET_JOBS, job_id)
-        if job is None:
+    job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+    if job is None:
             return flask.make_response(jsonify(
                 id = job_id,
-                code = 404,
-                message = "Batch job doesn't exist.",
+                code = "JobNotFound",
+                message = "The job does not exist.",
                 links = []
                 ), 404)
 
+    if flask.request.method == 'GET':
         status = job["current_status"]
         return flask.make_response(jsonify(
             id = job_id,
@@ -306,9 +306,7 @@ def api_batch_job(job_id):
             ), 200)
 
     elif flask.request.method == 'PATCH':
-        current_job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
-
-        if current_job["current_status"] in ["queued","running"]:
+        if job["current_status"] in ["queued","running"]:
             return flask.make_response(jsonify(
                 id = job_id,
                 code = "JobLocked",
@@ -359,8 +357,8 @@ def add_job_to_queue(job_id):
         else:
             return flask.make_response(jsonify(
                 id = job_id,
-                code = 400,
-                message = 'Job already queued or running.',
+                code = "JobLocked",
+                message = 'Job is locked due to a queued or running batch computation.',
                 links = []
                 ), 400)
 
@@ -425,8 +423,8 @@ def add_job_to_queue(job_id):
 
         return flask.make_response(jsonify(
             id = job_id,
-            code = 400,
-            message = 'Job is not queued or running.',
+            code = "JobNotStarted",
+            message = "Job hasn't been started yet.",
             links = []
             ), 400)
 
@@ -465,7 +463,7 @@ def collection_information(collection_id):
     if not os.path.isfile("collection_information/{}.json".format(collection_id)):
         return flask.make_response(jsonify(
             id = collection_id,
-            code = 404,
+            code = "CollectionNotFound",
             message = 'Collection does not exist.',
             links = []
             ), 404)
