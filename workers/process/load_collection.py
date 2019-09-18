@@ -8,7 +8,7 @@ from eolearn.core import FeatureType, EOPatch
 from eolearn.io import S2L1CWCSInput
 
 
-from ._common import ProcessEOTask, InvalidInputError
+from ._common import ProcessEOTask, ProcessArgumentInvalid, Internal
 
 
 SENTINELHUB_INSTANCE_ID = os.environ.get('SENTINELHUB_INSTANCE_ID', None)
@@ -28,7 +28,9 @@ def _clean_temporal_extent(temporal_extent):
     # https://open-eo.github.io/openeo-api/processreference/#load_collection
     # > Also supports open intervals by setting one of the boundaries to null, but never both.
     if temporal_extent == [None, None]:
-        raise InvalidInputError("Only one boundary in temporal_extent can be set to null")
+        raise ProcessArgumentInvalid("The argument 'temporal_extent' in process 'load_collection' is invalid: Only one boundary can be set to null.")
+    if not isinstance(temporal_extent,list) or len(temporal_extent) != 2:
+        raise ProcessArgumentInvalid("The argument 'temporal_extent' in process 'load_collection' is invalid: The interval has to be specified as an array with exactly two elements.")
 
     result = [None if t is None else t.rstrip('Z') for t in temporal_extent]
     if result[0] is None:
@@ -62,24 +64,28 @@ class load_collectionEOTask(ProcessEOTask):
 
         if arguments['id'] == 'S2L1C':
             INPUT_BANDS = AwsConstants.S2_L1C_BANDS
-            patch = S2L1CWCSInput(
-                instance_id=SENTINELHUB_INSTANCE_ID,
-                layer=SENTINELHUB_LAYER_ID,
-                feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
-                custom_url_params={
-                    # custom url for specific bands:
-                    CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(INPUT_BANDS)),
-                },
-                resx='10m', # resolution x
-                resy='10m', # resolution y
-                maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
-            ).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)
+            try:
+                patch = S2L1CWCSInput(
+                    instance_id=SENTINELHUB_INSTANCE_ID,
+                    layer=SENTINELHUB_LAYER_ID,
+                    feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
+                    custom_url_params={
+                        # custom url for specific bands:
+                        CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(INPUT_BANDS)),
+                    },
+                    resx='10m', # resolution x
+                    resy='10m', # resolution y
+                    maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
+                ).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)
+            except Exception as ex:
+                raise Internal("Server error: EOPatch creation failed: {}".format(str(ex)))
+
             band_aliases = {
                 "nir": "B08",
                 "red": "B04",
             }
         else:
-            raise Exception("Unknown collection id!")
+            raise ProcessArgumentInvalid("The argument 'id' in process 'load_collection' is invalid: unknown collection id")
 
 
         # apart from all the bands, we also want to have access to "IS_DATA", which

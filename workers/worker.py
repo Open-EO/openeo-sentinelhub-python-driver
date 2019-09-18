@@ -51,7 +51,7 @@ def _execute_process_graph(process_graph, job_id):
         if node_definition.get('result', False):
             result_task = tasks_by_name[node_name]
             if process_id != 'save_result':
-                raise process.ExecFailedError("The result node must have 'process_id' value set to 'save_result'")
+                raise process.VariableValueMissing("No value specified for process graph variable 'save_result'.")
 
 
     # create a list of tasks for workflow:
@@ -82,16 +82,14 @@ def worker_proc(jobs_queue, results_queue, worker_number):
         # try to execute job's process graph:
         results = None
         error_msg = None
+        error_code = None
+        http_code = None
         try:
             results = _execute_process_graph(job["process_graph"], job["job_id"])
-        except process.InvalidInputError as ex:
-            logger.exception("Job exec failed - invalid input: {}".format(ex.msg))
-            error_msg = ex.msg
-        except process.ExecFailedError as ex:
-            logger.exception("Job exec failed: {}".format(ex.msg))
-            error_msg = ex.msg
         except Exception as ex:
-            logger.exception("Unknown exception while executing process graph")
-            error_msg = str(ex)
+            logger.exception("Job exec failed: {}".format(str(ex)))
+            error_msg = ex.msg if hasattr(ex, "msg") else str(ex)
+            error_code = ex.error_code if hasattr(ex, "error_code") else "Internal"
+            http_code = ex.http_code if hasattr(ex, "http_code") else 500
         finally:
-            results_queue.put((job["job_id"], results, error_msg,))
+            results_queue.put((job["job_id"], results, error_msg, error_code, http_code))

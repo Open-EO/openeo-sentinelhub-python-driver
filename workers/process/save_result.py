@@ -5,7 +5,7 @@ import boto3
 import xarray as xr
 
 
-from ._common import ProcessEOTask, ExecFailedError
+from ._common import ProcessEOTask, StorageFailure, ProcessArgumentInvalid
 
 
 S3_BUCKET_NAME = 'com.sinergise.openeo.results'
@@ -60,11 +60,11 @@ class save_resultEOTask(ProcessEOTask):
         output_options = arguments.get('options', {})
 
         if output_format != 'gtiff':
-            raise ExecFailedError('save_result: supported formats are: "GTiff"')
+            raise ProcessArgumentInvalid("The argument 'format' in process 'save_result' is invalid: supported formats are: 'GTiff'")
         if output_options != {}:
-            raise ExecFailedError('save_result: output options are currently not supported')
+            raise ProcessArgumentInvalid("The argument 'options' in process 'save_result' is invalid: output options are currently not supported")
         if not isinstance(data, xr.DataArray):
-            raise ExecFailedError('save_result: only cubes can be saved currently')
+            raise ProcessArgumentInvalid("The argument 'data' in process 'save_result' is invalid: only cubes can be saved currently")
 
         # https://stackoverflow.com/a/33950009
         tmp_job_dir = os.path.join("/tmp", self.job_id)
@@ -104,7 +104,11 @@ class save_resultEOTask(ProcessEOTask):
             dst_ds.FlushCache()                     # write to disk
             dst_ds = None
 
-            self._put_file_to_s3(filename, 'image/tiff; application=geotiff')
+            try:
+                self._put_file_to_s3(filename, 'image/tiff; application=geotiff')
+            except Exception as ex:
+                raise StorageFailure("Unable to store file(s).")
+
             self.results.append({
                 'filename': os.path.basename(filename),
                 'type': 'image/tiff; application=geotiff',

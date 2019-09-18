@@ -221,15 +221,15 @@ def api_result():
         if job["current_status"] == "error":
             return flask.make_response(jsonify(
                 id = None,
-                code = 400,
+                code = job["error_code"],
                 message = job["error_msg"],
                 links = []
-            ), 400)
+            ), job["http_code"])
 
         return flask.make_response(jsonify(
             id = None,
-            code = 408,
-            message = "openEO error: RequestTimeout",
+            code = "Timeout",
+            message = "Request timed out.",
             links = []
             ), 408)
 
@@ -283,16 +283,16 @@ def api_jobs():
 
 @app.route('/jobs/<job_id>', methods=['GET','PATCH','DELETE'])
 def api_batch_job(job_id):
-    if flask.request.method == 'GET':
-        job = Persistence.get_by_id(Persistence.ET_JOBS, job_id)
-        if job is None:
+    job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+    if job is None:
             return flask.make_response(jsonify(
                 id = job_id,
-                code = 404,
-                message = "Batch job doesn't exist.",
+                code = "JobNotFound",
+                message = "The job does not exist.",
                 links = []
                 ), 404)
 
+    if flask.request.method == 'GET':
         status = job["current_status"]
         return flask.make_response(jsonify(
             id = job_id,
@@ -306,13 +306,11 @@ def api_batch_job(job_id):
             ), 200)
 
     elif flask.request.method == 'PATCH':
-        current_job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
-
-        if current_job["current_status"] in ["queued","running"]:
+        if job["current_status"] in ["queued","running"]:
             return flask.make_response(jsonify(
                 id = job_id,
-                code = 400,
-                message = 'openEO error: JobLocked',
+                code = "JobLocked",
+                message = 'Job is locked due to a queued or running batch computation.',
                 links = []
                 ), 400)
 
@@ -359,8 +357,8 @@ def add_job_to_queue(job_id):
         else:
             return flask.make_response(jsonify(
                 id = job_id,
-                code = 400,
-                message = 'Job already queued or running.',
+                code = "JobLocked",
+                message = 'Job is locked due to a queued or running batch computation.',
                 links = []
                 ), 400)
 
@@ -370,23 +368,24 @@ def add_job_to_queue(job_id):
         if job["current_status"] not in ["finished","error"]:
             return flask.make_response(jsonify(
                 id = job_id,
-                code = 503,
-                message = 'openEO error: JobNotFinished',
+                code = 'JobNotFinished',
+                message = 'Job has not finished computing the results yet. Please try again later.',
                 links = []
-                ), 503)
+                ), 400)
 
         if job["current_status"] == "error":
             return flask.make_response(jsonify(
                 id = job_id,
-                code = 424,
+                code = job["error_code"],
                 message = job["error_msg"],
                 links = []
                 ), 424)
 
         s3 = boto3.client('s3',
+            endpoint_url=S3_LOCAL_URL,
             region_name="eu-central-1",
-            aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
-            aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
         )
         links = []
         results = json.loads(job["results"])
@@ -424,8 +423,8 @@ def add_job_to_queue(job_id):
 
         return flask.make_response(jsonify(
             id = job_id,
-            code = 400,
-            message = 'Job is not queued or running.',
+            code = "JobNotStarted",
+            message = "Job hasn't been started yet.",
             links = []
             ), 400)
 
@@ -464,7 +463,7 @@ def collection_information(collection_id):
     if not os.path.isfile("collection_information/{}.json".format(collection_id)):
         return flask.make_response(jsonify(
             id = collection_id,
-            code = 404,
+            code = "CollectionNotFound",
             message = 'Collection does not exist.',
             links = []
             ), 404)

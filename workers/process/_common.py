@@ -6,9 +6,25 @@ class ExecFailedError(Exception):
     def __init__(self, msg):
         self.msg = msg
 
+class UserError(ExecFailedError):
+    http_code = 400
 
-class InvalidInputError(ExecFailedError):
-    pass
+class Internal(ExecFailedError):
+    error_code = "Internal"
+    http_code = 500
+
+class ProcessArgumentInvalid(UserError):
+    error_code = "ProcessArgumentInvalid"
+
+class VariableValueMissing(UserError):
+    error_code = "VariableValueMissing"
+
+class ProcessUnsupported(UserError):
+    error_code = "ProcessUnsupported"
+
+class StorageFailure(Internal):
+    error_code = "StorageFailure"
+
 
 
 class ProcessEOTask(EOTask):
@@ -76,10 +92,7 @@ class ProcessEOTask(EOTask):
 
     def execute(self, *prev_results):
         self._update_arguments_with_data(prev_results)
-        try:
-            return self.process(self._arguments_with_data)
-        except Exception:
-            self.logger.exception("Task failed")
+        return self.process(self._arguments_with_data)
 
     def process(self, arguments_with_data):
         """ Each process EOTask should implement this function instead of using
