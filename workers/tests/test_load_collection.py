@@ -22,11 +22,15 @@ FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), 'fixtures')
 
 
 def assert_wcs_bbox_matches(wcs_params, crs, west, east, north, south):
-    assert wcs_params['version'] == '1.1.2'
     assert wcs_params['crs'] == crs
 
     if crs == 'EPSG:4326':
-        assert wcs_params['bbox'] == '{south},{west},{north},{east}'.format(west=west, east=east, north=north, south=south)
+        if wcs_params['version'] == '1.1.2':
+            assert wcs_params['bbox'] == '{south},{west},{north},{east}'.format(west=west, east=east, north=north, south=south)
+        elif wcs_params['version'] == '1.0.0':
+            assert wcs_params['bbox'] == '{west},{south},{east},{north}'.format(west=west, east=east, north=north, south=south)
+        else:
+            assert False, "The tests do not know how to handle this version!"
     else:
         assert False, "The tests do not know how to handle this CRS!"
 
