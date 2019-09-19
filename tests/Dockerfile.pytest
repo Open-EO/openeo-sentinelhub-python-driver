@@ -5,4 +5,3 @@ RUN ./download-process-definitions.sh
 WORKDIR /tests
 RUN pip3 install pipenv
 RUN pipenv install --system --deploy --dev
-RUN ./load_fixtures.sh
