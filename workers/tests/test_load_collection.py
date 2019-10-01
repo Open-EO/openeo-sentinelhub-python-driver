@@ -4,7 +4,6 @@ import re
 import urllib.parse as urlparse
 import responses
 import json
-from copy import deepcopy
 import sys, os
 
 os.environ["SENTINELHUB_INSTANCE_ID"] = "fake_sentinel_hub_instance_id"
@@ -42,11 +41,6 @@ def query_params_from_url(url):
     for k in unprocessed_params:
         result[k.lower()] = unprocessed_params[k][0]
     return result
-
-def modify_value(data,key,value):
-    data2 = deepcopy(data)
-    data2[key] = value
-    return data2
 
 
 ###################################
