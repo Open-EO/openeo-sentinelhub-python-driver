@@ -4,6 +4,7 @@ import responses
 import xarray as xr
 import re
 import json
+import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
@@ -32,6 +33,17 @@ def save_resultEOTask():
     return process.save_result.save_resultEOTask(None, "random_job_id", None)
 
 @pytest.fixture
+def fake_bbox():
+    class BBox:
+        def get_lower_left(self):
+            return (12.32271,42.06347)
+
+        def get_upper_right(self):
+            return (12.33572,42.07112)
+
+    return BBox()
+
+@pytest.fixture
 def set_responses():
     sh_url_regex01 = re.compile('.')
     responses.add(
@@ -51,21 +63,22 @@ def set_responses():
     )
 
 @pytest.fixture
-def data():
+def data(fake_bbox):
     band_aliases = {
         "nir": "B08",
         "red": "B04",
     }
 
     xrdata = xr.DataArray(
-        [[[0.2]]],
-        dims=('y', 'x', 'band'),
+        [[[[0.2]]]],
+        dims=('t','y', 'x', 'band'),
         coords={
             'band': ["ndvi"],
+            't': [datetime.datetime.now()]
         },
         attrs={
             "band_aliases": band_aliases,
-            "bbox": "",
+            "bbox": fake_bbox,
         },
     )
 
