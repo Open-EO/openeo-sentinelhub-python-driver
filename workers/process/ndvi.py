@@ -1,4 +1,4 @@
-from ._common import ProcessEOTask, ProcessArgumentInvalid
+from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired
 import re
 
 class ndviEOTask(ProcessEOTask):
@@ -6,12 +6,12 @@ class ndviEOTask(ProcessEOTask):
         try:
             data = arguments["data"]
         except:
-            ProcessArgumentRequired("Process 'ndvi' requires argument 'data'.")
+            raise ProcessArgumentRequired("Process 'ndvi' requires argument 'data'.")
 
         name = arguments.get("name","ndvi")
 
         if not re.match("^[A-Za-z0-9_]+$", name):
-            ProcessArgumentInvalid("The argument 'name' in process 'ndvi' is invalid: string does not match the required pattern.") 
+            raise ProcessArgumentInvalid("The argument 'name' in process 'ndvi' is invalid: string does not match the required pattern.") 
 
         nir_band = data.attrs["band_aliases"].get("nir", "nir")
         red_band = data.attrs["band_aliases"].get("red", "red")
