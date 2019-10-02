@@ -5,7 +5,7 @@ import boto3
 import xarray as xr
 
 
-from ._common import ProcessEOTask, StorageFailure, ProcessArgumentInvalid
+from ._common import ProcessEOTask, StorageFailure, ProcessArgumentInvalid, ProcessArgumentRequired
 
 
 S3_BUCKET_NAME = 'com.sinergise.openeo.results'
@@ -55,8 +55,16 @@ class save_resultEOTask(ProcessEOTask):
     def process(self, arguments):
         self.results = []
 
-        data = arguments["data"]
-        output_format = arguments['format'].lower()
+        try:
+            data = arguments["data"]
+        except:
+            raise ProcessArgumentRequired("Process 'save_result' requires argument 'data'.")
+
+        try:
+            output_format = arguments['format'].lower()
+        except:
+            raise ProcessArgumentRequired("Process 'save_result' requires argument 'format'.")
+
         output_options = arguments.get('options', {})
 
         if output_format != 'gtiff':
