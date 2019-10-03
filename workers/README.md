@@ -1,12 +1,15 @@
 ## Installation instructions
 
-Mandatory: whichever method you select, first copy `.env.example` to `.env` and enter the variables there.
+Mandatory: whichever method you select, first copy `.env.example` from root folder to `.env` in `/workers` directory and enter the variables there.
 
 ### Docker
 
+In root folder, start up the supporting services.
+
 ```
-$ docker-compose build
-$ docker-compose up -d
+$ docker-compose up -d --build dynamodb
+$ docker-compose up -d --build minio
+$ docker-compose up -d --build createbuckets
 ```
 
 ### Local install
@@ -38,6 +41,16 @@ $ pipenv shell
 ```
 
 ## Running
+
+### Environment variables
+
+Endpoint url of the local `AWS S3` service has to be specified as an enviroment variable `DATA_AWS_S3_ENDPOINT_URL`. By default, local `S3` runs on `http://localhost:9000`. 
+
+```
+export DATA_AWS_S3_ENDPOINT_URL="http://localhost:9000" 
+```
+
+### Starting up the workers service
 
 ```
 $ pipenv shell
