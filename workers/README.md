@@ -1,6 +1,6 @@
 ## Installation instructions
 
-Mandatory: whichever method you select, first copy `.env.example` from root folder to `.env` in `/workers` directory and enter the variables there.
+Mandatory: whichever method you select, first copy `.env.example` to `.env` and enter the variables there.
 
 ### Docker
 
