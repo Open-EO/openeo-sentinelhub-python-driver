@@ -67,7 +67,7 @@ def response_02():
     return open(filename, 'rb').read()
 
 @pytest.fixture
-def arguments():
+def argumentsS2L1C():
     bbox = {
         "west": 12.32271,
         "east": 12.33572,
@@ -83,8 +83,8 @@ def arguments():
     return data
 
 @pytest.fixture
-def load_collectionEOTask(arguments):
-    return process.load_collection.load_collectionEOTask(arguments, "", None)
+def load_collectionEOTask(argumentsS2L1C):
+    return process.load_collection.load_collectionEOTask(argumentsS2L1C, "", None)
 
 @pytest.fixture
 def set_responses(response_01,response_02):
@@ -112,43 +112,43 @@ def set_responses(response_01,response_02):
 ###################################
 
 @responses.activate
-def test_correct(response_01, response_02, arguments, load_collectionEOTask, set_responses):
+def test_correct(response_01, response_02, argumentsS2L1C, load_collectionEOTask, set_responses):
     """
         Test load_collection process with correct parameters
     """
-    result = load_collectionEOTask.process(arguments)
+    result = load_collectionEOTask.process(argumentsS2L1C)
     assert len(responses.calls) == 2
     params = query_params_from_url(responses.calls[1].request.url)
-    assert_wcs_bbox_matches(params, 'EPSG:4326', **arguments["spatial_extent"])
+    assert_wcs_bbox_matches(params, 'EPSG:4326', **argumentsS2L1C["spatial_extent"])
 
 @responses.activate
-def test_collection_id(response_01, response_02, arguments, load_collectionEOTask, set_responses):
+def test_collection_id(response_01, response_02, argumentsS2L1C, load_collectionEOTask, set_responses):
     """
         Test load_collection process with incorrect collection id
     """
-    arguments["id"] = "non-existent"
+    argumentsS2L1C["id"] = "non-existent"
 
     with pytest.raises(ProcessArgumentInvalid) as ex:
-        result = load_collectionEOTask.process(arguments)
+        result = load_collectionEOTask.process(argumentsS2L1C)
 
     assert ex.value.args[0] == "The argument 'id' in process 'load_collection' is invalid: unknown collection id"
 
 @responses.activate
-def test_temporal_extent(response_01, response_02, arguments, load_collectionEOTask, set_responses):
+def test_temporal_extent(response_01, response_02, argumentsS2L1C, load_collectionEOTask, set_responses):
     """
         Test load_collection process with incorrect temporal_extent
     """
-    arguments["temporal_extent"] = [None,None]
+    argumentsS2L1C["temporal_extent"] = [None,None]
 
     with pytest.raises(ProcessArgumentInvalid) as ex:
-        result = load_collectionEOTask.process(arguments)
+        result = load_collectionEOTask.process(argumentsS2L1C)
 
     assert ex.value.args[0] == "The argument 'temporal_extent' in process 'load_collection' is invalid: Only one boundary can be set to null."
 
-    arguments["temporal_extent"] = "A date"
+    argumentsS2L1C["temporal_extent"] = "A date"
 
     with pytest.raises(ProcessArgumentInvalid) as ex:
-        result = load_collectionEOTask.process(arguments)
+        result = load_collectionEOTask.process(argumentsS2L1C)
 
     assert ex.value.args[0] == "The argument 'temporal_extent' in process 'load_collection' is invalid: The interval has to be specified as an array with exactly two elements."
 
