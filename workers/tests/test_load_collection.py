@@ -74,13 +74,12 @@ def argumentsS2L1C():
         "north": 42.07112,
         "south": 42.06347
     }
-    data = {
+    return {
         "id": "S2L1C",
         "spatial_extent": bbox,
         "temporal_extent": ["2019-08-16", "2019-08-18"],
     }
 
-    return data
 
 @pytest.fixture
 def load_collectionEOTask(argumentsS2L1C):
@@ -112,7 +111,7 @@ def set_responses(response_01,response_02):
 ###################################
 
 @responses.activate
-def test_correct(response_01, response_02, argumentsS2L1C, load_collectionEOTask, set_responses):
+def test_correct_s2l1c(argumentsS2L1C, load_collectionEOTask, set_responses):
     """
         Test load_collection process with correct parameters
     """
@@ -122,7 +121,7 @@ def test_correct(response_01, response_02, argumentsS2L1C, load_collectionEOTask
     assert_wcs_bbox_matches(params, 'EPSG:4326', **argumentsS2L1C["spatial_extent"])
 
 @responses.activate
-def test_collection_id(response_01, response_02, argumentsS2L1C, load_collectionEOTask, set_responses):
+def test_collection_id(argumentsS2L1C, load_collectionEOTask, set_responses):
     """
         Test load_collection process with incorrect collection id
     """
@@ -134,7 +133,7 @@ def test_collection_id(response_01, response_02, argumentsS2L1C, load_collection
     assert ex.value.args[0] == "The argument 'id' in process 'load_collection' is invalid: unknown collection id"
 
 @responses.activate
-def test_temporal_extent(response_01, response_02, argumentsS2L1C, load_collectionEOTask, set_responses):
+def test_temporal_extent(argumentsS2L1C, load_collectionEOTask, set_responses):
     """
         Test load_collection process with incorrect temporal_extent
     """
