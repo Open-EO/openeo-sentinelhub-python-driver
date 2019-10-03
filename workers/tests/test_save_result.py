@@ -5,28 +5,14 @@ import xarray as xr
 import re
 import json
 import datetime
+import boto3
+
+os.environ["DATA_AWS_S3_ENDPOINT_URL"] = "http://minio:9000"
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
 from process._common import ProcessArgumentInvalid
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), 'fixtures')
-
-
-###################################
-# fixtures:
-###################################
-
-# @pytest.fixture
-# def response_01():
-#     filename = os.path.join(FIXTURES_FOLDER, 'response_load_collection01.json')
-#     assert os.path.isfile(filename), "Please run load_fixtures.sh!"
-#     return json.load(open(filename))
-
-# @pytest.fixture
-# def response_02():
-#     filename = os.path.join(FIXTURES_FOLDER, 'response_load_collection02.tiff')
-#     assert os.path.isfile(filename), "Please run load_fixtures.sh!"
-#     return open(filename, 'rb').read()
 
 @pytest.fixture
 def save_resultEOTask():

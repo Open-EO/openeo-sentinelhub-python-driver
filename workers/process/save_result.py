@@ -19,6 +19,7 @@ DATA_AWS_SECRET_ACCESS_KEY = os.environ.get('DATA_AWS_SECRET_ACCESS_KEY', FAKE_A
 DATA_AWS_REGION = os.environ.get('DATA_AWS_REGION', 'eu-central-1')
 DATA_AWS_S3_ENDPOINT_URL = os.environ.get('DATA_AWS_S3_ENDPOINT_URL', 'http://localhost:9000')
 
+print(DATA_AWS_S3_ENDPOINT_URL,"at process")
 
 class save_resultEOTask(ProcessEOTask):
     _s3 = boto3.client('s3',
