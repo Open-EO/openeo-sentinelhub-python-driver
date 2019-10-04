@@ -54,32 +54,27 @@
       10,
       10
     ],
-    "sar:platform": "Sentinel-1A",
+    "sar:platform": "Sentinel-1",
     "sar:bands": [
       {
-        "name": "HH",
+        "name": "EW-HH",
         "description": "Single co-polarization, horizontal transmit/horizontal receive",
         "polarization": "HH"
       },
       {
-        "name": "HV",
+        "name": "EW-HV",
         "description": "Dual-band cross-polarization, horizontal transmit/vertical receive",
         "polarization": "HV"
       },
       {
-        "name": "VV",
+        "name": "IW-VV",
         "description": "Single co-polarization, vertical transmit/vertical receive",
         "polarization": "VV"
       },
       {
-        "name": "VH",
+        "name": "IW-VH",
         "description": "Dual-band cross-polarization, vertical transmit/horizontal receive",
         "polarization": "VH"
-      },
-      {
-        "name": "angle",
-        "description": "Approximate viewing incidence angle",
-        "polarization": "angle"
       }
     ]
   },

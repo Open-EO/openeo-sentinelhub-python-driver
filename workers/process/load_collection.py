@@ -5,7 +5,7 @@ import xarray as xr
 from sentinelhub import CustomUrlParam, BBox, CRS
 from sentinelhub.constants import AwsConstants
 from eolearn.core import FeatureType, EOPatch
-from eolearn.io import S2L1CWCSInput
+from eolearn.io import S2L1CWCSInput, S1IWWCSInput
 
 
 from ._common import ProcessEOTask, ProcessArgumentInvalid, Internal
@@ -13,6 +13,7 @@ from ._common import ProcessEOTask, ProcessArgumentInvalid, Internal
 
 SENTINELHUB_INSTANCE_ID = os.environ.get('SENTINELHUB_INSTANCE_ID', None)
 SENTINELHUB_LAYER_ID = os.environ.get('SENTINELHUB_LAYER_ID', None)
+SENTINELHUB_LAYER_ID_S1GRD = os.environ.get('SENTINELHUB_LAYER_ID_S1GRD', None)
 
 
 def _clean_temporal_extent(temporal_extent):
@@ -84,6 +85,41 @@ class load_collectionEOTask(ProcessEOTask):
                 "nir": "B08",
                 "red": "B04",
             }
+
+        elif arguments['id'] == 'S1GRDIW':
+            # SENTINELHUB_LAYER_ID_S1GRD = os.environ.get('SENTINELHUB_LAYER_ID_S1GRD', None)
+            print(SENTINELHUB_LAYER_ID_S1GRD)
+            print(SENTINELHUB_INSTANCE_ID)
+            # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=available-bands-and-data
+            INPUT_BANDS = ['VV', 'VH']
+
+            # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=resolution-pixel-spacing
+            #   Value     Description
+            #   HIGH      10m/px for IW and 25m/px for EW
+            #   MEDIUM    40m/px for IW and EW
+            # https://sentinel-hub.com/develop/documentation/eo_products/Sentinel1EOproducts
+            #   Sensing Resolution:
+            #     - Medium
+            #     - High
+            #   Similarly to polarization, not all beam mode/polarization combinations will have data
+            #   at the chosen resolution. IW is typically sensed in High resolution, EW in Medium.
+            res = '10m'
+            try:
+                patch = S1IWWCSInput(
+                    instance_id=SENTINELHUB_INSTANCE_ID,
+                    layer=SENTINELHUB_LAYER_ID_S1GRD,
+                    feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
+                    custom_url_params={
+                        CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(INPUT_BANDS)),
+                    },
+                    resx='10m', # resolution x
+                    resy='10m', # resolution y
+                    maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
+                ).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)
+            except Exception as ex:
+                raise Internal("Server error: EOPatch creation failed: {}".format(str(ex)))
+            band_aliases = {}
+
         else:
             raise ProcessArgumentInvalid("The argument 'id' in process 'load_collection' is invalid: unknown collection id")
 
