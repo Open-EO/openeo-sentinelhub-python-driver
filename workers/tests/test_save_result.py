@@ -4,9 +4,6 @@ import xarray as xr
 import re
 import json
 import datetime
-import responses
-import boto3
-# import io
 from botocore.stub import Stubber,ANY
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -33,7 +30,6 @@ def s3_stub(save_resultEOTask):
     client = save_resultEOTask._s3
     with Stubber(client) as stubber:
         yield stubber
-        stubber.assert_no_pending_responses()
 
 @pytest.fixture
 def fake_bbox():
@@ -77,7 +73,7 @@ def test_correct(save_resultEOTask, data, s3_stub, gtiff_object):
     """
         Test save_result process with correct parameters
     """
-    a = s3_stub.add_response(
+    s3_stub.add_response(
         'put_object',
         expected_params = {
             'ACL': ANY,
@@ -92,3 +88,5 @@ def test_correct(save_resultEOTask, data, s3_stub, gtiff_object):
     
     arguments = {"data":data,"format":"gtiff"}
     result = save_resultEOTask.process(arguments)
+
+    s3_stub.assert_no_pending_responses()
