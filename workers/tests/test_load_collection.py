@@ -67,19 +67,31 @@ def response_02():
     return open(filename, 'rb').read()
 
 @pytest.fixture
-def argumentsS2L1C():
-    bbox = {
-        "west": 12.32271,
-        "east": 12.33572,
-        "north": 42.07112,
-        "south": 42.06347
-    }
-    return {
-        "id": "S2L1C",
-        "spatial_extent": bbox,
-        "temporal_extent": ["2019-08-16", "2019-08-18"],
-    }
+def arguments_factory():
+    def wrapped(
+        collection_id,
+        temporal_extent=["2019-08-16", "2019-08-18"],
+        bbox = {
+            "west": 12.32271,
+            "east": 12.33572,
+            "north": 42.07112,
+            "south": 42.06347
+        },
+    ):
+        return {
+            "id": collection_id,
+            "spatial_extent": bbox,
+            "temporal_extent": temporal_extent,
+        }
+    return wrapped
 
+@pytest.fixture
+def argumentsS2L1C(arguments_factory):
+    return arguments_factory("S2L1C")
+
+@pytest.fixture
+def argumentsS1GRD(arguments_factory):
+    return arguments_factory("S1GRD")
 
 @pytest.fixture
 def execute_load_collection_process():
@@ -116,7 +128,7 @@ def set_responses(response_01,response_02):
 @responses.activate
 def test_correct_s2l1c(argumentsS2L1C, execute_load_collection_process, set_responses):
     """
-        Test load_collection process with correct parameters
+        Test load_collection process with correct parameters (S2L1C)
     """
     result = execute_load_collection_process(argumentsS2L1C)
     assert len(responses.calls) == 2
@@ -124,33 +136,31 @@ def test_correct_s2l1c(argumentsS2L1C, execute_load_collection_process, set_resp
     assert_wcs_bbox_matches(params, 'EPSG:4326', **argumentsS2L1C["spatial_extent"])
 
 
-def test_collection_id(argumentsS2L1C, execute_load_collection_process, set_responses):
+def test_collection_id(arguments_factory, execute_load_collection_process, set_responses):
     """
         Test load_collection process with incorrect collection id
     """
-    argumentsS2L1C["id"] = "non-existent"
-
+    arguments = arguments_factory("non-existent")
     with pytest.raises(ProcessArgumentInvalid) as ex:
-        result = execute_load_collection_process(argumentsS2L1C)
-
+        result = execute_load_collection_process(arguments)
     assert ex.value.args[0] == "The argument 'id' in process 'load_collection' is invalid: unknown collection id"
 
 
-def test_temporal_extent_invalid_none_none(argumentsS2L1C, execute_load_collection_process, set_responses):
+def test_temporal_extent_invalid_none_none(arguments_factory, execute_load_collection_process, set_responses):
     """
         Test load_collection process with incorrect temporal_extent
     """
-    argumentsS2L1C["temporal_extent"] = [None,None]
+    arguments = arguments_factory("S2L1C", temporal_extent = [None,None])
     with pytest.raises(ProcessArgumentInvalid) as ex:
-        result = execute_load_collection_process(argumentsS2L1C)
+        result = execute_load_collection_process(arguments)
     assert ex.value.args[0] == "The argument 'temporal_extent' in process 'load_collection' is invalid: Only one boundary can be set to null."
 
 
-def test_temporal_extent_invalid_format(argumentsS2L1C, execute_load_collection_process, set_responses):
+def test_temporal_extent_invalid_format(arguments_factory, execute_load_collection_process, set_responses):
     """
         Test load_collection process with incorrect temporal_extent
     """
-    argumentsS2L1C["temporal_extent"] = "A date"
+    arguments = arguments_factory("S2L1C", temporal_extent = "A date")
     with pytest.raises(ProcessArgumentInvalid) as ex:
-        result = execute_load_collection_process(argumentsS2L1C)
+        result = execute_load_collection_process(arguments)
     assert ex.value.args[0] == "The argument 'temporal_extent' in process 'load_collection' is invalid: The interval has to be specified as an array with exactly two elements."
