@@ -43,11 +43,6 @@ def query_params_from_url(url):
         result[k.lower()] = unprocessed_params[k][0]
     return result
 
-def modify_value(data,key,value):
-    data2 = deepcopy(data)
-    data2[key] = value
-    return data2
-
 
 ###################################
 # fixtures:
