@@ -43,11 +43,6 @@ def query_params_from_url(url):
         result[k.lower()] = unprocessed_params[k][0]
     return result
 
-def modify_value(data,key,value):
-    data2 = deepcopy(data)
-    data2[key] = value
-    return data2
-
 
 ###################################
 # fixtures:
@@ -55,53 +50,66 @@ def modify_value(data,key,value):
 
 
 @pytest.fixture
-def response_01():
+def response_json():
     filename = os.path.join(FIXTURES_FOLDER, 'response_load_collection01.json')
     assert os.path.isfile(filename), "Please run load_fixtures.sh!"
-    return json.load(open(filename))
+    return json.dumps(json.load(open(filename)))
 
 @pytest.fixture
-def response_02():
+def response_geotiff():
     filename = os.path.join(FIXTURES_FOLDER, 'response_load_collection02.tiff')
     assert os.path.isfile(filename), "Please run load_fixtures.sh!"
     return open(filename, 'rb').read()
 
 @pytest.fixture
-def arguments():
-    bbox = {
-        "west": 12.32271,
-        "east": 12.33572,
-        "north": 42.07112,
-        "south": 42.06347
-    }
-    data = {
-        "id": "S2L1C",
-        "spatial_extent": bbox,
-        "temporal_extent": ["2019-08-16", "2019-08-18"],
-    }
-
-    return data
+def arguments_factory():
+    def wrapped(
+        collection_id,
+        temporal_extent=["2019-08-16", "2019-08-18"],
+        bbox = {
+            "west": 12.32271,
+            "east": 12.33572,
+            "north": 42.07112,
+            "south": 42.06347
+        },
+    ):
+        return {
+            "id": collection_id,
+            "spatial_extent": bbox,
+            "temporal_extent": temporal_extent,
+        }
+    return wrapped
 
 @pytest.fixture
-def load_collectionEOTask(arguments):
-    return process.load_collection.load_collectionEOTask(arguments, "", None)
+def argumentsS2L1C(arguments_factory):
+    return arguments_factory("S2L1C")
 
 @pytest.fixture
-def set_responses(response_01,response_02):
-    sh_url_regex01 = re.compile('^.*sentinel-hub.com/ogc/wfs/.*$')
+def argumentsS1GRD(arguments_factory):
+    return arguments_factory("S1GRD")
+
+@pytest.fixture
+def execute_load_collection_process(set_responses):
+    # While this fixture doesn't use `set_responses` directly, we always want to run this side-effect
+    # whenever we execute load_collection prosess, so it makes sense to depend on it here.
+    def wrapped(arguments):
+        return process.load_collection.load_collectionEOTask(arguments, "", None).process(arguments)
+    return wrapped
+
+@pytest.fixture
+def set_responses(response_json, response_geotiff):
     responses.add(
         responses.GET,
-        sh_url_regex01,
-        body=json.dumps(response_01),
+        re.compile(r'^.*sentinel-hub.com/ogc/wfs/.*$'),
+        body=response_json,
         match_querystring=True,
         status=200,
     )
 
-    sh_url_regex02 = re.compile('^.*sentinel-hub.com/ogc/wcs/.*$')
     responses.add(
         responses.GET,
-        sh_url_regex02,
-        body=response_02,
+        re.compile(r'^.*sentinel-hub.com/ogc/wcs/.*$'),
+        body=response_geotiff,
         match_querystring=True,
         status=200,
     )
@@ -111,46 +119,37 @@ def set_responses(response_01,response_02):
 # tests:
 ###################################
 
-@responses.activate
-def test_correct(response_01, response_02, arguments, load_collectionEOTask, set_responses):
-    """
-        Test load_collection process with correct parameters
-    """
-    result = load_collectionEOTask.process(arguments)
-    assert len(responses.calls) == 2
-    params = query_params_from_url(responses.calls[1].request.url)
-    assert_wcs_bbox_matches(params, 'EPSG:4326', **arguments["spatial_extent"])
 
 @responses.activate
-def test_collection_id(response_01, response_02, arguments, load_collectionEOTask, set_responses):
+def test_correct_s2l1c(argumentsS2L1C, execute_load_collection_process):
+    """
+        Test load_collection process with correct parameters (S2L1C)
+    """
+    result = execute_load_collection_process(argumentsS2L1C)
+    assert len(responses.calls) == 2
+    params = query_params_from_url(responses.calls[1].request.url)
+    assert_wcs_bbox_matches(params, 'EPSG:4326', **argumentsS2L1C["spatial_extent"])
+
+
+def test_collection_id(arguments_factory, execute_load_collection_process):
     """
         Test load_collection process with incorrect collection id
     """
-    arguments["id"] = "non-existent"
-
+    arguments = arguments_factory("non-existent")
     with pytest.raises(ProcessArgumentInvalid) as ex:
-        result = load_collectionEOTask.process(arguments)
-
+        result = execute_load_collection_process(arguments)
     assert ex.value.args[0] == "The argument 'id' in process 'load_collection' is invalid: unknown collection id"
 
-@responses.activate
-def test_temporal_extent(response_01, response_02, arguments, load_collectionEOTask, set_responses):
+
+@pytest.mark.parametrize('invalid_temporal_extent,failure_reason', [
+    ([None,None], "Only one boundary can be set to null."),
+    ("A date", "The interval has to be specified as an array with exactly two elements."),
+])
+def test_temporal_extent_invalid(arguments_factory, execute_load_collection_process, invalid_temporal_extent, failure_reason):
     """
         Test load_collection process with incorrect temporal_extent
     """
-    arguments["temporal_extent"] = [None,None]
-
+    arguments = arguments_factory("S2L1C", temporal_extent = invalid_temporal_extent)
     with pytest.raises(ProcessArgumentInvalid) as ex:
-        result = load_collectionEOTask.process(arguments)
-
-    assert ex.value.args[0] == "The argument 'temporal_extent' in process 'load_collection' is invalid: Only one boundary can be set to null."
-
-    arguments["temporal_extent"] = "A date"
-
-    with pytest.raises(ProcessArgumentInvalid) as ex:
-        result = load_collectionEOTask.process(arguments)
-
-    assert ex.value.args[0] == "The argument 'temporal_extent' in process 'load_collection' is invalid: The interval has to be specified as an array with exactly two elements."
-
-
-
+        result = execute_load_collection_process(arguments)
+    assert ex.value.args[0] == f"The argument 'temporal_extent' in process 'load_collection' is invalid: {failure_reason}"
