@@ -146,21 +146,15 @@ def test_collection_id(arguments_factory, execute_load_collection_process, set_r
     assert ex.value.args[0] == "The argument 'id' in process 'load_collection' is invalid: unknown collection id"
 
 
-def test_temporal_extent_invalid_none_none(arguments_factory, execute_load_collection_process, set_responses):
+@pytest.mark.parametrize('invalid_temporal_extent,failure_reason', [
+    ([None,None], "Only one boundary can be set to null."),
+    ("A date", "The interval has to be specified as an array with exactly two elements."),
+])
+def test_temporal_extent_invalid(arguments_factory, execute_load_collection_process, set_responses, invalid_temporal_extent, failure_reason):
     """
         Test load_collection process with incorrect temporal_extent
     """
-    arguments = arguments_factory("S2L1C", temporal_extent = [None,None])
+    arguments = arguments_factory("S2L1C", temporal_extent = invalid_temporal_extent)
     with pytest.raises(ProcessArgumentInvalid) as ex:
         result = execute_load_collection_process(arguments)
-    assert ex.value.args[0] == "The argument 'temporal_extent' in process 'load_collection' is invalid: Only one boundary can be set to null."
-
-
-def test_temporal_extent_invalid_format(arguments_factory, execute_load_collection_process, set_responses):
-    """
-        Test load_collection process with incorrect temporal_extent
-    """
-    arguments = arguments_factory("S2L1C", temporal_extent = "A date")
-    with pytest.raises(ProcessArgumentInvalid) as ex:
-        result = execute_load_collection_process(arguments)
-    assert ex.value.args[0] == "The argument 'temporal_extent' in process 'load_collection' is invalid: The interval has to be specified as an array with exactly two elements."
+    assert ex.value.args[0] == f"The argument 'temporal_extent' in process 'load_collection' is invalid: {failure_reason}"
