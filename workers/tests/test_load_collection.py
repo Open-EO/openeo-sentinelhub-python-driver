@@ -55,13 +55,13 @@ def modify_value(data,key,value):
 
 
 @pytest.fixture
-def response_01():
+def response_json():
     filename = os.path.join(FIXTURES_FOLDER, 'response_load_collection01.json')
     assert os.path.isfile(filename), "Please run load_fixtures.sh!"
-    return json.load(open(filename))
+    return json.dumps(json.load(open(filename)))
 
 @pytest.fixture
-def response_02():
+def response_geotiff():
     filename = os.path.join(FIXTURES_FOLDER, 'response_load_collection02.tiff')
     assert os.path.isfile(filename), "Please run load_fixtures.sh!"
     return open(filename, 'rb').read()
@@ -94,27 +94,27 @@ def argumentsS1GRD(arguments_factory):
     return arguments_factory("S1GRD")
 
 @pytest.fixture
-def execute_load_collection_process():
+def execute_load_collection_process(set_responses):
+    # While this fixture doesn't use `set_responses` directly, we always want to run this side-effect
+    # whenever we execute load_collection prosess, so it makes sense to depend on it here.
     def wrapped(arguments):
         return process.load_collection.load_collectionEOTask(arguments, "", None).process(arguments)
     return wrapped
 
 @pytest.fixture
-def set_responses(response_01,response_02):
-    sh_url_regex01 = re.compile('^.*sentinel-hub.com/ogc/wfs/.*$')
+def set_responses(response_json, response_geotiff):
     responses.add(
         responses.GET,
-        sh_url_regex01,
-        body=json.dumps(response_01),
+        re.compile(r'^.*sentinel-hub.com/ogc/wfs/.*$'),
+        body=response_json,
         match_querystring=True,
         status=200,
     )
 
-    sh_url_regex02 = re.compile('^.*sentinel-hub.com/ogc/wcs/.*$')
     responses.add(
         responses.GET,
-        sh_url_regex02,
-        body=response_02,
+        re.compile(r'^.*sentinel-hub.com/ogc/wcs/.*$'),
+        body=response_geotiff,
         match_querystring=True,
         status=200,
     )
@@ -126,7 +126,7 @@ def set_responses(response_01,response_02):
 
 
 @responses.activate
-def test_correct_s2l1c(argumentsS2L1C, execute_load_collection_process, set_responses):
+def test_correct_s2l1c(argumentsS2L1C, execute_load_collection_process):
     """
         Test load_collection process with correct parameters (S2L1C)
     """
@@ -136,7 +136,7 @@ def test_correct_s2l1c(argumentsS2L1C, execute_load_collection_process, set_resp
     assert_wcs_bbox_matches(params, 'EPSG:4326', **argumentsS2L1C["spatial_extent"])
 
 
-def test_collection_id(arguments_factory, execute_load_collection_process, set_responses):
+def test_collection_id(arguments_factory, execute_load_collection_process):
     """
         Test load_collection process with incorrect collection id
     """
@@ -150,7 +150,7 @@ def test_collection_id(arguments_factory, execute_load_collection_process, set_r
     ([None,None], "Only one boundary can be set to null."),
     ("A date", "The interval has to be specified as an array with exactly two elements."),
 ])
-def test_temporal_extent_invalid(arguments_factory, execute_load_collection_process, set_responses, invalid_temporal_extent, failure_reason):
+def test_temporal_extent_invalid(arguments_factory, execute_load_collection_process, invalid_temporal_extent, failure_reason):
     """
         Test load_collection process with incorrect temporal_extent
     """
