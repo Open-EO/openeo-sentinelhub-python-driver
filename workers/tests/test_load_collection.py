@@ -7,9 +7,6 @@ import json
 from copy import deepcopy
 import sys, os
 
-os.environ["SENTINELHUB_INSTANCE_ID"] = "fake_sentinel_hub_instance_id"
-os.environ["SENTINELHUB_LAYER_ID"] = "S2L1C"
-
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
 from process._common import ProcessArgumentInvalid

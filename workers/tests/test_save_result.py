@@ -1,22 +1,39 @@
 import pytest
 import sys, os
-import responses
 import xarray as xr
 import re
 import json
 import datetime
+import responses
 import boto3
-
-os.environ["DATA_AWS_S3_ENDPOINT_URL"] = "http://minio:9000"
+# import io
+from botocore.stub import Stubber,ANY
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
 from process._common import ProcessArgumentInvalid
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), 'fixtures')
 
+S3_BUCKET_NAME = 'com.sinergise.openeo.results'
+DATA_AWS_S3_ENDPOINT_URL = os.environ.get('DATA_AWS_S3_ENDPOINT_URL')
+JOB_ID = "random_job_id"
+
 @pytest.fixture
 def save_resultEOTask():
-    return process.save_result.save_resultEOTask(None, "random_job_id", None)
+    return process.save_result.save_resultEOTask(None, JOB_ID , None)
+
+@pytest.fixture
+def gtiff_object():
+    filename = os.path.join(FIXTURES_FOLDER, 'gtiff_object.tiff')
+    body = open(filename, 'rb').read()
+    return body
+
+@pytest.fixture(autouse=True)
+def s3_stub(save_resultEOTask):
+    client = save_resultEOTask._s3
+    with Stubber(client) as stubber:
+        yield stubber
+        stubber.assert_no_pending_responses()
 
 @pytest.fixture
 def fake_bbox():
@@ -29,24 +46,6 @@ def fake_bbox():
 
     return BBox()
 
-@pytest.fixture
-def set_responses():
-    sh_url_regex01 = re.compile('.')
-    responses.add(
-        responses.GET,
-        sh_url_regex01,
-        body=json.dumps({"code":200}),
-        match_querystring=True,
-        status=200,
-    )
-
-    responses.add(
-        responses.POST,
-        sh_url_regex01,
-        body=json.dumps({"code":200}),
-        match_querystring=True,
-        status=200,
-    )
 
 @pytest.fixture
 def data(fake_bbox):
@@ -70,21 +69,26 @@ def data(fake_bbox):
 
     return xrdata
 
-
-
 ###################################
 # tests:
 ###################################
 
-@responses.activate
-def test_correct(save_resultEOTask, set_responses, data):
+def test_correct(save_resultEOTask, data, s3_stub, gtiff_object):
     """
         Test save_result process with correct parameters
     """
+    a = s3_stub.add_response(
+        'put_object',
+        expected_params = {
+            'ACL': ANY,
+            'Body': gtiff_object,
+            'Bucket': S3_BUCKET_NAME,
+            'ContentType': ANY,
+            'Expires': ANY,
+            'Key': ANY
+        },
+        service_response={},
+    )
+    
     arguments = {"data":data,"format":"gtiff"}
     result = save_resultEOTask.process(arguments)
-    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    print(responses.calls)
-    # assert len(responses.calls) == 2
-    # params = query_params_from_url(responses.calls[1].request.url)
-    # assert_wcs_bbox_matches(params, 'EPSG:4326', **arguments["spatial_extent"])
