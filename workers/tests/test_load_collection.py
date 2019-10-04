@@ -112,6 +112,7 @@ def set_responses(response_01,response_02):
 # tests:
 ###################################
 
+
 @responses.activate
 def test_correct_s2l1c(argumentsS2L1C, execute_load_collection_process, set_responses):
     """
@@ -122,7 +123,7 @@ def test_correct_s2l1c(argumentsS2L1C, execute_load_collection_process, set_resp
     params = query_params_from_url(responses.calls[1].request.url)
     assert_wcs_bbox_matches(params, 'EPSG:4326', **argumentsS2L1C["spatial_extent"])
 
-@responses.activate
+
 def test_collection_id(argumentsS2L1C, execute_load_collection_process, set_responses):
     """
         Test load_collection process with incorrect collection id
@@ -134,24 +135,22 @@ def test_collection_id(argumentsS2L1C, execute_load_collection_process, set_resp
 
     assert ex.value.args[0] == "The argument 'id' in process 'load_collection' is invalid: unknown collection id"
 
-@responses.activate
-def test_temporal_extent(argumentsS2L1C, execute_load_collection_process, set_responses):
+
+def test_temporal_extent_invalid_none_none(argumentsS2L1C, execute_load_collection_process, set_responses):
     """
         Test load_collection process with incorrect temporal_extent
     """
     argumentsS2L1C["temporal_extent"] = [None,None]
-
     with pytest.raises(ProcessArgumentInvalid) as ex:
         result = execute_load_collection_process(argumentsS2L1C)
-
     assert ex.value.args[0] == "The argument 'temporal_extent' in process 'load_collection' is invalid: Only one boundary can be set to null."
 
-    argumentsS2L1C["temporal_extent"] = "A date"
 
+def test_temporal_extent_invalid_format(argumentsS2L1C, execute_load_collection_process, set_responses):
+    """
+        Test load_collection process with incorrect temporal_extent
+    """
+    argumentsS2L1C["temporal_extent"] = "A date"
     with pytest.raises(ProcessArgumentInvalid) as ex:
         result = execute_load_collection_process(argumentsS2L1C)
-
     assert ex.value.args[0] == "The argument 'temporal_extent' in process 'load_collection' is invalid: The interval has to be specified as an array with exactly two elements."
-
-
-
