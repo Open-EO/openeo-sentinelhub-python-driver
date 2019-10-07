@@ -18,7 +18,6 @@ DATA_AWS_ACCESS_KEY_ID = os.environ.get('DATA_AWS_ACCESS_KEY_ID', FAKE_AWS_ACCES
 DATA_AWS_SECRET_ACCESS_KEY = os.environ.get('DATA_AWS_SECRET_ACCESS_KEY', FAKE_AWS_SECRET_ACCESS_KEY)
 DATA_AWS_REGION = os.environ.get('DATA_AWS_REGION', 'eu-central-1')
 DATA_AWS_S3_ENDPOINT_URL = os.environ.get('DATA_AWS_S3_ENDPOINT_URL', 'http://localhost:9000')
-TESTING = os.environ.get("TESTING")
 
 class save_resultEOTask(ProcessEOTask):
     _s3 = boto3.client('s3',
@@ -37,8 +36,6 @@ class save_resultEOTask(ProcessEOTask):
         object_key = '{}/{}'.format(self.job_id, os.path.basename(filename))
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.put_object
         body = open(filename, 'rb')
-        if TESTING == "True":
-            body = body.read()
 
         self._s3.put_object(
             ACL='private',  # https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl
@@ -72,11 +69,11 @@ class save_resultEOTask(ProcessEOTask):
         output_options = arguments.get('options', {})
 
         if output_format != 'gtiff':
-            raise ProcessArgumentInvalid("The argument 'format' in process 'save_result' is invalid: supported formats are: 'GTiff'")
+            raise ProcessArgumentInvalid("The argument 'format' in process 'save_result' is invalid: supported formats are: 'GTiff'.")
         if output_options != {}:
-            raise ProcessArgumentInvalid("The argument 'options' in process 'save_result' is invalid: output options are currently not supported")
+            raise ProcessArgumentInvalid("The argument 'options' in process 'save_result' is invalid: output options are currently not supported.")
         if not isinstance(data, xr.DataArray):
-            raise ProcessArgumentInvalid("The argument 'data' in process 'save_result' is invalid: only cubes can be saved currently")
+            raise ProcessArgumentInvalid("The argument 'data' in process 'save_result' is invalid: only cubes can be saved currently.")
 
         # https://stackoverflow.com/a/33950009
         tmp_job_dir = os.path.join("/tmp", self.job_id)
@@ -119,9 +116,8 @@ class save_resultEOTask(ProcessEOTask):
 
             try:
                 self._put_file_to_s3(filename, 'image/tiff; application=geotiff')
-            except Exception as ex:
-                raise ex
-                # raise StorageFailure("Unable to store file(s).")
+            except Exception:
+                raise StorageFailure("Unable to store file(s).")
 
             self.results.append({
                 'filename': os.path.basename(filename),
