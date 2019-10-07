@@ -19,6 +19,7 @@ DATA_AWS_SECRET_ACCESS_KEY = os.environ.get('DATA_AWS_SECRET_ACCESS_KEY', FAKE_A
 DATA_AWS_REGION = os.environ.get('DATA_AWS_REGION', 'eu-central-1')
 DATA_AWS_S3_ENDPOINT_URL = os.environ.get('DATA_AWS_S3_ENDPOINT_URL', 'http://localhost:9000')
 
+
 class save_resultEOTask(ProcessEOTask):
     _s3 = boto3.client('s3',
             region_name=DATA_AWS_REGION,
@@ -35,11 +36,9 @@ class save_resultEOTask(ProcessEOTask):
     def _put_file_to_s3(self, filename, mime_type):
         object_key = '{}/{}'.format(self.job_id, os.path.basename(filename))
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.put_object
-        body = open(filename, 'rb')
-
         self._s3.put_object(
             ACL='private',  # https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl
-            Body=body,
+            Body=open(filename, 'rb'),
             Bucket=S3_BUCKET_NAME,
             ContentType=mime_type,
             # https://aws.amazon.com/blogs/aws/amazon-s3-object-expiration/
@@ -116,7 +115,7 @@ class save_resultEOTask(ProcessEOTask):
 
             try:
                 self._put_file_to_s3(filename, 'image/tiff; application=geotiff')
-            except Exception:
+            except Exception as ex:
                 raise StorageFailure("Unable to store file(s).")
 
             self.results.append({
