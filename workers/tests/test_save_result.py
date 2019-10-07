@@ -19,7 +19,7 @@ def save_resultEOTask():
     return process.save_result.save_resultEOTask(None, JOB_ID , None)
 
 @pytest.fixture
-def create_custom_object():
+def create_result_object():
     class CustomEqualityObject(BufferedReader):
         def __init__(self, parent):
             self.content = parent.read()
@@ -28,17 +28,12 @@ def create_custom_object():
             other_content = other.read()
             return self.content == other_content
 
-    def _generate(obj):
+    def _generate(file):
+        filename = os.path.join(FIXTURES_FOLDER, file)
+        obj = open(filename, 'rb')
         return CustomEqualityObject(obj)
 
     return _generate
-
-@pytest.fixture
-def gtiff_object(create_custom_object):
-    filename = os.path.join(FIXTURES_FOLDER, 'gtiff_object.tiff')
-    body = open(filename, 'rb')
-
-    return create_custom_object(body)
 
 @pytest.fixture
 def generate_data():
@@ -74,21 +69,13 @@ def generate_data():
     return _construct
 
 @pytest.fixture
-def arguments_factory(generate_data):
-    def wrapped(data_arguments=None, format_type=None, options=None):
+def execute_save_result_process(generate_data, save_resultEOTask):
+    def wrapped(data_arguments={}, format_type="GTiff", options=None):
         arguments = {}
         if data_arguments is not None: arguments["data"] = generate_data(**data_arguments)
         if format_type is not None: arguments["format"] = format_type
         if options is not None: arguments["options"] = options
 
-        return arguments
-
-    return wrapped
-
-@pytest.fixture
-def execute_save_result_process(arguments_factory, save_resultEOTask):
-    def wrapped(set_arguments={"data_arguments": {}, "format_type": "Gtiff"}):
-        arguments = arguments_factory(**set_arguments)
         return save_resultEOTask.process(arguments)
     return wrapped
 
@@ -122,35 +109,42 @@ def s3_stub_generator(save_resultEOTask):
 # tests:
 ###################################
 
-def test_correct(execute_save_result_process, s3_stub_generator, gtiff_object):
+def test_correct(execute_save_result_process, s3_stub_generator, create_result_object):
     """
         Test save_result process with correct parameters
     """
+    gtiff_object = create_result_object('gtiff_object.tiff')
     s3_stub = s3_stub_generator(gtiff_object)
     result = execute_save_result_process()
     s3_stub.assert_no_pending_responses()
 
-    assert isinstance(result,bool) and result == True
+    assert result is True
 
 @pytest.mark.parametrize(
     'missing_required_parameter,failure_reason', [
-    ({"format_type": "Gtiff"}, "data"),
-    ({"data_arguments": {}}, "format"),
+    ({"data_arguments": None}, "data"),
+    ({"format_type": None}, "format"),
 ])
 def test_required_params(execute_save_result_process, missing_required_parameter, failure_reason):
+    """
+        Test save_result process with missing required parameters
+    """
     with pytest.raises(ProcessArgumentRequired) as ex:
-        result = execute_save_result_process(set_arguments=missing_required_parameter)
+        result = execute_save_result_process(**missing_required_parameter)
 
     assert ex.value.args[0] == "Process 'save_result' requires argument '{}'.".format(failure_reason)
 
 
 @pytest.mark.parametrize(
     'invalid_parameter,failure_reason', [
-    ({"data_arguments": {}, "format_type": "png"}, ("format","supported formats are: 'GTiff'")),
-    ({"data_arguments": {}, "format_type": "Gtiff", "options": {"option_name": "option_value"}}, ("options","output options are currently not supported"))
+    ({"format_type": "png"}, ("format","supported formats are: 'GTiff'")),
+    ({"options": {"option_name": "option_value"}}, ("options","output options are currently not supported"))
 ])
 def test_invalid_params(execute_save_result_process, invalid_parameter, failure_reason):
+    """
+        Test save_result process with invalid parameters
+    """
     with pytest.raises(ProcessArgumentInvalid) as ex:
-        result = execute_save_result_process(set_arguments=invalid_parameter)
+        result = execute_save_result_process(**invalid_parameter)
 
     assert ex.value.args[0] == "The argument '{}' in process 'save_result' is invalid: {}.".format(*failure_reason)
