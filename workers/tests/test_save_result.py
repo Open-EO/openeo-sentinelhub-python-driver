@@ -1,8 +1,6 @@
 import pytest
 import sys, os
 import xarray as xr
-import re
-import json
 import datetime
 from botocore.stub import Stubber,ANY
 from io import BufferedReader
