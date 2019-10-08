@@ -87,10 +87,11 @@ def set_mock_responses():
     def wrapped(collection_id):
         filename = os.path.join(FIXTURES_FOLDER, f'response_load_collection_{collection_id.lower()}.json')
         assert os.path.isfile(filename), "Please run load_fixtures.sh!"
+        print(open(filename, 'rb').read())
         responses.add(
             responses.GET,
             re.compile(r'^.*sentinel-hub.com/ogc/wfs/.*$'),
-            body=json.dumps(json.load(open(filename))),
+            body=json.dumps(json.load(open(filename, 'rb'))),
             match_querystring=True,
             status=200,
         )

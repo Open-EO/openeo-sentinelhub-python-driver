@@ -12,7 +12,7 @@ from ._common import ProcessEOTask, ProcessArgumentInvalid, Internal
 
 
 SENTINELHUB_INSTANCE_ID = os.environ.get('SENTINELHUB_INSTANCE_ID', None)
-SENTINELHUB_LAYER_ID = os.environ.get('SENTINELHUB_LAYER_ID', None)
+SENTINELHUB_LAYER_ID_S2L1C = os.environ.get('SENTINELHUB_LAYER_ID_S2L1C', None)
 SENTINELHUB_LAYER_ID_S1GRD = os.environ.get('SENTINELHUB_LAYER_ID_S1GRD', None)
 
 
@@ -68,7 +68,7 @@ class load_collectionEOTask(ProcessEOTask):
             try:
                 patch = S2L1CWCSInput(
                     instance_id=SENTINELHUB_INSTANCE_ID,
-                    layer=SENTINELHUB_LAYER_ID,
+                    layer=SENTINELHUB_LAYER_ID_S2L1C,
                     feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
                     custom_url_params={
                         # custom url for specific bands:
@@ -87,9 +87,6 @@ class load_collectionEOTask(ProcessEOTask):
             }
 
         elif arguments['id'] == 'S1GRDIW':
-            # SENTINELHUB_LAYER_ID_S1GRD = os.environ.get('SENTINELHUB_LAYER_ID_S1GRD', None)
-            print(SENTINELHUB_LAYER_ID_S1GRD)
-            print(SENTINELHUB_INSTANCE_ID)
             # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=available-bands-and-data
             INPUT_BANDS = ['VV', 'VH']
 

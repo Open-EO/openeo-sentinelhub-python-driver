@@ -4,6 +4,7 @@ set -o allexport
 set +o allexport
 
 set -e
+set -x
 
 mkdir -p workers/tests/fixtures/
 

@@ -9,13 +9,19 @@ stages:
   - test
   - deploy
 
-pytest:
+integration tests:
   stage: test
   script:
     - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml up --exit-code-from pytest --build
-    - docker run --rm -w="/src/" shopeneo/workers bash -c "pip install pytest; pip install responses; ./load_fixtures.sh; pytest -x"
   after_script:
     - docker-compose down -v
+
+unit tests:
+  stage: test
+  script:
+    - cd workers/tests/
+    - set | grep SENTINEL | tr -d "'" >> .env
+    - docker-compose up --exit-code-from workers-unittests
 
 deploy-production-rest-lambda:
   stage: deploy
@@ -52,7 +58,7 @@ deploy-production-rest-lambda:
     - export AWS_SECRET_ACCESS_KEY="$PRODDATA_AWS_SECRET_ACCESS_KEY"
     - pipenv run bash -c "DYNAMODB_PRODUCTION=yes python dynamodb.py"
 
-deploy-production-workers-ecr:
+deploy-production-workers-ecr-ecs:
   stage: deploy
   when: manual
   only:
