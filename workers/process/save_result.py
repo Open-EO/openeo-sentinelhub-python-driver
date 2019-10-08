@@ -90,7 +90,7 @@ class save_resultEOTask(ProcessEOTask):
             if option not in ['datatype']:
                 raise ProcessArgumentInvalid("The argument 'options' in process 'save_result' is invalid, supported options are: 'datatype'.")
         if not datatype:
-            raise ProcessArgumentInvalid("The argument 'options' in process 'save_result' is invalid: unknown value for option 'datatype'.")
+            raise ProcessArgumentInvalid(f"The argument 'options' in process 'save_result' is invalid: unknown value for option 'datatype', allowed values are [{', '.join(self.GDAL_DATATYPES.keys())}].")
 
         # https://stackoverflow.com/a/33950009
         tmp_job_dir = os.path.join("/tmp", self.job_id)
