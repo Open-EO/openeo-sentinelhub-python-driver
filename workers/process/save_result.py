@@ -5,7 +5,7 @@ import boto3
 import xarray as xr
 
 
-from ._common import ProcessEOTask, StorageFailure, ProcessArgumentInvalid
+from ._common import ProcessEOTask, StorageFailure, ProcessArgumentInvalid, ProcessArgumentRequired
 
 
 S3_BUCKET_NAME = 'com.sinergise.openeo.results'
@@ -55,16 +55,24 @@ class save_resultEOTask(ProcessEOTask):
     def process(self, arguments):
         self.results = []
 
-        data = arguments["data"]
-        output_format = arguments['format'].lower()
+        try:
+            data = arguments["data"]
+        except:
+            raise ProcessArgumentRequired("Process 'save_result' requires argument 'data'.")
+
+        try:
+            output_format = arguments['format'].lower()
+        except:
+            raise ProcessArgumentRequired("Process 'save_result' requires argument 'format'.")
+
         output_options = arguments.get('options', {})
 
         if output_format != 'gtiff':
-            raise ProcessArgumentInvalid("The argument 'format' in process 'save_result' is invalid: supported formats are: 'GTiff'")
+            raise ProcessArgumentInvalid("The argument 'format' in process 'save_result' is invalid: supported formats are: 'GTiff'.")
         if output_options != {}:
-            raise ProcessArgumentInvalid("The argument 'options' in process 'save_result' is invalid: output options are currently not supported")
+            raise ProcessArgumentInvalid("The argument 'options' in process 'save_result' is invalid: output options are currently not supported.")
         if not isinstance(data, xr.DataArray):
-            raise ProcessArgumentInvalid("The argument 'data' in process 'save_result' is invalid: only cubes can be saved currently")
+            raise ProcessArgumentInvalid("The argument 'data' in process 'save_result' is invalid: only cubes can be saved currently.")
 
         # https://stackoverflow.com/a/33950009
         tmp_job_dir = os.path.join("/tmp", self.job_id)
@@ -85,6 +93,7 @@ class save_resultEOTask(ProcessEOTask):
         for ti in range(n_timestamps):
             timestamp = data['t'].to_index()[0]
             t_str = timestamp.strftime('%Y-%m-%d_%H-%M-%S')
+
             filename = os.path.join(tmp_job_dir, "result-{}.tiff".format(t_str))
 
             # create the output file:

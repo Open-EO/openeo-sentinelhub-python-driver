@@ -22,6 +22,9 @@ class VariableValueMissing(UserError):
 class ProcessUnsupported(UserError):
     error_code = "ProcessUnsupported"
 
+class ProcessArgumentRequired(UserError):
+    error_code = "ProcessArgumentRequired"
+
 class StorageFailure(Internal):
     error_code = "StorageFailure"
 
