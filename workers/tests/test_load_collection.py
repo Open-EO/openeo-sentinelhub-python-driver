@@ -76,8 +76,6 @@ def argumentsS1GRDIW(arguments_factory):
 
 @pytest.fixture
 def execute_load_collection_process():
-    # While this fixture doesn't use `set_responses` directly, we always want to run this side-effect
-    # whenever we execute load_collection prosess, so it makes sense to depend on it here.
     def wrapped(arguments):
         return process.load_collection.load_collectionEOTask(arguments, "", None).process(arguments)
     return wrapped
