@@ -109,8 +109,8 @@ class load_collectionEOTask(ProcessEOTask):
                     custom_url_params={
                         CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(INPUT_BANDS)),
                     },
-                    resx='10m', # resolution x
-                    resy='10m', # resolution y
+                    resx=res,
+                    resy=res,
                     maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
                 ).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)
             except Exception as ex:
