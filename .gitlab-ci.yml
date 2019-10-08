@@ -22,6 +22,8 @@ unit tests:
     - cd workers/tests/
     - set | grep SENTINEL | tr -d "'" >> .env
     - docker-compose up --exit-code-from workers-unittests
+  after_script:
+    - docker-compose down -v
 
 deploy-production-rest-lambda:
   stage: deploy
