@@ -15,3 +15,8 @@ services:
       SENTINELHUB_LAYER_ID_S2L1C: "${SENTINELHUB_LAYER_ID_S2L1C}"
       SENTINELHUB_LAYER_ID_S1GRD: "${SENTINELHUB_LAYER_ID_S1GRD}"
     command: bash -c "pip install pytest responses; ./load_fixtures.sh; pytest -x tests/"
+    networks:
+      - workers-unittests
+
+networks:
+  workers-unittests:
