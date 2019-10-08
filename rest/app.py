@@ -46,7 +46,7 @@ def after_request(response):
 def api_root():
     return {
         "api_version": "0.4.2",
-        "backend_version": "0.0.1",
+        "backend_version": os.environ.get('BACKEND_VERSION', "0.0.0").lstrip('v'),
         "title": "Sentinel Hub OpenEO",
         "description": "Sentinel Hub OpenEO by [Sinergise](https://sinergise.com)",
         "endpoints": get_endpoints(),
