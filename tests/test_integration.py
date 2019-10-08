@@ -8,6 +8,8 @@ from dynamodb import Persistence
 
 @pytest.fixture
 def app_client():
+    # set env vars used by the app:
+    os.environ["BACKEND_VERSION"] = 'v6.7.8'
     app.testing = True
     return app.test_client()
 
@@ -44,6 +46,9 @@ def test_root(app_client):
     ]
     for k in required_keys:
         assert k in actual
+
+    # version must be correctly read from env vars:
+    assert actual["backend_version"] == '6.7.8'
 
     # list of endpoints must contain at least ourselves:
     expected_endpoint = {

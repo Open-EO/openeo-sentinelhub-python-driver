@@ -7,7 +7,8 @@
       "DYNAMODB_LOCAL_URL": "@@DYNAMODB_LOCAL_URL@@",
       "AWS_ACCESS_KEY_ID": "@@AWS_ACCESS_KEY_ID@@",
       "AWS_SECRET_ACCESS_KEY": "@@AWS_SECRET_ACCESS_KEY@@",
-      "S3_DATA_BUCKET": "@@S3_DATA_BUCKET@@"
+      "S3_DATA_BUCKET": "@@S3_DATA_BUCKET@@",
+      "BACKEND_VERSION": "@@BACKEND_VERSION@@"
     },
     "memory_size": 128,
     "profile_name": "default",
