@@ -118,7 +118,7 @@ $ curl http://localhost:5000/jobs/6520894b-d41d-40d1-bcff-67eafab4eced
           "south": 42.06347,
           "west": 12.32271
         },
-        "temporal_extent": "2019-08-17"
+        "temporal_extent": ["2019-08-16", "2019-08-18"]
       },
       "process_id": "load_collection"
     },
@@ -149,7 +149,7 @@ $ curl http://localhost:5000/jobs/6520894b-d41d-40d1-bcff-67eafab4eced
 }
 ```
 
-And start it:
+And start it by using the returned `id`:
 ```
 $ curl -X POST http://localhost:5000/jobs/6520894b-d41d-40d1-bcff-67eafab4eced/results
 ```
