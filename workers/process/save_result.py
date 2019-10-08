@@ -45,6 +45,11 @@ class save_resultEOTask(ProcessEOTask):
         'cfloat32': gdal.GDT_CFloat32,
         'cfloat64': gdal.GDT_CFloat64,
     }
+    GDAL_FORMATS_EXTENSIONS = {
+        'gtiff': 'tiff',
+        'png': 'png',
+        'jpeg': 'jpeg',
+    }
 
 
     def _put_file_to_s3(self, filename, mime_type):
@@ -82,10 +87,11 @@ class save_resultEOTask(ProcessEOTask):
             raise ProcessArgumentRequired("Process 'save_result' requires argument 'format'.")
 
         output_options = arguments.get('options', {})
-        datatype = self.GDAL_DATATYPES.get(output_options.get('datatype', 'uint16').lower())
+        datatype_string = output_options.get('datatype', 'uint16').lower()
+        datatype = self.GDAL_DATATYPES.get(datatype_string)
 
-        if output_format != 'gtiff':
-            raise ProcessArgumentInvalid("The argument 'format' in process 'save_result' is invalid: supported formats are: 'GTiff'.")
+        if output_format not in self.GDAL_FORMATS_EXTENSIONS:
+            raise ProcessArgumentInvalid(f"The argument 'format' in process 'save_result' is invalid: supported formats are: {', '.join(self.GDAL_FORMATS_EXTENSIONS.keys())}.")
         for option in output_options:
             if option not in ['datatype']:
                 raise ProcessArgumentInvalid("The argument 'options' in process 'save_result' is invalid, supported options are: 'datatype'.")
@@ -112,15 +118,29 @@ class save_resultEOTask(ProcessEOTask):
             timestamp = data['t'].to_index()[0]
             t_str = timestamp.strftime('%Y-%m-%d_%H-%M-%S')
 
-            filename = os.path.join(tmp_job_dir, "result-{}.tiff".format(t_str))
+            filename = os.path.join(tmp_job_dir, f"result-{t_str}.{self.GDAL_FORMATS_EXTENSIONS[output_format]}")
 
             # create the output file:
-            dst_ds = gdal.GetDriverByName('GTiff').Create(filename, nx, ny, n_bands, datatype)
+            dst_driver = gdal.GetDriverByName(output_format)
+            if not dst_driver:
+                raise ProcessArgumentInvalid("The argument 'format' in process 'save_result' is invalid: GDAL driver not supported.")
+            dst_ds = dst_driver.Create(filename, nx, ny, n_bands, datatype)
+            if not dst_ds:
+                # PNG and JPG are special in that Create() is not supported, but CreateCopy() works. Go figure.
+                # https://gis.stackexchange.com/questions/132298/gdal-c-api-how-to-create-png-or-jpeg-from-scratch
+                dst_driver_tmp = gdal.GetDriverByName('MEM')
+                dst_tmp = dst_driver_tmp.Create('', nx, ny, n_bands, datatype)
+                dst_ds = dst_driver.CreateCopy(filename, dst_tmp)
+                if not dst_ds:
+                    # if even that doesn't work, we have run out of tricks:
+                    raise ProcessArgumentInvalid(f"The argument 'format' in process 'save_result' is invalid: could not create data file for [{n_bands}] bands and datatype [{datatype_string}].")
 
-            dst_ds.SetGeoTransform(geotransform)    # specify coords
-            srs = osr.SpatialReference()            # establish encoding
-            srs.ImportFromEPSG(4326)                # EPSG:4326 by default
-            dst_ds.SetProjection(srs.ExportToWkt()) # export coords to file
+            if output_format == 'gtiff':
+                dst_ds.SetGeoTransform(geotransform)    # specify coords
+                srs = osr.SpatialReference()            # establish encoding
+                srs.ImportFromEPSG(4326)                # EPSG:4326 by default
+                dst_ds.SetProjection(srs.ExportToWkt()) # export coords to file
+
             for i in range(n_bands):
                 band_data = data[{
                     "t": ti,
