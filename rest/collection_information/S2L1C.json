@@ -21,6 +21,13 @@
         "licensor"
       ],
       "url": "https://sentinel.esa.int/web/sentinel/user-guides/sentinel-2-msi"
+    },
+    {
+      "url": "https://sentinel-hub.com/develop/documentation/eo_products/Sentinel2EOproducts",
+      "name": "Sentinel Hub",
+      "roles": [
+        "host"
+      ]
     }
   ],
   "extent": {
@@ -145,15 +152,15 @@
   "links": [
     {
       "rel": "self",
-      "href": "https://storage.cloud.google.com/earthengine-test/catalog/COPERNICUS_S2.json"
+      "href": ""
     },
     {
       "rel": "parent",
-      "href": "https://storage.cloud.google.com/earthengine-test/catalog/catalog.json"
+      "href": ""
     },
     {
       "rel": "root",
-      "href": "https://storage.cloud.google.com/earthengine-test/catalog/catalog.json"
+      "href": ""
     },
     {
       "rel": "license",

@@ -17,4 +17,3 @@ services:
         condition: service_healthy
     command: bash -c "cd /tests/ && DATA_AWS_S3_ENDPOINT_URL='http://minio:9000' DYNAMODB_LOCAL_URL='http://dynamodb:8000' pytest -x"
 
-

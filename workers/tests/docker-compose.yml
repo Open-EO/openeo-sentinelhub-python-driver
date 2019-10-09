@@ -1,0 +1,22 @@
+version: "2"
+# This file helps run unit tests (from CI or locally).
+# Before running make sure you have .env in this directory (or that SENTINEL_* env vars are set).
+
+services:
+
+  workers-unittests:
+    image: workers-unittests
+    container_name: workers-unittest
+    build:
+      context: ../../
+      dockerfile: workers/Dockerfile
+    environment:
+      SENTINELHUB_INSTANCE_ID: "${SENTINELHUB_INSTANCE_ID}"
+      SENTINELHUB_LAYER_ID_S2L1C: "${SENTINELHUB_LAYER_ID_S2L1C}"
+      SENTINELHUB_LAYER_ID_S1GRD: "${SENTINELHUB_LAYER_ID_S1GRD}"
+    command: bash -c "pip install pytest responses; ./load_fixtures.sh; pytest -x tests/"
+    networks:
+      - workers-unittests
+
+networks:
+  workers-unittests:
