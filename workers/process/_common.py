@@ -2,6 +2,9 @@ from copy import deepcopy
 from eolearn.core import EOTask
 
 
+# These exceptions should translate to the list of OpenEO error codes:
+#   https://open-eo.github.io/openeo-api/errors/#openeo-error-codes
+
 class ExecFailedError(Exception):
     def __init__(self, msg):
         self.msg = msg
@@ -27,7 +30,6 @@ class ProcessArgumentRequired(UserError):
 
 class StorageFailure(Internal):
     error_code = "StorageFailure"
-
 
 
 class ProcessEOTask(EOTask):
