@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta
+from collections import namedtuple
 from osgeo import gdal, osr
 import boto3
 import xarray as xr
@@ -18,6 +19,14 @@ DATA_AWS_ACCESS_KEY_ID = os.environ.get('DATA_AWS_ACCESS_KEY_ID', FAKE_AWS_ACCES
 DATA_AWS_SECRET_ACCESS_KEY = os.environ.get('DATA_AWS_SECRET_ACCESS_KEY', FAKE_AWS_SECRET_ACCESS_KEY)
 DATA_AWS_REGION = os.environ.get('DATA_AWS_REGION', 'eu-central-1')
 DATA_AWS_S3_ENDPOINT_URL = os.environ.get('DATA_AWS_S3_ENDPOINT_URL', 'http://localhost:9000')
+
+
+GDALOutputFormat = namedtuple('OutputFormat', 'ext mime_type')
+GDAL_FORMATS = {
+    'gtiff': GDALOutputFormat('tiff', 'image/tiff; application=geotiff'),
+    'png': GDALOutputFormat('png', 'image/png'),
+    'jpeg': GDALOutputFormat('jpeg', 'image/jpeg'),
+}
 
 
 class save_resultEOTask(ProcessEOTask):
@@ -44,11 +53,6 @@ class save_resultEOTask(ProcessEOTask):
         'cint32': gdal.GDT_CInt32,
         'cfloat32': gdal.GDT_CFloat32,
         'cfloat64': gdal.GDT_CFloat64,
-    }
-    GDAL_FORMATS_EXTENSIONS = {
-        'gtiff': 'tiff',
-        'png': 'png',
-        'jpeg': 'jpeg',
     }
 
 
@@ -90,8 +94,8 @@ class save_resultEOTask(ProcessEOTask):
         datatype_string = output_options.get('datatype', 'uint16').lower()
         datatype = self.GDAL_DATATYPES.get(datatype_string)
 
-        if output_format not in self.GDAL_FORMATS_EXTENSIONS:
-            raise ProcessArgumentInvalid(f"The argument 'format' in process 'save_result' is invalid: supported formats are: {', '.join(self.GDAL_FORMATS_EXTENSIONS.keys())}.")
+        if output_format not in GDAL_FORMATS:
+            raise ProcessArgumentInvalid(f"The argument 'format' in process 'save_result' is invalid: supported formats are: {', '.join(GDAL_FORMATS.keys())}.")
         for option in output_options:
             if option not in ['datatype']:
                 raise ProcessArgumentInvalid("The argument 'options' in process 'save_result' is invalid, supported options are: 'datatype'.")
@@ -118,7 +122,7 @@ class save_resultEOTask(ProcessEOTask):
             timestamp = data['t'].to_index()[0]
             t_str = timestamp.strftime('%Y-%m-%d_%H-%M-%S')
 
-            filename = os.path.join(tmp_job_dir, f"result-{t_str}.{self.GDAL_FORMATS_EXTENSIONS[output_format]}")
+            filename = os.path.join(tmp_job_dir, f"result-{t_str}.{GDAL_FORMATS[output_format].ext}")
 
             # create the output file:
             dst_driver = gdal.GetDriverByName(output_format)
@@ -152,13 +156,13 @@ class save_resultEOTask(ProcessEOTask):
             dst_ds = None
 
             try:
-                self._put_file_to_s3(filename, 'image/tiff; application=geotiff')
+                self._put_file_to_s3(filename, GDAL_FORMATS[output_format].mime_type)
             except Exception as ex:
                 raise StorageFailure("Unable to store file(s).")
 
             self.results.append({
                 'filename': os.path.basename(filename),
-                'type': 'image/tiff; application=geotiff',
+                'type': GDAL_FORMATS[output_format].mime_type,
             })
 
         save_resultEOTask._clean_dir(tmp_job_dir)
