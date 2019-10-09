@@ -47,6 +47,7 @@
   "properties": {
     "sar:constellation": "Sentinel-1",
     "sar:instrument": "C-SAR",
+    "sar:instrument_mode": "IW",
     "sar:frequency_band": "C",
     "sar:center_frequency": 5.405,
     "sar:type": "GRD",
@@ -55,17 +56,28 @@
       10
     ],
     "sar:platform": "Sentinel-1",
+    "sar:pass_direction": null,
+    "sar:polarization": [
+      "VV",
+      "VH"
+    ],
     "sar:bands": [
       {
-        "name": "IW-VV",
+        "name": "VV",
         "description": "Single co-polarization, vertical transmit/vertical receive",
         "polarization": "VV"
       },
       {
-        "name": "IW-VH",
+        "name": "VH",
         "description": "Dual-band cross-polarization, vertical transmit/horizontal receive",
         "polarization": "VH"
       }
+    ]
+  },
+  "summaries": {
+    "sar:pass_direction": [
+      "ascending",
+      "descending"
     ]
   },
   "links": [
