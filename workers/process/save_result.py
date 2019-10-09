@@ -32,6 +32,20 @@ class save_resultEOTask(ProcessEOTask):
             aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
             aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
         )
+    GDAL_DATATYPES = {
+        'byte': gdal.GDT_Byte,
+        'uint16': gdal.GDT_UInt16,
+        'int16': gdal.GDT_Int16,
+        'uint32': gdal.GDT_UInt32,
+        'int32': gdal.GDT_Int32,
+        'float32': gdal.GDT_Float32,
+        'float64': gdal.GDT_Float64,
+        'cint16': gdal.GDT_CInt16,
+        'cint32': gdal.GDT_CInt32,
+        'cfloat32': gdal.GDT_CFloat32,
+        'cfloat64': gdal.GDT_CFloat64,
+    }
+
 
     def _put_file_to_s3(self, filename, mime_type):
         object_key = '{}/{}'.format(self.job_id, os.path.basename(filename))
@@ -59,6 +73,8 @@ class save_resultEOTask(ProcessEOTask):
             data = arguments["data"]
         except:
             raise ProcessArgumentRequired("Process 'save_result' requires argument 'data'.")
+        if not isinstance(data, xr.DataArray):
+            raise ProcessArgumentInvalid("The argument 'data' in process 'save_result' is invalid: only cubes can be saved currently.")
 
         try:
             output_format = arguments['format'].lower()
@@ -66,13 +82,15 @@ class save_resultEOTask(ProcessEOTask):
             raise ProcessArgumentRequired("Process 'save_result' requires argument 'format'.")
 
         output_options = arguments.get('options', {})
+        datatype = self.GDAL_DATATYPES.get(output_options.get('datatype', 'uint16').lower())
 
         if output_format != 'gtiff':
             raise ProcessArgumentInvalid("The argument 'format' in process 'save_result' is invalid: supported formats are: 'GTiff'.")
-        if output_options != {}:
-            raise ProcessArgumentInvalid("The argument 'options' in process 'save_result' is invalid: output options are currently not supported.")
-        if not isinstance(data, xr.DataArray):
-            raise ProcessArgumentInvalid("The argument 'data' in process 'save_result' is invalid: only cubes can be saved currently.")
+        for option in output_options:
+            if option not in ['datatype']:
+                raise ProcessArgumentInvalid("The argument 'options' in process 'save_result' is invalid, supported options are: 'datatype'.")
+        if not datatype:
+            raise ProcessArgumentInvalid(f"The argument 'options' in process 'save_result' is invalid: unknown value for option 'datatype', allowed values are [{', '.join(self.GDAL_DATATYPES.keys())}].")
 
         # https://stackoverflow.com/a/33950009
         tmp_job_dir = os.path.join("/tmp", self.job_id)
@@ -97,7 +115,7 @@ class save_resultEOTask(ProcessEOTask):
             filename = os.path.join(tmp_job_dir, "result-{}.tiff".format(t_str))
 
             # create the output file:
-            dst_ds = gdal.GetDriverByName('GTiff').Create(filename, nx, ny, n_bands, gdal.GDT_Float64)
+            dst_ds = gdal.GetDriverByName('GTiff').Create(filename, nx, ny, n_bands, datatype)
 
             dst_ds.SetGeoTransform(geotransform)    # specify coords
             srs = osr.SpatialReference()            # establish encoding
