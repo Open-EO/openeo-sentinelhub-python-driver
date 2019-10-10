@@ -22,6 +22,7 @@ unit tests:
   script:
     - cd workers/tests/
     - set | grep SENTINEL | tr -d "'" >> .env
+    - docker-compose build
     - docker-compose up --exit-code-from workers-unittests
   after_script:
     - docker-compose down -v

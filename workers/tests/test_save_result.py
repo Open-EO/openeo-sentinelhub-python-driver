@@ -43,7 +43,7 @@ def generate_data():
             xmin = 42.06347,
             xmax = 42.07112,
             data = [[[[0.2]]]],
-            dims = ('t','y', 'x', 'band'),
+            dims = ('t', 'y', 'x', 'band'),
             coords = {'band': ["ndvi"],'t': [datetime.datetime.now()]},
             band_aliases = { "nir": "B08", "red": "B04"},
             attrs = {}
@@ -70,10 +70,10 @@ def generate_data():
 
 @pytest.fixture
 def execute_save_result_process(generate_data, save_resultEOTask):
-    def wrapped(data_arguments={}, format_type="GTiff", options=None):
+    def wrapped(data_arguments={}, file_format="GTiff", options=None):
         arguments = {}
         if data_arguments is not None: arguments["data"] = generate_data(**data_arguments)
-        if format_type is not None: arguments["format"] = format_type
+        if file_format is not None: arguments["format"] = file_format
         if options is not None: arguments["options"] = options
 
         return save_resultEOTask.process(arguments)
@@ -109,21 +109,28 @@ def s3_stub_generator(save_resultEOTask):
 # tests:
 ###################################
 
-def test_correct(execute_save_result_process, s3_stub_generator, create_result_object):
+@pytest.mark.parametrize(
+    'parameters,expected_result_filename',
+    [
+        ({"file_format": "GTiff", "options": {'datatype': 'float64'}}, 'save_result_s3_file.tiff'),
+        ({"file_format": "gtiff", "options": {'datatype': 'byte'}, "data_arguments": {"data": [[[[0, 127, 255]]]], "coords": {'band': ["r", "g", "b"],'t': [datetime.datetime.now()]}}}, 'save_result_s3_file_byte.tiff'),
+        ({"file_format": "png", "options": {'datatype': 'byte'}, "data_arguments": {"data": [[[[0, 127, 255]]]], "coords": {'band': ["r", "g", "b"],'t': [datetime.datetime.now()]}}}, 'save_result_s3_file.png'),
+        ({"file_format": "jpeg", "options": {'datatype': 'byte'}, "data_arguments": {"data": [[[[255, 127, 0]]]], "coords": {'band': ["r", "g", "b"],'t': [datetime.datetime.now()]}}}, 'save_result_s3_file.jpeg'),
+    ]
+)
+def test_correct(execute_save_result_process, s3_stub_generator, create_result_object, parameters, expected_result_filename):
     """
         Test save_result process with correct parameters
     """
-    gtiff_object = create_result_object('gtiff_object.tiff')
-    s3_stub = s3_stub_generator(gtiff_object)
-    result = execute_save_result_process()
+    s3_stub = s3_stub_generator(create_result_object(expected_result_filename))
+    result = execute_save_result_process(**parameters)
     s3_stub.assert_no_pending_responses()
-
     assert result is True
 
 @pytest.mark.parametrize(
     'missing_required_parameter,failure_reason', [
     ({"data_arguments": None}, "data"),
-    ({"format_type": None}, "format"),
+    ({"file_format": None}, "format"),
 ])
 def test_required_params(execute_save_result_process, missing_required_parameter, failure_reason):
     """
@@ -136,10 +143,12 @@ def test_required_params(execute_save_result_process, missing_required_parameter
 
 
 @pytest.mark.parametrize(
-    'invalid_parameter,failure_reason', [
-    ({"format_type": "png"}, ("format","supported formats are: 'GTiff'")),
-    ({"options": {"option_name": "option_value"}}, ("options","output options are currently not supported"))
-])
+    'invalid_parameter,failure_reason',
+    [
+        ({"file_format": "xcf"}, ("format", "supported formats are: gtiff, png, jpeg")),
+        ({"options": {"option_name": "option_value"}}, ("options", "supported options are: 'datatype'")),
+    ]
+)
 def test_invalid_params(execute_save_result_process, invalid_parameter, failure_reason):
     """
         Test save_result process with invalid parameters

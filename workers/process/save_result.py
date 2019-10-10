@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta
+from collections import namedtuple
 from osgeo import gdal, osr
 import boto3
 import xarray as xr
@@ -18,6 +19,14 @@ DATA_AWS_ACCESS_KEY_ID = os.environ.get('DATA_AWS_ACCESS_KEY_ID', FAKE_AWS_ACCES
 DATA_AWS_SECRET_ACCESS_KEY = os.environ.get('DATA_AWS_SECRET_ACCESS_KEY', FAKE_AWS_SECRET_ACCESS_KEY)
 DATA_AWS_REGION = os.environ.get('DATA_AWS_REGION', 'eu-central-1')
 DATA_AWS_S3_ENDPOINT_URL = os.environ.get('DATA_AWS_S3_ENDPOINT_URL', 'http://localhost:9000')
+
+
+GDALOutputFormat = namedtuple('OutputFormat', 'ext mime_type')
+GDAL_FORMATS = {
+    'gtiff': GDALOutputFormat('tiff', 'image/tiff; application=geotiff'),
+    'png': GDALOutputFormat('png', 'image/png'),
+    'jpeg': GDALOutputFormat('jpeg', 'image/jpeg'),
+}
 
 
 class save_resultEOTask(ProcessEOTask):
@@ -61,10 +70,11 @@ class save_resultEOTask(ProcessEOTask):
         )
 
     @staticmethod
-    def _clean_dir(dir_path):
+    def _clean_dir(dir_path, remove_dir=True):
         for filename in os.listdir(dir_path):
             os.unlink(os.path.join(dir_path, filename))
-        os.rmdir(dir_path)
+        if remove_dir:
+            os.rmdir(dir_path)
 
     def process(self, arguments):
         self.results = []
@@ -82,19 +92,23 @@ class save_resultEOTask(ProcessEOTask):
             raise ProcessArgumentRequired("Process 'save_result' requires argument 'format'.")
 
         output_options = arguments.get('options', {})
-        datatype = self.GDAL_DATATYPES.get(output_options.get('datatype', 'uint16').lower())
+        datatype_string = output_options.get('datatype', 'uint16').lower()
+        datatype = self.GDAL_DATATYPES.get(datatype_string)
 
-        if output_format != 'gtiff':
-            raise ProcessArgumentInvalid("The argument 'format' in process 'save_result' is invalid: supported formats are: 'GTiff'.")
+        if output_format not in GDAL_FORMATS:
+            raise ProcessArgumentInvalid(f"The argument 'format' in process 'save_result' is invalid: supported formats are: {', '.join(GDAL_FORMATS.keys())}.")
         for option in output_options:
             if option not in ['datatype']:
-                raise ProcessArgumentInvalid("The argument 'options' in process 'save_result' is invalid, supported options are: 'datatype'.")
+                raise ProcessArgumentInvalid("The argument 'options' in process 'save_result' is invalid: supported options are: 'datatype'.")
         if not datatype:
             raise ProcessArgumentInvalid(f"The argument 'options' in process 'save_result' is invalid: unknown value for option 'datatype', allowed values are [{', '.join(self.GDAL_DATATYPES.keys())}].")
 
         # https://stackoverflow.com/a/33950009
         tmp_job_dir = os.path.join("/tmp", self.job_id)
-        os.mkdir(tmp_job_dir)
+        try:
+            os.mkdir(tmp_job_dir)
+        except FileExistsError:
+            save_resultEOTask._clean_dir(tmp_job_dir, remove_dir=False)
 
         bbox = data.attrs["bbox"]
         nx = len(data['x'])
@@ -111,34 +125,58 @@ class save_resultEOTask(ProcessEOTask):
         for ti in range(n_timestamps):
             timestamp = data['t'].to_index()[0]
             t_str = timestamp.strftime('%Y-%m-%d_%H-%M-%S')
+            filename = os.path.join(tmp_job_dir, f"result-{t_str}.{GDAL_FORMATS[output_format].ext}")
 
-            filename = os.path.join(tmp_job_dir, "result-{}.tiff".format(t_str))
+            # create the output GDAL dataset:
+            # https://gdal.org/tutorials/raster_api_tut.html#techniques-for-creating-files
+            dst_driver = gdal.GetDriverByName(output_format)
+            if not dst_driver:
+                raise ProcessArgumentInvalid("The argument 'format' in process 'save_result' is invalid: GDAL driver not supported.")
+            metadata = dst_driver.GetMetadata()
+            if metadata.get(gdal.DCAP_CREATE) == "YES":
+                dst_intermediate = dst_driver.Create(filename, xsize=nx, ysize=ny, bands=n_bands, eType=datatype)
+            else:
+                # PNG and JPG are special in that Create() is not supported, but we can create a MEM
+                # GDAL dataset and later use CreateCopy() to copy it.
+                # https://gis.stackexchange.com/questions/132298/gdal-c-api-how-to-create-png-or-jpeg-from-scratch
+                dst_driver_mem = gdal.GetDriverByName('MEM')
+                dst_intermediate = dst_driver_mem.Create('', xsize=nx, ysize=ny, bands=n_bands, eType=datatype)
 
-            # create the output file:
-            dst_ds = gdal.GetDriverByName('GTiff').Create(filename, nx, ny, n_bands, datatype)
+            if output_format == 'gtiff':
+                # PNG and JPEG support this too, but the data is saved to a separate .aux.xml file
+                dst_intermediate.SetGeoTransform(geotransform)    # specify coords
+                srs = osr.SpatialReference()            # establish encoding
+                srs.ImportFromEPSG(4326)                # EPSG:4326 by default
+                dst_intermediate.SetProjection(srs.ExportToWkt()) # export coords to file
 
-            dst_ds.SetGeoTransform(geotransform)    # specify coords
-            srs = osr.SpatialReference()            # establish encoding
-            srs.ImportFromEPSG(4326)                # EPSG:4326 by default
-            dst_ds.SetProjection(srs.ExportToWkt()) # export coords to file
             for i in range(n_bands):
                 band_data = data[{
                     "t": ti,
                     "band": i,
                 }].values
-                dst_ds.GetRasterBand(i + 1).WriteArray(band_data)   # write r-band to the raster
+                dst_intermediate.GetRasterBand(i + 1).WriteArray(band_data)   # write r-band to the raster
 
-            dst_ds.FlushCache()                     # write to disk
-            dst_ds = None
+
+            # write to disk:
+            if metadata.get(gdal.DCAP_CREATE) == "YES":
+                dst_intermediate.FlushCache()
+                dst_intermediate = None  # careful, this is needed, otherwise S3 mocking will fail in unit tests
+            else:
+                # with PNG and JPG, we still need to copy from MEM to appropriate GDAL dataset:
+                dst_final = dst_driver.CreateCopy(filename, dst_intermediate, strict=0)
+                if not dst_final:
+                    raise ProcessArgumentInvalid(f"The argument 'format' in process 'save_result' is invalid: could not create data file in format [{output_format}] for [{n_bands}] bands and datatype [{datatype_string}].")
+                dst_final.FlushCache()
+                dst_final = None  # careful, this is needed, otherwise S3 mocking will fail in unit tests
 
             try:
-                self._put_file_to_s3(filename, 'image/tiff; application=geotiff')
+                self._put_file_to_s3(filename, GDAL_FORMATS[output_format].mime_type)
             except Exception as ex:
                 raise StorageFailure("Unable to store file(s).")
 
             self.results.append({
                 'filename': os.path.basename(filename),
-                'type': 'image/tiff; application=geotiff',
+                'type': GDAL_FORMATS[output_format].mime_type,
             })
 
         save_resultEOTask._clean_dir(tmp_job_dir)
