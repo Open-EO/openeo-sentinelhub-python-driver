@@ -70,10 +70,10 @@ def generate_data():
 
 @pytest.fixture
 def execute_save_result_process(generate_data, save_resultEOTask):
-    def wrapped(data_arguments={}, format_type="GTiff", options=None):
+    def wrapped(data_arguments={}, file_format="GTiff", options=None):
         arguments = {}
         if data_arguments is not None: arguments["data"] = generate_data(**data_arguments)
-        if format_type is not None: arguments["format"] = format_type
+        if file_format is not None: arguments["format"] = file_format
         if options is not None: arguments["options"] = options
 
         return save_resultEOTask.process(arguments)
@@ -113,17 +113,15 @@ def test_correct(execute_save_result_process, s3_stub_generator, create_result_o
     """
         Test save_result process with correct parameters
     """
-    gtiff_object = create_result_object('gtiff_object.tiff')
-    s3_stub = s3_stub_generator(gtiff_object)
-    result = execute_save_result_process()
+    s3_stub = s3_stub_generator(create_result_object('gtiff_object.tiff'))
+    result = execute_save_result_process(file_format='GTiff', options={'datatype': 'float64'})
     s3_stub.assert_no_pending_responses()
-
     assert result is True
 
 @pytest.mark.parametrize(
     'missing_required_parameter,failure_reason', [
     ({"data_arguments": None}, "data"),
-    ({"format_type": None}, "format"),
+    ({"file_format": None}, "format"),
 ])
 def test_required_params(execute_save_result_process, missing_required_parameter, failure_reason):
     """
@@ -137,7 +135,7 @@ def test_required_params(execute_save_result_process, missing_required_parameter
 
 @pytest.mark.parametrize(
     'invalid_parameter,failure_reason', [
-    ({"format_type": "png"}, ("format","supported formats are: 'GTiff'")),
+    ({"file_format": "png"}, ("format","supported formats are: 'GTiff'")),
     ({"options": {"option_name": "option_value"}}, ("options","output options are currently not supported"))
 ])
 def test_invalid_params(execute_save_result_process, invalid_parameter, failure_reason):
