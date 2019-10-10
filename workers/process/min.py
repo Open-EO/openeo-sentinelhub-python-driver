@@ -1,4 +1,6 @@
 import numpy as np
+import xarray as xr
+xr.set_options(keep_attrs=True)
 
 from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired
 import process
@@ -12,13 +14,17 @@ class minEOTask(ProcessEOTask):
 
         ignore_nodata = arguments.get("ignore_nodata", True)
 
-        if hasattr(self, 'dimension'):
-            axis = data.dims.index(self.dimension)
+        if data.attrs and data.attrs.get("reduce_by"):
+            axis = data.dims.index(data.attrs.get("reduce_by")[-1])
         else:
             axis = None
 
         if ignore_nodata:
             self.results = np.amin(data, axis=axis)
+            print(">>>>>>>>>>>>>>>>>>>>>>> INTERMITTENT RESULTS:\n")
+            print("Axis:",axis)
+            print(self.results)
+            print("\n<<<<<<<<<<<<<<<<<<<<<<<")
             return self.results
         else:
             try:

@@ -22,7 +22,7 @@ def generate_data():
             ymax = 12.33572,
             xmin = 42.06347,
             xmax = 42.07112,
-            data = [[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [0.0, 0.05]]]],
+            data = [[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]],
             dims = ('t','y', 'x', 'band'),
             coords = {'band': ["B04","B08"],'t': [datetime.datetime.now()]},
             band_aliases = { "nir": "B08", "red": "B04"},
@@ -36,7 +36,7 @@ def generate_data():
                 return (ymax,xmax)
 
         fake_bbox = BBox()
-        attrs = {"band_aliases": band_aliases, "bbox": fake_bbox, **attrs}
+        attrs = {"band_aliases": band_aliases, "bbox": fake_bbox,  **attrs}
 
         xrdata = xr.DataArray(
             data,
@@ -103,7 +103,7 @@ def reducer_recursive():
 def execute_reduce_process(generate_data, reduceEOTask):
     def wrapped(data_arguments={}, dimension="band", reducer=None, target_dimension=None, binary=None):
         arguments = {}
-        if data_arguments is not None: arguments["data"] = generate_data(**data_arguments)
+        if data_arguments is not None: arguments["data"] = generate_data(dimension, **data_arguments)
         if dimension is not None: arguments["dimension"] = dimension
         if reducer is not None: arguments["reducer"] = reducer
         if target_dimension is not None: arguments["target_dimension"] = target_dimension

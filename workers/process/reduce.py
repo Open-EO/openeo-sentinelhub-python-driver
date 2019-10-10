@@ -8,6 +8,12 @@ class reduceEOTask(ProcessEOTask):
         # input_args = {}
         tasks = {}
 
+        # print(">>>>>>>>>>>>>>>>>>>>>>>> setting attrs:\n")
+        # print(parent_arguments["data"].attrs["reduce_by"], parent_arguments["dimension"])
+        # parent_arguments["data"].attrs["reduce_by"] = parent_arguments["dimension"]
+        # print(parent_arguments["data"].attrs["reduce_by"], parent_arguments["dimension"])
+        # print("\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+
         print(">>>>>>>>>>>>>>>>>>>>>>>> graph:\n")
         print(graph)
         print("\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
@@ -77,12 +83,20 @@ class reduceEOTask(ProcessEOTask):
                 raise ProcessArgumentInvalid("The argument 'dimension' in process 'reduce' is invalid: Dimension '{}' has more than one value, but reducer is not specified.".format(dimension))
             return data.squeeze(dimension, drop=True)
         else:
+            if not data.attrs.get("reduce_by"):
+                arguments["data"].attrs["reduce_by"] = [dimension]
+            else:
+                arguments["data"].attrs["reduce_by"].append(dimension)
+
             dependencies, result_task = self.generate_workflow_dependencies(reducer["callback"], arguments)
             print(">>>>>>>>>>>>>>>>>>>> dependencies:\n")
             print(dependencies)
             print("\n<<<<<<<<<<<<<<<<<<<<")
             workflow = EOWorkflow(dependencies)
             workflow.execute({})
-            return result_task.results
+            results = result_task.results
+
+            results.attrs["reduce_by"].pop()
+            return results
 
         # return result
