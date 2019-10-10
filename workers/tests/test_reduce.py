@@ -124,6 +124,20 @@ def reducer_sum_of_min_and_max():
         }
     }
 
+@pytest.fixture
+def reducer_min():
+    return {
+        "callback": {
+            "min": {
+              "process_id": "min",
+              "arguments": {
+                "data": {"from_argument": "data"}
+              },
+              "result": True
+            }
+        }
+    }
+
 
 @pytest.fixture
 def execute_reduce_process(generate_data, reduceEOTask):
@@ -163,3 +177,8 @@ def test_reducer_sum_of_min_and_max(execute_reduce_process,reducer_sum_of_min_an
     print(">>>>>>>>>>>>>>>>>>>> Result at the test with reducer_sum_of_min_and_max:\n")
     print(result)
 
+def test_min_time_dim(execute_reduce_process,reducer_min):
+    data_arguments = {"data": [[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]],[[[0.7, 0.05], [-0.009, -0.2]], [[0.05, 0.1], [-0.9, 0.07]]]], "coords": {}}
+    result = execute_reduce_process(reducer=reducer_min, dimension="t", data_arguments=data_arguments)
+    print(">>>>>>>>>>>>>>>>>>>> Result at the test with reducer_min, time dimension:\n")
+    print(result)

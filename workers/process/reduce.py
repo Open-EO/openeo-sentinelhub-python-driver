@@ -1,14 +1,6 @@
-from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired
+from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired, iterate
 from eolearn.core import EOWorkflow
 import process
-
-def iterate(obj):
-    if isinstance(obj, list):
-        for i,v in enumerate(obj):
-            yield i,v
-    elif isinstance(obj, dict):
-        for k, v in obj.items():
-            yield k,v
 
 class reduceEOTask(ProcessEOTask):
     def generate_workflow_dependencies(self, graph, parent_arguments):
