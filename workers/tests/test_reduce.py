@@ -6,6 +6,7 @@ import datetime
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
 from process._common import ProcessArgumentInvalid, ProcessArgumentRequired
+
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), 'fixtures')
 
 
@@ -21,7 +22,7 @@ def generate_data():
             ymax = 12.33572,
             xmin = 42.06347,
             xmax = 42.07112,
-            data = [[[[0.2,0.8]]]],
+            data = [[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [0.0, 0.05]]]],
             dims = ('t','y', 'x', 'band'),
             coords = {'band': ["B04","B08"],'t': [datetime.datetime.now()]},
             band_aliases = { "nir": "B08", "red": "B04"},
@@ -48,6 +49,57 @@ def generate_data():
     return _construct
 
 @pytest.fixture
+def reducer_recursive():
+    return {
+        "callback": {
+            "p1": {
+              "process_id": "reduce",
+              "arguments": {
+                "data": {"from_argument": "data"},
+                "dimension": "x",
+                "reducer": {
+                  "callback": {
+                    "p1": {
+                        "process_id": "reduce",
+                        "arguments": {
+                            "data": {"from_argument": "data"},
+                            "dimension": "band",
+                            "reducer": {
+                                "callback": {
+                                    "min": {
+                                        "process_id": "min",
+                                        "arguments": {
+                                            "data": {"from_argument": "data"}
+                                        },
+                                        "result": True
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "min": {
+                      "process_id": "min",
+                      "arguments": {
+                        "data": {"from_node": "p1"}
+                      },
+                      "result": True
+                    }
+                  }
+                }
+              }
+            },
+            "min": {
+              "process_id": "min",
+              "arguments": {
+                "data": {"from_node": "p1"}
+              },
+              "result": True
+            }
+        }
+    }
+
+
+@pytest.fixture
 def execute_reduce_process(generate_data, reduceEOTask):
     def wrapped(data_arguments={}, dimension="band", reducer=None, target_dimension=None, binary=None):
         arguments = {}
@@ -65,10 +117,16 @@ def execute_reduce_process(generate_data, reduceEOTask):
 # tests:
 ###################################
 
-def test_correct(execute_reduce_process):
+def test_no_reducer(execute_reduce_process):
     """
-        Test save_result process with correct parameters
+        Test reduce process without reducer
     """
-    result = execute_reduce_process()
-    print(">>>>>>>>>>>>>>>>>>>> Result at the test")
+    with pytest.raises(ProcessArgumentInvalid) as ex:
+        result = execute_reduce_process()
+    # print(">>>>>>>>>>>>>>>>>>>> Result at the test\n")
+    # print(result)
+
+def test_recursiver_reducer(execute_reduce_process,reducer_recursive):
+    result = execute_reduce_process(reducer=reducer_recursive, dimension="y")
+    print(">>>>>>>>>>>>>>>>>>>> Result at the test with reducer:\n")
     print(result)
