@@ -99,7 +99,7 @@ class save_resultEOTask(ProcessEOTask):
             raise ProcessArgumentInvalid(f"The argument 'format' in process 'save_result' is invalid: supported formats are: {', '.join(GDAL_FORMATS.keys())}.")
         for option in output_options:
             if option not in ['datatype']:
-                raise ProcessArgumentInvalid("The argument 'options' in process 'save_result' is invalid, supported options are: 'datatype'.")
+                raise ProcessArgumentInvalid("The argument 'options' in process 'save_result' is invalid: supported options are: 'datatype'.")
         if not datatype:
             raise ProcessArgumentInvalid(f"The argument 'options' in process 'save_result' is invalid: unknown value for option 'datatype', allowed values are [{', '.join(self.GDAL_DATATYPES.keys())}].")
 

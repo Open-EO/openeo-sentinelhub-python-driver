@@ -135,8 +135,8 @@ def test_required_params(execute_save_result_process, missing_required_parameter
 
 @pytest.mark.parametrize(
     'invalid_parameter,failure_reason', [
-    ({"file_format": "png"}, ("format","supported formats are: 'GTiff'")),
-    ({"options": {"option_name": "option_value"}}, ("options","output options are currently not supported"))
+    ({"file_format": "xcf"}, ("format", "supported formats are: gtiff, png, jpeg")),
+    ({"options": {"option_name": "option_value"}}, ("options", "supported options are: 'datatype'"))
 ])
 def test_invalid_params(execute_save_result_process, invalid_parameter, failure_reason):
     """
