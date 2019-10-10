@@ -4,7 +4,6 @@ import re
 import urllib.parse as urlparse
 import responses
 import json
-from copy import deepcopy
 import sys, os
 
 
