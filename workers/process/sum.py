@@ -4,7 +4,7 @@ xr.set_options(keep_attrs=True)
 
 from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired
 
-class minEOTask(ProcessEOTask):
+class sumEOTask(ProcessEOTask):
     def process(self, arguments):
         try:
             data = arguments["data"]
