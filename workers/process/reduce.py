@@ -22,7 +22,7 @@ class reduceEOTask(ProcessEOTask):
                     print(node_arguments)
                     print("<<<<<<<<<<<<<<<<<<\n")
                 elif isinstance(value, dict) or isinstance(value, list):
-                    this.set_from_arguments(value, parent_arguments)
+                    set_from_arguments(value, parent_arguments)
 
         result_task = None
         # input_args = {}
@@ -53,7 +53,7 @@ class reduceEOTask(ProcessEOTask):
             #                 print(node_arguments)
             #                 print("<<<<<<<<<<<<<<<<<<\n")
 
-            node_arguments = self.set_from_arguments(node_arguments, parent_arguments)
+            node_arguments = set_from_arguments(node_arguments, parent_arguments)
 
                 # input_args[node_name] = node_arguments
 
