@@ -13,21 +13,24 @@ class sumEOTask(ProcessEOTask):
 
         ignore_nodata = arguments.get("ignore_nodata", True)
 
-        if data.attrs and data.attrs.get("reduce_by"):
-            axis = data.dims.index(data.attrs.get("reduce_by")[-1])
-        else:
-            axis = None
+        # if data.attrs and data.attrs.get("reduce_by"):
+        #     axis = data.dims.index(data.attrs.get("reduce_by")[-1])
+        # else:
+        #     axis = None
 
-        if ignore_nodata:
-            self.results = np.amin(data, axis=axis)
-            print(">>>>>>>>>>>>>>>>>>>>>>> INTERMITTENT RESULTS:\n")
-            print("Axis:",axis)
-            print(self.results)
-            print("\n<<<<<<<<<<<<<<<<<<<<<<<")
-            return self.results
-        else:
-            try:
-                self.results = np.nanmin(data, axis=axis)
-                return self.results
-            except ValueError:
-                return None
+        self.results = xr.DataArray(data, attrs=data[0].attrs).sum(axis=0, skipna=ignore_nodata, keep_attrs=True)
+        return self.results
+
+        # if ignore_nodata:
+        #     self.results = np.sum(data, axis=0)
+        #     print(">>>>>>>>>>>>>>>>>>>>>>> INTERMITTENT RESULTS:\n")
+        #     # print("Axis:",axis)
+        #     print(self.results)
+        #     print("\n<<<<<<<<<<<<<<<<<<<<<<<")
+        #     return self.results
+        # else:
+        #     try:
+        #         self.results = np.nansum(data, axis=0)
+        #         return self.results
+        #     except ValueError:
+        #         return None

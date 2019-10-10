@@ -9,7 +9,7 @@ class minEOTask(ProcessEOTask):
         try:
             data = arguments["data"]
         except:
-            raise ProcessArgumentRequired("Process 'reduce' requires argument 'data'.")
+            raise ProcessArgumentRequired("Process 'min' requires argument 'data'.")
 
         ignore_nodata = arguments.get("ignore_nodata", True)
 

@@ -15,7 +15,7 @@ class reduceEOTask(ProcessEOTask):
 
         def set_from_arguments(args, parent_arguments):
             for key, value in iterate(args):
-                print(">>>>>>>>>>>>>>>>>>   ARGUMENT: " + key)
+                # print(">>>>>>>>>>>>>>>>>>   ARGUMENT: " + key)
                 if isinstance(value, dict) and len(value) == 1 and 'from_argument' in value:
                     args[key] = parent_arguments[value["from_argument"]]
                     print(">>>>>>>>>>>>>>>>>> setting from argument\n")

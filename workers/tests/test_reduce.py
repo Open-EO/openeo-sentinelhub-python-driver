@@ -98,6 +98,32 @@ def reducer_recursive():
         }
     }
 
+@pytest.fixture
+def reducer_sum_of_min_and_max():
+    return {
+        "callback": {
+            "min": {
+              "process_id": "min",
+              "arguments": {
+                "data": {"from_argument": "data"}
+              },
+            },
+            "mean": {
+              "process_id": "mean",
+              "arguments": {
+                "data": {"from_argument": "data"}
+              },
+            },
+            "sum": {
+              "process_id": "sum",
+              "arguments": {
+                "data": [{"from_node": "min"},{"from_node": "mean"}]
+              },
+              "result": True
+            }
+        }
+    }
+
 
 @pytest.fixture
 def execute_reduce_process(generate_data, reduceEOTask):
@@ -130,3 +156,10 @@ def test_recursiver_reducer(execute_reduce_process,reducer_recursive):
     result = execute_reduce_process(reducer=reducer_recursive, dimension="y")
     print(">>>>>>>>>>>>>>>>>>>> Result at the test with reducer:\n")
     print(result)
+
+
+def test_reducer_sum_of_min_and_max(execute_reduce_process,reducer_sum_of_min_and_max):
+    result = execute_reduce_process(reducer=reducer_sum_of_min_and_max, dimension="band")
+    print(">>>>>>>>>>>>>>>>>>>> Result at the test with reducer_sum_of_min_and_max:\n")
+    print(result)
+

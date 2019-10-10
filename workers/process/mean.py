@@ -9,7 +9,7 @@ class meanEOTask(ProcessEOTask):
         try:
             data = arguments["data"]
         except:
-            raise ProcessArgumentRequired("Process 'reduce' requires argument 'data'.")
+            raise ProcessArgumentRequired("Process 'mean' requires argument 'data'.")
 
         ignore_nodata = arguments.get("ignore_nodata", True)
 
@@ -19,7 +19,7 @@ class meanEOTask(ProcessEOTask):
             axis = None
 
         if ignore_nodata:
-            self.results = np.amin(data, axis=axis)
+            self.results = np.mean(data, axis=axis)
             print(">>>>>>>>>>>>>>>>>>>>>>> INTERMITTENT RESULTS:\n")
             print("Axis:",axis)
             print(self.results)
@@ -27,7 +27,7 @@ class meanEOTask(ProcessEOTask):
             return self.results
         else:
             try:
-                self.results = np.nanmin(data, axis=axis)
+                self.results = np.nanmean(data, axis=axis)
                 return self.results
             except ValueError:
                 return None
