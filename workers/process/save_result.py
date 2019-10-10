@@ -70,10 +70,11 @@ class save_resultEOTask(ProcessEOTask):
         )
 
     @staticmethod
-    def _clean_dir(dir_path):
+    def _clean_dir(dir_path, remove_dir=True):
         for filename in os.listdir(dir_path):
             os.unlink(os.path.join(dir_path, filename))
-        os.rmdir(dir_path)
+        if remove_dir:
+            os.rmdir(dir_path)
 
     def process(self, arguments):
         self.results = []
@@ -104,7 +105,10 @@ class save_resultEOTask(ProcessEOTask):
 
         # https://stackoverflow.com/a/33950009
         tmp_job_dir = os.path.join("/tmp", self.job_id)
-        os.mkdir(tmp_job_dir)
+        try:
+            os.mkdir(tmp_job_dir)
+        except FileExistsError:
+            save_resultEOTask._clean_dir(tmp_job_dir, remove_dir=False)
 
         bbox = data.attrs["bbox"]
         nx = len(data['x'])
