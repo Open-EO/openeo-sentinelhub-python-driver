@@ -21,8 +21,12 @@ class reduceEOTask(ProcessEOTask):
                     print(">>>>>>>>>>>>>>>>>> setting from argument\n")
                     print(node_arguments)
                     print("<<<<<<<<<<<<<<<<<<\n")
+                elif isinstance(value, dict) and len(value) == 1 and 'callback' in value:
+                    continue
                 elif isinstance(value, dict) or isinstance(value, list):
-                    set_from_arguments(value, parent_arguments)
+                    args[key] = set_from_arguments(value, parent_arguments)
+
+            return args
 
         result_task = None
         # input_args = {}
