@@ -125,39 +125,49 @@ class save_resultEOTask(ProcessEOTask):
         for ti in range(n_timestamps):
             timestamp = data['t'].to_index()[0]
             t_str = timestamp.strftime('%Y-%m-%d_%H-%M-%S')
-
             filename = os.path.join(tmp_job_dir, f"result-{t_str}.{GDAL_FORMATS[output_format].ext}")
 
-            # create the output file:
+            # create the output GDAL dataset:
+            # https://gdal.org/tutorials/raster_api_tut.html#techniques-for-creating-files
             dst_driver = gdal.GetDriverByName(output_format)
             if not dst_driver:
                 raise ProcessArgumentInvalid("The argument 'format' in process 'save_result' is invalid: GDAL driver not supported.")
-            dst_ds = dst_driver.Create(filename, nx, ny, n_bands, datatype)
-            if not dst_ds:
-                # PNG and JPG are special in that Create() is not supported, but CreateCopy() works. Go figure.
+            metadata = dst_driver.GetMetadata()
+            if metadata.get(gdal.DCAP_CREATE) == "YES":
+                dst_intermediate = dst_driver.Create(filename, xsize=nx, ysize=ny, bands=n_bands, eType=datatype)
+            else:
+                # PNG and JPG are special in that Create() is not supported, but we can create a MEM
+                # GDAL dataset and later use CreateCopy() to copy it.
                 # https://gis.stackexchange.com/questions/132298/gdal-c-api-how-to-create-png-or-jpeg-from-scratch
-                dst_driver_tmp = gdal.GetDriverByName('MEM')
-                dst_tmp = dst_driver_tmp.Create('', nx, ny, n_bands, datatype)
-                dst_ds = dst_driver.CreateCopy(filename, dst_tmp)
-                if not dst_ds:
-                    # if even that doesn't work, we have run out of tricks:
-                    raise ProcessArgumentInvalid(f"The argument 'format' in process 'save_result' is invalid: could not create data file for [{n_bands}] bands and datatype [{datatype_string}].")
+                dst_driver_mem = gdal.GetDriverByName('MEM')
+                dst_intermediate = dst_driver_mem.Create('', xsize=nx, ysize=ny, bands=n_bands, eType=datatype)
 
             if output_format == 'gtiff':
-                dst_ds.SetGeoTransform(geotransform)    # specify coords
+                # PNG and JPEG support this too, but the data is saved to a separate .aux.xml file
+                dst_intermediate.SetGeoTransform(geotransform)    # specify coords
                 srs = osr.SpatialReference()            # establish encoding
                 srs.ImportFromEPSG(4326)                # EPSG:4326 by default
-                dst_ds.SetProjection(srs.ExportToWkt()) # export coords to file
+                dst_intermediate.SetProjection(srs.ExportToWkt()) # export coords to file
 
             for i in range(n_bands):
                 band_data = data[{
                     "t": ti,
                     "band": i,
                 }].values
-                dst_ds.GetRasterBand(i + 1).WriteArray(band_data)   # write r-band to the raster
+                dst_intermediate.GetRasterBand(i + 1).WriteArray(band_data)   # write r-band to the raster
 
-            dst_ds.FlushCache()                     # write to disk
-            dst_ds = None
+
+            # write to disk:
+            if metadata.get(gdal.DCAP_CREATE) == "YES":
+                dst_intermediate.FlushCache()
+                dst_intermediate = None  # careful, this is needed, otherwise S3 mocking will fail in unit tests
+            else:
+                # with PNG and JPG, we still need to copy from MEM to appropriate GDAL dataset:
+                dst_final = dst_driver.CreateCopy(filename, dst_intermediate, strict=0)
+                if not dst_final:
+                    raise ProcessArgumentInvalid(f"The argument 'format' in process 'save_result' is invalid: could not create data file in format [{output_format}] for [{n_bands}] bands and datatype [{datatype_string}].")
+                dst_final.FlushCache()
+                dst_final = None  # careful, this is needed, otherwise S3 mocking will fail in unit tests
 
             try:
                 self._put_file_to_s3(filename, GDAL_FORMATS[output_format].mime_type)
