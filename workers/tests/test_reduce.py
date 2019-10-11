@@ -99,7 +99,7 @@ def reducer_recursive():
     }
 
 @pytest.fixture
-def reducer_sum_of_min_and_max():
+def reducer_sum_of_min_and_mean():
     return {
         "callback": {
             "min": {
@@ -172,9 +172,9 @@ def test_recursiver_reducer(execute_reduce_process,reducer_recursive):
     print(result)
 
 
-def test_reducer_sum_of_min_and_max(execute_reduce_process,reducer_sum_of_min_and_max):
-    result = execute_reduce_process(reducer=reducer_sum_of_min_and_max, dimension="band")
-    print(">>>>>>>>>>>>>>>>>>>> Result at the test with reducer_sum_of_min_and_max:\n")
+def test_reducer_sum_of_min_and_mean(execute_reduce_process,reducer_sum_of_min_and_mean):
+    result = execute_reduce_process(reducer=reducer_sum_of_min_and_mean, dimension="band")
+    print(">>>>>>>>>>>>>>>>>>>> Result at the test with reducer_sum_of_min_and_mean:\n")
     print(result)
 
 def test_min_time_dim(execute_reduce_process,reducer_min):

@@ -13,24 +13,27 @@ class sumEOTask(ProcessEOTask):
 
         ignore_nodata = arguments.get("ignore_nodata", True)
 
-        # if data.attrs and data.attrs.get("reduce_by"):
-        #     axis = data.dims.index(data.attrs.get("reduce_by")[-1])
-        # else:
-        #     axis = None
+        if not isinstance(ignore_nodata, bool):
+            raise ProcessArgumentInvalid("The argument 'ignore_nodata' in process 'sum' is invalid: Argument must be of type 'boolean'.")
 
-        self.results = xr.DataArray(data, attrs=data[0].attrs).sum(axis=0, skipna=ignore_nodata, keep_attrs=True)
+        dim, changed_type = None, False
+
+        if len(data) < 2:
+            raise ProcessArgumentInvalid("The argument 'data' in process 'sum' is invalid: Array must have at least 2 elements.")
+
+        for i,element in enumerate(data):
+            if not isinstance(element, xr.DataArray):
+                changed_type = True
+                data[i] = xr.DataArray(np.array(element, dtype=np.float))
+
+        summation_array = xr.concat(data, dim="temporary_summation_dim")
+        self.results = summation_array.sum(dim="temporary_summation_dim", skipna=ignore_nodata, keep_attrs=True)
+
+        if self.results.size == 1 and changed_type:
+            if np.isnan(self.results):
+                return None
+            else:
+                return float(self.results)
+
         return self.results
 
-        # if ignore_nodata:
-        #     self.results = np.sum(data, axis=0)
-        #     print(">>>>>>>>>>>>>>>>>>>>>>> INTERMITTENT RESULTS:\n")
-        #     # print("Axis:",axis)
-        #     print(self.results)
-        #     print("\n<<<<<<<<<<<<<<<<<<<<<<<")
-        #     return self.results
-        # else:
-        #     try:
-        #         self.results = np.nansum(data, axis=0)
-        #         return self.results
-        #     except ValueError:
-        #         return None

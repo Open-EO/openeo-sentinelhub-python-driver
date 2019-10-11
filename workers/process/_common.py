@@ -29,8 +29,6 @@ class StorageFailure(Internal):
     error_code = "StorageFailure"
 
 def iterate(obj):
-    print("AT THE FUCKING ITERATE")
-    print(obj)
     if isinstance(obj, list):
         for i,v in enumerate(obj):
             yield i,v
@@ -67,9 +65,7 @@ class ProcessEOTask(EOTask):
 
         from_nodes = []
         for k, v in iterate(arguments):
-            print(k,v)
             if isinstance(v, dict) and len(v) == 1 and 'from_node' in v:
-                print(">>>>>>> in _get_from_nodes" + v['from_node'])
                 from_nodes.append(v['from_node'])
             elif isinstance(v, dict) and len(v) == 1 and 'callback' in v:
                 # we don't traverse callbacks, because they might have their own
@@ -101,8 +97,6 @@ class ProcessEOTask(EOTask):
         """
         self._arguments_with_data = deepcopy(self._arguments)
         values_by_node = dict(zip(self.depends_on(), prev_results))
-        print(">>>>>>>>>>>>>>>>>>>>>>>> VALUES BY NODE:\n")
-        print(values_by_node)
         ProcessEOTask._apply_data_to_arguments(self._arguments_with_data, values_by_node)
 
 
