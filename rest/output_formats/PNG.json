@@ -1,0 +1,26 @@
+{
+  "gis_data_types": [
+    "raster"
+  ],
+  "parameters": {
+    "datatype": {
+      "type": "string",
+      "description": "The values data type.",
+      "enum": [
+        "byte",
+        "uint16",
+        "int16",
+        "uint32",
+        "int32",
+        "float32",
+        "float64",
+        "cint16",
+        "cint32",
+        "cfloat32",
+        "cfloat64"
+      ],
+      "default": "uint16"
+    }
+  },
+  "links": []
+}
