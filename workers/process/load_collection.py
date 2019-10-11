@@ -1,5 +1,6 @@
 import os
 import datetime
+import re
 import numpy as np
 import xarray as xr
 from sentinelhub import CustomUrlParam, BBox, CRS
@@ -42,6 +43,21 @@ def _clean_temporal_extent(temporal_extent):
     return result
 
 
+def _raise_exception_based_on_eolearn_message(str_ex):
+    # EOLearn raises an exception which doesn't have the original data anymore, so we must
+    # parse the message to figure out if the error was 4xx or 5xx.
+    r = re.compile(r'Failed to download from:\n([^\n]+)\nwith ([^:]+):\n([4-5][0-9]{2}) ([^:]+): (.*)')
+    m = r.match(str_ex)
+    if m:
+        g = m.groups()
+        status_code = int(g[2])
+        if 400 <= status_code < 500:
+            raise ProcessArgumentInvalid(f"The argument '<unknown>' in process 'load_collection' is invalid: {str_ex}")
+
+    # we can't make sense of the message, bail out with generic exception:
+    raise Internal("Server error: EOPatch creation failed: {}".format(str(ex)))
+
+
 class load_collectionEOTask(ProcessEOTask):
     @staticmethod
     def _convert_bbox(spatial_extent):
@@ -79,7 +95,7 @@ class load_collectionEOTask(ProcessEOTask):
                     maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
                 ).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)
             except Exception as ex:
-                raise Internal("Server error: EOPatch creation failed: {}".format(str(ex)))
+                _raise_exception_based_on_eolearn_message(str(ex))
 
             band_aliases = {
                 "nir": "B08",
@@ -114,7 +130,8 @@ class load_collectionEOTask(ProcessEOTask):
                     maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
                 ).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)
             except Exception as ex:
-                raise Internal("Server error: EOPatch creation failed: {}".format(str(ex)))
+                _raise_exception_based_on_eolearn_message(str(ex))
+
             band_aliases = {}
 
         else:

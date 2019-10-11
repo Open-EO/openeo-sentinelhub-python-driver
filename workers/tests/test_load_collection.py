@@ -81,27 +81,28 @@ def execute_load_collection_process():
 
 @pytest.fixture
 def set_mock_responses():
-    def wrapped(collection_id):
-        filename = os.path.join(FIXTURES_FOLDER, f'response_load_collection_{collection_id.lower()}.json')
-        assert os.path.isfile(filename), "Please run load_fixtures.sh!"
-        print(open(filename, 'rb').read())
-        responses.add(
-            responses.GET,
-            re.compile(r'^.*sentinel-hub.com/ogc/wfs/.*$'),
-            body=json.dumps(json.load(open(filename, 'rb'))),
-            match_querystring=True,
-            status=200,
-        )
+    def wrapped(mock_info):
+        for mi in mock_info:
+            filename = os.path.join(FIXTURES_FOLDER, mi['filename'])
+            assert os.path.isfile(filename), "Please run load_fixtures.sh!"
+            is_json = os.path.splitext(mi['filename'])[-1] == '.json'
+            body = json.dumps(json.load(open(filename, 'rb'))) if is_json else open(filename, 'rb').read()
+            responses.add(
+                responses.GET,
+                re.compile(mi['regex']),
+                body=body,
+                match_querystring=True,
+                status=mi.get('status_code', 200),
+            )
+    return wrapped
 
-        filename = os.path.join(FIXTURES_FOLDER, f'response_load_collection_{collection_id.lower()}.tiff')
-        assert os.path.isfile(filename), "Please run load_fixtures.sh!"
-        responses.add(
-            responses.GET,
-            re.compile(r'^.*sentinel-hub.com/ogc/wcs/.*$'),
-            body=open(filename, 'rb').read(),
-            match_querystring=True,
-            status=200,
-        )
+@pytest.fixture
+def set_mock_responses_for_collection(set_mock_responses):
+    def wrapped(collection_id):
+        return set_mock_responses([
+            {'regex': r'^.*sentinel-hub.com/ogc/wfs/.*$', 'filename': f'response_load_collection_{collection_id.lower()}.json'},
+            {'regex': r'^.*sentinel-hub.com/ogc/wcs/.*$', 'filename': f'response_load_collection_{collection_id.lower()}.tiff'},
+        ])
     return wrapped
 
 
@@ -115,11 +116,11 @@ def set_mock_responses():
     ("S1GRDIW", ["2019-08-16 00:00:00", "2019-08-17 05:19:11"],),
 ])
 @responses.activate
-def test_correct(set_mock_responses, arguments_factory, execute_load_collection_process, collection_id, temporal_extent):
+def test_correct(set_mock_responses_for_collection, arguments_factory, execute_load_collection_process, collection_id, temporal_extent):
     """
         Test load_collection process with correct parameters (S2L1C, S1GRDIW,...)
     """
-    set_mock_responses(collection_id)
+    set_mock_responses_for_collection(collection_id)
     arguments = arguments_factory(collection_id, temporal_extent=temporal_extent)
     result = execute_load_collection_process(arguments)
     assert len(responses.calls) == 2
@@ -149,3 +150,25 @@ def test_temporal_extent_invalid(arguments_factory, execute_load_collection_proc
     with pytest.raises(ProcessArgumentInvalid) as ex:
         result = execute_load_collection_process(arguments)
     assert ex.value.args[0] == f"The argument 'temporal_extent' in process 'load_collection' is invalid: {failure_reason}"
+
+
+@responses.activate
+def test_bbox_too_big(set_mock_responses, arguments_factory, execute_load_collection_process):
+    """
+        Test load_collection process with incorrect temporal_extent
+    """
+    invalid_bbox = {
+        "west": 5.903778076171875,
+        "south": 49.18888421524579,
+        "east": 6.658087158203126,
+        "north": 49.30005381244689
+    }
+    set_mock_responses([
+        {'regex': r'^.*sentinel-hub.com/ogc/wfs/.*$', 'filename': 'invalid_bbox.json'},
+        {'regex': r'^.*sentinel-hub.com/ogc/wcs/.*$', 'filename': 'invalid_bbox.xml', 'status_code': 400},
+    ])
+
+    arguments = arguments_factory("S2L1C", bbox = invalid_bbox)
+    with pytest.raises(ProcessArgumentInvalid) as ex:
+        result = execute_load_collection_process(arguments)
+    assert ex.value.args[0].startswith("The argument '<unknown>' in process 'load_collection' is invalid: ")
