@@ -78,6 +78,20 @@ def get_endpoints():
         })
     return endpoints
 
+
+@app.route('/output_formats', methods=["GET"])
+def api_output_formats():
+    files = glob.iglob("output_formats/*.json")
+    output_formats = {}
+
+    for file in files:
+        with open(file) as f:
+            output_format = os.path.splitext(os.path.basename(file))[0]
+            output_formats[output_format] = json.load(f)
+
+    return flask.make_response(jsonify(output_formats), 200)
+
+
 @app.route('/process_graphs', methods=["GET", "POST"])
 @app.route('/process_graphs/<process_graph_id>', methods=["GET", "DELETE", "PATCH"])
 def api_process_graphs(process_graph_id=None):
@@ -450,7 +464,6 @@ def available_collections():
                 "providers": data.get("providers"),
             }
             collections.append(basic_info)
-
 
     return flask.make_response(jsonify(
         collections = collections,
