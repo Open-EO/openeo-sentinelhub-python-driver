@@ -7,19 +7,9 @@
       "type": "string",
       "description": "The values data type.",
       "enum": [
-        "byte",
-        "uint16",
-        "int16",
-        "uint32",
-        "int32",
-        "float32",
-        "float64",
-        "cint16",
-        "cint32",
-        "cfloat32",
-        "cfloat64"
+        "byte"
       ],
-      "default": "uint16"
+      "default": "byte"
     }
   },
   "links": []

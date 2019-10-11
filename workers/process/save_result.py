@@ -21,11 +21,11 @@ DATA_AWS_REGION = os.environ.get('DATA_AWS_REGION', 'eu-central-1')
 DATA_AWS_S3_ENDPOINT_URL = os.environ.get('DATA_AWS_S3_ENDPOINT_URL', 'http://localhost:9000')
 
 
-GDALOutputFormat = namedtuple('OutputFormat', 'ext mime_type')
+GDALOutputFormat = namedtuple('OutputFormat', 'ext mime_type default_datatype')
 GDAL_FORMATS = {
-    'gtiff': GDALOutputFormat('tiff', 'image/tiff; application=geotiff'),
-    'png': GDALOutputFormat('png', 'image/png'),
-    'jpeg': GDALOutputFormat('jpeg', 'image/jpeg'),
+    'gtiff': GDALOutputFormat('tiff', 'image/tiff; application=geotiff', 'uint16'),
+    'png': GDALOutputFormat('png', 'image/png', 'uint16'),
+    'jpeg': GDALOutputFormat('jpeg', 'image/jpeg', 'byte'),
 }
 
 
@@ -90,16 +90,18 @@ class save_resultEOTask(ProcessEOTask):
             output_format = arguments['format'].lower()
         except:
             raise ProcessArgumentRequired("Process 'save_result' requires argument 'format'.")
-
-        output_options = arguments.get('options', {})
-        datatype_string = output_options.get('datatype', 'uint16').lower()
-        datatype = self.GDAL_DATATYPES.get(datatype_string)
-
         if output_format not in GDAL_FORMATS:
             raise ProcessArgumentInvalid(f"The argument 'format' in process 'save_result' is invalid: supported formats are: {', '.join(GDAL_FORMATS.keys())}.")
+
+        output_options = arguments.get('options', {})
         for option in output_options:
             if option not in ['datatype']:
                 raise ProcessArgumentInvalid("The argument 'options' in process 'save_result' is invalid: supported options are: 'datatype'.")
+
+        default_datatype = GDAL_FORMATS[output_format].default_datatype
+        datatype_string = output_options.get('datatype', default_datatype).lower()
+        datatype = self.GDAL_DATATYPES.get(datatype_string)
+
         if not datatype:
             raise ProcessArgumentInvalid(f"The argument 'options' in process 'save_result' is invalid: unknown value for option 'datatype', allowed values are [{', '.join(self.GDAL_DATATYPES.keys())}].")
 
