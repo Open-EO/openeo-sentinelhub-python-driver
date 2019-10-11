@@ -151,18 +151,6 @@
   "other_properties": {},
   "links": [
     {
-      "rel": "self",
-      "href": ""
-    },
-    {
-      "rel": "parent",
-      "href": ""
-    },
-    {
-      "rel": "root",
-      "href": ""
-    },
-    {
       "rel": "license",
       "href": "https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf",
       "title": "Legal notice on the use of Copernicus Sentinel Data and Service Information"
