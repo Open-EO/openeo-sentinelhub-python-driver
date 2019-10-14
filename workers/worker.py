@@ -10,7 +10,7 @@ import process
 
 # logger = multiprocessing.get_logger()
 logger = multiprocessing.log_to_stderr()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 SIGNAL_QUIT_JOB = "QUIT"
@@ -63,7 +63,9 @@ def _execute_process_graph(process_graph, job_id):
 
     workflow = EOWorkflow(tasks)
 
+    logger.debug("[{}]: executing workflow...".format(job_id))
     result = workflow.execute({})
+    logger.debug("[{}]: workflow executed.".format(job_id))
 
     return result_task.results
 

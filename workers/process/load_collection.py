@@ -4,6 +4,7 @@ import numpy as np
 import xarray as xr
 from sentinelhub import CustomUrlParam, BBox, CRS
 from sentinelhub.constants import AwsConstants
+import sentinelhub.geo_utils
 from eolearn.core import FeatureType, EOPatch
 from eolearn.io import S2L1CWCSInput, S1IWWCSInput
 
@@ -58,6 +59,12 @@ class load_collectionEOTask(ProcessEOTask):
     def process(self, arguments):
         spatial_extent = arguments['spatial_extent']
         bbox = load_collectionEOTask._convert_bbox(spatial_extent)
+
+        # check if the bbox is within the allowed limits:
+        width, height = sentinelhub.geo_utils.bbox_to_dimensions(bbox, 10.0)
+        if width * height > 1000 * 1000:
+            raise ProcessArgumentInvalid("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels.")
+
         patch = None
         INPUT_BANDS = None
         band_aliases = {}

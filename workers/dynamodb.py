@@ -1,11 +1,13 @@
-import boto3
-from boto3.dynamodb.conditions import Attr,Key
 import json
 import logging
 from logging import log, INFO
 import os
 import uuid
 import datetime
+
+import boto3
+from boto3.dynamodb.conditions import Attr,Key
+import botocore.exceptions
 
 
 logging.basicConfig(level=logging.INFO)
@@ -74,15 +76,20 @@ class JobsPersistence(object):
                 ':timestamp': {'S': timestamp},
                 ':results': {'S': json.dumps(results)},
             }
-        updated_item = cls.dynamodb.update_item(
-            TableName=cls.ET_JOBS,
-            Key={'id':{'S':record_id}},
-            ConditionExpression="current_status = :old_status",
-            UpdateExpression=update_expression,
-            ExpressionAttributeValues=values,
-            ReturnValues='UPDATED_NEW',
-        )
-        return updated_item
+        try:
+            updated_item = cls.dynamodb.update_item(
+                TableName=cls.ET_JOBS,
+                Key={'id':{'S':record_id}},
+                ConditionExpression="current_status = :old_status",
+                UpdateExpression=update_expression,
+                ExpressionAttributeValues=values,
+                ReturnValues='UPDATED_NEW',
+            )
+        except botocore.exceptions.ClientError as e:
+            if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+                log(INFO, "Job {} could not be updated to finished/error, it was probably already removed due to timeout - ignoring error.".format(record_id))
+            else:
+                raise
 
     @classmethod
     def update_cancelled_queued_to_submitted(cls, record_id):
