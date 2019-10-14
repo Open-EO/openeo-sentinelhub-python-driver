@@ -29,7 +29,7 @@ FAKE_AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
 FAKE_AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', FAKE_AWS_ACCESS_KEY_ID)
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', FAKE_AWS_SECRET_ACCESS_KEY)
-S3_LOCAL_URL = os.environ.get('DATA_AWS_S3_ENDPOINT_URL', 'http://localhost:9000')
+S3_LOCAL_URL = os.environ.get('DATA_AWS_S3_ENDPOINT_URL')
 
 @app.after_request
 def after_request(response):
@@ -46,7 +46,7 @@ def after_request(response):
 def api_root():
     return {
         "api_version": "0.4.2",
-        "backend_version": "0.0.1",
+        "backend_version": os.environ.get('BACKEND_VERSION', "0.0.0").lstrip('v'),
         "title": "Sentinel Hub OpenEO",
         "description": "Sentinel Hub OpenEO by [Sinergise](https://sinergise.com)",
         "endpoints": get_endpoints(),
@@ -77,6 +77,20 @@ def get_endpoints():
             "methods": list(rule.methods - set(["OPTIONS", "HEAD"])),
         })
     return endpoints
+
+
+@app.route('/output_formats', methods=["GET"])
+def api_output_formats():
+    files = glob.iglob("output_formats/*.json")
+    output_formats = {}
+
+    for file in files:
+        with open(file) as f:
+            output_format = os.path.splitext(os.path.basename(file))[0]
+            output_formats[output_format] = json.load(f)
+
+    return flask.make_response(jsonify(output_formats), 200)
+
 
 @app.route('/process_graphs', methods=["GET", "POST"])
 @app.route('/process_graphs/<process_graph_id>', methods=["GET", "DELETE", "PATCH"])
@@ -450,7 +464,6 @@ def available_collections():
                 "providers": data.get("providers"),
             }
             collections.append(basic_info)
-
 
     return flask.make_response(jsonify(
         collections = collections,
