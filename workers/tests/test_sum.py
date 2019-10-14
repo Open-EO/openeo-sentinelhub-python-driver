@@ -1,6 +1,7 @@
 import pytest
 import sys, os
 import xarray as xr
+import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
@@ -18,21 +19,15 @@ def sumEOTask():
 def generate_data():
     def _construct(
             data = ([[[[0.2,0.8]]]], [[[[0.2,0.8]]]]),
-            dims = ('t','y', 'x', 'band'),
-            attrs = {'reduce_by': ['band']},
             as_list = False
         ):
         if as_list:
-            return data[0]
+            return data
 
         data_list = []
 
         for d in data:
-            xrdata = xr.DataArray(
-                d,
-                dims=dims,
-                attrs=attrs,
-            )
+            xrdata = xr.DataArray(d)
             data_list.append(xrdata)
 
         return data_list
@@ -65,15 +60,29 @@ def test_examples(execute_sum_process, data, expected_result, ignore_nodata):
     """
     data_arguments = {"data": data, "as_list": True}
     result = execute_sum_process(data_arguments, ignore_nodata=ignore_nodata)
-
     assert result == expected_result
 
 
-def test_with_xarray(execute_sum_process, generate_data):
+@pytest.mark.parametrize('array1,array2,expected_data', [
+    ([[[[0.2,0.8]]]], [[[[0.2,0.8]]]], [[[[0.4,1.6]]]]),
+])
+def test_with_xarray(execute_sum_process, generate_data, array1, array2, expected_data):
     """
-        Test sum process with xarray.DataArrays as we typically use it
+        Test mean process with xarray.DataArrays
     """
-    expected_result = generate_data(data=([[[[0.4,0.16]]]]))[0]
-    result = execute_sum_process()
+    expected_result = generate_data(data=[expected_data])[0]
+    result = execute_sum_process({"data": (array1,array2)})
+    xr.testing.assert_allclose(result, expected_result)
 
+
+@pytest.mark.parametrize('array1,array2,expected_data,ignore_nodata', [
+    ([[[[np.nan,np.nan]]]], [[[[0.2,np.nan]]]], [[[[0.2,0.0]]]], True),
+    ([[[[np.nan,np.nan]]]], [[[[0.2,np.nan]]]], [[[[np.nan,np.nan]]]], False),
+])
+def test_with_xarray(execute_sum_process, generate_data, array1, array2, expected_data, ignore_nodata):
+    """
+        Test mean process with xarray.DataArrays with null in data
+    """
+    expected_result = generate_data(data=[expected_data])[0]
+    result = execute_sum_process({"data": (array1,array2)}, ignore_nodata=ignore_nodata)
     xr.testing.assert_allclose(result, expected_result)

@@ -18,39 +18,55 @@ def reduceEOTask():
 @pytest.fixture
 def generate_data():
     def _construct(
-            ymin = 12.32271,
-            ymax = 12.33572,
-            xmin = 42.06347,
-            xmax = 42.07112,
             data = [[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]],
-            dims = ('t','y', 'x', 'band'),
-            coords = {'band': ["B04","B08"],'t': [datetime.datetime.now()]},
-            band_aliases = { "nir": "B08", "red": "B04"},
-            attrs = {}
+            dims = ('t','y', 'x', 'band')
         ):
-        class BBox:
-            def get_lower_left(self):
-                return (ymin,xmin)
-
-            def get_upper_right(self):
-                return (ymax,xmax)
-
-        fake_bbox = BBox()
-        attrs = {"band_aliases": band_aliases, "bbox": fake_bbox,  **attrs}
 
         xrdata = xr.DataArray(
             data,
-            dims=dims,
-            coords=coords,
-            attrs=attrs,
+            dims=dims
         )
 
         return xrdata
     return _construct
 
+
 @pytest.fixture
-def reducer_recursive():
-    return {
+def execute_reduce_process(generate_data, reduceEOTask):
+    def wrapped(data_arguments={}, dimension="band", reducer=None, target_dimension=None, binary=None):
+        arguments = {}
+        if data_arguments is not None: arguments["data"] = generate_data(**data_arguments)
+        if dimension is not None: arguments["dimension"] = dimension
+        if reducer is not None: arguments["reducer"] = reducer
+        if target_dimension is not None: arguments["target_dimension"] = target_dimension
+        if binary is not None: arguments["binary"] = binary
+
+        return reduceEOTask.process(arguments)
+    return wrapped
+
+
+###################################
+# tests:
+###################################
+
+def test_no_reducer(execute_reduce_process, generate_data):
+    """
+        Test reduce process without reducer
+    """
+    with pytest.raises(ProcessArgumentInvalid) as ex:
+        result = execute_reduce_process()
+    assert ex.value.args[0] == "The argument 'dimension' in process 'reduce' is invalid: Dimension 'band' has more than one value, but reducer is not specified."
+
+    expected_result = generate_data = generate_data(data = [[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]], dims = ('y','x','band'))
+    result = execute_reduce_process(dimension="t")
+    xr.testing.assert_allclose(result, expected_result)
+
+
+def test_recursiver_reducer(execute_reduce_process, generate_data):
+    """
+        Test reduce process with a recursive reducer, which applies min to all dimensions, apart from the last one
+    """
+    reducer = {
         "callback": {
             "p1": {
               "process_id": "reduce",
@@ -98,9 +114,16 @@ def reducer_recursive():
         }
     }
 
-@pytest.fixture
-def reducer_sum_of_min_and_mean():
-    return {
+    result = execute_reduce_process(reducer=reducer, dimension="y")
+    expected_result = generate_data(data = [-0.9], dims = ('t'))
+    xr.testing.assert_allclose(result, expected_result)
+
+
+def test_reducer_sum_of_min_and_mean(execute_reduce_process, generate_data):
+    """
+        Test reduce process with a reducer, which takes min and mean of bands and sums it up
+    """
+    reducer = {
         "callback": {
             "min": {
               "process_id": "min",
@@ -124,9 +147,16 @@ def reducer_sum_of_min_and_mean():
         }
     }
 
-@pytest.fixture
-def reducer_min():
-    return {
+    result = execute_reduce_process(reducer=reducer, dimension="band")
+    expected_result = generate_data(data = [[[0.225, 0.325], [0.125, -1.325]]], dims = ('t','y','x'))
+    xr.testing.assert_allclose(result, expected_result)
+
+
+def test_min_time_dim(execute_reduce_process, generate_data):
+    """
+        Test reduce process with a reducer, which applies min to the temporal dimension
+    """
+    reducer = {
         "callback": {
             "min": {
               "process_id": "min",
@@ -138,47 +168,7 @@ def reducer_min():
         }
     }
 
-
-@pytest.fixture
-def execute_reduce_process(generate_data, reduceEOTask):
-    def wrapped(data_arguments={}, dimension="band", reducer=None, target_dimension=None, binary=None):
-        arguments = {}
-        if data_arguments is not None: arguments["data"] = generate_data(dimension, **data_arguments)
-        if dimension is not None: arguments["dimension"] = dimension
-        if reducer is not None: arguments["reducer"] = reducer
-        if target_dimension is not None: arguments["target_dimension"] = target_dimension
-        if binary is not None: arguments["binary"] = binary
-
-        return reduceEOTask.process(arguments)
-    return wrapped
-
-
-###################################
-# tests:
-###################################
-
-def test_no_reducer(execute_reduce_process):
-    """
-        Test reduce process without reducer
-    """
-    with pytest.raises(ProcessArgumentInvalid) as ex:
-        result = execute_reduce_process()
-    # print(">>>>>>>>>>>>>>>>>>>> Result at the test\n")
-    # print(result)
-
-def test_recursiver_reducer(execute_reduce_process,reducer_recursive):
-    result = execute_reduce_process(reducer=reducer_recursive, dimension="y")
-    print(">>>>>>>>>>>>>>>>>>>> Result at the test with reducer:\n")
-    print(result)
-
-
-def test_reducer_sum_of_min_and_mean(execute_reduce_process,reducer_sum_of_min_and_mean):
-    result = execute_reduce_process(reducer=reducer_sum_of_min_and_mean, dimension="band")
-    print(">>>>>>>>>>>>>>>>>>>> Result at the test with reducer_sum_of_min_and_mean:\n")
-    print(result)
-
-def test_min_time_dim(execute_reduce_process,reducer_min):
-    data_arguments = {"data": [[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]],[[[0.7, 0.05], [-0.009, -0.2]], [[0.05, 0.1], [-0.9, 0.07]]]], "coords": {}}
-    result = execute_reduce_process(reducer=reducer_min, dimension="t", data_arguments=data_arguments)
-    print(">>>>>>>>>>>>>>>>>>>> Result at the test with reducer_min, time dimension:\n")
-    print(result)
+    data_arguments = {"data": [[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]],[[[0.7, 0.05], [-0.009, -0.2]], [[0.05, 0.1], [-0.9, 0.07]]]]}
+    result = execute_reduce_process(reducer=reducer, dimension="t", data_arguments=data_arguments)
+    expected_result = generate_data(data=[[[0.1, 0.05], [-0.009, -0.2]], [[0.05, 0.1], [-0.9, 0.05]]], dims=('y','x','band'))
+    xr.testing.assert_allclose(result, expected_result)

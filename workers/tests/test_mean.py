@@ -1,6 +1,7 @@
 import pytest
 import sys, os
 import xarray as xr
+import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
@@ -61,37 +62,32 @@ def test_examples(execute_mean_process, data, expected_result, ignore_nodata):
     """
     data_arguments = {"data": data, "as_list": True}
     result = execute_mean_process(data_arguments, ignore_nodata=ignore_nodata)
-
     assert result == expected_result
 
 
-def test_with_xarray(execute_mean_process, generate_data):
+@pytest.mark.parametrize('data,expected_data,expected_dims,attrs', [
+    ([[[[0.2,0.8]]]], [[[0.5]]], ('t','y','x'), {'reduce_by': ['band']}),
+    ([[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]], [[[0.125,0.175],[0.075,-0.425]]], ('t','y','x'), {'reduce_by': ['band']}),
+    ([[[[0.2,0.8]]]], [[[0.2,0.8]]], ('t','x','band'), {'reduce_by': ['y']}),
+    ([[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]], [[[0.075,0.125],[-0.375,0.125]]], ('t','x','band'), {'reduce_by': ['y']}),
+])
+def test_with_xarray(execute_mean_process, generate_data, data, expected_data, expected_dims, attrs):
     """
-        Test mean process with xarray.DataArrays as we typically use it
+        Test mean process with xarray.DataArrays
     """
-    expected_result = generate_data(data=[[[0.5]]], dims=('t','y','x'))
-    result = execute_mean_process()
-
+    expected_result = generate_data(data=expected_data, dims=expected_dims, attrs=attrs)
+    result = execute_mean_process({"data": data, "attrs": attrs})
     xr.testing.assert_allclose(result, expected_result)
 
-    expected_result = generate_data(data=[[[0.2,0.8]]], dims=('t','x','band'), attrs={'reduce_by': ['y']})
-    data_arguments = {"attrs": {'reduce_by': ['y']}}
-    result = execute_mean_process(data_arguments)
 
-    xr.testing.assert_allclose(result, expected_result)
-
-    data = [[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]]
-    data_arguments = {"data": data}
-    expected_data = [[[0.125,0.175],[0.075,-0.425]]]
-    expected_result = generate_data(data=expected_data, dims=('t','y','x'))
-    result = execute_mean_process(data_arguments)
-
-    xr.testing.assert_allclose(result, expected_result)
-
-    data = [[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]]
-    data_arguments = {"data": data, "attrs": {'reduce_by': ['y']}}
-    expected_data = [[[0.075,0.125],[-0.375,0.125]]]
-    expected_result = generate_data(data=expected_data, dims=('t','x','band'), attrs={'reduce_by': ['y']})
-    result = execute_mean_process(data_arguments)
-
+@pytest.mark.parametrize('data,expected_data,expected_dims,attrs,ignore_nodata', [
+    ([[[[np.nan, 0.15], [0.15, 0.2]], [[0.05, np.nan], [-0.9, 0.05]]]], [[[0.05,0.15],[-0.375,0.125]]], ('t','x','band'), {'reduce_by': ['y']}, True),
+    ([[[[np.nan, 0.15], [0.15, 0.2]], [[0.05, np.nan], [-0.9, 0.05]]]], [[[np.nan,np.nan],[-0.375,0.125]]], ('t','x','band'), {'reduce_by': ['y']}, False),
+])
+def test_with_xarray(execute_mean_process, generate_data, data, expected_data, expected_dims, attrs, ignore_nodata):
+    """
+        Test mean process with xarray.DataArrays with null in data
+    """
+    expected_result = generate_data(data=expected_data, dims=expected_dims, attrs=attrs)
+    result = execute_mean_process({"data": data, "attrs": attrs}, ignore_nodata=ignore_nodata)
     xr.testing.assert_allclose(result, expected_result)
