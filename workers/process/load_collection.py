@@ -55,7 +55,7 @@ def _raise_exception_based_on_eolearn_message(str_ex):
             raise ProcessArgumentInvalid(f"The argument '<unknown>' in process 'load_collection' is invalid: {str_ex}")
 
     # we can't make sense of the message, bail out with generic exception:
-    raise Internal("Server error: EOPatch creation failed: {}".format(str(ex)))
+    raise Internal("Server error: EOPatch creation failed: {}".format(str_ex))
 
 
 class load_collectionEOTask(ProcessEOTask):
