@@ -15,8 +15,13 @@ from dynamodb import JobsPersistence
 from worker import worker_proc, SIGNAL_QUIT_JOB
 
 
-logger = multiprocessing.log_to_stderr()
-logger.setLevel(logging.INFO)
+logger = multiprocessing.get_logger()
+for handler in logger.handlers:
+    logger.removeHandler(handler)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+ch.setFormatter(logging.Formatter('%(asctime)s [%(processName)s] %(levelname)s %(message)s'))
+logger.addHandler(ch)
 
 
 # when running inside docker, the default SIGINT signal handler is not installed,
