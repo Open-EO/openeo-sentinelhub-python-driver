@@ -2,6 +2,9 @@ from copy import deepcopy
 from eolearn.core import EOTask
 
 
+# These exceptions should translate to the list of OpenEO error codes:
+#   https://open-eo.github.io/openeo-api/errors/#openeo-error-codes
+
 class ExecFailedError(Exception):
     def __init__(self, msg):
         self.msg = msg
@@ -27,6 +30,7 @@ class ProcessArgumentRequired(UserError):
 
 class StorageFailure(Internal):
     error_code = "StorageFailure"
+    
 
 def iterate(obj):
     if isinstance(obj, list):
@@ -35,6 +39,7 @@ def iterate(obj):
     elif isinstance(obj, dict):
         for k, v in obj.items():
             yield k,v
+
 
 class ProcessEOTask(EOTask):
     """ Original EOTask (eolearn package) uses constructor and execute() to
@@ -101,8 +106,12 @@ class ProcessEOTask(EOTask):
 
 
     def execute(self, *prev_results):
+        self.logger.debug("[{}]: updating arguments for task {}...".format(self.job_id, self.__class__.__name__))
         self._update_arguments_with_data(prev_results)
-        return self.process(self._arguments_with_data)
+        self.logger.debug("[{}]: executing task {}...".format(self.job_id, self.__class__.__name__))
+        result = self.process(self._arguments_with_data)
+        self.logger.debug("[{}]: task {} executed, returning result.".format(self.job_id, self.__class__.__name__))
+        return result
 
     def process(self, arguments_with_data):
         """ Each process EOTask should implement this function instead of using

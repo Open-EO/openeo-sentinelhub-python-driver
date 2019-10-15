@@ -9,11 +9,21 @@ stages:
   - test
   - deploy
 
-pytest:
+integration tests:
   stage: test
   script:
-    - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml up --exit-code-from pytest --build
-    - docker run --rm -w="/src/" shopeneo/workers bash -c "pip install pytest; pip install responses; ./load_fixtures.sh; pytest -x"
+    - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml build
+    - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml up --exit-code-from pytest
+  after_script:
+    - docker-compose down -v
+
+unit tests:
+  stage: test
+  script:
+    - cd workers/tests/
+    - set | grep SENTINEL | tr -d "'" >> .env
+    - docker-compose build
+    - docker-compose up --exit-code-from workers-unittests
   after_script:
     - docker-compose down -v
 
@@ -46,13 +56,14 @@ deploy-production-rest-lambda:
     - sed -i "s/@@AWS_ACCESS_KEY_ID@@/$PRODDATA_AWS_ACCESS_KEY_ID/g" zappa_settings.json
     - sed -i "s#@@AWS_SECRET_ACCESS_KEY@@#$PRODDATA_AWS_SECRET_ACCESS_KEY#g" zappa_settings.json
     - sed -i "s/@@S3_DATA_BUCKET@@/$PRODDATA_S3_BUCKET/g" zappa_settings.json
+    - sed -i "s/@@BACKEND_VERSION@@/$CI_COMMIT_TAG/g" zappa_settings.json
     - pipenv run zappa deploy production || pipenv run zappa update production
     # ensure tables are created:
     - export AWS_ACCESS_KEY_ID="$PRODDATA_AWS_ACCESS_KEY_ID"
     - export AWS_SECRET_ACCESS_KEY="$PRODDATA_AWS_SECRET_ACCESS_KEY"
     - pipenv run bash -c "DYNAMODB_PRODUCTION=yes python dynamodb.py"
 
-deploy-production-workers-ecr:
+deploy-production-workers-ecr-ecs:
   stage: deploy
   when: manual
   only:

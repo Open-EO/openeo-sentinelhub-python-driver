@@ -10,7 +10,7 @@ import process
 
 # logger = multiprocessing.get_logger()
 logger = multiprocessing.log_to_stderr()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 SIGNAL_QUIT_JOB = "QUIT"
@@ -63,7 +63,9 @@ def _execute_process_graph(process_graph, job_id):
 
     workflow = EOWorkflow(tasks)
 
+    logger.debug("[{}]: executing workflow...".format(job_id))
     result = workflow.execute({})
+    logger.debug("[{}]: workflow executed.".format(job_id))
 
     return result_task.results
 
@@ -75,7 +77,7 @@ def worker_proc(jobs_queue, results_queue, worker_number):
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     while True:
         job = jobs_queue.get(True, None)
-        logger.info("Worker {} received a job: {}".format(worker_number, job))
+        logger.info("Worker {} received a job [{}]: {}".format(worker_number, job["job_id"], job))
         if job == SIGNAL_QUIT_JOB:
             return
 
@@ -86,10 +88,12 @@ def worker_proc(jobs_queue, results_queue, worker_number):
         http_code = None
         try:
             results = _execute_process_graph(job["process_graph"], job["job_id"])
+            logger.info("Worker {} successfully finished job [{}]".format(worker_number, job["job_id"]))
         except Exception as ex:
-            logger.exception("Job exec failed: {}".format(str(ex)))
+            logger.exception("Worker {}, job [{}] exec failed: {}".format(worker_number, job["job_id"], str(ex)))
             error_msg = ex.msg if hasattr(ex, "msg") else str(ex)
             error_code = ex.error_code if hasattr(ex, "error_code") else "Internal"
             http_code = ex.http_code if hasattr(ex, "http_code") else 500
         finally:
+            logger.info("Worker {} putting data about job [{}] to queue".format(worker_number, job["job_id"]))
             results_queue.put((job["job_id"], results, error_msg, error_code, http_code))

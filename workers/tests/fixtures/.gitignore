@@ -1,3 +1,4 @@
 *
 !.gitignore
-!gtiff_object.tiff
+!save_result*
+!invalid_bbox*

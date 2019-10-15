@@ -1,18 +1,21 @@
 import os
 import datetime
+import re
 import numpy as np
 import xarray as xr
 from sentinelhub import CustomUrlParam, BBox, CRS
 from sentinelhub.constants import AwsConstants
+import sentinelhub.geo_utils
 from eolearn.core import FeatureType, EOPatch
-from eolearn.io import S2L1CWCSInput
+from eolearn.io import S2L1CWCSInput, S1IWWCSInput
 
 
 from ._common import ProcessEOTask, ProcessArgumentInvalid, Internal
 
 
 SENTINELHUB_INSTANCE_ID = os.environ.get('SENTINELHUB_INSTANCE_ID', None)
-SENTINELHUB_LAYER_ID = os.environ.get('SENTINELHUB_LAYER_ID', None)
+SENTINELHUB_LAYER_ID_S2L1C = os.environ.get('SENTINELHUB_LAYER_ID_S2L1C', None)
+SENTINELHUB_LAYER_ID_S1GRD = os.environ.get('SENTINELHUB_LAYER_ID_S1GRD', None)
 
 
 def _clean_temporal_extent(temporal_extent):
@@ -41,6 +44,21 @@ def _clean_temporal_extent(temporal_extent):
     return result
 
 
+def _raise_exception_based_on_eolearn_message(str_ex):
+    # EOLearn raises an exception which doesn't have the original data anymore, so we must
+    # parse the message to figure out if the error was 4xx or 5xx.
+    r = re.compile(r'Failed to download from:\n([^\n]+)\nwith ([^:]+):\n([4-5][0-9]{2}) ([^:]+): (.*)')
+    m = r.match(str_ex)
+    if m:
+        g = m.groups()
+        status_code = int(g[2])
+        if 400 <= status_code < 500:
+            raise ProcessArgumentInvalid(f"The argument '<unknown>' in process 'load_collection' is invalid: {str_ex}")
+
+    # we can't make sense of the message, bail out with generic exception:
+    raise Internal("Server error: EOPatch creation failed: {}".format(str_ex))
+
+
 class load_collectionEOTask(ProcessEOTask):
     @staticmethod
     def _convert_bbox(spatial_extent):
@@ -57,6 +75,12 @@ class load_collectionEOTask(ProcessEOTask):
     def process(self, arguments):
         spatial_extent = arguments['spatial_extent']
         bbox = load_collectionEOTask._convert_bbox(spatial_extent)
+
+        # check if the bbox is within the allowed limits:
+        width, height = sentinelhub.geo_utils.bbox_to_dimensions(bbox, 10.0)
+        if width * height > 1000 * 1000:
+            raise ProcessArgumentInvalid("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels.")
+
         patch = None
         INPUT_BANDS = None
         band_aliases = {}
@@ -67,7 +91,7 @@ class load_collectionEOTask(ProcessEOTask):
             try:
                 patch = S2L1CWCSInput(
                     instance_id=SENTINELHUB_INSTANCE_ID,
-                    layer=SENTINELHUB_LAYER_ID,
+                    layer=SENTINELHUB_LAYER_ID_S2L1C,
                     feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
                     custom_url_params={
                         # custom url for specific bands:
@@ -78,12 +102,45 @@ class load_collectionEOTask(ProcessEOTask):
                     maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
                 ).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)
             except Exception as ex:
-                raise Internal("Server error: EOPatch creation failed: {}".format(str(ex)))
+                _raise_exception_based_on_eolearn_message(str(ex))
 
             band_aliases = {
                 "nir": "B08",
                 "red": "B04",
             }
+
+        elif arguments['id'] == 'S1GRDIW':
+            # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=available-bands-and-data
+            INPUT_BANDS = ['VV', 'VH']
+
+            # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=resolution-pixel-spacing
+            #   Value     Description
+            #   HIGH      10m/px for IW and 25m/px for EW
+            #   MEDIUM    40m/px for IW and EW
+            # https://sentinel-hub.com/develop/documentation/eo_products/Sentinel1EOproducts
+            #   Sensing Resolution:
+            #     - Medium
+            #     - High
+            #   Similarly to polarization, not all beam mode/polarization combinations will have data
+            #   at the chosen resolution. IW is typically sensed in High resolution, EW in Medium.
+            res = '10m'
+            try:
+                patch = S1IWWCSInput(
+                    instance_id=SENTINELHUB_INSTANCE_ID,
+                    layer=SENTINELHUB_LAYER_ID_S1GRD,
+                    feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
+                    custom_url_params={
+                        CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(INPUT_BANDS)),
+                    },
+                    resx=res,
+                    resy=res,
+                    maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
+                ).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)
+            except Exception as ex:
+                _raise_exception_based_on_eolearn_message(str(ex))
+
+            band_aliases = {}
+
         else:
             raise ProcessArgumentInvalid("The argument 'id' in process 'load_collection' is invalid: unknown collection id")
 

@@ -4,8 +4,8 @@ import re
 import urllib.parse as urlparse
 import responses
 import json
-from copy import deepcopy
 import sys, os
+
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
@@ -47,18 +47,6 @@ def query_params_from_url(url):
 
 
 @pytest.fixture
-def response_json():
-    filename = os.path.join(FIXTURES_FOLDER, 'response_load_collection01.json')
-    assert os.path.isfile(filename), "Please run load_fixtures.sh!"
-    return json.dumps(json.load(open(filename)))
-
-@pytest.fixture
-def response_geotiff():
-    filename = os.path.join(FIXTURES_FOLDER, 'response_load_collection02.tiff')
-    assert os.path.isfile(filename), "Please run load_fixtures.sh!"
-    return open(filename, 'rb').read()
-
-@pytest.fixture
 def arguments_factory():
     def wrapped(
         collection_id,
@@ -82,34 +70,40 @@ def argumentsS2L1C(arguments_factory):
     return arguments_factory("S2L1C")
 
 @pytest.fixture
-def argumentsS1GRD(arguments_factory):
-    return arguments_factory("S1GRD")
+def argumentsS1GRDIW(arguments_factory):
+    return arguments_factory("S1GRDIW")
 
 @pytest.fixture
-def execute_load_collection_process(set_responses):
-    # While this fixture doesn't use `set_responses` directly, we always want to run this side-effect
-    # whenever we execute load_collection prosess, so it makes sense to depend on it here.
+def execute_load_collection_process():
     def wrapped(arguments):
         return process.load_collection.load_collectionEOTask(arguments, "", None).process(arguments)
     return wrapped
 
 @pytest.fixture
-def set_responses(response_json, response_geotiff):
-    responses.add(
-        responses.GET,
-        re.compile(r'^.*sentinel-hub.com/ogc/wfs/.*$'),
-        body=response_json,
-        match_querystring=True,
-        status=200,
-    )
+def set_mock_responses():
+    def wrapped(mock_info):
+        for mi in mock_info:
+            filename = os.path.join(FIXTURES_FOLDER, mi['filename'])
+            assert os.path.isfile(filename), "Please run load_fixtures.sh!"
+            is_json = os.path.splitext(mi['filename'])[-1] == '.json'
+            body = json.dumps(json.load(open(filename, 'rb'))) if is_json else open(filename, 'rb').read()
+            responses.add(
+                responses.GET,
+                re.compile(mi['regex']),
+                body=body,
+                match_querystring=True,
+                status=mi.get('status_code', 200),
+            )
+    return wrapped
 
-    responses.add(
-        responses.GET,
-        re.compile(r'^.*sentinel-hub.com/ogc/wcs/.*$'),
-        body=response_geotiff,
-        match_querystring=True,
-        status=200,
-    )
+@pytest.fixture
+def set_mock_responses_for_collection(set_mock_responses):
+    def wrapped(collection_id):
+        return set_mock_responses([
+            {'regex': r'^.*sentinel-hub.com/ogc/wfs/.*$', 'filename': f'response_load_collection_{collection_id.lower()}.json'},
+            {'regex': r'^.*sentinel-hub.com/ogc/wcs/.*$', 'filename': f'response_load_collection_{collection_id.lower()}.tiff'},
+        ])
+    return wrapped
 
 
 ###################################
@@ -117,15 +111,21 @@ def set_responses(response_json, response_geotiff):
 ###################################
 
 
+@pytest.mark.parametrize('collection_id,temporal_extent', [
+    ("S2L1C", ["2019-08-16", "2019-08-18"],),
+    ("S1GRDIW", ["2019-08-16 00:00:00", "2019-08-17 05:19:11"],),
+])
 @responses.activate
-def test_correct_s2l1c(argumentsS2L1C, execute_load_collection_process):
+def test_correct(set_mock_responses_for_collection, arguments_factory, execute_load_collection_process, collection_id, temporal_extent):
     """
-        Test load_collection process with correct parameters (S2L1C)
+        Test load_collection process with correct parameters (S2L1C, S1GRDIW,...)
     """
-    result = execute_load_collection_process(argumentsS2L1C)
+    set_mock_responses_for_collection(collection_id)
+    arguments = arguments_factory(collection_id, temporal_extent=temporal_extent)
+    result = execute_load_collection_process(arguments)
     assert len(responses.calls) == 2
     params = query_params_from_url(responses.calls[1].request.url)
-    assert_wcs_bbox_matches(params, 'EPSG:4326', **argumentsS2L1C["spatial_extent"])
+    assert_wcs_bbox_matches(params, 'EPSG:4326', **arguments["spatial_extent"])
 
 
 def test_collection_id(arguments_factory, execute_load_collection_process):
@@ -150,3 +150,25 @@ def test_temporal_extent_invalid(arguments_factory, execute_load_collection_proc
     with pytest.raises(ProcessArgumentInvalid) as ex:
         result = execute_load_collection_process(arguments)
     assert ex.value.args[0] == f"The argument 'temporal_extent' in process 'load_collection' is invalid: {failure_reason}"
+
+
+@responses.activate
+def test_bbox_too_big(set_mock_responses, arguments_factory, execute_load_collection_process):
+    """
+        Test load_collection process with incorrect temporal_extent
+    """
+    invalid_bbox = {
+        "west": 5.903778076171875,
+        "south": 49.18888421524579,
+        "east": 6.658087158203126,
+        "north": 49.30005381244689
+    }
+    set_mock_responses([
+        {'regex': r'^.*sentinel-hub.com/ogc/wfs/.*$', 'filename': 'invalid_bbox.json'},
+        {'regex': r'^.*sentinel-hub.com/ogc/wcs/.*$', 'filename': 'invalid_bbox.xml', 'status_code': 400},
+    ])
+
+    arguments = arguments_factory("S2L1C", bbox = invalid_bbox)
+    with pytest.raises(ProcessArgumentInvalid) as ex:
+        result = execute_load_collection_process(arguments)
+    assert ex.value.args[0].startswith("The argument '<unknown>' in process 'load_collection' is invalid: ")

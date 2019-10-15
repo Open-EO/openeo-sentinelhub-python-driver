@@ -7,7 +7,6 @@ $ docker-compose up -d
 
 Download definitions of defined processes:
 ```
-$ chmod +x download-process-definitions.sh
 $ ./download-process-definitions.sh
 ```
 
@@ -54,7 +53,7 @@ Content-Type: application/json
           "north": 42.07112,
           "south": 42.06347
         },
-        "temporal_extent": "2019-08-17"
+        "temporal_extent": ["2019-08-16", "2019-08-18"]
       }
     },
     "ndvi1": {
@@ -77,7 +76,7 @@ Content-Type: application/json
 
 Using curl:
 ```bash
-$ curl -i -X POST -H "Content-Type: application/json" -d '{"process_graph": {"loadco1": {"process_id": "load_collection", "arguments": {"id": "S2L1C", "temporal_extent": "2019-08-17", "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347}}}, "ndvi1": {"process_id": "ndvi", "arguments": {"data": {"from_node": "loadco1"}}}, "result1": {"process_id": "save_result", "arguments": {"data": {"from_node": "ndvi1"}, "format": "gtiff"}, "result": true}}}' http://localhost:5000/jobs/
+$ curl -i -X POST -H "Content-Type: application/json" -d '{"process_graph": {"loadco1": {"process_id": "load_collection", "arguments": {"id": "S2L1C", "temporal_extent": ["2019-08-16", "2019-08-18"], "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347}}}, "ndvi1": {"process_id": "ndvi", "arguments": {"data": {"from_node": "loadco1"}}}, "result1": {"process_id": "save_result", "arguments": {"data": {"from_node": "ndvi1"}, "format": "gtiff"}, "result": true}}}' http://localhost:5000/jobs/
 ```
 
 Listing all jobs should now include the new job: (note that id will be different)
@@ -119,7 +118,7 @@ $ curl http://localhost:5000/jobs/6520894b-d41d-40d1-bcff-67eafab4eced
           "south": 42.06347,
           "west": 12.32271
         },
-        "temporal_extent": "2019-08-17"
+        "temporal_extent": ["2019-08-16", "2019-08-18"]
       },
       "process_id": "load_collection"
     },
@@ -150,12 +149,19 @@ $ curl http://localhost:5000/jobs/6520894b-d41d-40d1-bcff-67eafab4eced
 }
 ```
 
-And start it:
+And start it by using the returned `id`:
 ```
 $ curl -X POST http://localhost:5000/jobs/6520894b-d41d-40d1-bcff-67eafab4eced/results
 ```
 
 ## AWS
+
+Since we are running everything locally, make sure that the default entry in `~/.aws/credentials` has correct credentials:
+```
+[default]
+aws_access_key_id=AKIAIOSFODNN7EXAMPLE
+aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+```
 
 While executing the examples, we can check the data of the jobs in DynamoDB by using AWS CLI tool:
 ```
