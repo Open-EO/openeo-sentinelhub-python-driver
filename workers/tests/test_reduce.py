@@ -10,10 +10,6 @@ from process._common import ProcessArgumentInvalid, ProcessArgumentRequired
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), 'fixtures')
 
 
-@pytest.fixture
-def reduceEOTask():
-    return process.reduce.reduceEOTask(None, "" , None)
-
 
 @pytest.fixture
 def generate_data():
@@ -32,7 +28,7 @@ def generate_data():
 
 
 @pytest.fixture
-def execute_reduce_process(generate_data, reduceEOTask):
+def execute_reduce_process(generate_data):
     def wrapped(data_arguments={}, dimension="band", reducer=None, target_dimension=None, binary=None):
         arguments = {}
         if data_arguments is not None: arguments["data"] = generate_data(**data_arguments)
@@ -41,7 +37,7 @@ def execute_reduce_process(generate_data, reduceEOTask):
         if target_dimension is not None: arguments["target_dimension"] = target_dimension
         if binary is not None: arguments["binary"] = binary
 
-        return reduceEOTask.process(arguments)
+        return process.reduce.reduceEOTask(None, "" , None).process(arguments)
     return wrapped
 
 

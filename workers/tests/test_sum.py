@@ -11,11 +11,6 @@ FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), 'fixtures')
 
 
 @pytest.fixture
-def sumEOTask():
-    return process.sum.sumEOTask(None, "" , None)
-
-
-@pytest.fixture
 def generate_data():
     def _construct(
             data = ([[[[0.2,0.8]]]], [[[[0.2,0.8]]]]),
@@ -35,13 +30,13 @@ def generate_data():
 
 
 @pytest.fixture
-def execute_sum_process(generate_data, sumEOTask):
+def execute_sum_process(generate_data):
     def wrapped(data_arguments={}, ignore_nodata=None):
         arguments = {}
         if data_arguments is not None: arguments["data"] = generate_data(**data_arguments)
         if ignore_nodata is not None: arguments["ignore_nodata"] = ignore_nodata
 
-        return sumEOTask.process(arguments)
+        return process.sum.sumEOTask(None, "" , None).process(arguments)
     return wrapped
 
 
@@ -49,10 +44,10 @@ def execute_sum_process(generate_data, sumEOTask):
 # tests:
 ###################################
 
-@pytest.mark.parametrize('data,expected_result,ignore_nodata', [
-    ([5,1], 6, True),
-    ([-2,4,2.5], 4.5, True),
-    ([1,None], None, False)
+@pytest.mark.parametrize('data,ignore_nodata,expected_result', [
+    ([5,1], True, 6),
+    ([-2,4,2.5], True, 4.5),
+    ([1,None], False, None)
 ])
 def test_examples(execute_sum_process, data, expected_result, ignore_nodata):
     """
@@ -75,9 +70,9 @@ def test_with_xarray(execute_sum_process, generate_data, array1, array2, expecte
     xr.testing.assert_allclose(result, expected_result)
 
 
-@pytest.mark.parametrize('array1,array2,expected_data,ignore_nodata', [
-    ([[[[np.nan,np.nan]]]], [[[[0.2,np.nan]]]], [[[[0.2,0.0]]]], True),
-    ([[[[np.nan,np.nan]]]], [[[[0.2,np.nan]]]], [[[[np.nan,np.nan]]]], False),
+@pytest.mark.parametrize('array1,array2,ignore_nodata,expected_data', [
+    ([[[[np.nan,np.nan]]]], [[[[0.2,np.nan]]]], True, [[[[0.2,0.0]]]]),
+    ([[[[np.nan,np.nan]]]], [[[[0.2,np.nan]]]], False, [[[[np.nan,np.nan]]]]),
 ])
 def test_with_xarray(execute_sum_process, generate_data, array1, array2, expected_data, ignore_nodata):
     """

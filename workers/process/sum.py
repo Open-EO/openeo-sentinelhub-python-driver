@@ -5,6 +5,13 @@ xr.set_options(keep_attrs=True)
 from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired
 
 class sumEOTask(ProcessEOTask):
+    """
+        This process is often used within reduce process. Reduce could pass each of the vectors separately, 
+        but this would be very inefficient. Instead, we get passed a whole xarray with an attribute reduce_by.
+        In order to know, over which dimension should a callback process be applied, reduce appends the
+        reduction dimension to the reduce_by attribute of the data. The last element of this list is the current
+        reduction dimension. This also allows multi-level reduce calls.
+    """
     def process(self, arguments):
         try:
             data = arguments["data"]
@@ -27,13 +34,13 @@ class sumEOTask(ProcessEOTask):
                 data[i] = xr.DataArray(np.array(element, dtype=np.float))
 
         summation_array = xr.concat(data, dim="temporary_summation_dim")
-        self.results = summation_array.sum(dim="temporary_summation_dim", skipna=ignore_nodata, keep_attrs=True)
+        results = summation_array.sum(dim="temporary_summation_dim", skipna=ignore_nodata, keep_attrs=True)
 
-        if self.results.size == 1 and changed_type:
-            if np.isnan(self.results):
+        if results.size == 1 and changed_type:
+            if np.isnan(results):
                 return None
             else:
-                return float(self.results)
+                return float(results)
 
-        return self.results
+        return results
 

@@ -11,11 +11,6 @@ FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), 'fixtures')
 
 
 @pytest.fixture
-def minEOTask():
-    return process.min.minEOTask(None, "" , None)
-
-
-@pytest.fixture
 def generate_data():
     def _construct(
             data = [[[[0.2,0.8]]]],
@@ -36,13 +31,13 @@ def generate_data():
 
 
 @pytest.fixture
-def execute_min_process(generate_data, minEOTask):
+def execute_min_process(generate_data):
     def wrapped(data_arguments={}, ignore_nodata=None):
         arguments = {}
         if data_arguments is not None: arguments["data"] = generate_data(**data_arguments)
         if ignore_nodata is not None: arguments["ignore_nodata"] = ignore_nodata
 
-        return minEOTask.process(arguments)
+        return process.min.minEOTask(None, "" , None).process(arguments)
     return wrapped
 
 
@@ -50,11 +45,11 @@ def execute_min_process(generate_data, minEOTask):
 # tests:
 ###################################
 
-@pytest.mark.parametrize('data,expected_result,ignore_nodata', [
-    ([1,0,3,2], 0, True),
-    ([5,2.5,None,-0.7], -0.7, True),
-    ([1,0,3,None,2], None, False),
-    ([], None, True)
+@pytest.mark.parametrize('data,ignore_nodata,expected_result', [
+    ([1,0,3,2], True, 0),
+    ([5,2.5,None,-0.7], True, -0.7),
+    ([1,0,3,None,2], False, None),
+    ([], True, None)
 ])
 def test_examples(execute_min_process, data, expected_result, ignore_nodata):
     """
@@ -65,11 +60,11 @@ def test_examples(execute_min_process, data, expected_result, ignore_nodata):
     assert result == expected_result
 
 
-@pytest.mark.parametrize('data,expected_data,expected_dims,attrs', [
-    ([[[[0.2,0.8]]]], [[[0.2]]], ('t','y','x'), {'reduce_by': ['band']}),
-    ([[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]], [[[0.1, 0.15], [0.05, -0.9]]], ('t','y','x'), {'reduce_by': ['band']}),
-    ([[[[0.2,0.8]]]], [[[0.2,0.8]]], ('t','x','band'), {'reduce_by': ['y']}),
-    ([[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]], [[[0.05, 0.1], [-0.9, 0.05]]], ('t','x','band'), {'reduce_by': ['y']}),
+@pytest.mark.parametrize('data,attrs,expected_dims,expected_data', [
+    ([[[[0.2,0.8]]]], {'reduce_by': ['band']}, ('t','y','x'), [[[0.2]]]),
+    ([[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]], {'reduce_by': ['band']}, ('t','y','x'), [[[0.1, 0.15], [0.05, -0.9]]]),
+    ([[[[0.2,0.8]]]], {'reduce_by': ['y']}, ('t','x','band'), [[[0.2,0.8]]]),
+    ([[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]], {'reduce_by': ['y']}, ('t','x','band'), [[[0.05, 0.1], [-0.9, 0.05]]]),
 ])
 def test_with_xarray(execute_min_process, generate_data, data, expected_data, expected_dims, attrs):
     """
@@ -80,9 +75,9 @@ def test_with_xarray(execute_min_process, generate_data, data, expected_data, ex
     xr.testing.assert_allclose(result, expected_result)
 
 
-@pytest.mark.parametrize('data,expected_data,expected_dims,attrs, ignore_nodata', [
-    ([[[[np.nan, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, np.nan]]]], [[[0.15, 0.15], [0.05, -0.9]]], ('t','y','x'), {'reduce_by': ['band']}, True),
-    ([[[[np.nan, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, np.nan]]]], [[[np.nan, 0.15], [0.05, np.nan]]], ('t','y','x'), {'reduce_by': ['band']}, False)
+@pytest.mark.parametrize('data,attrs,ignore_nodata,expected_dims,expected_data', [
+    ([[[[np.nan, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, np.nan]]]], {'reduce_by': ['band']}, True, ('t','y','x'), [[[0.15, 0.15], [0.05, -0.9]]]),
+    ([[[[np.nan, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, np.nan]]]], {'reduce_by': ['band']}, False, ('t','y','x'), [[[np.nan, 0.15], [0.05, np.nan]]])
 ])
 def test_with_xarray_nulls(execute_min_process, generate_data, data, expected_data, expected_dims, attrs, ignore_nodata):
     """

@@ -68,12 +68,12 @@ class reduceEOTask(ProcessEOTask):
 
             dependencies, result_task = self.generate_workflow_dependencies(reducer["callback"], arguments)
             workflow = EOWorkflow(dependencies)
-            workflow.execute({})
-            results = result_task.results
+            all_results = workflow.execute({})
+            result = all_results[result_task]
 
-            results.attrs["reduce_by"].pop()
+            result.attrs["reduce_by"].pop()
 
             if target_dimension:
-                results = xr.concat(results, dim=target_dimension)
+                result = xr.concat(results, dim=target_dimension)
 
-            return results
+            return result
