@@ -153,15 +153,13 @@ def test_temporal_extent_invalid(arguments_factory, execute_load_collection_proc
 
 
 @responses.activate
-def test_bbox_too_big(set_mock_responses, arguments_factory, execute_load_collection_process):
-    """
-        Test load_collection process with incorrect temporal_extent
-    """
+def test_bbox_too_big_for_sh_service(set_mock_responses, arguments_factory, execute_load_collection_process):
+    # bbox size as reported by sentinelhub-py: (6082, 11)
     invalid_bbox = {
-        "west": 5.903778076171875,
-        "south": 49.18888421524579,
-        "east": 6.658087158203126,
-        "north": 49.30005381244689
+        "west": 14.6,
+        "south": 47.,
+        "east": 15.4,
+        "north": 47.001,
     }
     set_mock_responses([
         {'regex': r'^.*sentinel-hub.com/ogc/wfs/.*$', 'filename': 'invalid_bbox.json'},
@@ -172,3 +170,17 @@ def test_bbox_too_big(set_mock_responses, arguments_factory, execute_load_collec
     with pytest.raises(ProcessArgumentInvalid) as ex:
         result = execute_load_collection_process(arguments)
     assert ex.value.args[0].startswith("The argument '<unknown>' in process 'load_collection' is invalid: ")
+
+
+def test_bbox_too_big_for_us(set_mock_responses, arguments_factory, execute_load_collection_process):
+    # bbox size as reported by sentinelhub-py: (3041, 2215)
+    invalid_bbox = {
+        "west": 14.6,
+        "south": 47.,
+        "east": 15.,
+        "north": 47.2,
+    }
+    arguments = arguments_factory("S2L1C", bbox = invalid_bbox)
+    with pytest.raises(ProcessArgumentInvalid) as ex:
+        result = execute_load_collection_process(arguments)
+    assert ex.value.args[0].startswith("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels.")
