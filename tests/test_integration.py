@@ -4,7 +4,7 @@ import pytest
 import sys, os
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rest"))
 from app import app
-from dynamodb import Persistence
+from dynamodb import JobsPersistence, ProcessGraphsPersistence
 
 @pytest.fixture
 def app_client():
@@ -14,13 +14,13 @@ def app_client():
     return app.test_client()
 
 def setup_function(function):
-    Persistence.ensure_table_exists(Persistence.ET_PROCESS_GRAPHS)
-    Persistence.ensure_table_exists(Persistence.ET_JOBS)
+    ProcessGraphsPersistence.ensure_table_exists()
+    JobsPersistence.ensure_table_exists()
 
 
 def teardown_function(function):
-    Persistence.clear_table(Persistence.ET_PROCESS_GRAPHS)
-    Persistence.clear_table(Persistence.ET_JOBS)
+    ProcessGraphsPersistence.clear_table()
+    JobsPersistence.clear_table()
 
 
 ###################################
