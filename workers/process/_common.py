@@ -30,6 +30,15 @@ class ProcessArgumentRequired(UserError):
 
 class StorageFailure(Internal):
     error_code = "StorageFailure"
+    
+
+def iterate(obj):
+    if isinstance(obj, list):
+        for i,v in enumerate(obj):
+            yield i,v
+    elif isinstance(obj, dict):
+        for k, v in obj.items():
+            yield k,v
 
 
 class ProcessEOTask(EOTask):
@@ -58,15 +67,16 @@ class ProcessEOTask(EOTask):
             'from_node' dicts. This function traverses arguments recursively
             and figures out which tasks this task depends on.
         """
+
         from_nodes = []
-        for k, v in arguments.items():
+        for k, v in iterate(arguments):
             if isinstance(v, dict) and len(v) == 1 and 'from_node' in v:
                 from_nodes.append(v['from_node'])
             elif isinstance(v, dict) and len(v) == 1 and 'callback' in v:
                 # we don't traverse callbacks, because they might have their own
                 # 'from_node' arguments, but on a deeper level:
                 continue
-            elif isinstance(v, dict):
+            elif isinstance(v, dict) or isinstance(v, list):
                 from_nodes.extend(ProcessEOTask._get_from_nodes(v))
 
         return from_nodes
@@ -78,12 +88,12 @@ class ProcessEOTask(EOTask):
 
     @staticmethod
     def _apply_data_to_arguments(arguments, values_by_node):
-        for k, v in arguments.items():
+        for k, v in iterate(arguments):
             if isinstance(v, dict) and len(v) == 1 and 'from_node' in v:
                 arguments[k] = values_by_node[v['from_node']]
             elif isinstance(v, dict) and len(v) == 1 and 'callback' in v:
                 continue  # we don't traverse callbacks
-            elif isinstance(v, dict):
+            elif isinstance(v, dict) or isinstance(v, list):
                 ProcessEOTask._apply_data_to_arguments(arguments[k], values_by_node)
 
     def _update_arguments_with_data(self, prev_results):

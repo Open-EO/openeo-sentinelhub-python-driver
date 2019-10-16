@@ -116,6 +116,12 @@ class save_resultEOTask(ProcessEOTask):
         nx = len(data['x'])
         ny = len(data['y'])
         n_bands = len(data['band'])
+
+        try:
+            data['t']
+        except:
+            data = data.expand_dims({"t": [datetime(2019, 10, 16, 11, 14, 29, 496749)]})
+
         n_timestamps = len(data['t'])
 
         xmin, ymin = bbox.get_lower_left()
