@@ -57,11 +57,13 @@ def arguments_factory():
             "north": 42.07112,
             "south": 42.06347
         },
+        bands = None
     ):
         return {
             "id": collection_id,
             "spatial_extent": bbox,
             "temporal_extent": temporal_extent,
+            "bands": bands,
         }
     return wrapped
 
@@ -184,3 +186,26 @@ def test_bbox_too_big_for_us(set_mock_responses, arguments_factory, execute_load
     with pytest.raises(ProcessArgumentInvalid) as ex:
         result = execute_load_collection_process(arguments)
     assert ex.value.args[0].startswith("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels.")
+
+
+@pytest.mark.parametrize('collection_id,temporal_extent,bands', [
+    ("S2L1C", ["2019-08-16", "2019-08-18"], ["B01","B04"]),
+    ("S1GRDIW", ["2019-08-16 00:00:00", "2019-08-17 05:19:11"], ["VV"]),
+])
+@responses.activate
+def test_bands(set_mock_responses_for_collection, arguments_factory, execute_load_collection_process, collection_id, temporal_extent, bands):
+    """
+        Test load_collection process for different bands
+    """
+    set_mock_responses_for_collection(collection_id)
+    arguments = arguments_factory(collection_id, temporal_extent=temporal_extent, bands=bands)
+    with pytest.raises(Exception) as ex:
+        result = execute_load_collection_process(arguments)
+    print(">>>>>>>>>>>>>>>>> result {}".format(collection_id))
+    # print(result)
+    print("\n\n")
+    params = query_params_from_url(responses.calls[0].request.url)
+    print(params)
+    params = query_params_from_url(responses.calls[1].request.url)
+    print(params)
+    
