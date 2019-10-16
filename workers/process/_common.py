@@ -106,11 +106,11 @@ class ProcessEOTask(EOTask):
 
 
     def execute(self, *prev_results):
-        if self.logger: self.logger.debug("[{}]: updating arguments for task {}...".format(self.job_id, self.__class__.__name__))
+        self.logger.debug("[{}]: updating arguments for task {}...".format(self.job_id, self.__class__.__name__))
         self._update_arguments_with_data(prev_results)
-        if self.logger: self.logger.debug("[{}]: executing task {}...".format(self.job_id, self.__class__.__name__))
+        self.logger.debug("[{}]: executing task {}...".format(self.job_id, self.__class__.__name__))
         result = self.process(self._arguments_with_data)
-        if self.logger: self.logger.debug("[{}]: task {} executed, returning result.".format(self.job_id, self.__class__.__name__))
+        self.logger.debug("[{}]: task {} executed, returning result.".format(self.job_id, self.__class__.__name__))
         return result
 
     def process(self, arguments_with_data):
