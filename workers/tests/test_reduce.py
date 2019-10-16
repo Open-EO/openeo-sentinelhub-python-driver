@@ -2,6 +2,8 @@ import pytest
 import sys, os
 import xarray as xr
 import datetime
+import logging
+import multiprocessing
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
@@ -26,7 +28,9 @@ def generate_data():
 
 @pytest.fixture
 def execute_reduce_process(generate_data):
-    def wrapped(data_arguments={}, dimension="band", reducer=None, target_dimension=None, binary=None):
+    logger = multiprocessing.log_to_stderr()
+    logger.setLevel(logging.DEBUG)
+    def wrapped(data_arguments={}, dimension="band", reducer=None, target_dimension=None, binary=None, logger=logger):
         arguments = {}
         if data_arguments is not None: arguments["data"] = generate_data(**data_arguments)
         if dimension is not None: arguments["dimension"] = dimension
@@ -34,7 +38,7 @@ def execute_reduce_process(generate_data):
         if target_dimension is not None: arguments["target_dimension"] = target_dimension
         if binary is not None: arguments["binary"] = binary
 
-        return process.reduce.reduceEOTask(None, "" , None).process(arguments)
+        return process.reduce.reduceEOTask(None, "" , logger).process(arguments)
     return wrapped
 
 
