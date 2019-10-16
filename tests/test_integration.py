@@ -6,12 +6,23 @@ sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__f
 from app import app
 from dynamodb import Persistence
 
+FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), 'Fixtures')
+
 @pytest.fixture
 def app_client():
     # set env vars used by the app:
     os.environ["BACKEND_VERSION"] = 'v6.7.8'
     app.testing = True
     return app.test_client()
+
+
+@pytest.fixture
+def get_expected_data():
+    def _generate(file):
+        filename = os.path.join(FIXTURES_FOLDER, file)
+        return open(filename, 'rb').read()
+    return _generate
+
 
 def setup_function(function):
     Persistence.ensure_table_exists(Persistence.ET_PROCESS_GRAPHS)
@@ -21,7 +32,6 @@ def setup_function(function):
 def teardown_function(function):
     Persistence.clear_table(Persistence.ET_PROCESS_GRAPHS)
     Persistence.clear_table(Persistence.ET_JOBS)
-
 
 ###################################
 
@@ -246,7 +256,7 @@ def test_result(app_client):
 
     assert r.status_code == 200
 
-def test_reduce(app_client):
+def test_reduce(app_client, get_expected_data):
     """
          - test /result endpoint with reduce process
     """
@@ -262,33 +272,35 @@ def test_reduce(app_client):
                   "north": 42.07112,
                   "south": 42.06347
                 },
-                "temporal_extent": ["2019-08-16", "2019-08-18"]
+                "temporal_extent": ["2019-08-16", "2019-08-25"]
               }
             },
             "reduce1": {
               "process_id": "reduce",
               "arguments": {
                 "data": {"from_node": "loadco1"},
-                "dimension": "band",
-                "reducer": "callback": {
-                    "min": {
-                      "process_id": "min",
-                      "arguments": {
-                        "data": {"from_argument": "data"}
-                      },
-                    },
-                    "mean": {
-                      "process_id": "mean",
-                      "arguments": {
-                        "data": {"from_argument": "data"}
-                      },
-                    },
-                    "sum": {
-                      "process_id": "sum",
-                      "arguments": {
-                        "data": [{"from_node": "min"},{"from_node": "mean"}]
-                      },
-                      "result": True
+                "dimension": "t",
+                "reducer": {
+                    "callback": {
+                        "min": {
+                          "process_id": "min",
+                          "arguments": {
+                            "data": {"from_argument": "data"}
+                          },
+                        },
+                        "mean": {
+                          "process_id": "mean",
+                          "arguments": {
+                            "data": {"from_argument": "data"}
+                          },
+                        },
+                        "sum": {
+                          "process_id": "sum",
+                          "arguments": {
+                            "data": [{"from_node": "min"},{"from_node": "mean"}]
+                          },
+                          "result": True
+                        }
                     }
                 }
               }
@@ -305,6 +317,8 @@ def test_reduce(app_client):
         }
 
     r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
-    print(r)
+    
+    assert r.status_code == 200
 
-    assert r.status_code == 500
+    expected_data = get_expected_data("test_reduce.tiff")
+    assert r.data == expected_data

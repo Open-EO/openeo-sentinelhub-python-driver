@@ -7,8 +7,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
 from process._common import ProcessArgumentInvalid, ProcessArgumentRequired
 
-FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), 'fixtures')
-
 
 @pytest.fixture
 def generate_data():
