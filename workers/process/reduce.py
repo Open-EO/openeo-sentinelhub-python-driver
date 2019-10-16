@@ -74,6 +74,6 @@ class reduceEOTask(ProcessEOTask):
             result.attrs["reduce_by"].pop()
 
             if target_dimension:
-                result = xr.concat(results, dim=target_dimension)
+                result = xr.concat(result, dim=target_dimension)
 
             return result
