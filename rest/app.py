@@ -3,7 +3,16 @@ from flask import Flask, url_for, jsonify
 from flask_marshmallow import Marshmallow
 from flask_cors import CORS
 import os
-from schemas import PostProcessGraphsSchema, PostJobsSchema, PostResultSchema, PGValidationSchema, PatchProcessGraphsSchema, PatchJobsSchema
+from schemas import (
+    PostProcessGraphsSchema,
+    PatchProcessGraphsSchema,
+    PGValidationSchema,
+    PostResultSchema,
+    PostJobsSchema,
+    PatchJobsSchema,
+    PostServicesSchema,
+    PatchServicesSchema,
+)
 import datetime
 import requests
 from logging import log, INFO, WARN
@@ -12,7 +21,7 @@ import boto3
 import glob
 import time
 
-from dynamodb import JobsPersistence, ProcessGraphsPersistence
+from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
 
 
 app = Flask(__name__)
@@ -457,6 +466,102 @@ def add_job_to_queue(job_id):
             message = "Job hasn't been started yet.",
             links = []
             ), 400)
+
+
+@app.route('/services', methods=['GET','POST'])
+def api_services():
+    if flask.request.method == 'GET':
+        services = []
+        links = []
+
+        for record in ServicesPersistence.items():
+            services.append({
+                "id": record["id"],
+                "title": record.get("title", None),
+                "description": record.get("description", None),
+                "url": "{}{}/{}".format(flask.request.url_root, record["service_type"], record["id"]),
+                "type": record["service_type"],
+                "enabled": record.get("enabled", True),
+                "plan": record.get("plan", None),
+                "costs": None,  # this field is not nullable as per API!!!
+                "budget": record.get("budget", None),
+            })
+            links.append({
+                "href": "{}services/{}".format(flask.request.url_root, record.get("id")),
+                "title": record.get("title", None),
+            })
+        return {
+            "services": services,
+            "links": links,
+        }, 200
+
+    elif flask.request.method == 'POST':
+        data = flask.request.get_json()
+
+        process_graph_schema = PostServicesSchema()
+        errors = process_graph_schema.validate(data)
+        if errors:
+            return flask.make_response('Invalid request: {}'.format(errors), 400)
+
+        record_id = ServicesPersistence.create(data)
+
+        # add requested headers to 201 response:
+        response = flask.make_response('', 201)
+        response.headers['Location'] = '{}services/{}'.format(flask.request.url_root, record_id)
+        response.headers['OpenEO-Identifier'] = record_id
+        return response
+
+
+@app.route('/services/<service_id>', methods=['GET','PATCH','DELETE'])
+def api_batch_service(service_id):
+    record = ServicesPersistence.get_by_id(service_id)
+    if record is None:
+            return flask.make_response(jsonify(
+                id = service_id,
+                code = "ServiceNotFound",
+                message = "The service does not exist.",
+                links = []
+                ), 404)
+
+    if flask.request.method == 'GET':
+        return flask.make_response(jsonify({
+            "id": record["id"],
+            "title": record.get("title", None),
+            "description": record.get("description", None),
+            "process_graph": json.loads(record["process_graph"]),
+            "url": "{}{}/{}".format(flask.request.url_root, record["service_type"], record["id"]),
+            "type": record["service_type"],
+            "enabled": record.get("enabled", True),
+            "parameters": {},
+            "attributes": {},
+            "submitted": record["submitted"],
+            "plan": record.get("plan", None),
+            "costs": None,  # this field is not nullable as per API!!!
+            "budget": record.get("budget", None),
+        }), 200)
+
+    elif flask.request.method == 'PATCH':
+        data = flask.request.get_json()
+        process_graph_schema = PatchServicesSchema()
+
+        errors = process_graph_schema.validate(data)
+        if errors:
+            # Response procedure for validation will depend on how openeo_pg_parser_python will work
+            return flask.make_response(jsonify(
+                id = service_id,
+                code = 400,
+                message = errors,
+                links = []
+                ), 400)
+
+        for key in data:
+            ServicesPersistence.update_key(service_id, key, data[key])
+
+        return flask.make_response('Changes to the service applied successfully.', 204)
+
+    elif flask.request.method == 'DELETE':
+        ServicesPersistence.delete(service_id)
+        return flask.make_response('The service has been successfully deleted.', 204)
 
 
 @app.route('/collections', methods=['GET'])

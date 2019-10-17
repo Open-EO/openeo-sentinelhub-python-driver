@@ -4,15 +4,21 @@ import pytest
 import sys, os
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rest"))
 from app import app
-from dynamodb import JobsPersistence, ProcessGraphsPersistence
+from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
+
 
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), 'Fixtures')
+
 
 @pytest.fixture
 def app_client():
     # set env vars used by the app:
     os.environ["BACKEND_VERSION"] = 'v6.7.8'
     app.testing = True
+    # clear the DynamoDB tables:
+    for persistence_class in [JobsPersistence, ProcessGraphsPersistence, ServicesPersistence]:
+        persistence_class.delete_table()
+        persistence_class.ensure_table_exists()
     return app.test_client()
 
 
@@ -22,6 +28,39 @@ def get_expected_data():
         filename = os.path.join(FIXTURES_FOLDER, file)
         return open(filename, 'rb').read()
     return _generate
+
+
+@pytest.fixture
+def example_process_graph():
+    return {
+      "loadco1": {
+      "process_id": "load_collection",
+        "arguments": {
+          "id": "S2L1C",
+          "spatial_extent": {
+            "west": 12.32271,
+            "east": 12.33572,
+            "north": 42.07112,
+            "south": 42.06347
+          },
+          "temporal_extent": ["2019-08-16", "2019-08-18"]
+        }
+      },
+      "ndvi1": {
+        "process_id": "ndvi",
+        "arguments": {
+          "data": {"from_node": "loadco1"}
+        }
+      },
+      "result1": {
+        "process_id": "save_result",
+        "arguments": {
+          "data": {"from_node": "ndvi1"},
+          "format": "gtiff"
+        },
+        "result": True
+      }
+    }
 
 
 def setup_function(function):
@@ -148,43 +187,13 @@ def test_manage_batch_jobs(app_client):
 
     assert r.status_code == 404
 
-def test_process_batch_job(app_client):
+def test_process_batch_job(app_client, example_process_graph):
     """
          - test /jobs/job_id/results endpoints
     """
-
     data = {
-        "process_graph": {
-            "loadco1": {
-            "process_id": "load_collection",
-              "arguments": {
-                "id": "S2L1C",
-                "spatial_extent": {
-                  "west": 12.32271,
-                  "east": 12.33572,
-                  "north": 42.07112,
-                  "south": 42.06347
-                },
-                "temporal_extent": "2019-08-17"
-              }
-            },
-            "ndvi1": {
-              "process_id": "ndvi",
-              "arguments": {
-                "data": {"from_node": "loadco1"}
-              }
-            },
-            "result1": {
-              "process_id": "save_result",
-              "arguments": {
-                "data": {"from_node": "ndvi1"},
-                "format": "gtiff"
-              },
-              "result": True
-            }
-          }
-        }
-
+        "process_graph": example_process_graph,
+    }
     r = app_client.post("/jobs", data=json.dumps(data), content_type='application/json')
     assert r.status_code == 201
     record_id = r.headers["OpenEO-Identifier"]
@@ -215,46 +224,89 @@ def test_process_batch_job(app_client):
     r = app_client.delete("/jobs/{}/results".format(record_id))
     assert r.status_code == 200
 
-# @pytest.mark.skip(reason="We need to mock the request")
-def test_result(app_client):
+@pytest.mark.skip("not working because of S3 bucket credentials?")
+def test_result(app_client, example_process_graph):
     """
          - test /result endpoint
     """
     data = {
-        "process_graph": {
-            "loadco1": {
-            "process_id": "load_collection",
-              "arguments": {
-                "id": "S2L1C",
-                "spatial_extent": {
-                  "west": 12.32271,
-                  "east": 12.33572,
-                  "north": 42.07112,
-                  "south": 42.06347
-                },
-                "temporal_extent": ["2019-08-16", "2019-08-18"]
-              }
-            },
-            "ndvi1": {
-              "process_id": "ndvi",
-              "arguments": {
-                "data": {"from_node": "loadco1"}
-              }
-            },
-            "result1": {
-              "process_id": "save_result",
-              "arguments": {
-                "data": {"from_node": "ndvi1"},
-                "format": "gtiff"
-              },
-              "result": True
-            }
-          }
-        }
-
+        "process_graph": example_process_graph,
+    }
     r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
-
     assert r.status_code == 200
+
+
+def test_services(app_client, example_process_graph):
+    """
+         - test /services endpoint
+    """
+    r = app_client.get("/services")
+    expected = []
+    actual = json.loads(r.data.decode('utf-8')).get("services")
+    assert r.status_code == 200
+    assert actual == expected
+
+    data = {
+        "title": "MyService",
+        "process_graph": example_process_graph,
+        "type": "xyz",
+    }
+    r = app_client.post("/services", data=json.dumps(data), content_type='application/json')
+    assert r.status_code == 201
+    record_id = r.headers["OpenEO-Identifier"]
+
+    r = app_client.get("/services")
+    assert r.status_code == 200
+    actual = json.loads(r.data.decode('utf-8')).get("services", [{}])[0]
+    expected = {
+        "id": record_id,
+        "title": data["title"],
+        "description": None,
+        "url": "http://localhost/xyz/{}".format(record_id),
+        "type": data["type"],
+        "enabled": True,
+        "plan": None,
+        "costs": None,
+        "budget": None,
+    }
+    assert actual == expected
+
+    patch_data = {
+        "title": "MyService2",
+    }
+    r = app_client.patch("/services/{}".format(record_id), data=json.dumps(patch_data), content_type='application/json')
+    assert r.status_code == 204
+
+    expected.update(patch_data)
+
+    r = app_client.get("/services")
+    assert r.status_code == 200
+    actual = json.loads(r.data.decode('utf-8')).get("services", [{}])[0]
+    assert actual == expected
+
+    r = app_client.get("/services/{}".format(record_id))
+    assert r.status_code == 200
+    actual = json.loads(r.data.decode('utf-8'))
+    # get record supports additional fields:
+    expected.update({
+        "process_graph": example_process_graph,
+        "parameters": {},
+        "attributes": {},
+        "submitted": actual["submitted"],
+    })
+    assert actual == expected
+
+    r = app_client.delete("/services/{}".format(record_id))
+    assert r.status_code == 204
+
+    r = app_client.get("/services/{}".format(record_id))
+    assert r.status_code == 404
+
+    r = app_client.get("/services")
+    expected = []
+    actual = json.loads(r.data.decode('utf-8')).get("services")
+    assert r.status_code == 200
+    assert actual == expected
 
 def test_reduce(app_client, get_expected_data):
     """
@@ -317,7 +369,7 @@ def test_reduce(app_client, get_expected_data):
         }
 
     r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
-    
+
     assert r.status_code == 200
 
     expected_data = get_expected_data("test_reduce.tiff")

@@ -69,11 +69,51 @@ class PostJobsSchema(Schema):
 class PatchJobsSchema(Schema):
 	"""
 	Request body
-	POST /jobs
+	PATCH /jobs
 	"""
 	process_graph = fields.Dict(allow_none=True)
 	description = fields.Str(allow_none=True)
 	title = fields.Str(allow_none=True)
+	plan = fields.Str(allow_none=True)
+	budget = fields.Number(allow_none=True)
+
+	@validates("process_graph")
+	def validate_process_graph(self, graph):
+		validate_graph_with_known_processes(graph)
+
+class PostServicesSchema(Schema):
+	"""
+	Request body
+	POST /services
+	"""
+	title = fields.Str(allow_none=True)
+	description = fields.Str(allow_none=True)
+	process_graph = fields.Dict(required=True)
+	service_type = fields.Str(required=True, data_key="type")
+	enabled = fields.Bool(allow_none=True)
+	parameters = fields.Dict(allow_none=True)
+	plan = fields.Str(allow_none=True)
+	budget = fields.Number(allow_none=True)
+
+	@validates("process_graph")
+	def validate_process_graph(self, graph):
+		validate_graph_with_known_processes(graph)
+
+	@validates("service_type")
+	def validate_service_type(self, service_type):
+		if service_type.lower() not in ['xyz']:
+			raise ValidationError("Only XYZ service type is supported")
+
+class PatchServicesSchema(Schema):
+	"""
+	Request body
+	PATCH /services
+	"""
+	title = fields.Str(allow_none=True)
+	description = fields.Str(allow_none=True)
+	process_graph = fields.Dict(allow_none=True)
+	enabled = fields.Bool(allow_none=True)
+	parameters = fields.Dict(allow_none=True)
 	plan = fields.Str(allow_none=True)
 	budget = fields.Number(allow_none=True)
 
