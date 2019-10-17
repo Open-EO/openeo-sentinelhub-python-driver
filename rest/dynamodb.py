@@ -34,7 +34,6 @@ class Persistence(object):
         aws_secret_access_key=AWS_SECRET_ACCESS_KEY
     )
 
-    # entity types correspond to DynamoDB tables:
     TABLE_NAME = None
 
     @classmethod
