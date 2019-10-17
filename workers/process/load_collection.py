@@ -58,11 +58,11 @@ def _raise_exception_based_on_eolearn_message(str_ex):
     # we can't make sense of the message, bail out with generic exception:
     raise Internal("Server error: EOPatch creation failed: {}".format(str_ex))
 
-def validate_bands(bands,ALL_BANDS,collection_id):
+def validate_bands(bands, ALL_BANDS, collection_id):
     if bands is None:
         return ALL_BANDS
     if not set(bands).issubset(ALL_BANDS):
-        invalids = ",".join(set(bands) - set(ALL_BANDS))
+        invalids = ",".join(sorted(list(set(bands) - set(ALL_BANDS))))
         valids = ",".join(ALL_BANDS)
         raise ProcessArgumentInvalid("The argument 'bands' in process 'load_collection' is invalid: Bands '[{}]' are not valid {} bands ('[{}]').".format(invalids,collection_id,valids))
     return bands
@@ -92,7 +92,6 @@ class load_collectionEOTask(ProcessEOTask):
 
         bands = arguments.get("bands")
 
-
         if bands is not None:
             if not isinstance(bands, list):
                 raise ProcessArgumentInvalid("The argument 'bands' in process 'load_collection' is invalid: Argument must be a list.")
@@ -102,11 +101,11 @@ class load_collectionEOTask(ProcessEOTask):
         band_aliases = {}
         temporal_extent = _clean_temporal_extent(arguments['temporal_extent'])
 
-        patch = None
+        patch = EOPatch()
 
         if arguments['id'] == 'S2L1C':
             ALL_BANDS = AwsConstants.S2_L1C_BANDS
-            bands = validate_bands(bands,ALL_BANDS,arguments['id'])
+            bands = validate_bands(bands, ALL_BANDS, arguments['id'])
 
             try:
                 patch = S2L1CWCSInput(
@@ -120,7 +119,7 @@ class load_collectionEOTask(ProcessEOTask):
                     resx='10m', # resolution x
                     resy='10m', # resolution y
                     maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
-                ).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)
+                ).execute(patch, time_interval=temporal_extent, bbox=bbox)
             except Exception as ex:
                 _raise_exception_based_on_eolearn_message(str(ex))
 
@@ -132,7 +131,7 @@ class load_collectionEOTask(ProcessEOTask):
         elif arguments['id'] == 'S1GRDIW':
             # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=available-bands-and-data
             ALL_BANDS = ['VV', 'VH']
-            bands = validate_bands(bands,ALL_BANDS,arguments['id'])
+            bands = validate_bands(bands, ALL_BANDS, arguments['id'])
 
             # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=resolution-pixel-spacing
             #   Value     Description
@@ -156,7 +155,7 @@ class load_collectionEOTask(ProcessEOTask):
                     resx=res,
                     resy=res,
                     maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
-                ).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)
+                ).execute(patch, time_interval=temporal_extent, bbox=bbox)
             except Exception as ex:
                 _raise_exception_based_on_eolearn_message(str(ex))
 
@@ -168,7 +167,6 @@ class load_collectionEOTask(ProcessEOTask):
 
         # apart from all the bands, we also want to have access to "IS_DATA", which
         # will be applied as masked_array:
-
         data = patch.data["BANDS"]
         mask = patch.mask["IS_DATA"]
         mask = mask.reshape(mask.shape[:-1])  # get rid of last axis
