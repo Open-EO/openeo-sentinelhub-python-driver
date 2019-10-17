@@ -12,7 +12,7 @@ import boto3
 import glob
 import time
 
-from dynamodb import Persistence
+from dynamodb import JobsPersistence, ProcessGraphsPersistence
 
 
 app = Flask(__name__)
@@ -51,6 +51,7 @@ def api_root():
         "description": "Sentinel Hub OpenEO by [Sinergise](https://sinergise.com)",
         "endpoints": get_endpoints(),
     }
+
 
 def get_endpoints():
     """
@@ -99,7 +100,7 @@ def api_process_graphs(process_graph_id=None):
         if process_graph_id is None:
             process_graphs = []
             links = []
-            for record in Persistence.items(Persistence.ET_PROCESS_GRAPHS):
+            for record in ProcessGraphsPersistence.items():
                 process_graphs.append({
                     "id": record["id"],
                     "title": record.get("title", None),
@@ -114,7 +115,7 @@ def api_process_graphs(process_graph_id=None):
                 "links": links,
             }, 200
         else:
-            process_graph = Persistence.get_by_id(Persistence.ET_PROCESS_GRAPHS,process_graph_id)
+            process_graph = ProcessGraphsPersistence.get_by_id(process_graph_id)
             process_graph["id"] = process_graph_id
             return process_graph, 200
 
@@ -133,7 +134,7 @@ def api_process_graphs(process_graph_id=None):
                 links = []
                 ), 400)
 
-        record_id = Persistence.create(Persistence.ET_PROCESS_GRAPHS, data)
+        record_id = ProcessGraphsPersistence.create(data)
 
         # add requested headers to 201 response:
         response = flask.make_response('', 201)
@@ -142,7 +143,7 @@ def api_process_graphs(process_graph_id=None):
         return response
 
     elif flask.request.method == 'DELETE':
-        Persistence.delete(Persistence.ET_PROCESS_GRAPHS,process_graph_id)
+        ProcessGraphsPersistence.delete(process_graph_id)
         return flask.make_response('The process graph has been successfully deleted.', 204)
 
     elif flask.request.method == 'PATCH':
@@ -161,10 +162,9 @@ def api_process_graphs(process_graph_id=None):
                 ), 400)
 
         for key in data:
-            Persistence.update_key(Persistence.ET_PROCESS_GRAPHS,process_graph_id,key,data[key])
+            ProcessGraphsPersistence.update_key(process_graph_id, key, data[key])
 
         return flask.make_response('The process graph data has been updated successfully.', 204)
-
 
 
 @app.route('/result', methods=['POST'])
@@ -190,20 +190,20 @@ def api_result():
         data["last_updated"] = timestamp
         data["should_be_cancelled"] = False
 
-        job_id = Persistence.create(Persistence.ET_JOBS, data)
+        job_id = JobsPersistence.create(data)
 
         period = 0.5 # In seconds
         n_checks = int(REQUEST_TIMEOUT/period)
 
         for _ in range(n_checks):
-            job = Persistence.get_by_id(Persistence.ET_JOBS, job_id)
+            job = JobsPersistence.get_by_id(job_id)
 
             if job["current_status"] in ["finished","error"]:
                 break
 
             time.sleep(0.5)
 
-        Persistence.delete(Persistence.ET_JOBS, job_id)
+        JobsPersistence.delete(job_id)
 
         if job["current_status"] == "finished":
             results = json.loads(job["results"])
@@ -254,7 +254,7 @@ def api_jobs():
         jobs = []
         links = []
 
-        for record in Persistence.items(Persistence.ET_JOBS):
+        for record in JobsPersistence.items():
             jobs.append({
                 "id": record["id"],
                 "title": record.get("title", None),
@@ -286,7 +286,7 @@ def api_jobs():
         data["last_updated"] = timestamp
         data["should_be_cancelled"] = False
 
-        record_id = Persistence.create(Persistence.ET_JOBS, data)
+        record_id = JobsPersistence.create(data)
 
         # add requested headers to 201 response:
         response = flask.make_response('', 201)
@@ -297,7 +297,7 @@ def api_jobs():
 
 @app.route('/jobs/<job_id>', methods=['GET','PATCH','DELETE'])
 def api_batch_job(job_id):
-    job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+    job = JobsPersistence.get_by_id(job_id)
     if job is None:
             return flask.make_response(jsonify(
                 id = job_id,
@@ -344,28 +344,28 @@ def api_batch_job(job_id):
 
 
         for key in data:
-            Persistence.update_key(Persistence.ET_JOBS,job_id,key,data[key])
+            JobsPersistence.update_key(job_id, key, data[key])
 
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        Persistence.update_key(Persistence.ET_JOBS, job_id, "last_updated", timestamp)
-        Persistence.update_key(Persistence.ET_JOBS, job_id, "current_status", "submitted")
+        JobsPersistence.update_key(job_id, "last_updated", timestamp)
+        JobsPersistence.update_key(job_id, "current_status", "submitted")
 
         return flask.make_response('Changes to the job applied successfully.', 204)
 
     elif flask.request.method == 'DELETE':
-        Persistence.delete(Persistence.ET_JOBS,job_id)
+        JobsPersistence.delete(job_id)
         return flask.make_response('The job has been successfully deleted.', 204)
 
 
 @app.route('/jobs/<job_id>/results', methods=['POST','GET','DELETE'])
 def add_job_to_queue(job_id):
     if flask.request.method == "POST":
-        job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+        job = JobsPersistence.get_by_id(job_id)
 
         if job["current_status"] in ["submitted","finished","canceled","error"]:
             timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
-            Persistence.update_key(Persistence.ET_JOBS, job_id, "last_updated", timestamp)
-            Persistence.update_key(Persistence.ET_JOBS, job_id, "current_status", "queued")
+            JobsPersistence.update_key(job_id, "last_updated", timestamp)
+            JobsPersistence.update_key(job_id, "current_status", "queued")
 
             return flask.make_response('The creation of the resource has been queued successfully.', 202)
         else:
@@ -377,7 +377,7 @@ def add_job_to_queue(job_id):
                 ), 400)
 
     elif flask.request.method == "GET":
-        job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+        job = JobsPersistence.get_by_id(job_id)
 
         if job["current_status"] not in ["finished","error"]:
             return flask.make_response(jsonify(
@@ -429,10 +429,10 @@ def add_job_to_queue(job_id):
             ), 200)
 
     elif flask.request.method == "DELETE":
-        job = Persistence.get_by_id(Persistence.ET_JOBS,job_id)
+        job = JobsPersistence.get_by_id(job_id)
 
         if job["current_status"] in ["queued","running"]:
-            Persistence.update_key(Persistence.ET_JOBS, job_id, "should_be_cancelled", True)
+            JobsPersistence.update_key(job_id, "should_be_cancelled", True)
             return flask.make_response('Processing the job has been successfully canceled.', 200)
 
         return flask.make_response(jsonify(
@@ -501,7 +501,6 @@ def available_processes():
         ), 200)
 
 
-
 @app.route('/validation', methods=["GET"])
 def validate_process_graph():
     data = flask.request.get_json()
@@ -512,6 +511,7 @@ def validate_process_graph():
     return {
         "errors": errors,
     }, 200
+
 
 @app.route('/.well-known/openeo', methods=['GET'])
 def well_known():

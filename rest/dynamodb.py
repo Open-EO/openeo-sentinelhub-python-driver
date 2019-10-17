@@ -21,6 +21,7 @@ DYNAMODB_LOCAL_URL = os.environ.get('DYNAMODB_LOCAL_URL', 'http://localhost:8000
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', FAKE_AWS_ACCESS_KEY_ID)
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', FAKE_AWS_SECRET_ACCESS_KEY)
 
+
 class Persistence(object):
     dynamodb = boto3.client('dynamodb',
         region_name="eu-central-1",
@@ -33,53 +34,12 @@ class Persistence(object):
         aws_secret_access_key=AWS_SECRET_ACCESS_KEY
     )
 
-    # entity types correspond to DynamoDB tables:
-    ET_PROCESS_GRAPHS = 'shopeneo_process_graphs'
-    ET_JOBS = 'shopeneo_jobs'
+    TABLE_NAME = None
 
     @classmethod
-    def create(cls, entity_type, data):
-        """
-            Creates a new record and returns its record ID (UUID).
-        """
-        record_id = str(uuid.uuid4())
-        
-        if entity_type == cls.ET_JOBS:
-            item = {
-                'id': {'S': record_id},
-                'process_graph': {'S': json.dumps(data.get("process_graph"))},
-                'plan': {'S': str(data.get("plan"))},
-                'budget': {'S': str(data.get("budget"))},
-                'current_status': {'S': str(data.get("current_status"))},
-                'submitted': {'S': str(data.get("submitted"))},
-                'last_updated': {'S': str(data.get("last_updated"))},
-                'should_be_cancelled': {'BOOL': data.get("should_be_cancelled")},
-                'error_msg': {'S': str(data.get("error_msg"))},
-                'error_code': {'S': str(data.get("error_code"))},
-                'http_code': {'N':data.get("http_code", "200")},
-                'results': {'S': json.dumps(data.get("results"))},
-            }
-        elif entity_type == cls.ET_PROCESS_GRAPHS:
-            item = {
-                'id': {'S': record_id},
-                'process_graph': {'S': json.dumps(data.get("process_graph"))},
-            }
-
-        if data.get("title"):
-            item["title"] = {'S': str(data.get("title"))}
-        if data.get("description"):
-            item["description"] = {'S': str(data.get("description"))}
-
-        cls.dynamodb.put_item(
-            TableName=entity_type,
-            Item=item,
-        )
-        return record_id
-
-    @classmethod
-    def items(cls, entity_type):
+    def items(cls):
         paginator = cls.dynamodb.get_paginator('scan')
-        for page in paginator.paginate(TableName=entity_type):
+        for page in paginator.paginate(TableName=cls.TABLE_NAME):
             for item in page["Items"]:
                 for key,value in item.items():
                     data_type = list(value)[0]
@@ -87,12 +47,12 @@ class Persistence(object):
                 yield item
 
     @classmethod
-    def delete(cls, entity_type, record_id):
-        cls.dynamodb.delete_item(TableName=entity_type, Key={'id':{'S':record_id}})
+    def delete(cls, record_id):
+        cls.dynamodb.delete_item(TableName=cls.TABLE_NAME, Key={'id':{'S':record_id}})
 
     @classmethod
-    def get_by_id(cls, entity_type, record_id):
-        item = cls.dynamodb.get_item(TableName=entity_type, Key={'id':{'S':record_id}}).get("Item")
+    def get_by_id(cls, record_id):
+        item = cls.dynamodb.get_item(TableName=cls.TABLE_NAME, Key={'id':{'S':record_id}}).get("Item")
 
         if item is None:
             return None
@@ -107,7 +67,7 @@ class Persistence(object):
 
 
     @classmethod
-    def update_key(cls, entity_type, record_id, key, new_value):
+    def update_key(cls, record_id, key, new_value):
         data_type = 'S'
         if not isinstance(new_value, str):
             if isinstance(new_value, dict) or isinstance(new_value, list):
@@ -120,12 +80,12 @@ class Persistence(object):
             else:
                 new_value = str(new_value)
 
-        updated_item = cls.dynamodb.update_item(TableName=entity_type, Key={'id':{'S':record_id}}, UpdateExpression="SET {} = :new_content".format(key), ExpressionAttributeValues={':new_content': {data_type: new_value}})
+        updated_item = cls.dynamodb.update_item(TableName=cls.TABLE_NAME, Key={'id':{'S':record_id}}, UpdateExpression="SET {} = :new_content".format(key), ExpressionAttributeValues={':new_content': {data_type: new_value}})
         return updated_item
 
     @classmethod
-    def ensure_table_exists(cls, table_name):
-        log(INFO, "Ensuring DynamoDB table exists: '{}'.".format(table_name))
+    def ensure_table_exists(cls):
+        log(INFO, "Ensuring DynamoDB table exists: '{}'.".format(cls.TABLE_NAME))
         try:
             cls.dynamodb.create_table(
                 AttributeDefinitions=[
@@ -140,26 +100,87 @@ class Persistence(object):
                         'KeyType': 'HASH',
                     },
                 ],
-                TableName=table_name,
+                TableName=cls.TABLE_NAME,
                 BillingMode='PAY_PER_REQUEST',  # we use on-demand pricing
             )
-            log(INFO, "Successfully created DynamoDB table '{}'.".format(table_name))
+            log(INFO, "Successfully created DynamoDB table '{}'.".format(cls.TABLE_NAME))
         except cls.dynamodb.exceptions.ResourceInUseException:
-            log(INFO, "DynamoDB table '{}' already exists, ignoring.".format(table_name))
+            log(INFO, "DynamoDB table '{}' already exists, ignoring.".format(cls.TABLE_NAME))
 
     @classmethod
-    def delete_table(cls, table_name):
+    def delete_table(cls):
         try:
             #TableName=
-            cls.dynamodb.delete_table(TableName=table_name)
-            log(INFO, "Table {} Successfully deleted.".format(table_name))
+            cls.dynamodb.delete_table(TableName=cls.TABLE_NAME)
+            log(INFO, "Table {} Successfully deleted.".format(cls.TABLE_NAME))
         except:
-            log(INFO, "Table {} does not exists.".format(table_name))
+            log(INFO, "Table {} does not exists.".format(cls.TABLE_NAME))
 
     @classmethod
-    def clear_table(cls, table_name):
-        for item in cls.items(table_name):
-            cls.delete(table_name,item["id"])
+    def clear_table(cls):
+        for item in cls.items():
+            cls.delete(item["id"])
+
+
+class JobsPersistence(Persistence):
+    TABLE_NAME = 'shopeneo_jobs'
+
+    @classmethod
+    def create(cls, data):
+        """
+            Creates a new record and returns its record ID (UUID).
+        """
+        record_id = str(uuid.uuid4())
+        item = {
+            'id': {'S': record_id},
+            'process_graph': {'S': json.dumps(data.get("process_graph"))},
+            'plan': {'S': str(data.get("plan"))},
+            'budget': {'S': str(data.get("budget"))},
+            'current_status': {'S': str(data.get("current_status"))},
+            'submitted': {'S': str(data.get("submitted"))},
+            'last_updated': {'S': str(data.get("last_updated"))},
+            'should_be_cancelled': {'BOOL': data.get("should_be_cancelled")},
+            'error_msg': {'S': str(data.get("error_msg"))},
+            'error_code': {'S': str(data.get("error_code"))},
+            'http_code': {'N':data.get("http_code", "200")},
+            'results': {'S': json.dumps(data.get("results"))},
+        }
+        if data.get("title"):
+            item["title"] = {'S': str(data.get("title"))}
+        if data.get("description"):
+            item["description"] = {'S': str(data.get("description"))}
+
+        cls.dynamodb.put_item(
+            TableName=cls.TABLE_NAME,
+            Item=item,
+        )
+        return record_id
+
+
+class ProcessGraphsPersistence(Persistence):
+    TABLE_NAME = 'shopeneo_process_graphs'
+
+    @classmethod
+    def create(cls, data):
+        """
+            Creates a new record and returns its record ID (UUID).
+        """
+        record_id = str(uuid.uuid4())
+        item = {
+            'id': {'S': record_id},
+            'process_graph': {'S': json.dumps(data.get("process_graph"))},
+        }
+        if data.get("title"):
+            item["title"] = {'S': str(data.get("title"))}
+        if data.get("description"):
+            item["description"] = {'S': str(data.get("description"))}
+
+        cls.dynamodb.put_item(
+            TableName=cls.TABLE_NAME,
+            Item=item,
+        )
+        return record_id
+
 
 if __name__ == "__main__":
 
@@ -172,6 +193,6 @@ if __name__ == "__main__":
     # tables doesn't work if we do that)
 
     log(INFO, "Initializing DynamoDB (url: {}, production: {})...".format(DYNAMODB_LOCAL_URL, DYNAMODB_PRODUCTION))
-    Persistence.ensure_table_exists(Persistence.ET_PROCESS_GRAPHS)
-    Persistence.ensure_table_exists(Persistence.ET_JOBS)
+    JobsPersistence.ensure_table_exists()
+    ProcessGraphsPersistence.ensure_table_exists()
     log(INFO, "DynamoDB initialized.")
