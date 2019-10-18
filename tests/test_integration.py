@@ -187,6 +187,7 @@ def test_manage_batch_jobs(app_client):
 
     assert r.status_code == 404
 
+
 def test_process_batch_job(app_client, example_process_graph):
     """
          - test /jobs/job_id/results endpoints
@@ -224,7 +225,7 @@ def test_process_batch_job(app_client, example_process_graph):
     r = app_client.delete("/jobs/{}/results".format(record_id))
     assert r.status_code == 200
 
-@pytest.mark.skip("not working because of S3 bucket credentials?")
+
 def test_result(app_client, example_process_graph):
     """
          - test /result endpoint
@@ -308,6 +309,7 @@ def test_services(app_client, example_process_graph):
     assert r.status_code == 200
     assert actual == expected
 
+
 def test_reduce(app_client, get_expected_data):
     """
          - test /result endpoint with reduce process
@@ -369,7 +371,6 @@ def test_reduce(app_client, get_expected_data):
         }
 
     r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
-
     assert r.status_code == 200
 
     expected_data = get_expected_data("test_reduce.tiff")
