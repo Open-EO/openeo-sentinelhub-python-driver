@@ -209,10 +209,7 @@ def api_result():
                 links = []
                 ), 400)
 
-        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         data["current_status"] = "queued"
-        data["submitted"] = timestamp
-        data["last_updated"] = timestamp
         data["should_be_cancelled"] = False
 
         job_id = JobsPersistence.create(data)
@@ -304,11 +301,7 @@ def api_jobs():
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
             return flask.make_response('Invalid request: {}'.format(errors), 400)
 
-        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
-
         data["current_status"] = "submitted"
-        data["submitted"] = timestamp
-        data["last_updated"] = timestamp
         data["should_be_cancelled"] = False
 
         record_id = JobsPersistence.create(data)
@@ -324,12 +317,12 @@ def api_jobs():
 def api_batch_job(job_id):
     job = JobsPersistence.get_by_id(job_id)
     if job is None:
-            return flask.make_response(jsonify(
-                id = job_id,
-                code = "JobNotFound",
-                message = "The job does not exist.",
-                links = []
-                ), 404)
+        return flask.make_response(jsonify(
+            id = job_id,
+            code = "JobNotFound",
+            message = "The job does not exist.",
+            links = []
+            ), 404)
 
     if flask.request.method == 'GET':
         status = job["current_status"]
@@ -513,15 +506,15 @@ def api_services():
 
 
 @app.route('/services/<service_id>', methods=['GET','PATCH','DELETE'])
-def api_batch_service(service_id):
+def api_service(service_id):
     record = ServicesPersistence.get_by_id(service_id)
     if record is None:
-            return flask.make_response(jsonify(
-                id = service_id,
-                code = "ServiceNotFound",
-                message = "The service does not exist.",
-                links = []
-                ), 404)
+        return flask.make_response(jsonify(
+            id = service_id,
+            code = "ServiceNotFound",
+            message = "The service does not exist.",
+            links = []
+            ), 404)
 
     if flask.request.method == 'GET':
         return flask.make_response(jsonify({

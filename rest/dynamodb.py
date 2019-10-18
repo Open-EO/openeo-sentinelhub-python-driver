@@ -131,14 +131,15 @@ class JobsPersistence(Persistence):
             Creates a new record and returns its record ID (UUID).
         """
         record_id = str(uuid.uuid4())
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         item = {
             'id': {'S': record_id},
             'process_graph': {'S': json.dumps(data.get("process_graph"))},
             'plan': {'S': str(data.get("plan"))},
             'budget': {'S': str(data.get("budget"))},
             'current_status': {'S': str(data.get("current_status"))},
-            'submitted': {'S': str(data.get("submitted"))},
-            'last_updated': {'S': str(data.get("last_updated"))},
+            'submitted': {'S': timestamp},
+            'last_updated': {'S': timestamp},
             'should_be_cancelled': {'BOOL': data.get("should_be_cancelled")},
             'error_msg': {'S': str(data.get("error_msg"))},
             'error_code': {'S': str(data.get("error_code"))},
