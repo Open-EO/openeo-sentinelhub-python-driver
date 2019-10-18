@@ -72,7 +72,7 @@ class Persistence(object):
         if not isinstance(new_value, str):
             if isinstance(new_value, dict) or isinstance(new_value, list):
                 new_value = json.dumps(new_value)
-            elif isinstance(newvalue, bool):
+            elif isinstance(new_value, bool):
                 data_type = 'BOOL'
             elif key == "http_code":
                 data_type = 'N'
