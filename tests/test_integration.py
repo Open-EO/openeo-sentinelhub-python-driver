@@ -263,7 +263,7 @@ def test_services(app_client, example_process_graph):
         "id": record_id,
         "title": data["title"],
         "description": None,
-        "url": "http://localhost/xyz/{}".format(record_id),
+        "url": "http://localhost/service/xyz/{}".format(record_id),
         "type": data["type"],
         "enabled": True,
         "plan": None,

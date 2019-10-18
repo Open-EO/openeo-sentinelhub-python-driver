@@ -135,8 +135,6 @@ class JobsPersistence(Persistence):
         item = {
             'id': {'S': record_id},
             'process_graph': {'S': json.dumps(data.get("process_graph"))},
-            'plan': {'S': str(data.get("plan"))},
-            'budget': {'S': str(data.get("budget"))},
             'current_status': {'S': str(data.get("current_status"))},
             'submitted': {'S': timestamp},
             'last_updated': {'S': timestamp},
@@ -150,6 +148,12 @@ class JobsPersistence(Persistence):
             item["title"] = {'S': str(data.get("title"))}
         if data.get("description"):
             item["description"] = {'S': str(data.get("description"))}
+        if data.get("variables"):
+            item["variables"] = {'S': str(data.get("variables"))}
+        if data.get("plan"):
+            item['plan'] = {'S': str(data.get("plan"))}
+        if data.get("budget"):
+            item['budget'] = {'S': str(data.get("budget"))}
 
         cls.dynamodb.put_item(
             TableName=cls.TABLE_NAME,

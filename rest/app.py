@@ -1,8 +1,18 @@
+import os
+import datetime
+from logging import log, INFO, WARN
+import json
+import glob
+import time
+import requests
+import boto3
 import flask
 from flask import Flask, url_for, jsonify
 from flask_marshmallow import Marshmallow
 from flask_cors import CORS
-import os
+from sentinelhub import BBox
+
+import globalmaptiles
 from schemas import (
     PostProcessGraphsSchema,
     PatchProcessGraphsSchema,
@@ -13,14 +23,6 @@ from schemas import (
     PostServicesSchema,
     PatchServicesSchema,
 )
-import datetime
-import requests
-from logging import log, INFO, WARN
-import json
-import boto3
-import glob
-import time
-
 from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
 
 
@@ -212,62 +214,7 @@ def api_result():
         data["current_status"] = "queued"
         data["should_be_cancelled"] = False
 
-        job_id = JobsPersistence.create(data)
-
-        period = 0.5 # In seconds
-        n_checks = int(REQUEST_TIMEOUT/period)
-
-        for _ in range(n_checks):
-            job = JobsPersistence.get_by_id(job_id)
-
-            if job["current_status"] in ["finished","error"]:
-                break
-
-            time.sleep(0.5)
-
-        JobsPersistence.delete(job_id)
-
-        if job["current_status"] == "finished":
-            results = json.loads(job["results"])
-            if len(results) != 1:
-                return flask.make_response(jsonify(
-                    id = None,
-                    code = 400,
-                    message = "This endpoint can only succeed if process graph yields exactly one result, instead it received: {}.".format(len(results)),
-                    links = []
-                    ), 400)
-
-            s3 = boto3.client('s3',
-                endpoint_url=S3_LOCAL_URL,
-                region_name="eu-central-1",
-                aws_access_key_id=AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-            )
-
-            result = results[0]
-            filename = result["filename"]
-            object_key = '{}/{}'.format(job_id, os.path.basename(filename))
-
-            s3_object = s3.get_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key)
-            content = s3_object['Body'].read()
-            response = flask.make_response(content, 200)
-            response.mimetype = result["type"]
-            return response
-
-        if job["current_status"] == "error":
-            return flask.make_response(jsonify(
-                id = None,
-                code = job["error_code"],
-                message = job["error_msg"],
-                links = []
-            ), job["http_code"])
-
-        return flask.make_response(jsonify(
-            id = None,
-            code = "Timeout",
-            message = "Request timed out.",
-            links = []
-            ), 408)
+        return _execute_and_wait_for_job(data)
 
 
 @app.route('/jobs', methods=['GET','POST'])
@@ -522,7 +469,7 @@ def api_service(service_id):
             "title": record.get("title", None),
             "description": record.get("description", None),
             "process_graph": json.loads(record["process_graph"]),
-            "url": "{}{}/{}".format(flask.request.url_root, record["service_type"], record["id"]),
+            "url": "{}service/{}/{}".format(flask.request.url_root, record["service_type"], record["id"]),
             "type": record["service_type"],
             "enabled": record.get("enabled", True),
             "parameters": {},
@@ -555,6 +502,94 @@ def api_service(service_id):
     elif flask.request.method == 'DELETE':
         ServicesPersistence.delete(service_id)
         return flask.make_response('The service has been successfully deleted.', 204)
+
+
+@app.route('/service/xyz/<service_id>/<x>/<y>/<zoom>', methods=['GET'])
+def api_execute_service(service_type, service_id, x, y, zoom):
+    record = ServicesPersistence.get_by_id(service_id)
+    if record is None or record["service_type"].lower() != 'xyz':
+        return flask.make_response(jsonify(
+            id = service_id,
+            code = "ServiceNotFound",
+            message = "The service does not exist.",
+            links = []
+            ), 404)
+
+    # https://www.maptiler.com/google-maps-coordinates-tile-bounds-projection/
+    minLat, minLon, maxLat, maxLon = globalmaptiles.GlobalMercator(256).TileLatLonBounds()
+    variables = {
+        "spatial_extent_west": minLon,
+        "spatial_extent_south": minLat,
+        "spatial_extent_east": maxLon,
+        "spatial_extent_north": maxLat,
+        "spatial_extent_crs": 4326,
+    }
+    job_data = {
+        'process_graph': record["process_graph"],
+        'plan': record["plan"],
+        'budget': record["budget"],
+        'title': record["title"],
+        'description': record["description"],
+        'variables': variables,
+    }
+    return _execute_and_wait_for_job(job_data)
+
+
+def _execute_and_wait_for_job(job_data):
+    job_id = JobsPersistence.create(job_data)
+
+    # wait for job to finish:
+    period = 0.5  # check every X seconds
+    n_checks = int(REQUEST_TIMEOUT/period)
+    for _ in range(n_checks):
+        job = JobsPersistence.get_by_id(job_id)
+        if job["current_status"] in ["finished","error"]:
+            break
+        time.sleep(0.5)
+
+    JobsPersistence.delete(job_id)
+
+    if job["current_status"] == "finished":
+        results = json.loads(job["results"])
+        if len(results) != 1:
+            return flask.make_response(jsonify(
+                id = None,
+                code = 400,
+                message = "This endpoint can only succeed if process graph yields exactly one result, instead it received: {}.".format(len(results)),
+                links = []
+                ), 400)
+
+        s3 = boto3.client('s3',
+            endpoint_url=S3_LOCAL_URL,
+            region_name="eu-central-1",
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        )
+
+        result = results[0]
+        filename = result["filename"]
+        object_key = '{}/{}'.format(job_id, os.path.basename(filename))
+
+        s3_object = s3.get_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key)
+        content = s3_object['Body'].read()
+        response = flask.make_response(content, 200)
+        response.mimetype = result["type"]
+        return response
+
+    if job["current_status"] == "error":
+        return flask.make_response(jsonify(
+            id = None,
+            code = job["error_code"],
+            message = job["error_msg"],
+            links = []
+        ), job["http_code"])
+
+    return flask.make_response(jsonify(
+        id = None,
+        code = "Timeout",
+        message = "Request timed out.",
+        links = []
+        ), 408)
 
 
 @app.route('/collections', methods=['GET'])
