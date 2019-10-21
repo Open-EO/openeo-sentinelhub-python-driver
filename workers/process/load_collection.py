@@ -134,6 +134,8 @@ class load_collectionEOTask(ProcessEOTask):
             raise ProcessArgumentInvalid("The argument 'id' in process 'load_collection' is invalid: unknown collection id")
 
 
+        kwargs["resx"] = res
+        kwargs["resy"] = res
         # fetch the data:
         try:
             patch = InputClass(**kwargs).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)
