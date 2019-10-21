@@ -30,13 +30,13 @@ class linear_scale_rangeEOTask(ProcessEOTask):
         if data is None:
             return None
 
-        changed_type = False
+        original_type_was_number = False
 
         if not isinstance(data, xr.DataArray):
             if not isinstance(data, (int,float)) and data is not None:
                 raise ProcessArgumentInvalid("The argument 'x' in process 'linear_scale_range' is invalid: Argument must be of type 'number' or 'null'.")
 
-            changed_type = True
+            original_type_was_number = True
             data = xr.DataArray(np.array(data, dtype=np.float))
 
             if data.size == 0:
@@ -44,7 +44,7 @@ class linear_scale_rangeEOTask(ProcessEOTask):
 
         results = ((data - inputMin) / (inputMax - inputMin)) * (outputMax - outputMin) + outputMin
 
-        if results.size == 1 and changed_type:
+        if original_type_was_number:
             return float(results)
 
         return results
