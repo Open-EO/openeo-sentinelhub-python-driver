@@ -27,6 +27,9 @@ class linear_scale_rangeEOTask(ProcessEOTask):
         data, inputMin, inputMax = arguments["x"], arguments["inputMin"], arguments["inputMax"]
         outputMin, outputMax = arguments.get("outputMin",0), arguments.get("outputMax",1)
 
+        if data is None:
+            return None
+
         changed_type = False
 
         if not isinstance(data, xr.DataArray):
@@ -42,8 +45,6 @@ class linear_scale_rangeEOTask(ProcessEOTask):
         results = ((data - inputMin) / (inputMax - inputMin)) * (outputMax - outputMin) + outputMin
 
         if results.size == 1 and changed_type:
-            if np.isnan(results):
-                return None
             return float(results)
 
         return results
