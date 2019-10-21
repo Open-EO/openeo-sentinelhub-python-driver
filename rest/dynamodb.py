@@ -135,10 +135,10 @@ class JobsPersistence(Persistence):
         item = {
             'id': {'S': record_id},
             'process_graph': {'S': json.dumps(data.get("process_graph"))},
-            'current_status': {'S': str(data.get("current_status"))},
+            'current_status': {'S': str(data.get("current_status", "queued"))},
             'submitted': {'S': timestamp},
             'last_updated': {'S': timestamp},
-            'should_be_cancelled': {'BOOL': data.get("should_be_cancelled")},
+            'should_be_cancelled': {'BOOL': data.get("should_be_cancelled", False)},
             'error_msg': {'S': str(data.get("error_msg"))},
             'error_code': {'S': str(data.get("error_code"))},
             'http_code': {'N':data.get("http_code", "200")},
@@ -149,7 +149,7 @@ class JobsPersistence(Persistence):
         if data.get("description"):
             item["description"] = {'S': str(data.get("description"))}
         if data.get("variables"):
-            item["variables"] = {'S': str(data.get("variables"))}
+            item["variables"] = {'S': json.dumps(data.get("variables"))}
         if data.get("plan"):
             item['plan'] = {'S': str(data.get("plan"))}
         if data.get("budget"):

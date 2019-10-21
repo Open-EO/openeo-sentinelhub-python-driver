@@ -79,7 +79,7 @@ class load_collectionEOTask(ProcessEOTask):
         # check if the bbox is within the allowed limits:
         width, height = sentinelhub.geo_utils.bbox_to_dimensions(bbox, 10.0)
         if width * height > 1000 * 1000:
-            raise ProcessArgumentInvalid("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels.")
+            raise ProcessArgumentInvalid("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels, but is: {}x{}.".format(width, height))
 
         patch = None
         INPUT_BANDS = None

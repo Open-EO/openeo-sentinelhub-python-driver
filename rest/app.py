@@ -419,7 +419,7 @@ def api_services():
                 "id": record["id"],
                 "title": record.get("title", None),
                 "description": record.get("description", None),
-                "url": "{}{}/{}".format(flask.request.url_root, record["service_type"], record["id"]),
+                "url": "{}service/{}/{}".format(flask.request.url_root, record["service_type"], record["id"]),
                 "type": record["service_type"],
                 "enabled": record.get("enabled", True),
                 "plan": record.get("plan", None),
@@ -504,8 +504,8 @@ def api_service(service_id):
         return flask.make_response('The service has been successfully deleted.', 204)
 
 
-@app.route('/service/xyz/<service_id>/<x>/<y>/<zoom>', methods=['GET'])
-def api_execute_service(service_type, service_id, x, y, zoom):
+@app.route('/service/xyz/<service_id>/<zoom>/<tx>/<ty>', methods=['GET'])
+def api_execute_service(service_id, zoom, tx, ty):
     record = ServicesPersistence.get_by_id(service_id)
     if record is None or record["service_type"].lower() != 'xyz':
         return flask.make_response(jsonify(
@@ -516,7 +516,7 @@ def api_execute_service(service_type, service_id, x, y, zoom):
             ), 404)
 
     # https://www.maptiler.com/google-maps-coordinates-tile-bounds-projection/
-    minLat, minLon, maxLat, maxLon = globalmaptiles.GlobalMercator(256).TileLatLonBounds()
+    minLat, minLon, maxLat, maxLon = globalmaptiles.GlobalMercator(256).TileLatLonBounds(int(tx), int(ty), int(zoom))
     variables = {
         "spatial_extent_west": minLon,
         "spatial_extent_south": minLat,
@@ -525,11 +525,11 @@ def api_execute_service(service_type, service_id, x, y, zoom):
         "spatial_extent_crs": 4326,
     }
     job_data = {
-        'process_graph': record["process_graph"],
-        'plan': record["plan"],
-        'budget': record["budget"],
-        'title': record["title"],
-        'description': record["description"],
+        'process_graph': json.loads(record["process_graph"]),
+        'plan': record.get("plan"),
+        'budget': record.get("budget"),
+        'title': record.get("title"),
+        'description': record.get("description"),
         'variables': variables,
     }
     return _execute_and_wait_for_job(job_data)

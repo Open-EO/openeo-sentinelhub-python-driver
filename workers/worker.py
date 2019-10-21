@@ -16,7 +16,7 @@ logger.setLevel(logging.DEBUG)
 SIGNAL_QUIT_JOB = "QUIT"
 
 
-def _execute_process_graph(process_graph, job_id):
+def _execute_process_graph(process_graph, job_id, variables):
     # This is what we are aiming for:
     #
     #   loadco1 = load_collectionEOTask(process_graph["loadco1"]["arguments"])
@@ -46,7 +46,7 @@ def _execute_process_graph(process_graph, job_id):
         task_class_name = '{process_id}EOTask'.format(process_id=process_id)
         task_module = getattr(sys.modules[__name__].process, task_module_name)
         task_class = getattr(task_module, task_class_name)
-        tasks_by_name[node_name] = task_class(node_definition['arguments'], job_id, logger)
+        tasks_by_name[node_name] = task_class(node_definition['arguments'], job_id, logger, variables)
 
         if node_definition.get('result', False):
             result_task = tasks_by_name[node_name]
@@ -87,7 +87,7 @@ def worker_proc(jobs_queue, results_queue, worker_number):
         error_code = None
         http_code = None
         try:
-            results = _execute_process_graph(job["process_graph"], job["job_id"])
+            results = _execute_process_graph(job["process_graph"], job["job_id"], job["variables"])
             logger.info("Worker {} successfully finished job [{}]".format(worker_number, job["job_id"]))
         except Exception as ex:
             logger.exception("Worker {}, job [{}] exec failed: {}".format(worker_number, job["job_id"], str(ex)))

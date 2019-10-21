@@ -30,7 +30,7 @@ class ProcessArgumentRequired(UserError):
 
 class StorageFailure(Internal):
     error_code = "StorageFailure"
-    
+
 
 def iterate(obj):
     if isinstance(obj, list):
@@ -48,14 +48,15 @@ class ProcessEOTask(EOTask):
         ProcessEOTask:
         - gives us a list of the tasks we depend on (based on arguments - where
           the data comes from)
-        - uses execute() to apply the data from previous tasks to arguments
+        - uses execute() to apply the data from previous tasks and from variables to arguments
         - calls process() with these arguments
 
         In other words, subclasses should only extend process() and leave
         execute() as is.
     """
-    def __init__(self, arguments, job_id, logger):
+    def __init__(self, arguments, job_id, logger, variables={}):
         self._arguments = arguments
+        self._variables = variables
         self._arguments_with_data = None
         self._cached_depends_on = None
         self.job_id = job_id
@@ -87,14 +88,16 @@ class ProcessEOTask(EOTask):
         return self._cached_depends_on
 
     @staticmethod
-    def _apply_data_to_arguments(arguments, values_by_node):
+    def _apply_data_to_arguments(arguments, values_by_node, variables):
         for k, v in iterate(arguments):
             if isinstance(v, dict) and len(v) == 1 and 'from_node' in v:
                 arguments[k] = values_by_node[v['from_node']]
+            elif isinstance(v, dict) and len(v) == 1 and 'variable_id' in v:
+                arguments[k] = variables[v['variable_id']]
             elif isinstance(v, dict) and len(v) == 1 and 'callback' in v:
                 continue  # we don't traverse callbacks
             elif isinstance(v, dict) or isinstance(v, list):
-                ProcessEOTask._apply_data_to_arguments(arguments[k], values_by_node)
+                ProcessEOTask._apply_data_to_arguments(arguments[k], values_by_node, variables)
 
     def _update_arguments_with_data(self, prev_results):
         """ prev_results: tuple of previous results, in the same order that
@@ -102,7 +105,7 @@ class ProcessEOTask(EOTask):
         """
         self._arguments_with_data = deepcopy(self._arguments)
         values_by_node = dict(zip(self.depends_on(), prev_results))
-        ProcessEOTask._apply_data_to_arguments(self._arguments_with_data, values_by_node)
+        ProcessEOTask._apply_data_to_arguments(self._arguments_with_data, values_by_node, self._variables)
 
 
     def execute(self, *prev_results):

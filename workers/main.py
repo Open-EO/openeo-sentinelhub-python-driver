@@ -64,8 +64,9 @@ def main():
 
                     running_jobs.add(job_id)
                     jobs_queue.put({
-                        'process_graph': json.loads(job["process_graph"]['S']),
                         'job_id': job_id,
+                        'process_graph': json.loads(job["process_graph"]['S']),
+                        'variables': json.loads(job["variables"]['S']) if "variables" in job else {},
                     })
 
             # GET queued AND should_be_cancelled = True

@@ -183,4 +183,4 @@ def test_bbox_too_big_for_us(set_mock_responses, arguments_factory, execute_load
     arguments = arguments_factory("S2L1C", bbox = invalid_bbox)
     with pytest.raises(ProcessArgumentInvalid) as ex:
         result = execute_load_collection_process(arguments)
-    assert ex.value.args[0].startswith("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels.")
+    assert ex.value.args[0].startswith("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels, but is: ")
