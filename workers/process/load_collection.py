@@ -87,32 +87,27 @@ class load_collectionEOTask(ProcessEOTask):
         temporal_extent = _clean_temporal_extent(arguments['temporal_extent'])
 
         if arguments['id'] == 'S2L1C':
+            InputClass = S2L1CWCSInput
             INPUT_BANDS = AwsConstants.S2_L1C_BANDS
-            try:
-                patch = S2L1CWCSInput(
-                    instance_id=SENTINELHUB_INSTANCE_ID,
-                    layer=SENTINELHUB_LAYER_ID_S2L1C,
-                    feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
-                    custom_url_params={
-                        # custom url for specific bands:
-                        CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(INPUT_BANDS)),
-                    },
-                    resx='10m', # resolution x
-                    resy='10m', # resolution y
-                    maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
-                ).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)
-            except Exception as ex:
-                _raise_exception_based_on_eolearn_message(str(ex))
-
+            res = '10m'
+            kwargs = dict(
+                instance_id=SENTINELHUB_INSTANCE_ID,
+                layer=SENTINELHUB_LAYER_ID_S2L1C,
+                feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
+                custom_url_params={
+                    CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(INPUT_BANDS)),
+                },
+                maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
+            )
             band_aliases = {
                 "nir": "B08",
                 "red": "B04",
             }
 
         elif arguments['id'] == 'S1GRDIW':
+            InputClass = S1IWWCSInput
             # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=available-bands-and-data
             INPUT_BANDS = ['VV', 'VH']
-
             # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=resolution-pixel-spacing
             #   Value     Description
             #   HIGH      10m/px for IW and 25m/px for EW
@@ -124,25 +119,26 @@ class load_collectionEOTask(ProcessEOTask):
             #   Similarly to polarization, not all beam mode/polarization combinations will have data
             #   at the chosen resolution. IW is typically sensed in High resolution, EW in Medium.
             res = '10m'
-            try:
-                patch = S1IWWCSInput(
-                    instance_id=SENTINELHUB_INSTANCE_ID,
-                    layer=SENTINELHUB_LAYER_ID_S1GRD,
-                    feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
-                    custom_url_params={
-                        CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(INPUT_BANDS)),
-                    },
-                    resx=res,
-                    resy=res,
-                    maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
-                ).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)
-            except Exception as ex:
-                _raise_exception_based_on_eolearn_message(str(ex))
-
+            kwargs = dict(
+                instance_id=SENTINELHUB_INSTANCE_ID,
+                layer=SENTINELHUB_LAYER_ID_S1GRD,
+                feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
+                custom_url_params={
+                    CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(INPUT_BANDS)),
+                },
+                maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
+            )
             band_aliases = {}
 
         else:
             raise ProcessArgumentInvalid("The argument 'id' in process 'load_collection' is invalid: unknown collection id")
+
+
+        # fetch the data:
+        try:
+            patch = InputClass(**kwargs).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)
+        except Exception as ex:
+            _raise_exception_based_on_eolearn_message(str(ex))
 
 
         # apart from all the bands, we also want to have access to "IS_DATA", which
