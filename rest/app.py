@@ -108,16 +108,12 @@ def api_output_formats():
 def api_service_types():
     files = glob.iglob("service_types/*.json")
     result = {}
-
     for file in files:
         with open(file) as f:
             key = os.path.splitext(os.path.basename(file))[0]
             result[key] = json.load(f)
 
-    return flask.make_response(jsonify({
-        "services": result,
-        "links": [],
-    }), 200)
+    return flask.make_response(jsonify(result), 200)
 
 
 @app.route('/process_graphs', methods=["GET", "POST"])
