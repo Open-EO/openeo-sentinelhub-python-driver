@@ -7,7 +7,7 @@ from sentinelhub import CustomUrlParam, BBox, CRS
 from sentinelhub.constants import AwsConstants
 import sentinelhub.geo_utils
 from eolearn.core import FeatureType, EOPatch
-from eolearn.io import S2L1CWCSInput, S1IWWCSInput
+from eolearn.io import S2L1CWCSInput, S2L1CWMSInput, S1IWWCSInput, S1IWWMSInput
 
 
 from ._common import ProcessEOTask, ProcessArgumentInvalid, Internal
@@ -87,9 +87,10 @@ class load_collectionEOTask(ProcessEOTask):
         temporal_extent = _clean_temporal_extent(arguments['temporal_extent'])
 
         if arguments['id'] == 'S2L1C':
-            InputClass = S2L1CWCSInput
+            InputClassWCS = S2L1CWCSInput
+            InputClassWMS = S2L1CWMSInput
             INPUT_BANDS = AwsConstants.S2_L1C_BANDS
-            res = '10m'
+            DEFAULT_RES = '10m'
             kwargs = dict(
                 instance_id=SENTINELHUB_INSTANCE_ID,
                 layer=SENTINELHUB_LAYER_ID_S2L1C,
@@ -105,7 +106,8 @@ class load_collectionEOTask(ProcessEOTask):
             }
 
         elif arguments['id'] == 'S1GRDIW':
-            InputClass = S1IWWCSInput
+            InputClassWCS = S1IWWCSInput
+            InputClassWMS = S1IWWMSInput
             # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=available-bands-and-data
             INPUT_BANDS = ['VV', 'VH']
             # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=resolution-pixel-spacing
@@ -118,7 +120,7 @@ class load_collectionEOTask(ProcessEOTask):
             #     - High
             #   Similarly to polarization, not all beam mode/polarization combinations will have data
             #   at the chosen resolution. IW is typically sensed in High resolution, EW in Medium.
-            res = '10m'
+            DEFAULT_RES = '10m'
             kwargs = dict(
                 instance_id=SENTINELHUB_INSTANCE_ID,
                 layer=SENTINELHUB_LAYER_ID_S1GRD,
@@ -133,9 +135,21 @@ class load_collectionEOTask(ProcessEOTask):
         else:
             raise ProcessArgumentInvalid("The argument 'id' in process 'load_collection' is invalid: unknown collection id")
 
+        # apply options and choose appropriate SentinelHubOGCInput subclass which supports them:
+        options = arguments.get("options", {})
+        if options.get("width") or options.get("height"):
+            kwargs["width"] = options.get("width", options.get("height"))
+            kwargs["height"] = options.get("height", options.get("width"))
+            InputClass = InputClassWMS  # WMS knows width/height
+        elif options.get("resx") or options.get("resy"):
+            kwargs["resx"] = options.get("resx", options.get("resy"))
+            kwargs["resy"] = options.get("resy", options.get("resx"))
+            InputClass = InputClassWCS  # WCS knows resx/resy
+        else:
+            kwargs["resx"] = DEFAULT_RES
+            kwargs["resy"] = DEFAULT_RES
+            InputClass = InputClassWCS
 
-        kwargs["resx"] = res
-        kwargs["resy"] = res
         # fetch the data:
         try:
             patch = InputClass(**kwargs).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)

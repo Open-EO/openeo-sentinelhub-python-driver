@@ -22,7 +22,9 @@ def app_client():
 def get_expected_data():
     def _generate(file):
         filename = os.path.join(FIXTURES_FOLDER, file)
-        return open(filename, 'rb').read()
+        with open(filename, 'rb') as f:
+            result = f.read()
+        return result
     return _generate
 
 
@@ -72,7 +74,11 @@ def example_process_graph_with_variables():
             "north": {"variable_id": "spatial_extent_north"},
             "south": {"variable_id": "spatial_extent_south"}
           },
-          "temporal_extent": ["2019-08-16", "2019-08-18"]
+          "temporal_extent": ["2019-08-16", "2019-08-18"],
+          "options": {
+            "width": {"variable_id": "tile_size"},
+            "height": {"variable_id": "tile_size"}
+          }
         }
       },
       "ndvi1": {
@@ -423,7 +429,7 @@ def test_reduce(app_client, get_expected_data):
     expected_data = get_expected_data("test_reduce.tiff")
     assert r.data == expected_data
 
-def test_xyz_service(app_client, service_factory, example_process_graph_with_variables):
+def test_xyz_service(app_client, service_factory, example_process_graph_with_variables, get_expected_data):
     service_id = service_factory(example_process_graph_with_variables, title="Test XYZ service", service_type="xyz")
 
     # $ python globalmaptiles.py 13 42.0 12.3
@@ -433,6 +439,6 @@ def test_xyz_service(app_client, service_factory, example_process_graph_with_var
     tx = 4375
     ty = 5150
     r = app_client.get('/service/xyz/{}/{}/{}/{}'.format(service_id, int(zoom), int(tx), int(ty)))
-    filename = '/tmp/out.tiff'
-    open(filename, 'wb').write(r.data)
     assert r.status_code == 200
+    expected_data = get_expected_data("tile256x256.tiff")
+    assert r.data == expected_data

@@ -512,13 +512,15 @@ def api_execute_service(service_id, zoom, tx, ty):
             ), 404)
 
     # https://www.maptiler.com/google-maps-coordinates-tile-bounds-projection/
-    minLat, minLon, maxLat, maxLon = globalmaptiles.GlobalMercator(256).TileLatLonBounds(int(tx), int(ty), int(zoom))
+    TILE_SIZE = 256
+    minLat, minLon, maxLat, maxLon = globalmaptiles.GlobalMercator(tileSize=TILE_SIZE).TileLatLonBounds(int(tx), int(ty), int(zoom))
     variables = {
         "spatial_extent_west": minLon,
         "spatial_extent_south": minLat,
         "spatial_extent_east": maxLon,
         "spatial_extent_north": maxLat,
         "spatial_extent_crs": 4326,
+        "tile_size": TILE_SIZE,
     }
     job_data = {
         'process_graph': json.loads(record["process_graph"]),
