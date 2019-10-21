@@ -15,10 +15,6 @@ def app_client():
     # set env vars used by the app:
     os.environ["BACKEND_VERSION"] = 'v6.7.8'
     app.testing = True
-    # clear the DynamoDB tables:
-    for persistence_class in [JobsPersistence, ProcessGraphsPersistence, ServicesPersistence]:
-        persistence_class.delete_table()
-        persistence_class.ensure_table_exists()
     return app.test_client()
 
 
@@ -114,11 +110,14 @@ def service_factory(app_client):
 def setup_function(function):
     ProcessGraphsPersistence.ensure_table_exists()
     JobsPersistence.ensure_table_exists()
+    ServicesPersistence.ensure_table_exists()
 
 
 def teardown_function(function):
     ProcessGraphsPersistence.clear_table()
     JobsPersistence.clear_table()
+    ServicesPersistence.clear_table()
+
 
 ###################################
 
