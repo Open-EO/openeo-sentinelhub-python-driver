@@ -101,10 +101,10 @@ def set_mock_responses():
 
 @pytest.fixture
 def set_mock_responses_for_collection(set_mock_responses):
-    def wrapped(collection_id, identifier=""):
+    def wrapped(identifier):
         return set_mock_responses([
-            {'regex': r'^.*sentinel-hub.com/ogc/wfs/.*$', 'filename': f'response_load_collection_{identifier}{collection_id.lower()}.json'},
-            {'regex': r'^.*sentinel-hub.com/ogc/wcs/.*$', 'filename': f'response_load_collection_{identifier}{collection_id.lower()}.tiff'},
+            {'regex': r'^.*sentinel-hub.com/ogc/wfs/.*$', 'filename': f'response_load_collection_{identifier.lower()}.json'},
+            {'regex': r'^.*sentinel-hub.com/ogc/wcs/.*$', 'filename': f'response_load_collection_{identifier.lower()}.tiff'},
         ])
     return wrapped
 
@@ -198,7 +198,7 @@ def test_bands(set_mock_responses_for_collection, arguments_factory, execute_loa
     """
         Test load_collection process for different bands
     """
-    set_mock_responses_for_collection(collection_id, identifier="bands_")
+    set_mock_responses_for_collection("bands_{}".format(collection_id))
     arguments = arguments_factory(collection_id, temporal_extent=temporal_extent, bands=bands)
     result = execute_load_collection_process(arguments)
     params = query_params_from_url(responses.calls[1].request.url)
@@ -209,8 +209,8 @@ def test_bands(set_mock_responses_for_collection, arguments_factory, execute_loa
 @pytest.mark.parametrize('collection_id,temporal_extent,bands,failure_reason', [
     ("S2L1C", ["2019-08-16", "2019-08-18"], "B01", "Argument must be a list."),
     ("S1GRDIW", ["2019-08-16 00:00:00", "2019-08-17 05:19:11"], [], "At least one band must be specified."),
-    ("S2L1C", ["2019-08-16", "2019-08-18"], ["B01","B04","Beatles","B09"], "Bands '[Beatles]' are not valid S2L1C bands"),
-    ("S1GRDIW", ["2019-08-16 00:00:00", "2019-08-17 05:19:11"], ["Čuki","Kingstoni"], "Bands '[Kingstoni,Čuki]' are not valid S1GRDIW bands"),
+    ("S2L1C", ["2019-08-16", "2019-08-18"], ["B01","B04","Beatles","B09"], "Invalid bands encountered;"),
+    ("S1GRDIW", ["2019-08-16 00:00:00", "2019-08-17 05:19:11"], ["Čuki","Kingstoni"], "Invalid bands encountered;"),
 ])
 @responses.activate
 def test_incorrect_bands(arguments_factory, execute_load_collection_process, collection_id, temporal_extent, bands, failure_reason):

@@ -62,9 +62,8 @@ def validate_bands(bands, ALL_BANDS, collection_id):
     if bands is None:
         return ALL_BANDS
     if not set(bands).issubset(ALL_BANDS):
-        invalids = ",".join(sorted(list(set(bands) - set(ALL_BANDS))))
         valids = ",".join(ALL_BANDS)
-        raise ProcessArgumentInvalid("The argument 'bands' in process 'load_collection' is invalid: Bands '[{}]' are not valid {} bands ('[{}]').".format(invalids,collection_id,valids))
+        raise ProcessArgumentInvalid("The argument 'bands' in process 'load_collection' is invalid: Invalid bands encountered; valid bands for {} are '[{}]'.".format(collection_id,valids))
     return bands
 
 
