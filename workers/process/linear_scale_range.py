@@ -1,5 +1,6 @@
 import numpy as np
 import xarray as xr
+import math
 
 from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired
 
@@ -30,10 +31,13 @@ class linear_scale_rangeEOTask(ProcessEOTask):
         if data is None:
             return None
 
+        if math.isclose(inputMin,inputMax):
+            raise ProcessArgumentInvalid("The argument 'inputMin' in process 'linear_scale_range' is invalid: Argument must differ from argument 'inputMax'.")
+
         original_type_was_number = False
 
         if not isinstance(data, xr.DataArray):
-            if not isinstance(data, (int,float)) and data is not None:
+            if not isinstance(data, (int,float)):
                 raise ProcessArgumentInvalid("The argument 'x' in process 'linear_scale_range' is invalid: Argument must be of type 'number' or 'null'.")
 
             original_type_was_number = True
