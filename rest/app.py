@@ -8,9 +8,7 @@ import requests
 import boto3
 import flask
 from flask import Flask, url_for, jsonify
-from flask_marshmallow import Marshmallow
 from flask_cors import CORS
-from sentinelhub import BBox
 
 import globalmaptiles
 from schemas import (
