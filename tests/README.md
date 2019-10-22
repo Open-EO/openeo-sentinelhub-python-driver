@@ -7,7 +7,7 @@ Requirements:
 
 First copy `.env.example` to `.env` in the root directory of the project and enter valid variables.
 
-Make sure process definitions have been downloaded.
+Make sure process definitions have been downloaded (by running `download-process-definitions.sh`).
 
 Procedure for running tests:
 ```
