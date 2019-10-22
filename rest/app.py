@@ -500,7 +500,7 @@ def api_service(service_id):
         return flask.make_response('The service has been successfully deleted.', 204)
 
 
-@app.route('/service/xyz/<service_id>/<zoom>/<tx>/<ty>', methods=['GET'])
+@app.route('/service/xyz/<service_id>/<int:zoom>/<int:tx>/<int:ty>', methods=['GET'])
 def api_execute_service(service_id, zoom, tx, ty):
     record = ServicesPersistence.get_by_id(service_id)
     if record is None or record["service_type"].lower() != 'xyz':
@@ -513,7 +513,7 @@ def api_execute_service(service_id, zoom, tx, ty):
 
     # https://www.maptiler.com/google-maps-coordinates-tile-bounds-projection/
     TILE_SIZE = 256
-    minLat, minLon, maxLat, maxLon = globalmaptiles.GlobalMercator(tileSize=TILE_SIZE).TileLatLonBounds(int(tx), int(ty), int(zoom))
+    minLat, minLon, maxLat, maxLon = globalmaptiles.GlobalMercator(tileSize=TILE_SIZE).TileLatLonBounds(tx, ty, zoom)
     variables = {
         "spatial_extent_west": minLon,
         "spatial_extent_south": minLat,
