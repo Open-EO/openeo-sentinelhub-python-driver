@@ -310,7 +310,8 @@ def test_services_crud(app_client, example_process_graph):
 
     r = app_client.get("/services")
     assert r.status_code == 200
-    actual = json.loads(r.data.decode('utf-8')).get("services", [{}])[0]
+    services = json.loads(r.data.decode('utf-8')).get("services")
+    assert len(services) == 1
     expected = {
         "id": service_id,
         "title": data["title"],
@@ -322,7 +323,7 @@ def test_services_crud(app_client, example_process_graph):
         "costs": None,
         "budget": None,
     }
-    assert actual == expected
+    assert services[0] == expected
 
     patch_data = {
         "title": "MyService2",
@@ -334,8 +335,9 @@ def test_services_crud(app_client, example_process_graph):
 
     r = app_client.get("/services")
     assert r.status_code == 200
-    actual = json.loads(r.data.decode('utf-8')).get("services", [{}])[0]
-    assert actual == expected
+    services = json.loads(r.data.decode('utf-8')).get("services")
+    assert len(services) == 1
+    assert services[0] == expected
 
     r = app_client.get("/services/{}".format(service_id))
     assert r.status_code == 200
