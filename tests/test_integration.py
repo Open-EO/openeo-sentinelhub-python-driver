@@ -320,7 +320,7 @@ def test_services_crud(app_client, example_process_graph):
         "type": data["type"],
         "enabled": True,
         "plan": None,
-        "costs": None,
+        "costs": 0,
         "budget": None,
     }
     assert services[0] == expected

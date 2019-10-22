@@ -417,7 +417,7 @@ def api_services():
                 "type": record["service_type"],
                 "enabled": record.get("enabled", True),
                 "plan": record.get("plan", None),
-                "costs": None,  # this field is not nullable as per API!!!
+                "costs": 0,
                 "budget": record.get("budget", None),
             })
             links.append({
@@ -470,7 +470,7 @@ def api_service(service_id):
             "attributes": {},
             "submitted": record["submitted"],
             "plan": record.get("plan", None),
-            "costs": None,  # this field is not nullable as per API!!!
+            "costs": 0,
             "budget": record.get("budget", None),
         }), 200)
 
