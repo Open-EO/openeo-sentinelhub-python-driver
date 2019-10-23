@@ -316,7 +316,7 @@ def test_services_crud(app_client, example_process_graph):
         "id": service_id,
         "title": data["title"],
         "description": None,
-        "url": "http://localhost/service/xyz/{}".format(service_id),
+        "url": "http://localhost/service/xyz/{}/{{z}}/{{x}}/{{y}}".format(service_id),
         "type": data["type"],
         "enabled": True,
         "plan": None,
