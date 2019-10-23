@@ -20,8 +20,8 @@ def app_client():
 
 @pytest.fixture
 def get_expected_data():
-    def _generate(file):
-        filename = os.path.join(FIXTURES_FOLDER, file)
+    def _generate(base_filename):
+        filename = os.path.join(FIXTURES_FOLDER, base_filename)
         with open(filename, 'rb') as f:
             result = f.read()
         return result
@@ -107,7 +107,7 @@ def service_factory(app_client):
             "type": service_type,
         }
         r = app_client.post("/services", data=json.dumps(data), content_type='application/json')
-        assert r.status_code == 201
+        assert r.status_code == 201, r.data
         service_id = r.headers["OpenEO-Identifier"]
         return service_id
     return wrapped
@@ -437,10 +437,106 @@ def test_xyz_service(app_client, service_factory, example_process_graph_with_var
     # $ python globalmaptiles.py 13 42.0 12.3
     #   13/4375/5150 ( TileMapService: z / x / y )
     # 	Google: 4375 3041
-    zoom = 13
-    tx = 4375
-    ty = 5150
+    zoom, tx, ty = 13, 4375, 3041
     r = app_client.get('/service/xyz/{}/{}/{}/{}'.format(service_id, int(zoom), int(tx), int(ty)))
     assert r.status_code == 200
     expected_data = get_expected_data("tile256x256.tiff")
     assert r.data == expected_data
+
+def test_xyz_service_2(app_client, service_factory, get_expected_data):
+    process_graph = {
+      "loadco1": {
+        "process_id": "load_collection",
+        "arguments": {
+          "id": "S2L1C",
+          "spatial_extent": {
+            "west": {
+              "variable_id": "spatial_extent_west"
+            },
+            "east": {
+              "variable_id": "spatial_extent_east"
+            },
+            "north": {
+              "variable_id": "spatial_extent_north"
+            },
+            "south": {
+              "variable_id": "spatial_extent_south"
+            }
+          },
+          "temporal_extent": [
+            "2019-08-01",
+            "2019-08-18"
+          ],
+          "options": {
+            "width": {
+              "variable_id": "tile_size"
+            },
+            "height": {
+              "variable_id": "tile_size"
+            }
+          }
+        }
+      },
+      "ndvi1": {
+        "process_id": "ndvi",
+        "arguments": {
+          "data": {
+            "from_node": "loadco1"
+          }
+        }
+      },
+      "reduce1": {
+        "process_id": "reduce",
+        "arguments": {
+          "data": {
+            "from_node": "ndvi1"
+          },
+          "reducer": {
+            "callback": {
+              "2": {
+                "process_id": "mean",
+                "arguments": {
+                  "data": {
+                    "from_argument": "data"
+                  }
+                },
+                "result": True
+              }
+            }
+          },
+          "dimension": "t"
+        }
+      },
+      "linear1": {
+        "process_id": "linear_scale_range",
+        "arguments": {
+          "x": {
+            "from_node": "reduce1"
+          },
+          "inputMin": 0,
+          "inputMax": 1,
+          "outputMax": 255
+        }
+      },
+      "result1": {
+        "process_id": "save_result",
+        "arguments": {
+          "data": {
+            "from_node": "linear1"
+          },
+          "format": "JPEG",
+          "options": {
+            "datatype": "byte"
+          }
+        },
+        "result": True
+      }
+    }
+
+    service_id = service_factory(process_graph, title="Test XYZ service", service_type="xyz")
+
+    zoom, tx, ty = 14, 8660, 5908
+    r = app_client.get('/service/xyz/{}/{}/{}/{}'.format(service_id, int(zoom), int(tx), int(ty)))
+    assert r.status_code == 200, r.data
+    expected_data = get_expected_data("tile256x256ndvi.jpeg")
+    assert r.data == expected_data, "File is not the same!"

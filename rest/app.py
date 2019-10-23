@@ -511,6 +511,7 @@ def api_execute_service(service_id, zoom, tx, ty):
 
     # https://www.maptiler.com/google-maps-coordinates-tile-bounds-projection/
     TILE_SIZE = 256
+    ty = (2**zoom - 1) - ty  # convert from Google Tile XYZ to TMS
     minLat, minLon, maxLat, maxLon = globalmaptiles.GlobalMercator(tileSize=TILE_SIZE).TileLatLonBounds(tx, ty, zoom)
     variables = {
         "spatial_extent_west": minLon,
