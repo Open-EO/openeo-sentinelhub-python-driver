@@ -58,6 +58,14 @@ def _raise_exception_based_on_eolearn_message(str_ex):
     # we can't make sense of the message, bail out with generic exception:
     raise Internal("Server error: EOPatch creation failed: {}".format(str_ex))
 
+def validate_bands(bands, ALL_BANDS, collection_id):
+    if bands is None:
+        return ALL_BANDS
+    if not set(bands).issubset(ALL_BANDS):
+        valids = ",".join(ALL_BANDS)
+        raise ProcessArgumentInvalid("The argument 'bands' in process 'load_collection' is invalid: Invalid bands encountered; valid bands for {} are '[{}]'.".format(collection_id,valids))
+    return bands
+
 
 class load_collectionEOTask(ProcessEOTask):
     @staticmethod
@@ -81,22 +89,31 @@ class load_collectionEOTask(ProcessEOTask):
         if width * height > 1000 * 1000:
             raise ProcessArgumentInvalid("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels, but is: {}x{}.".format(width, height))
 
-        patch = None
-        INPUT_BANDS = None
+        bands = arguments.get("bands")
+
+        if bands is not None:
+            if not isinstance(bands, list):
+                raise ProcessArgumentInvalid("The argument 'bands' in process 'load_collection' is invalid: Argument must be a list.")
+            if not len(bands):
+                raise ProcessArgumentInvalid("The argument 'bands' in process 'load_collection' is invalid: At least one band must be specified.")
+
         band_aliases = {}
         temporal_extent = _clean_temporal_extent(arguments['temporal_extent'])
+
+        patch = EOPatch()
 
         if arguments['id'] == 'S2L1C':
             InputClassWCS = S2L1CWCSInput
             InputClassWMS = S2L1CWMSInput
-            INPUT_BANDS = AwsConstants.S2_L1C_BANDS
+            ALL_BANDS = AwsConstants.S2_L1C_BANDS
+            bands = validate_bands(bands, ALL_BANDS, arguments['id'])
             DEFAULT_RES = '10m'
             kwargs = dict(
                 instance_id=SENTINELHUB_INSTANCE_ID,
                 layer=SENTINELHUB_LAYER_ID_S2L1C,
                 feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
                 custom_url_params={
-                    CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(INPUT_BANDS)),
+                    CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(bands)),
                 },
                 maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
             )
@@ -109,7 +126,9 @@ class load_collectionEOTask(ProcessEOTask):
             InputClassWCS = S1IWWCSInput
             InputClassWMS = S1IWWMSInput
             # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=available-bands-and-data
-            INPUT_BANDS = ['VV', 'VH']
+            ALL_BANDS = ['VV', 'VH']
+            bands = validate_bands(bands, ALL_BANDS, arguments['id'])
+
             # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=resolution-pixel-spacing
             #   Value     Description
             #   HIGH      10m/px for IW and 25m/px for EW
@@ -126,7 +145,7 @@ class load_collectionEOTask(ProcessEOTask):
                 layer=SENTINELHUB_LAYER_ID_S1GRD,
                 feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
                 custom_url_params={
-                    CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(INPUT_BANDS)),
+                    CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(bands)),
                 },
                 maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
             )
@@ -152,7 +171,7 @@ class load_collectionEOTask(ProcessEOTask):
 
         # fetch the data:
         try:
-            patch = InputClass(**kwargs).execute(EOPatch(), time_interval=temporal_extent, bbox=bbox)
+            patch = InputClass(**kwargs).execute(patch, time_interval=temporal_extent, bbox=bbox)
         except Exception as ex:
             _raise_exception_based_on_eolearn_message(str(ex))
 
@@ -169,7 +188,7 @@ class load_collectionEOTask(ProcessEOTask):
             masked_data,
             dims=('t', 'y', 'x', 'band'),
             coords={
-                'band': INPUT_BANDS,
+                'band': bands,
                 't': patch.timestamp,
             },
             attrs={
