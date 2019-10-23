@@ -1,18 +1,27 @@
-import flask
-from flask import Flask, url_for, jsonify
-from flask_marshmallow import Marshmallow
-from flask_cors import CORS
 import os
-from schemas import PostProcessGraphsSchema, PostJobsSchema, PostResultSchema, PGValidationSchema, PatchProcessGraphsSchema, PatchJobsSchema
 import datetime
-import requests
 from logging import log, INFO, WARN
 import json
-import boto3
 import glob
 import time
+import requests
+import boto3
+import flask
+from flask import Flask, url_for, jsonify
+from flask_cors import CORS
 
-from dynamodb import JobsPersistence, ProcessGraphsPersistence
+import globalmaptiles
+from schemas import (
+    PostProcessGraphsSchema,
+    PatchProcessGraphsSchema,
+    PGValidationSchema,
+    PostResultSchema,
+    PostJobsSchema,
+    PatchJobsSchema,
+    PostServicesSchema,
+    PatchServicesSchema,
+)
+from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
 
 
 app = Flask(__name__)
@@ -91,6 +100,18 @@ def api_output_formats():
             output_formats[output_format] = json.load(f)
 
     return flask.make_response(jsonify(output_formats), 200)
+
+
+@app.route('/service_types', methods=["GET"])
+def api_service_types():
+    files = glob.iglob("service_types/*.json")
+    result = {}
+    for file in files:
+        with open(file) as f:
+            key = os.path.splitext(os.path.basename(file))[0]
+            result[key] = json.load(f)
+
+    return flask.make_response(jsonify(result), 200)
 
 
 @app.route('/process_graphs', methods=["GET", "POST"])
@@ -184,68 +205,10 @@ def api_result():
                 links = []
                 ), 400)
 
-        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         data["current_status"] = "queued"
-        data["submitted"] = timestamp
-        data["last_updated"] = timestamp
         data["should_be_cancelled"] = False
 
-        job_id = JobsPersistence.create(data)
-
-        period = 0.5 # In seconds
-        n_checks = int(REQUEST_TIMEOUT/period)
-
-        for _ in range(n_checks):
-            job = JobsPersistence.get_by_id(job_id)
-
-            if job["current_status"] in ["finished","error"]:
-                break
-
-            time.sleep(0.5)
-
-        JobsPersistence.delete(job_id)
-
-        if job["current_status"] == "finished":
-            results = json.loads(job["results"])
-            if len(results) != 1:
-                return flask.make_response(jsonify(
-                    id = None,
-                    code = 400,
-                    message = "This endpoint can only succeed if process graph yields exactly one result, instead it received: {}.".format(len(results)),
-                    links = []
-                    ), 400)
-
-            s3 = boto3.client('s3',
-                endpoint_url=S3_LOCAL_URL,
-                region_name="eu-central-1",
-                aws_access_key_id=AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-            )
-
-            result = results[0]
-            filename = result["filename"]
-            object_key = '{}/{}'.format(job_id, os.path.basename(filename))
-
-            s3_object = s3.get_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key)
-            content = s3_object['Body'].read()
-            response = flask.make_response(content, 200)
-            response.mimetype = result["type"]
-            return response
-
-        if job["current_status"] == "error":
-            return flask.make_response(jsonify(
-                id = None,
-                code = job["error_code"],
-                message = job["error_msg"],
-                links = []
-            ), job["http_code"])
-
-        return flask.make_response(jsonify(
-            id = None,
-            code = "Timeout",
-            message = "Request timed out.",
-            links = []
-            ), 408)
+        return _execute_and_wait_for_job(data)
 
 
 @app.route('/jobs', methods=['GET','POST'])
@@ -279,11 +242,7 @@ def api_jobs():
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
             return flask.make_response('Invalid request: {}'.format(errors), 400)
 
-        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
-
         data["current_status"] = "submitted"
-        data["submitted"] = timestamp
-        data["last_updated"] = timestamp
         data["should_be_cancelled"] = False
 
         record_id = JobsPersistence.create(data)
@@ -299,12 +258,12 @@ def api_jobs():
 def api_batch_job(job_id):
     job = JobsPersistence.get_by_id(job_id)
     if job is None:
-            return flask.make_response(jsonify(
-                id = job_id,
-                code = "JobNotFound",
-                message = "The job does not exist.",
-                links = []
-                ), 404)
+        return flask.make_response(jsonify(
+            id = job_id,
+            code = "JobNotFound",
+            message = "The job does not exist.",
+            links = []
+            ), 404)
 
     if flask.request.method == 'GET':
         status = job["current_status"]
@@ -441,6 +400,192 @@ def add_job_to_queue(job_id):
             message = "Job hasn't been started yet.",
             links = []
             ), 400)
+
+
+@app.route('/services', methods=['GET','POST'])
+def api_services():
+    if flask.request.method == 'GET':
+        services = []
+        links = []
+
+        for record in ServicesPersistence.items():
+            services.append({
+                "id": record["id"],
+                "title": record.get("title", None),
+                "description": record.get("description", None),
+                "url": "{}service/{}/{}".format(flask.request.url_root, record["service_type"], record["id"]),
+                "type": record["service_type"],
+                "enabled": record.get("enabled", True),
+                "plan": record.get("plan", None),
+                "costs": 0,
+                "budget": record.get("budget", None),
+            })
+            links.append({
+                "href": "{}services/{}".format(flask.request.url_root, record.get("id")),
+                "title": record.get("title", None),
+            })
+        return {
+            "services": services,
+            "links": links,
+        }, 200
+
+    elif flask.request.method == 'POST':
+        data = flask.request.get_json()
+
+        process_graph_schema = PostServicesSchema()
+        errors = process_graph_schema.validate(data)
+        if errors:
+            return flask.make_response('Invalid request: {}'.format(errors), 400)
+
+        record_id = ServicesPersistence.create(data)
+
+        # add requested headers to 201 response:
+        response = flask.make_response('', 201)
+        response.headers['Location'] = '{}services/{}'.format(flask.request.url_root, record_id)
+        response.headers['OpenEO-Identifier'] = record_id
+        return response
+
+
+@app.route('/services/<service_id>', methods=['GET','PATCH','DELETE'])
+def api_service(service_id):
+    record = ServicesPersistence.get_by_id(service_id)
+    if record is None:
+        return flask.make_response(jsonify(
+            id = service_id,
+            code = "ServiceNotFound",
+            message = "The service does not exist.",
+            links = []
+            ), 404)
+
+    if flask.request.method == 'GET':
+        return flask.make_response(jsonify({
+            "id": record["id"],
+            "title": record.get("title", None),
+            "description": record.get("description", None),
+            "process_graph": json.loads(record["process_graph"]),
+            "url": "{}service/{}/{}".format(flask.request.url_root, record["service_type"], record["id"]),
+            "type": record["service_type"],
+            "enabled": record.get("enabled", True),
+            "parameters": {},
+            "attributes": {},
+            "submitted": record["submitted"],
+            "plan": record.get("plan", None),
+            "costs": 0,
+            "budget": record.get("budget", None),
+        }), 200)
+
+    elif flask.request.method == 'PATCH':
+        data = flask.request.get_json()
+        process_graph_schema = PatchServicesSchema()
+
+        errors = process_graph_schema.validate(data)
+        if errors:
+            # Response procedure for validation will depend on how openeo_pg_parser_python will work
+            return flask.make_response(jsonify(
+                id = service_id,
+                code = 400,
+                message = errors,
+                links = []
+                ), 400)
+
+        for key in data:
+            ServicesPersistence.update_key(service_id, key, data[key])
+
+        return flask.make_response('Changes to the service applied successfully.', 204)
+
+    elif flask.request.method == 'DELETE':
+        ServicesPersistence.delete(service_id)
+        return flask.make_response('The service has been successfully deleted.', 204)
+
+
+@app.route('/service/xyz/<service_id>/<int:zoom>/<int:tx>/<int:ty>', methods=['GET'])
+def api_execute_service(service_id, zoom, tx, ty):
+    record = ServicesPersistence.get_by_id(service_id)
+    if record is None or record["service_type"].lower() != 'xyz':
+        return flask.make_response(jsonify(
+            id = service_id,
+            code = "ServiceNotFound",
+            message = "The service does not exist.",
+            links = []
+            ), 404)
+
+    # https://www.maptiler.com/google-maps-coordinates-tile-bounds-projection/
+    TILE_SIZE = 256
+    minLat, minLon, maxLat, maxLon = globalmaptiles.GlobalMercator(tileSize=TILE_SIZE).TileLatLonBounds(tx, ty, zoom)
+    variables = {
+        "spatial_extent_west": minLon,
+        "spatial_extent_south": minLat,
+        "spatial_extent_east": maxLon,
+        "spatial_extent_north": maxLat,
+        "spatial_extent_crs": 4326,
+        "tile_size": TILE_SIZE,
+    }
+    job_data = {
+        'process_graph': json.loads(record["process_graph"]),
+        'plan': record.get("plan"),
+        'budget': record.get("budget"),
+        'title': record.get("title"),
+        'description': record.get("description"),
+        'variables': variables,
+    }
+    return _execute_and_wait_for_job(job_data)
+
+
+def _execute_and_wait_for_job(job_data):
+    job_id = JobsPersistence.create(job_data)
+
+    # wait for job to finish:
+    period = 0.5  # check every X seconds
+    n_checks = int(REQUEST_TIMEOUT/period)
+    for _ in range(n_checks):
+        job = JobsPersistence.get_by_id(job_id)
+        if job["current_status"] in ["finished","error"]:
+            break
+        time.sleep(0.5)
+
+    JobsPersistence.delete(job_id)
+
+    if job["current_status"] == "finished":
+        results = json.loads(job["results"])
+        if len(results) != 1:
+            return flask.make_response(jsonify(
+                id = None,
+                code = 400,
+                message = "This endpoint can only succeed if process graph yields exactly one result, instead it received: {}.".format(len(results)),
+                links = []
+                ), 400)
+
+        s3 = boto3.client('s3',
+            endpoint_url=S3_LOCAL_URL,
+            region_name="eu-central-1",
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        )
+
+        result = results[0]
+        filename = result["filename"]
+        object_key = '{}/{}'.format(job_id, os.path.basename(filename))
+
+        s3_object = s3.get_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key)
+        content = s3_object['Body'].read()
+        response = flask.make_response(content, 200)
+        response.mimetype = result["type"]
+        return response
+
+    if job["current_status"] == "error":
+        return flask.make_response(jsonify(
+            id = None,
+            code = job["error_code"],
+            message = job["error_msg"],
+            links = []
+        ), job["http_code"])
+
+    return flask.make_response(jsonify(
+        id = None,
+        code = "Timeout",
+        message = "Request timed out.",
+        links = []
+        ), 408)
 
 
 @app.route('/collections', methods=['GET'])

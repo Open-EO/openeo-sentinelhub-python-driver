@@ -7,7 +7,7 @@ from sentinelhub import CustomUrlParam, BBox, CRS
 from sentinelhub.constants import AwsConstants
 import sentinelhub.geo_utils
 from eolearn.core import FeatureType, EOPatch
-from eolearn.io import S2L1CWCSInput, S1IWWCSInput
+from eolearn.io import S2L1CWCSInput, S2L1CWMSInput, S1IWWCSInput, S1IWWMSInput
 
 
 from ._common import ProcessEOTask, ProcessArgumentInvalid, Internal
@@ -87,7 +87,7 @@ class load_collectionEOTask(ProcessEOTask):
         # check if the bbox is within the allowed limits:
         width, height = sentinelhub.geo_utils.bbox_to_dimensions(bbox, 10.0)
         if width * height > 1000 * 1000:
-            raise ProcessArgumentInvalid("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels.")
+            raise ProcessArgumentInvalid("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels, but is: {}x{}.".format(width, height))
 
         bands = arguments.get("bands")
 
@@ -103,31 +103,28 @@ class load_collectionEOTask(ProcessEOTask):
         patch = EOPatch()
 
         if arguments['id'] == 'S2L1C':
+            InputClassWCS = S2L1CWCSInput
+            InputClassWMS = S2L1CWMSInput
             ALL_BANDS = AwsConstants.S2_L1C_BANDS
             bands = validate_bands(bands, ALL_BANDS, arguments['id'])
-
-            try:
-                patch = S2L1CWCSInput(
-                    instance_id=SENTINELHUB_INSTANCE_ID,
-                    layer=SENTINELHUB_LAYER_ID_S2L1C,
-                    feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
-                    custom_url_params={
-                        # custom url for specific bands:
-                        CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(",".join(bands)),
-                    },
-                    resx='10m', # resolution x
-                    resy='10m', # resolution y
-                    maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
-                ).execute(patch, time_interval=temporal_extent, bbox=bbox)
-            except Exception as ex:
-                _raise_exception_based_on_eolearn_message(str(ex))
-
+            DEFAULT_RES = '10m'
+            kwargs = dict(
+                instance_id=SENTINELHUB_INSTANCE_ID,
+                layer=SENTINELHUB_LAYER_ID_S2L1C,
+                feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
+                custom_url_params={
+                    CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(bands)),
+                },
+                maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
+            )
             band_aliases = {
                 "nir": "B08",
                 "red": "B04",
             }
 
         elif arguments['id'] == 'S1GRDIW':
+            InputClassWCS = S1IWWCSInput
+            InputClassWMS = S1IWWMSInput
             # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=available-bands-and-data
             ALL_BANDS = ['VV', 'VH']
             bands = validate_bands(bands, ALL_BANDS, arguments['id'])
@@ -142,26 +139,41 @@ class load_collectionEOTask(ProcessEOTask):
             #     - High
             #   Similarly to polarization, not all beam mode/polarization combinations will have data
             #   at the chosen resolution. IW is typically sensed in High resolution, EW in Medium.
-            res = '10m'
-            try:
-                patch = S1IWWCSInput(
-                    instance_id=SENTINELHUB_INSTANCE_ID,
-                    layer=SENTINELHUB_LAYER_ID_S1GRD,
-                    feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
-                    custom_url_params={
-                        CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(",".join(bands)),
-                    },
-                    resx=res,
-                    resy=res,
-                    maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
-                ).execute(patch, time_interval=temporal_extent, bbox=bbox)
-            except Exception as ex:
-                _raise_exception_based_on_eolearn_message(str(ex))
-
+            DEFAULT_RES = '10m'
+            kwargs = dict(
+                instance_id=SENTINELHUB_INSTANCE_ID,
+                layer=SENTINELHUB_LAYER_ID_S1GRD,
+                feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
+                custom_url_params={
+                    CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(bands)),
+                },
+                maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
+            )
             band_aliases = {}
 
         else:
             raise ProcessArgumentInvalid("The argument 'id' in process 'load_collection' is invalid: unknown collection id")
+
+        # apply options and choose appropriate SentinelHubOGCInput subclass which supports them:
+        options = arguments.get("options", {})
+        if options.get("width") or options.get("height"):
+            kwargs["width"] = options.get("width", options.get("height"))
+            kwargs["height"] = options.get("height", options.get("width"))
+            InputClass = InputClassWMS  # WMS knows width/height
+        elif options.get("resx") or options.get("resy"):
+            kwargs["resx"] = options.get("resx", options.get("resy"))
+            kwargs["resy"] = options.get("resy", options.get("resx"))
+            InputClass = InputClassWCS  # WCS knows resx/resy
+        else:
+            kwargs["resx"] = DEFAULT_RES
+            kwargs["resy"] = DEFAULT_RES
+            InputClass = InputClassWCS
+
+        # fetch the data:
+        try:
+            patch = InputClass(**kwargs).execute(patch, time_interval=temporal_extent, bbox=bbox)
+        except Exception as ex:
+            _raise_exception_based_on_eolearn_message(str(ex))
 
 
         # apart from all the bands, we also want to have access to "IS_DATA", which

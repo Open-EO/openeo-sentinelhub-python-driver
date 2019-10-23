@@ -186,11 +186,11 @@ def test_bbox_too_big_for_us(set_mock_responses, arguments_factory, execute_load
     arguments = arguments_factory("S2L1C", bbox = invalid_bbox)
     with pytest.raises(ProcessArgumentInvalid) as ex:
         result = execute_load_collection_process(arguments)
-    assert ex.value.args[0].startswith("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels.")
+    assert ex.value.args[0].startswith("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels, but is: ")
 
 
 @pytest.mark.parametrize('collection_id,temporal_extent,bands,evalscript', [
-    ("S2L1C", ["2019-08-16", "2019-08-18"], ["B01","B04"], "return [B01,B04];"),
+    ("S2L1C", ["2019-08-16", "2019-08-18"], ["B01","B04"], "return [B01, B04];"),
     ("S1GRDIW", ["2019-08-16 00:00:00", "2019-08-17 05:19:11"], ["VV"], "return [VV];"),
 ])
 @responses.activate
@@ -201,9 +201,10 @@ def test_bands(set_mock_responses_for_collection, arguments_factory, execute_loa
     set_mock_responses_for_collection("bands_{}".format(collection_id))
     arguments = arguments_factory(collection_id, temporal_extent=temporal_extent, bands=bands)
     result = execute_load_collection_process(arguments)
-    params = query_params_from_url(responses.calls[1].request.url)
-
-    assert params.get("service") == "wfs" or params.get("evalscript") is not None and b64decode(params["evalscript"]).decode("utf-8") == evalscript
+    assert len(responses.calls) == 2
+    for call in responses.calls:
+        params = query_params_from_url(call.request.url)
+        assert params.get("service") == "wfs" or params.get("evalscript") is not None and b64decode(params["evalscript"]).decode("utf-8") == evalscript
 
 
 @pytest.mark.parametrize('collection_id,temporal_extent,bands,failure_reason', [

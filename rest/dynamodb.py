@@ -72,7 +72,7 @@ class Persistence(object):
         if not isinstance(new_value, str):
             if isinstance(new_value, dict) or isinstance(new_value, list):
                 new_value = json.dumps(new_value)
-            elif key == "should_be_cancelled":
+            elif isinstance(new_value, bool):
                 data_type = 'BOOL'
             elif key == "http_code":
                 data_type = 'N'
@@ -131,15 +131,14 @@ class JobsPersistence(Persistence):
             Creates a new record and returns its record ID (UUID).
         """
         record_id = str(uuid.uuid4())
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         item = {
             'id': {'S': record_id},
             'process_graph': {'S': json.dumps(data.get("process_graph"))},
-            'plan': {'S': str(data.get("plan"))},
-            'budget': {'S': str(data.get("budget"))},
-            'current_status': {'S': str(data.get("current_status"))},
-            'submitted': {'S': str(data.get("submitted"))},
-            'last_updated': {'S': str(data.get("last_updated"))},
-            'should_be_cancelled': {'BOOL': data.get("should_be_cancelled")},
+            'current_status': {'S': str(data.get("current_status", "queued"))},
+            'submitted': {'S': timestamp},
+            'last_updated': {'S': timestamp},
+            'should_be_cancelled': {'BOOL': data.get("should_be_cancelled", False)},
             'error_msg': {'S': str(data.get("error_msg"))},
             'error_code': {'S': str(data.get("error_code"))},
             'http_code': {'N':data.get("http_code", "200")},
@@ -149,6 +148,12 @@ class JobsPersistence(Persistence):
             item["title"] = {'S': str(data.get("title"))}
         if data.get("description"):
             item["description"] = {'S': str(data.get("description"))}
+        if data.get("variables"):
+            item["variables"] = {'S': json.dumps(data.get("variables"))}
+        if data.get("plan"):
+            item['plan'] = {'S': str(data.get("plan"))}
+        if data.get("budget"):
+            item['budget'] = {'S': str(data.get("budget"))}
 
         cls.dynamodb.put_item(
             TableName=cls.TABLE_NAME,
@@ -182,6 +187,35 @@ class ProcessGraphsPersistence(Persistence):
         return record_id
 
 
+class ServicesPersistence(Persistence):
+    TABLE_NAME = 'shopeneo_services'
+
+    @classmethod
+    def create(cls, data):
+        """
+            Creates a new record and returns its record ID (UUID).
+        """
+        record_id = str(uuid.uuid4())
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        item = {
+            'id': {'S': record_id},
+            'service_type': {'S': str(data.get("type"))},
+            'process_graph': {'S': json.dumps(data.get("process_graph"))},
+            'enabled': {'BOOL': data.get("enabled", True)},
+            'parameters': {'S': str(data.get("parameters"))},
+            'submitted': {'S': timestamp},
+        }
+        for optional_field in ["title", "description", "plan", "budget"]:
+            if data.get(optional_field) is not None:
+                item[optional_field] = {'S': str(data.get(optional_field))}
+
+        cls.dynamodb.put_item(
+            TableName=cls.TABLE_NAME,
+            Item=item,
+        )
+        return record_id
+
+
 if __name__ == "__main__":
 
     # To create tables, run:
@@ -195,4 +229,5 @@ if __name__ == "__main__":
     log(INFO, "Initializing DynamoDB (url: {}, production: {})...".format(DYNAMODB_LOCAL_URL, DYNAMODB_PRODUCTION))
     JobsPersistence.ensure_table_exists()
     ProcessGraphsPersistence.ensure_table_exists()
+    ServicesPersistence.ensure_table_exists()
     log(INFO, "DynamoDB initialized.")
