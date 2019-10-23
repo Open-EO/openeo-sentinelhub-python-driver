@@ -17,7 +17,7 @@ class array_elementEOTask(ProcessEOTask):
         if data is None:
             raise ProcessArgumentRequired("Process 'array_element' requires argument 'data'.")
         if not isinstance(data, (list,xr.DataArray)):
-                raise ProcessArgumentInvalid("The argument 'data' in process 'array_element' is invalid: Argument must be of type 'array'.")
+            raise ProcessArgumentInvalid("The argument 'data' in process 'array_element' is invalid: Argument must be of type 'array'.")
 
         index = arguments.get("index")
         if index is None:
