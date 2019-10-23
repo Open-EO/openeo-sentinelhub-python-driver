@@ -77,7 +77,7 @@ def test_with_xarray(execute_mean_process, generate_data, data, expected_data, e
     ([[[[np.nan, 0.15], [0.15, 0.2]], [[0.05, np.nan], [-0.9, 0.05]]]], {'reduce_by': ['y']}, True, ('t','x','band'), [[[0.05,0.15],[-0.375,0.125]]]),
     ([[[[np.nan, 0.15], [0.15, 0.2]], [[0.05, np.nan], [-0.9, 0.05]]]], {'reduce_by': ['y']}, False, ('t','x','band'), [[[np.nan,np.nan],[-0.375,0.125]]]),
 ])
-def test_with_xarray(execute_mean_process, generate_data, data, expected_data, expected_dims, attrs, ignore_nodata):
+def test_with_xarray_nulls(execute_mean_process, generate_data, data, expected_data, expected_dims, attrs, ignore_nodata):
     """
         Test mean process with xarray.DataArrays with null in data
     """
