@@ -89,8 +89,7 @@ def main():
                     # job is no longer running, so the results will not be used:
                     running_jobs.remove(job_id)
 
-            logger.info("Sleeping...")
-            time.sleep(5)
+            time.sleep(1.0)
 
             # write results:
             while True:
