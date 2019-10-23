@@ -72,7 +72,7 @@ def test_with_xarray(execute_sum_process, generate_data, array1, array2, expecte
     ([[[[np.nan,np.nan]]]], [[[[0.2,np.nan]]]], True, [[[[0.2,0.0]]]]),
     ([[[[np.nan,np.nan]]]], [[[[0.2,np.nan]]]], False, [[[[np.nan,np.nan]]]]),
 ])
-def test_with_xarray(execute_sum_process, generate_data, array1, array2, expected_data, ignore_nodata):
+def test_with_xarray_nulls(execute_sum_process, generate_data, array1, array2, expected_data, ignore_nodata):
     """
         Test sum process with xarray.DataArrays with null in data
     """

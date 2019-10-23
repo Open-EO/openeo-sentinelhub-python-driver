@@ -72,8 +72,9 @@ def test_with_xarray(execute_subtract_process, generate_data, array1, array2, ex
 @pytest.mark.parametrize('array1,array2,ignore_nodata,expected_data', [
     ([[[[np.nan,np.nan]]]], [[[[0.2,np.nan]]]], True, [[[[-0.2,0.0]]]]),
     ([[[[np.nan,np.nan]]]], [[[[0.2,np.nan]]]], False, [[[[np.nan,np.nan]]]]),
+    ([[[[2.0, 1.0]]]], [[[[0.2, np.nan]]]], False, [[[[1.8, np.nan]]]]),
 ])
-def test_with_xarray(execute_subtract_process, generate_data, array1, array2, expected_data, ignore_nodata):
+def test_with_xarray_nulls(execute_subtract_process, generate_data, array1, array2, expected_data, ignore_nodata):
     """
         Test subtract process with xarray.DataArrays with null in data
     """

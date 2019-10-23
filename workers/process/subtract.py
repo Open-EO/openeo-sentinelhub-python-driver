@@ -23,14 +23,14 @@ class subtractEOTask(ProcessEOTask):
         if not isinstance(ignore_nodata, bool):
             raise ProcessArgumentInvalid("The argument 'ignore_nodata' in process 'subtract' is invalid: Argument must be of type 'boolean'.")
 
-        changed_type = False
+        original_type_was_number = False
 
         if len(data) < 2:
             raise ProcessArgumentInvalid("The argument 'data' in process 'subtract' is invalid: Array must have at least 2 elements.")
 
         for i,element in enumerate(data):
             if not isinstance(element, xr.DataArray):
-                changed_type = True
+                original_type_was_number = True
                 data[i] = xr.DataArray(np.array(element, dtype=np.float))
 
         summation_array = xr.concat(data[1:], dim="temporary_summation_dim")
@@ -39,11 +39,11 @@ class subtractEOTask(ProcessEOTask):
 
         if ignore_nodata:
             minuend = minuend.fillna(0.0)
-            sum_of_subtrahends = sum_of_subtrahends.fillna(0)
+            sum_of_subtrahends = sum_of_subtrahends.fillna(0.0)
 
         results = minuend - sum_of_subtrahends
 
-        if results.size == 1 and changed_type:
+        if original_type_was_number:
             if np.isnan(results):
                 return None
             else:
