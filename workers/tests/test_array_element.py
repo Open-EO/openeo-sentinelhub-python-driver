@@ -64,21 +64,29 @@ def test_examples(execute_array_element_process, data, index, return_nodata, exp
 ])
 def test_with_xarray(execute_array_element_process, generate_data, data, index, reduce_by, expected_data, expected_dims):
     """
-        Test mean process with xarray.DataArrays
+        Test array_element process with xarray.DataArrays
     """
     expected_result = generate_data(data=expected_data, dims=expected_dims, reduce_by=reduce_by)
     result = execute_array_element_process(data_arguments={"data": data, "reduce_by": reduce_by}, index=index)
     xr.testing.assert_allclose(result, expected_result)
 
 
-def test_with_xarray(execute_array_element_process, generate_data):
+def test_with_xarray_out_bounds(execute_array_element_process, generate_data):
     """
-        Test mean process with xarray.DataArrays with out of bounds index
+        Test array_element process with xarray.DataArrays with out of bounds index
     """
     with pytest.raises(ProcessArgumentInvalid) as ex:
         result = execute_array_element_process(index=5)
     assert ex.value.args[0] == "The argument 'index' in process 'array_element' is invalid: Index out of bounds."
 
-    expected_result = generate_data([[[np.nan, np.nan], [np.nan, np.nan]]], dims=('t','y','x'))
-    result = execute_array_element_process(index=5, return_nodata=True)
+
+@pytest.mark.parametrize('data_arguments,index,expected_data,expected_dims', [
+    ({}, 5, [[[np.nan, np.nan], [np.nan, np.nan]]], ('t','y','x')),
+])
+def test_with_xarray_out_bounds_return_nodata(execute_array_element_process, generate_data, data_arguments, index, expected_data, expected_dims):
+    """
+        Test array_element process with xarray.DataArrays with out of bounds index and return_no_data
+    """
+    expected_result = generate_data(expected_data, dims=expected_dims)
+    result = execute_array_element_process(data_arguments=data_arguments, index=index, return_nodata=True)
     xr.testing.assert_equal(result, expected_result)
