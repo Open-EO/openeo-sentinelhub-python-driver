@@ -85,9 +85,11 @@ class load_collectionEOTask(ProcessEOTask):
         bbox = load_collectionEOTask._convert_bbox(spatial_extent)
 
         # check if the bbox is within the allowed limits:
-        width, height = sentinelhub.geo_utils.bbox_to_dimensions(bbox, 10.0)
-        if width * height > 1000 * 1000:
-            raise ProcessArgumentInvalid("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels, but is: {}x{}.".format(width, height))
+        options = arguments.get("options", {})
+        if not (options.get("width") or options.get("height")):
+            width, height = sentinelhub.geo_utils.bbox_to_dimensions(bbox, 10.0)
+            if width * height > 1000 * 1000:
+                raise ProcessArgumentInvalid("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels, but is: {}x{}.".format(width, height))
 
         bands = arguments.get("bands")
 
@@ -155,7 +157,6 @@ class load_collectionEOTask(ProcessEOTask):
             raise ProcessArgumentInvalid("The argument 'id' in process 'load_collection' is invalid: unknown collection id")
 
         # apply options and choose appropriate SentinelHubOGCInput subclass which supports them:
-        options = arguments.get("options", {})
         if options.get("width") or options.get("height"):
             kwargs["width"] = options.get("width", options.get("height"))
             kwargs["height"] = options.get("height", options.get("width"))
