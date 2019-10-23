@@ -30,10 +30,10 @@ def generate_data():
 def execute_apply_process(generate_data):
     logger = multiprocessing.log_to_stderr()
     logger.setLevel(logging.DEBUG)
-    def wrapped(data_arguments={}, process=None, logger=logger):
+    def wrapped(data_arguments={}, process_callback=None, logger=logger):
         arguments = {}
         if data_arguments is not None: arguments["data"] = generate_data(**data_arguments)
-        if process is not None: arguments["process"] = process
+        if process_callback is not None: arguments["process"] = process_callback
 
         return process.apply.applyEOTask(None, "" , logger).process(arguments)
     return wrapped
@@ -43,12 +43,11 @@ def execute_apply_process(generate_data):
 # tests:
 ###################################
 
-@pytest.mark.skip(reason="linear_scale_range must be merged")
 def test_recursive_callback(execute_apply_process, generate_data):
     """
         Test apply process with a recursive callback, which applies linear_scale_range multiple times
     """
-    process = {
+    process_callback = {
         "callback": {
             "p1": {
               "process_id": "apply",
@@ -104,20 +103,17 @@ def test_recursive_callback(execute_apply_process, generate_data):
         }
     }
 
-    result = execute_apply_process(process=process)
-    # expected_data1 = [[[[550, 575], [575, 600]], [[525, 550], [50, 525]]]]
-    # expected_data2 = [[[[-449.45, -424.425], [-424.425, -399.4]], [[-474.475, -449.45], [-949.95, -474.475]]]] # I didn't make this easy for myself
+    result = execute_apply_process(process_callback=process_callback)
     expected_data = [[[[140.25, 146.625], [146.625, 153]], [[133.875, 140.25], [12.75, 133.875]]]]
     expected_result = generate_data(data=expected_data)
     xr.testing.assert_allclose(result, expected_result)
 
 
-@pytest.mark.skip(reason="linear_scale_range must be merged")
 def test_callback_lsr(execute_apply_process, generate_data):
     """
         Test apply process with linear_scale_range
     """
-    process = {
+    process_callback = {
         "callback": {
             "lsr": {
               "process_id": "linear_scale_range",
@@ -134,6 +130,6 @@ def test_callback_lsr(execute_apply_process, generate_data):
     }
 
     data_arguments={"data": [np.nan,-3,3,0,np.nan], "dims": ('t')}
-    result = execute_apply_process(data_arguments=data_arguments, process=process)
+    result = execute_apply_process(data_arguments=data_arguments, process_callback=process_callback)
     expected_result = generate_data(data=[np.nan,0,1,0.5,np.nan], dims=('t'))
     xr.testing.assert_allclose(result, expected_result)
