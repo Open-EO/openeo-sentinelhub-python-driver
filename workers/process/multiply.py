@@ -1,6 +1,5 @@
 import numpy as np
 import xarray as xr
-xr.set_options(keep_attrs=True)
 
 from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired
 
@@ -28,17 +27,13 @@ class multiplyEOTask(ProcessEOTask):
         if len(data) < 2:
             raise ProcessArgumentInvalid("The argument 'data' in process 'multiply/product' is invalid: Array must have at least 2 elements.")
 
-        for i,factor in enumerate(data):
-            if not isinstance(factor, xr.DataArray):
+        for i,element in enumerate(data):
+            if not isinstance(element, xr.DataArray):
                 original_type_was_number = True
-                factor = xr.DataArray(np.array(factor, dtype=np.float))
-            if ignore_nodata:
-                factor = factor.fillna(1.0)
-            if i == 0:
-                results = factor
-                continue
-            results *= factor
+                data[i] = xr.DataArray(np.array(element, dtype=np.float))
 
+        multiplication_array = xr.concat(data, dim="temporary_multiplication_dim")
+        results = multiplication_array.prod(dim="temporary_multiplication_dim", skipna=ignore_nodata, keep_attrs=True)
 
         if original_type_was_number:
             if np.isnan(results):
