@@ -122,3 +122,37 @@ class ProcessEOTask(EOTask):
             for values ('from_node',...).
         """
         raise Exception("This process is not implemented yet.")
+
+
+def validate_parameters(process_name, arguments, required_params, optional_params):
+    type_mapping = {
+        int: "number",
+        float: "number",
+        bool: "boolean",
+        type(None): "null",
+    }
+
+    for required_param,types in required_params.items():
+        try:
+            param = arguments[required_param]
+        except KeyError:
+            raise ProcessArgumentRequired("Process '{}' requires argument '{}'.".format(process_name, required_param))
+
+        if not types:
+            continue
+        types = tuple(types)
+        if not isinstance(param, types):
+            types = ",".join(set([type_mapping[typename] for typename in types]))
+            raise ProcessArgumentInvalid("The argument '{}' in process '{}' is invalid: Argument must be of types '[{}]'.".format(required_param, process_name, types))
+
+    for optional_param,types in optional_params.items():
+        param = arguments.get(optional_param, "Parameter not present")
+
+        if param == "Parameter not present":
+            continue
+        if not types:
+            continue
+        types = tuple(types)
+        if not isinstance(param, types):
+            types = ", ".join(set([type_mapping[typename] for typename in types]))
+            raise ProcessArgumentInvalid("The argument '{}' in process '{}' is invalid: Argument must be of types '[{}]'.".format(optional_param, process_name, types))
