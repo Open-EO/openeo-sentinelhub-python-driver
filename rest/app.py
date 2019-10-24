@@ -9,6 +9,8 @@ import boto3
 import flask
 from flask import Flask, url_for, jsonify
 from flask_cors import CORS
+import beeline
+from beeline.middleware.flask import HoneyMiddleware
 
 import globalmaptiles
 from schemas import (
@@ -29,6 +31,12 @@ app.url_map.strict_slashes = False
 
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
+
+# application performance monitoring:
+HONEYCOMP_APM_API_KEY = os.environ.get('HONEYCOMP_APM_API_KEY')
+if HONEYCOMP_APM_API_KEY:
+    beeline.init(writekey=HONEYCOMP_APM_API_KEY, dataset='OpenEO - rest', service_name='OpenEO')
+    HoneyMiddleware(app, db_events=False) # db_events: we do not use SQLAlchemy
 
 
 RESULTS_S3_BUCKET_NAME = os.environ.get('RESULTS_S3_BUCKET_NAME', 'com.sinergise.openeo.results')
@@ -536,13 +544,14 @@ def _execute_and_wait_for_job(job_data):
     job_id = JobsPersistence.create(job_data)
 
     # wait for job to finish:
-    period = 0.5  # check every X seconds
-    n_checks = int(REQUEST_TIMEOUT/period)
-    for _ in range(n_checks):
-        job = JobsPersistence.get_by_id(job_id)
-        if job["current_status"] in ["finished","error"]:
-            break
-        time.sleep(0.5)
+    with beeline.tracer("waiting for workers"):
+        period = 0.5  # check every X seconds
+        n_checks = int(REQUEST_TIMEOUT/period)
+        for _ in range(n_checks):
+            job = JobsPersistence.get_by_id(job_id)
+            if job["current_status"] in ["finished","error"]:
+                break
+            time.sleep(0.5)
 
     JobsPersistence.delete(job_id)
 
