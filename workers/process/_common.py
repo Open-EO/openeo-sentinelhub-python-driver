@@ -1,6 +1,6 @@
 from copy import deepcopy
 from eolearn.core import EOTask
-
+import xarray as xr
 
 # These exceptions should translate to the list of OpenEO error codes:
 #   https://open-eo.github.io/openeo-api/errors/#openeo-error-codes
@@ -61,6 +61,7 @@ class ProcessEOTask(EOTask):
         self._cached_depends_on = None
         self.job_id = job_id
         self.logger = logger
+        self.process_id = self.__class__.__name__[:-len("EOTask")]
 
     @staticmethod
     def _get_from_nodes(arguments):
@@ -124,35 +125,30 @@ class ProcessEOTask(EOTask):
         raise Exception("This process is not implemented yet.")
 
 
-def validate_parameters(process_name, arguments, required_params, optional_params):
-    type_mapping = {
-        int: "number",
-        float: "number",
-        bool: "boolean",
-        type(None): "null",
-    }
+    def validate_parameter(self, arguments, param, required=False, allowed_types=[], default=None):
+        type_mapping = {
+            int: "number",
+            float: "number",
+            bool: "boolean",
+            type(None): "null",
+            xr.DataArray: "xarray.DataArray",
+        }
 
-    for required_param,types in required_params.items():
-        try:
-            param = arguments[required_param]
-        except KeyError:
-            raise ProcessArgumentRequired("Process '{}' requires argument '{}'.".format(process_name, required_param))
+        if required:
+            try:
+                param_val = arguments[param]
+            except KeyError:
+                raise ProcessArgumentRequired("Process '{}' requires argument '{}'.".format(self.process_id, param))
+        else:
+            param_val = arguments.get(param, 'argument not present')
+            if param_val == 'argument not present':
+                return default
 
-        if not types:
-            continue
-        types = tuple(types)
-        if not isinstance(param, types):
+        if not allowed_types:
+                return param_val
+        types = tuple(allowed_types)
+        if not isinstance(param_val, types):
             types = ",".join(set([type_mapping[typename] for typename in types]))
-            raise ProcessArgumentInvalid("The argument '{}' in process '{}' is invalid: Argument must be of types '[{}]'.".format(required_param, process_name, types))
+            raise ProcessArgumentInvalid("The argument '{}' in process '{}' is invalid: Argument must be of types '[{}]'.".format(param, self.process_id, types))
 
-    for optional_param,types in optional_params.items():
-        param = arguments.get(optional_param, "Parameter not present")
-
-        if param == "Parameter not present":
-            continue
-        if not types:
-            continue
-        types = tuple(types)
-        if not isinstance(param, types):
-            types = ", ".join(set([type_mapping[typename] for typename in types]))
-            raise ProcessArgumentInvalid("The argument '{}' in process '{}' is invalid: Argument must be of types '[{}]'.".format(optional_param, process_name, types))
+        return param_val
