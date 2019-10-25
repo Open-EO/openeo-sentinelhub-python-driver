@@ -126,14 +126,6 @@ class ProcessEOTask(EOTask):
 
 
     def validate_parameter(self, arguments, param, required=False, allowed_types=[], default=None):
-        type_mapping = {
-            int: "number",
-            float: "number",
-            bool: "boolean",
-            type(None): "null",
-            xr.DataArray: "xarray.DataArray",
-        }
-
         if required:
             try:
                 param_val = arguments[param]
@@ -145,9 +137,16 @@ class ProcessEOTask(EOTask):
                 return default
 
         if not allowed_types:
-                return param_val
+            return param_val
         types = tuple(allowed_types)
         if not isinstance(param_val, types):
+            type_mapping = {
+                int: "number",
+                float: "number",
+                bool: "boolean",
+                type(None): "null",
+                xr.DataArray: "xarray.DataArray",
+            }
             types = ",".join(set([type_mapping[typename] for typename in types]))
             raise ProcessArgumentInvalid("The argument '{}' in process '{}' is invalid: Argument must be of types '[{}]'.".format(param, self.process_id, types))
 
