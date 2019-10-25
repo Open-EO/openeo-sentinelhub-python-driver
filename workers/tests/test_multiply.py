@@ -34,13 +34,13 @@ def generate_data():
 
 
 @pytest.fixture
-def execute_sum_process(generate_data):
+def execute_multiply_process(generate_data):
     def wrapped(data_arguments={}, ignore_nodata=None):
         arguments = {}
         if data_arguments is not None: arguments["data"] = generate_data(**data_arguments)
         if ignore_nodata is not None: arguments["ignore_nodata"] = ignore_nodata
 
-        return process.sum.sumEOTask(None, "" , None).process(arguments)
+        return process.multiply.multiplyEOTask(None, "" , None).process(arguments)
     return wrapped
 
 
@@ -49,64 +49,65 @@ def execute_sum_process(generate_data):
 ###################################
 
 @pytest.mark.parametrize('data,ignore_nodata,expected_result', [
-    ([5,1], True, 6),
-    ([-2,4,2.5], True, 4.5),
+    ([5,0], True, 0),
+    ([-2,4,2.5], True, -20),
     ([1,None], False, None)
 ])
-def test_examples(execute_sum_process, data, expected_result, ignore_nodata):
+def test_examples(execute_multiply_process, data, expected_result, ignore_nodata):
     """
-        Test sum process with examples from https://open-eo.github.io/openeo-api/processreference/#sum
+        Test multiply process with examples from https://open-eo.github.io/openeo-api/processreference/#multiply
     """
     data_arguments = {"data": data, "as_list": True}
-    result = execute_sum_process(data_arguments, ignore_nodata=ignore_nodata)
+    result = execute_multiply_process(data_arguments, ignore_nodata=ignore_nodata)
     assert result == expected_result
 
 
 @pytest.mark.parametrize('array1,array2,expected_data', [
-    ([[[[0.2,0.8]]]], [[[[0.2,0.8]]]], [[[[0.4,1.6]]]]),
+    ([[[[0.2,0.8]]]], [[[[0.2,0.8]]]], [[[[0.04,0.64]]]]),
 ])
-def test_with_xarray(execute_sum_process, generate_data, array1, array2, expected_data):
+def test_with_xarray(execute_multiply_process, generate_data, array1, array2, expected_data):
     """
-        Test sum process with xarray.DataArrays
+        Test multiply process with xarray.DataArrays
     """
     expected_result = generate_data(data=[expected_data])[0]
-    result = execute_sum_process({"data": (array1,array2)})
+    result = execute_multiply_process({"data": (array1,array2)})
     xr.testing.assert_allclose(result, expected_result)
 
 
 @pytest.mark.parametrize('array1,array2,ignore_nodata,expected_data', [
-    ([[[[np.nan,np.nan]]]], [[[[0.2,np.nan]]]], True, [[[[0.2,0.0]]]]),
+    ([[[[np.nan,0.0]]]], [[[[0.2,np.nan]]]], True, [[[[0.2,0.0]]]]),
     ([[[[np.nan,np.nan]]]], [[[[0.2,np.nan]]]], False, [[[[np.nan,np.nan]]]]),
+    ([[[[2.0, 1.0]]]], [[[[0.2, np.nan]]]], False, [[[[0.4, np.nan]]]]),
 ])
-def test_with_xarray_nulls(execute_sum_process, generate_data, array1, array2, expected_data, ignore_nodata):
+def test_with_xarray_nulls(execute_multiply_process, generate_data, array1, array2, expected_data, ignore_nodata):
     """
-        Test sum process with xarray.DataArrays with null in data
+        Test multiply process with xarray.DataArrays with null in data
     """
     expected_result = generate_data(data=[expected_data])[0]
-    result = execute_sum_process({"data": (array1,array2)}, ignore_nodata=ignore_nodata)
+    result = execute_multiply_process({"data": (array1,array2)}, ignore_nodata=ignore_nodata)
     xr.testing.assert_allclose(result, expected_result)
 
 
-@pytest.mark.parametrize('exception,data_arguments,ignore_nodata,message', [
-    (ProcessArgumentRequired, None, None, "Process 'sum' requires argument 'data'."),
-    (ProcessArgumentInvalid, {}, 1, "The argument 'ignore_nodata' in process 'sum' is invalid: Argument must be of types '[boolean]'."),
+@pytest.mark.parametrize('array1,array2,expected_data', [
+    ([[[[0.2,0.8]]]], [[[[0.2,0.8]]]], [[[[0.04,0.64]]]]),
 ])
-def test_parameter_validation(execute_sum_process, exception, data_arguments, ignore_nodata, message):
+def test_product(generate_data, array1, array2, expected_data):
     """
-        Test parameter validation
+        Test product process, which is an alias of multiply
     """
-    with pytest.raises(exception) as ex:
-        result = execute_sum_process(data_arguments=data_arguments, ignore_nodata=ignore_nodata)
-    assert ex.value.args[0] == message
+    expected_result = generate_data(data=[expected_data])[0]
+    arguments = ({"data": generate_data(data=[array1,array2])})
+    result = process.product.productEOTask(None, "", None).process(arguments)
+    xr.testing.assert_allclose(result, expected_result)
 
 
 @pytest.mark.parametrize('data,reduce_by,expected_data,expected_dims', [
-    ([[[[0.2,0.8]]],[[[1.0,2.0]]]], 't', [[[1.2,2.8]]], ('y','x','band')),
+    ([[[[0.2,0.8]]],[[[1.0,2.0]]]], 't', [[[0.2,1.6]]], ('y','x','band')),
 ])
-def test_xarray_directly(execute_sum_process, generate_data, data, reduce_by, expected_data, expected_dims):
+def test_xarray_directly(execute_multiply_process, generate_data, data, reduce_by, expected_data, expected_dims):
     """
-        Test sum process by passing a DataArray to be reduced directly ((instead of a list)
+        Test multiply process by passing a DataArray to be reduced directly ((instead of a list)
     """
     expected_result = generate_data(data=expected_data, dims=expected_dims, attrs={"reduce_by": reduce_by}, as_dataarray=True)
-    result = execute_sum_process({"data": data, "attrs": {"reduce_by": reduce_by}, "as_dataarray": True})
+    result = execute_multiply_process({"data": data, "attrs": {"reduce_by": reduce_by}, "as_dataarray": True})
     xr.testing.assert_allclose(result, expected_result)
