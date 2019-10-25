@@ -1,3 +1,4 @@
+import os
 import multiprocessing
 import queue
 import time
@@ -5,6 +6,9 @@ import signal
 import time
 import json
 import logging
+import resource
+import beeline
+import psutil
 
 
 from dotenv import load_dotenv
@@ -28,6 +32,44 @@ logger.addHandler(ch)
 # so the KeyboardInterrupt is not triggered. This should install it manually:
 #   https://stackoverflow.com/a/40785230
 signal.signal(signal.SIGINT, signal.default_int_handler)
+
+
+# application performance monitoring:
+HONEYCOMP_APM_API_KEY = os.environ.get('HONEYCOMP_APM_API_KEY')
+beeline_client = None
+if HONEYCOMP_APM_API_KEY:
+    beeline.init(writekey=HONEYCOMP_APM_API_KEY, dataset='OpenEO - workers', service_name='OpenEO')
+    beeline_client = beeline.get_beeline().client
+
+
+def _feed_monitoring_system():
+    if not HONEYCOMP_APM_API_KEY:
+        return
+
+    # https://docs.python.org/3/library/resource.html
+    rusage_parent = resource.getrusage(resource.RUSAGE_SELF)
+    rusage_children = resource.getrusage(resource.RUSAGE_CHILDREN)
+    metric_peak_memory = (rusage_parent.ru_maxrss + rusage_children.ru_maxrss) * resource.getpagesize()
+
+    metric_cpu = psutil.cpu_percent()
+
+    mem = psutil.virtual_memory()
+    # - total: total physical memory.
+    # - available: the memory that can be given instantly to processes without the system going into
+    #   swap. This is calculated by summing different memory values depending on the platform and it
+    #   is supposed to be used to monitor actual memory usage in a cross platform fashion.
+    # Note that mem.used is not a good metric for us:
+    # - used: memory used, calculated differently depending on the platform and designed for informational
+    #   purposes only. `total - free` does not necessarily match used.
+    metric_used_mem = mem.total - mem.free
+
+    ev = beeline_client.new_event()
+    ev.add({
+        'peak_mem': metric_peak_memory,
+        'cpu': metric_cpu,
+        'used_mem': metric_used_mem,
+    })
+    ev.send()
 
 
 def main():
@@ -91,6 +133,8 @@ def main():
                     running_jobs.remove(job_id)
 
             time.sleep(1.0)
+
+            _feed_monitoring_system()
 
             # write results:
             while True:
