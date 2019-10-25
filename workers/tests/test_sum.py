@@ -86,6 +86,20 @@ def test_with_xarray_nulls(execute_sum_process, generate_data, array1, array2, e
     result = execute_sum_process({"data": (array1,array2)}, ignore_nodata=ignore_nodata)
     xr.testing.assert_allclose(result, expected_result)
 
+
+@pytest.mark.parametrize('exception,data_arguments,ignore_nodata,message', [
+    (ProcessArgumentRequired, None, None, "Process 'sum' requires argument 'data'."),
+    (ProcessArgumentInvalid, {}, 1, "The argument 'ignore_nodata' in process 'sum' is invalid: Argument must be of types '[boolean]'."),
+])
+def test_parameter_validation(execute_sum_process, exception, data_arguments, ignore_nodata, message):
+    """
+        Test parameter validation
+    """
+    with pytest.raises(exception) as ex:
+        result = execute_sum_process(data_arguments=data_arguments, ignore_nodata=ignore_nodata)
+    assert ex.value.args[0] == message
+
+
 @pytest.mark.parametrize('data,reduce_by,expected_data,expected_dims', [
     ([[[[0.2,0.8]]],[[[1.0,2.0]]]], 't', [[[1.2,2.8]]], ('y','x','band')),
 ])

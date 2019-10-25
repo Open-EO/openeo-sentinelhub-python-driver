@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 xr.set_options(keep_attrs=True)
 
-from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired
+from ._common import ProcessEOTask, ProcessArgumentInvalid
 
 class sumEOTask(ProcessEOTask):
     """
@@ -13,15 +13,8 @@ class sumEOTask(ProcessEOTask):
         reduction dimension. This also allows multi-level reduce calls.
     """
     def process(self, arguments):
-        try:
-            data = arguments["data"]
-        except:
-            raise ProcessArgumentRequired("Process 'sum' requires argument 'data'.")
-
-        ignore_nodata = arguments.get("ignore_nodata", True)
-
-        if not isinstance(ignore_nodata, bool):
-            raise ProcessArgumentInvalid("The argument 'ignore_nodata' in process 'sum' is invalid: Argument must be of type 'boolean'.")
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray, list])
+        ignore_nodata = self.validate_parameter(arguments, "ignore_nodata", default=True, allowed_types=[bool])
 
         original_type_was_number = False
 

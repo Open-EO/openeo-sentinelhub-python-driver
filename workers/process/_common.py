@@ -1,6 +1,6 @@
 from copy import deepcopy
 from eolearn.core import EOTask
-
+import xarray as xr
 
 # These exceptions should translate to the list of OpenEO error codes:
 #   https://open-eo.github.io/openeo-api/errors/#openeo-error-codes
@@ -61,6 +61,7 @@ class ProcessEOTask(EOTask):
         self._cached_depends_on = None
         self.job_id = job_id
         self.logger = logger
+        self.process_id = self.__class__.__name__[:-len("EOTask")]
 
     @staticmethod
     def _get_from_nodes(arguments):
@@ -122,3 +123,31 @@ class ProcessEOTask(EOTask):
             for values ('from_node',...).
         """
         raise Exception("This process is not implemented yet.")
+
+
+    def validate_parameter(self, arguments, param, required=False, allowed_types=[], default=None):
+        if required:
+            try:
+                param_val = arguments[param]
+            except KeyError:
+                raise ProcessArgumentRequired("Process '{}' requires argument '{}'.".format(self.process_id, param))
+        else:
+            param_val = arguments.get(param, 'argument not present')
+            if param_val == 'argument not present':
+                return default
+
+        if not allowed_types:
+            return param_val
+        types = tuple(allowed_types)
+        if not isinstance(param_val, types):
+            type_mapping = {
+                int: "number",
+                float: "number",
+                bool: "boolean",
+                type(None): "null",
+                xr.DataArray: "xarray.DataArray",
+            }
+            types = ",".join(set([type_mapping[typename] for typename in types]))
+            raise ProcessArgumentInvalid("The argument '{}' in process '{}' is invalid: Argument must be of types '[{}]'.".format(param, self.process_id, types))
+
+        return param_val
