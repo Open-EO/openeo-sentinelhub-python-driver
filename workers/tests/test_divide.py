@@ -12,11 +12,16 @@ from process._common import ProcessArgumentInvalid, ProcessArgumentRequired
 def generate_data():
     def _construct(
             data = ([[[[0.2,0.8]]]], [[[[0.2,0.8]]]]),
-            attrs ={"test_keep_attrs": 42},
-            as_list = False
+            attrs = {"test_keep_attrs": 42},
+            dims = ('t','y','x','band'),
+            as_list = False,
+            as_dataarray = False,
         ):
         if as_list:
             return data
+
+        if as_dataarray:
+            return xr.DataArray(data, dims=dims, attrs=attrs)
 
         data_list = []
 
@@ -80,4 +85,16 @@ def test_with_xarray_nulls(execute_divide_process, generate_data, array1, array2
     """
     expected_result = generate_data(data=[expected_data])[0]
     result = execute_divide_process({"data": (array1,array2)}, ignore_nodata=ignore_nodata)
+    xr.testing.assert_allclose(result, expected_result)
+
+
+@pytest.mark.parametrize('data,reduce_by,expected_data,expected_dims', [
+    ([[[[0.2,0.8]]],[[[0.2,2.0]]]], 't', [[[1.0,0.4]]], ('y','x','band')),
+])
+def test_xarray_directly(execute_divide_process, generate_data, data, reduce_by, expected_data, expected_dims):
+    """
+        Test divide process by passing a DataArray to be reduced directly ((instead of a list)
+    """
+    expected_result = generate_data(data=expected_data, dims=expected_dims, attrs={"reduce_by": reduce_by}, as_dataarray=True)
+    result = execute_divide_process({"data": data, "attrs": {"reduce_by": reduce_by}, "as_dataarray": True})
     xr.testing.assert_allclose(result, expected_result)
