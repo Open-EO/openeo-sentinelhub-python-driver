@@ -8,6 +8,7 @@
       "AWS_ACCESS_KEY_ID": "@@AWS_ACCESS_KEY_ID@@",
       "AWS_SECRET_ACCESS_KEY": "@@AWS_SECRET_ACCESS_KEY@@",
       "S3_DATA_BUCKET": "@@S3_DATA_BUCKET@@",
+      "HONEYCOMP_APM_API_KEY": "@@HONEYCOMP_APM_API_KEY@@",
       "BACKEND_VERSION": "@@BACKEND_VERSION@@"
     },
     "memory_size": 128,
