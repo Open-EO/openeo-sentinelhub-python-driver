@@ -24,6 +24,10 @@ class multiplyEOTask(ProcessEOTask):
 
         original_type_was_number = False
 
+        if isinstance(data, xr.DataArray) and data.attrs.get('reduce_by'):
+            dim = data.attrs['reduce_by']
+            return data.prod(dim=dim, skipna=ignore_nodata, keep_attrs=True)
+
         if len(data) < 2:
             raise ProcessArgumentInvalid("The argument 'data' in process 'multiply/product' is invalid: Array must have at least 2 elements.")
 

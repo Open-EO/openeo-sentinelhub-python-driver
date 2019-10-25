@@ -25,6 +25,10 @@ class sumEOTask(ProcessEOTask):
 
         dim, changed_type = None, False
 
+        if isinstance(data, xr.DataArray) and data.attrs.get('reduce_by'):
+            dim = data.attrs['reduce_by']
+            return data.sum(dim=dim, skipna=ignore_nodata, keep_attrs=True)
+
         if len(data) < 2:
             raise ProcessArgumentInvalid("The argument 'data' in process 'sum' is invalid: Array must have at least 2 elements.")
 
