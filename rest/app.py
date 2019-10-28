@@ -679,4 +679,7 @@ def well_known():
         ), 200)
 
 if __name__ == '__main__':
+    # if you need to run this app under HTTPS, install pyOpenSSL
+    # (`pip install pyOpenSSL`) and replace app.run with this line:
+    # app.run(ssl_context='adhoc')
     app.run()
