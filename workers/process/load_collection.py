@@ -3,11 +3,10 @@ import datetime
 import re
 import numpy as np
 import xarray as xr
-from sentinelhub import CustomUrlParam, BBox, CRS
+from sentinelhub import WmsRequest, WcsRequest, MimeType, CRS, BBox, CustomUrlParam
 from sentinelhub.constants import AwsConstants
 import sentinelhub.geo_utils
 from eolearn.core import FeatureType, EOPatch
-from eolearn.io import S2L1CWCSInput, S2L1CWMSInput, S1IWWCSInput, S1IWWMSInput
 
 
 from ._common import ProcessEOTask, ProcessArgumentInvalid, Internal
@@ -92,7 +91,6 @@ class load_collectionEOTask(ProcessEOTask):
                 raise ProcessArgumentInvalid("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels, but is: {}x{}.".format(width, height))
 
         bands = arguments.get("bands")
-
         if bands is not None:
             if not isinstance(bands, list):
                 raise ProcessArgumentInvalid("The argument 'bands' in process 'load_collection' is invalid: Argument must be a list.")
@@ -102,21 +100,12 @@ class load_collectionEOTask(ProcessEOTask):
         band_aliases = {}
         temporal_extent = _clean_temporal_extent(arguments['temporal_extent'])
 
-        patch = EOPatch()
-
         if arguments['id'] == 'S2L1C':
-            InputClassWCS = S2L1CWCSInput
-            InputClassWMS = S2L1CWMSInput
             ALL_BANDS = AwsConstants.S2_L1C_BANDS
             bands = validate_bands(bands, ALL_BANDS, arguments['id'])
             DEFAULT_RES = '10m'
             kwargs = dict(
-                instance_id=SENTINELHUB_INSTANCE_ID,
                 layer=SENTINELHUB_LAYER_ID_S2L1C,
-                feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
-                custom_url_params={
-                    CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(bands)),
-                },
                 maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
             )
             band_aliases = {
@@ -125,8 +114,6 @@ class load_collectionEOTask(ProcessEOTask):
             }
 
         elif arguments['id'] == 'S1GRDIW':
-            InputClassWCS = S1IWWCSInput
-            InputClassWMS = S1IWWMSInput
             # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=available-bands-and-data
             ALL_BANDS = ['VV', 'VH']
             bands = validate_bands(bands, ALL_BANDS, arguments['id'])
@@ -143,13 +130,7 @@ class load_collectionEOTask(ProcessEOTask):
             #   at the chosen resolution. IW is typically sensed in High resolution, EW in Medium.
             DEFAULT_RES = '10m'
             kwargs = dict(
-                instance_id=SENTINELHUB_INSTANCE_ID,
                 layer=SENTINELHUB_LAYER_ID_S1GRD,
-                feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
-                custom_url_params={
-                    CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(bands)),
-                },
-                maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
             )
             band_aliases = {}
 
@@ -160,28 +141,40 @@ class load_collectionEOTask(ProcessEOTask):
         if options.get("width") or options.get("height"):
             kwargs["width"] = options.get("width", options.get("height"))
             kwargs["height"] = options.get("height", options.get("width"))
-            InputClass = InputClassWMS  # WMS knows width/height
+            WmsOrWcsRequest = WmsRequest  # WMS knows width/height
         elif options.get("resx") or options.get("resy"):
             kwargs["resx"] = options.get("resx", options.get("resy"))
             kwargs["resy"] = options.get("resy", options.get("resx"))
-            InputClass = InputClassWCS  # WCS knows resx/resy
+            WmsOrWcsRequest = WcsRequest  # WCS knows resx/resy
         else:
             kwargs["resx"] = DEFAULT_RES
             kwargs["resy"] = DEFAULT_RES
-            InputClass = InputClassWCS
+            WmsOrWcsRequest = WcsRequest
 
+        # update common parameters:
+        kwargs.update(
+            bbox=bbox,
+            time=temporal_extent,
+            instance_id=SENTINELHUB_INSTANCE_ID,
+            custom_url_params={
+                CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(bands)),
+                CustomUrlParam.TRANSPARENT: True,  # we would like to get the IS_DATA mask (adds another band with 255 where True)
+            },
+            image_format=MimeType.TIFF_d32f,
+        )
         # fetch the data:
         try:
-            patch = InputClass(**kwargs).execute(patch, time_interval=temporal_extent, bbox=bbox)
+            request = WmsOrWcsRequest(**kwargs)
+            dates = request.get_dates()
+            response_data = request.get_data()
         except Exception as ex:
             _raise_exception_based_on_eolearn_message(str(ex))
 
-
-        # apart from all the bands, we also want to have access to "IS_DATA", which
-        # will be applied as masked_array:
-        data = patch.data["BANDS"]
-        mask = patch.mask["IS_DATA"]
-        mask = mask.reshape(mask.shape[:-1])  # get rid of last axis
+        # split mask (IS_DATA) from the data itself:
+        rd = np.asarray(response_data)
+        mask = rd[:, :, :, -1].astype(bool)
+        data = rd[:, :, :, :-1]
+        # use MaskedArray:
         masked_data = data.view(np.ma.MaskedArray)
         masked_data[~mask] = np.ma.masked
 
@@ -190,7 +183,7 @@ class load_collectionEOTask(ProcessEOTask):
             dims=('t', 'y', 'x', 'band'),
             coords={
                 'band': bands,
-                't': patch.timestamp,
+                't': dates,
             },
             attrs={
                 "band_aliases": band_aliases,
