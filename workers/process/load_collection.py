@@ -171,7 +171,7 @@ class load_collectionEOTask(ProcessEOTask):
         shconfig.download_sleep_time = 1
         shconfig.download_timeout_seconds = 10
         shconfig.save()
-        self.logger.debug("[{}] Downloading data, params: {}".format(self.job_id, WmsOrWcsRequest.__class__.__name__, kwargs))
+        self.logger.debug("[{}] Downloading data, params: {}".format(self.job_id, kwargs))
         try:
             request = WmsOrWcsRequest(**kwargs)
             dates = request.get_dates()
