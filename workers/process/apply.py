@@ -1,5 +1,6 @@
 from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired, iterate
 from eolearn.core import EOWorkflow
+import xarray as xr
 import process
 
 class applyEOTask(ProcessEOTask):
@@ -38,15 +39,8 @@ class applyEOTask(ProcessEOTask):
 
 
     def process(self, arguments):
-        try:
-            arguments["data"]
-        except:
-            raise ProcessArgumentRequired("Process 'apply' requires argument 'data'.")
-
-        try:
-            process = arguments["process"]
-        except:
-            raise ProcessArgumentRequired("Process 'apply' requires argument 'process'.")
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray])
+        process = self.validate_parameter(arguments, "process", required=True)
 
         dependencies, result_task = self.generate_workflow_dependencies(process["callback"], arguments)
         workflow = EOWorkflow(dependencies)

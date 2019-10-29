@@ -141,11 +141,14 @@ class ProcessEOTask(EOTask):
         types = tuple(allowed_types)
         if not isinstance(param_val, types):
             type_mapping = {
-                int: "number",
+                int: "integer",
                 float: "number",
                 bool: "boolean",
                 type(None): "null",
                 xr.DataArray: "xarray.DataArray",
+                dict: "object",
+                str: "string",
+                list: "array",
             }
             types = ",".join(set([type_mapping[typename] for typename in types]))
             raise ProcessArgumentInvalid("The argument '{}' in process '{}' is invalid: Argument must be of types '[{}]'.".format(param, self.process_id, types))
