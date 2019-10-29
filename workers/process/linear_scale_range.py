@@ -25,9 +25,6 @@ class linear_scale_rangeEOTask(ProcessEOTask):
         original_type_was_number = False
 
         if not isinstance(data, xr.DataArray):
-            # if not isinstance(data, (int,float)):
-            #     raise ProcessArgumentInvalid("The argument 'x' in process 'linear_scale_range' is invalid: Argument must be of type 'number' or 'null'.")
-
             original_type_was_number = True
             data = xr.DataArray(np.array(data, dtype=np.float))
 
