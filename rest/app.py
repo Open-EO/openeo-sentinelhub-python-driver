@@ -1,4 +1,5 @@
 import os
+import sys
 import datetime
 from logging import log, INFO, WARN
 import json
@@ -681,5 +682,8 @@ def well_known():
 if __name__ == '__main__':
     # if you need to run this app under HTTPS, install pyOpenSSL
     # (`pip install pyOpenSSL`) and replace app.run with this line:
-    # app.run(ssl_context='adhoc')
-    app.run()
+    if sys.argv[1:] == ['https']:
+        print("Running as HTTPS!")
+        app.run(ssl_context='adhoc')
+    else:
+        app.run()
