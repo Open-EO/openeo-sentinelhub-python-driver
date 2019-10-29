@@ -5,6 +5,7 @@ import urllib.parse as urlparse
 import responses
 import json
 import sys, os
+import logging
 from base64 import b64decode
 
 
@@ -79,7 +80,8 @@ def argumentsS1GRDIW(arguments_factory):
 @pytest.fixture
 def execute_load_collection_process():
     def wrapped(arguments):
-        return process.load_collection.load_collectionEOTask(arguments, "", None).process(arguments)
+        logger = logging.getLogger()
+        return process.load_collection.load_collectionEOTask(arguments, "", logger).process(arguments)
     return wrapped
 
 @pytest.fixture
