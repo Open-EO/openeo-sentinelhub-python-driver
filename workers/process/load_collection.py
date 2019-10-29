@@ -5,6 +5,7 @@ import numpy as np
 import xarray as xr
 from sentinelhub import WmsRequest, WcsRequest, MimeType, CRS, BBox, CustomUrlParam
 from sentinelhub.constants import AwsConstants
+from sentinelhub.config import SHConfig
 import sentinelhub.geo_utils
 from eolearn.core import FeatureType, EOPatch
 
@@ -159,16 +160,26 @@ class load_collectionEOTask(ProcessEOTask):
             custom_url_params={
                 CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(bands)),
                 CustomUrlParam.TRANSPARENT: True,  # we would like to get the IS_DATA mask (adds another band with 255 where True)
+                CustomUrlParam.PREVIEW: 2,
             },
             image_format=MimeType.TIFF_d32f,
         )
+
         # fetch the data:
+        shconfig = SHConfig()
+        shconfig.max_download_attempts = 2
+        shconfig.download_sleep_time = 1
+        shconfig.download_timeout_seconds = 10
+        shconfig.save()
+        self.logger.debug("[{}] Downloading data, params: {}".format(self.job_id, WmsOrWcsRequest.__class__.__name__, kwargs))
         try:
             request = WmsOrWcsRequest(**kwargs)
             dates = request.get_dates()
             response_data = request.get_data()
         except Exception as ex:
             _raise_exception_based_on_eolearn_message(str(ex))
+        finally:
+            self.logger.debug("[{}] Request finished".format(self.job_id))
 
         # split mask (IS_DATA) from the data itself:
         rd = np.asarray(response_data)
