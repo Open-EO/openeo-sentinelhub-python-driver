@@ -22,23 +22,14 @@ class meanEOTask(ProcessEOTask):
         if not isinstance(ignore_nodata, bool):
             raise ProcessArgumentInvalid("The argument 'ignore_nodata' in process 'mean' is invalid: Argument must be of type 'boolean'.")
 
-        dim, changed_type = None, False
+        original_type_was_number, data = self.convert_to_dataarray(data)
 
-        if not isinstance(data, xr.DataArray):
-            changed_type = True
-            data = xr.DataArray(np.array(data, dtype=np.float))
+        if data.size == 0:
+            return None
 
-            if data.size == 0:
-                return None
-
+        dim = None
         if data.attrs and data.attrs.get("reduce_by"):
             dim = data.attrs.get("reduce_by")[-1]
 
         results = data.mean(dim=dim, skipna=ignore_nodata, keep_attrs=True)
-
-        if results.size == 1 and changed_type:
-            if np.isnan(results):
-                return None
-            return float(results)
-
-        return results
+        return self.results_in_appropriate_type(results, original_type_was_number)
