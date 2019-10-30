@@ -81,7 +81,15 @@ class load_collectionEOTask(ProcessEOTask):
 
 
     def process(self, arguments):
-        spatial_extent = arguments['spatial_extent']
+        collection_id = self.validate_parameter(arguments, "id", required=True, allowed_types=[str])
+        spatial_extent = self.validate_parameter(arguments, "spatial_extent", required=True)
+        temporal_extent = self.validate_parameter(arguments, "temporal_extent", required=True)
+        temporal_extent = _clean_temporal_extent(temporal_extent)
+        bands = self.validate_parameter(arguments, "bands", default=None, allowed_types=[type(None), list])
+
+        if bands is not None and not len(bands):
+            raise ProcessArgumentInvalid("The argument 'bands' in process 'load_collection' is invalid: At least one band must be specified.")
+
         bbox = load_collectionEOTask._convert_bbox(spatial_extent)
 
         # check if the bbox is within the allowed limits:
@@ -91,24 +99,15 @@ class load_collectionEOTask(ProcessEOTask):
             if width * height > 1000 * 1000:
                 raise ProcessArgumentInvalid("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels, but is: {}x{}.".format(width, height))
 
-        bands = arguments.get("bands")
-
-        if bands is not None:
-            if not isinstance(bands, list):
-                raise ProcessArgumentInvalid("The argument 'bands' in process 'load_collection' is invalid: Argument must be a list.")
-            if not len(bands):
-                raise ProcessArgumentInvalid("The argument 'bands' in process 'load_collection' is invalid: At least one band must be specified.")
-
         band_aliases = {}
-        temporal_extent = _clean_temporal_extent(arguments['temporal_extent'])
 
         patch = EOPatch()
 
-        if arguments['id'] == 'S2L1C':
+        if collection_id == 'S2L1C':
             InputClassWCS = S2L1CWCSInput
             InputClassWMS = S2L1CWMSInput
             ALL_BANDS = AwsConstants.S2_L1C_BANDS
-            bands = validate_bands(bands, ALL_BANDS, arguments['id'])
+            bands = validate_bands(bands, ALL_BANDS, collection_id)
             DEFAULT_RES = '10m'
             kwargs = dict(
                 instance_id=SENTINELHUB_INSTANCE_ID,
@@ -124,12 +123,12 @@ class load_collectionEOTask(ProcessEOTask):
                 "red": "B04",
             }
 
-        elif arguments['id'] == 'S1GRDIW':
+        elif collection_id == 'S1GRDIW':
             InputClassWCS = S1IWWCSInput
             InputClassWMS = S1IWWMSInput
             # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=available-bands-and-data
             ALL_BANDS = ['VV', 'VH']
-            bands = validate_bands(bands, ALL_BANDS, arguments['id'])
+            bands = validate_bands(bands, ALL_BANDS, collection_id)
 
             # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=resolution-pixel-spacing
             #   Value     Description
