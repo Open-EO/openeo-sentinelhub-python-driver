@@ -15,9 +15,9 @@ xarray = "*"
 gdal = "==2.2.2"
 boto3 = "*"
 eo-learn-core = "*"
-eo-learn-io = "*"
 psutil = "*"
 honeycomb-beeline = "*"
+sentinelhub = "*"
 
 [requires]
 python_version = "3.6"
