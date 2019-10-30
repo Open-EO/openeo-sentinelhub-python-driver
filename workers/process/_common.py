@@ -155,19 +155,21 @@ class ProcessEOTask(EOTask):
 
 
     def convert_to_dataarray(self, data, as_list=False):
-        original_type_was_number = False
+        original_type_was_number = True
 
-        if not isinstance(data, xr.DataArray):
-            if as_list:
-                for i,element in enumerate(data):
-                    if not isinstance(element, xr.DataArray):
-                        original_type_was_number = True
-                        data[i] = xr.DataArray(np.array(element, dtype=np.float))
-            else:
-                original_type_was_number = True
-                data = xr.DataArray(np.array(data, dtype=np.float))
+        if isinstance(data, xr.DataArray):
+            return False ,data
 
-        return original_type_was_number,data
+        if as_list:
+            for i,element in enumerate(data):
+                if not isinstance(element, xr.DataArray):
+                    data[i] = xr.DataArray(np.array(element, dtype=np.float))
+                else:
+                    original_type_was_number = False
+        else:
+            data = xr.DataArray(np.array(data, dtype=np.float))
+
+        return original_type_was_number, data
 
 
     def results_in_appropriate_type(self, results, original_type_was_number):
