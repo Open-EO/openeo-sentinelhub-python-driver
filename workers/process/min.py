@@ -22,10 +22,10 @@ class minEOTask(ProcessEOTask):
         if not isinstance(ignore_nodata, bool):
             raise ProcessArgumentInvalid("The argument 'ignore_nodata' in process 'min' is invalid: Argument must be of type 'boolean'.")
 
-        dim, changed_type = None, False
+        dim, original_type_was_number = None, False
 
         if not isinstance(data, xr.DataArray):
-            changed_type = True
+            original_type_was_number = True
             data = xr.DataArray(np.array(data, dtype=np.float))
 
             if data.size == 0:
@@ -36,7 +36,7 @@ class minEOTask(ProcessEOTask):
 
         results = data.min(dim=dim, skipna=ignore_nodata, keep_attrs=True)
 
-        if results.size == 1 and changed_type:
+        if original_type_was_number:
             if np.isnan(results):
                 return None
             return float(results)
