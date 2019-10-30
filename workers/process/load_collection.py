@@ -142,15 +142,15 @@ class load_collectionEOTask(ProcessEOTask):
         if options.get("width") or options.get("height"):
             kwargs["width"] = options.get("width", options.get("height"))
             kwargs["height"] = options.get("height", options.get("width"))
-            WmsOrWcsRequest = WmsRequest  # WMS knows width/height
+            method = "WMS"
         elif options.get("resx") or options.get("resy"):
             kwargs["resx"] = options.get("resx", options.get("resy"))
             kwargs["resy"] = options.get("resy", options.get("resx"))
-            WmsOrWcsRequest = WcsRequest  # WCS knows resx/resy
+            method = "WCS"  # WCS knows resx/resy
         else:
             kwargs["resx"] = DEFAULT_RES
             kwargs["resy"] = DEFAULT_RES
-            WmsOrWcsRequest = WcsRequest
+            method = "WCS"
 
         # update common parameters:
         kwargs.update(
@@ -171,9 +171,9 @@ class load_collectionEOTask(ProcessEOTask):
         shconfig.download_sleep_time = 1
         shconfig.download_timeout_seconds = 10
         shconfig.save()
-        self.logger.debug("[{}] Downloading data, params: {}".format(self.job_id, kwargs))
+        self.logger.debug("[{}] Downloading data via {}, params: {}".format(self.job_id, method, kwargs))
         try:
-            request = WmsOrWcsRequest(**kwargs)
+            request = WmsRequest(**kwargs) if method == "WMS" else WcsRequest(**kwargs)
             dates = request.get_dates()
             response_data = request.get_data()
         except Exception as ex:
