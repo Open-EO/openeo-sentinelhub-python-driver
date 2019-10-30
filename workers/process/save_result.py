@@ -80,7 +80,8 @@ class save_resultEOTask(ProcessEOTask):
         self.results = []
 
         data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray])
-        output_format = self.validate_parameter(arguments, "format", required=True).lower()
+        output_format = self.validate_parameter(arguments, "format", required=True, allowed_types=[str])
+        output_format = output_format.lower()
         output_options = self.validate_parameter(arguments, "options", default={}, allowed_types=[dict])
 
         if output_format not in GDAL_FORMATS:

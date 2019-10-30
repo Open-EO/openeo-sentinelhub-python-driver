@@ -84,13 +84,13 @@ class load_collectionEOTask(ProcessEOTask):
         collection_id = self.validate_parameter(arguments, "id", required=True, allowed_types=[str])
         spatial_extent = self.validate_parameter(arguments, "spatial_extent", required=True)
         temporal_extent = self.validate_parameter(arguments, "temporal_extent", required=True)
+        temporal_extent = _clean_temporal_extent(temporal_extent)
         bands = self.validate_parameter(arguments, "bands", default=None, allowed_types=[type(None), list])
 
         if bands is not None and not len(bands):
             raise ProcessArgumentInvalid("The argument 'bands' in process 'load_collection' is invalid: At least one band must be specified.")
 
         bbox = load_collectionEOTask._convert_bbox(spatial_extent)
-        temporal_extent = _clean_temporal_extent(temporal_extent)
 
         # check if the bbox is within the allowed limits:
         options = arguments.get("options", {})

@@ -47,7 +47,7 @@ class reduceEOTask(ProcessEOTask):
         binary = self.validate_parameter(arguments, "binary", default=False, allowed_types=[bool])
 
         if dimension not in data.dims:
-                raise ProcessArgumentInvalid("The argument 'dimension' in process 'reduce' is invalid: Dimension '{}' does not exist in data.".format(dimension))
+            raise ProcessArgumentInvalid("The argument 'dimension' in process 'reduce' is invalid: Dimension '{}' does not exist in data.".format(dimension))
 
         if reducer is None:
             if data[dimension].size > 1:
