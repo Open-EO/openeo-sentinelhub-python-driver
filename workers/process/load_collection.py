@@ -167,7 +167,7 @@ class load_collectionEOTask(ProcessEOTask):
 
         # fetch the data:
         shconfig = SHConfig()
-        shconfig.max_download_attempts = 2
+        shconfig.max_download_attempts = 1
         shconfig.download_sleep_time = 1
         shconfig.download_timeout_seconds = 10
         shconfig.save()
