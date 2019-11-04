@@ -171,21 +171,18 @@ class load_collectionEOTask(ProcessEOTask):
 
         self.logger.debug(f'Requesting dates between: ...')
         request = WmsRequest(
-            # **kwargs,
-            layer=SENTINELHUB_LAYER_ID_S2L1C,
-            maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
+            **kwargs,
             instance_id=SENTINELHUB_INSTANCE_ID,
             bbox=bbox,
             time=temporal_extent,
-            # time=['2019-08-01T00:00:00+00:00', '2019-08-18T23:59:00+00:00'],
-            # time=('2019-08-01', '2019-08-18'),
             width=256,
             height=256,
         )
         dates = request.get_dates()
-        unique_dates = sorted(list(set([d.strftime("%Y-%m-%d") for d in dates])))
+        unique_dates = sorted(list(set(dates)))
+        unique_dates_as_strings = [d.strftime("%Y-%m-%d") for d in unique_dates]
 
-        self.logger.debug(f'Unique dates found: {unique_dates}')
+        self.logger.debug(f'Unique dates found: {unique_dates_as_strings}')
         response_data = np.empty((len(unique_dates), len(bands) + 1, 256, 256), dtype=np.float32)
         auth_token = SHProcessingAuthTokenSingleton.get()
         url = 'https://services.sentinel-hub.com/api/v1/process'
@@ -193,7 +190,7 @@ class load_collectionEOTask(ProcessEOTask):
             'Accept': 'image/tiff',
             'Authorization': f'Bearer {auth_token}'
         }
-        for i, date in enumerate(unique_dates):
+        for i, date in enumerate(unique_dates_as_strings):
             request_params = {
                 "input": {
                     "bounds": {
