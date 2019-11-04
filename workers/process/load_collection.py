@@ -1,8 +1,11 @@
 import os
 import datetime
+import time
 import re
 import numpy as np
 import xarray as xr
+import requests
+from osgeo import gdal
 from sentinelhub import WmsRequest, WcsRequest, MimeType, CRS, BBox, CustomUrlParam
 from sentinelhub.constants import AwsConstants
 from sentinelhub.config import SHConfig
@@ -67,6 +70,32 @@ def validate_bands(bands, ALL_BANDS, collection_id):
     return bands
 
 
+class SHProcessingAuthTokenSingleton(object):
+    _access_token = None
+    _valid_until = None
+
+    @classmethod
+    def get(cls):
+        if cls._access_token is not None and cls._valid_until > time.time():
+            return cls._access_token
+
+        client_id = os.environ.get('SH_CLIENT_ID')
+        auth_secret = os.environ.get('SH_AUTH_SECRET')
+        if not client_id or not auth_secret:
+            raise Internal("Missing SH credentials")
+
+        url = 'https://services.sentinel-hub.com/oauth/token'
+        data = f'grant_type=client_credentials&client_id={client_id}&client_secret={auth_secret}'
+        r = requests.post(url, headers={'Content-Type': 'application/x-www-form-urlencoded'}, data=data)
+        if r.status_code != 200:
+            raise Internal("Error authenticating, received code: " + str(r.status_code))
+
+        j = r.json()
+        cls._access_token = j["access_token"]
+        cls._valid_until = time.time() + j["expires_in"] - 5
+        return cls._access_token
+
+
 class load_collectionEOTask(ProcessEOTask):
     @staticmethod
     def _convert_bbox(spatial_extent):
@@ -102,6 +131,7 @@ class load_collectionEOTask(ProcessEOTask):
         temporal_extent = _clean_temporal_extent(arguments['temporal_extent'])
 
         if arguments['id'] == 'S2L1C':
+            dataset = "S2L1C"
             ALL_BANDS = AwsConstants.S2_L1C_BANDS
             bands = validate_bands(bands, ALL_BANDS, arguments['id'])
             DEFAULT_RES = '10m'
@@ -115,6 +145,7 @@ class load_collectionEOTask(ProcessEOTask):
             }
 
         elif arguments['id'] == 'S1GRDIW':
+            dataset = "S1GRD"
             # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=available-bands-and-data
             ALL_BANDS = ['VV', 'VH']
             bands = validate_bands(bands, ALL_BANDS, arguments['id'])
@@ -138,48 +169,93 @@ class load_collectionEOTask(ProcessEOTask):
         else:
             raise ProcessArgumentInvalid("The argument 'id' in process 'load_collection' is invalid: unknown collection id")
 
-        # apply options and choose appropriate SentinelHubOGCInput subclass which supports them:
-        if options.get("width") or options.get("height"):
-            kwargs["width"] = options.get("width", options.get("height"))
-            kwargs["height"] = options.get("height", options.get("width"))
-            method = "WMS"
-        elif options.get("resx") or options.get("resy"):
-            kwargs["resx"] = options.get("resx", options.get("resy"))
-            kwargs["resy"] = options.get("resy", options.get("resx"))
-            method = "WCS"  # WCS knows resx/resy
-        else:
-            kwargs["resx"] = DEFAULT_RES
-            kwargs["resy"] = DEFAULT_RES
-            method = "WCS"
-
-        # update common parameters:
-        kwargs.update(
+        self.logger.debug(f'Requesting dates between: ...')
+        request = WmsRequest(
+            # **kwargs,
+            layer=SENTINELHUB_LAYER_ID_S2L1C,
+            maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
+            instance_id=SENTINELHUB_INSTANCE_ID,
             bbox=bbox,
             time=temporal_extent,
-            instance_id=SENTINELHUB_INSTANCE_ID,
-            custom_url_params={
-                CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(bands)),
-                CustomUrlParam.TRANSPARENT: True,  # we would like to get the IS_DATA mask (adds another band with 255 where True)
-                CustomUrlParam.PREVIEW: 2,
-            },
-            image_format=MimeType.TIFF_d32f,
+            # time=['2019-08-01T00:00:00+00:00', '2019-08-18T23:59:00+00:00'],
+            # time=('2019-08-01', '2019-08-18'),
+            width=256,
+            height=256,
         )
+        dates = request.get_dates()
+        unique_dates = sorted(list(set([d.strftime("%Y-%m-%d") for d in dates])))
 
-        # fetch the data:
-        shconfig = SHConfig()
-        shconfig.max_download_attempts = 1
-        shconfig.download_sleep_time = 1
-        shconfig.download_timeout_seconds = 10
-        shconfig.save()
-        self.logger.debug("[{}] Downloading data via {}, params: {}".format(self.job_id, method, kwargs))
-        try:
-            request = WmsRequest(**kwargs) if method == "WMS" else WcsRequest(**kwargs)
-            dates = request.get_dates()
-            response_data = request.get_data()
-        except Exception as ex:
-            _raise_exception_based_on_eolearn_message(str(ex))
-        finally:
-            self.logger.debug("[{}] Request finished".format(self.job_id))
+        self.logger.debug(f'Unique dates found: {unique_dates}')
+        response_data = np.empty((len(unique_dates), len(bands) + 1, 256, 256), dtype=np.float32)
+        auth_token = SHProcessingAuthTokenSingleton.get()
+        url = 'https://services.sentinel-hub.com/api/v1/process'
+        headers = {
+            'Accept': 'image/tiff',
+            'Authorization': f'Bearer {auth_token}'
+        }
+        for i, date in enumerate(unique_dates):
+            request_params = {
+                "input": {
+                    "bounds": {
+                        "bbox": [bbox.min_x, bbox.min_y, bbox.max_x, bbox.max_y],
+                        "properties": {
+                            "crs": "http://www.opengis.net/def/crs/EPSG/0/4326",
+                        }
+                    },
+                    "data": [
+                        {
+                            "type": dataset,
+                            "dataFilter": {
+                                "timeRange": {
+                                    "from": f"{date}T00:00:00+00:00",
+                                    "to": f"{date}T23:59:59+00:00",
+                                },
+                                "previewMode": "EXTENDED_PREVIEW",
+                            }
+                        },
+                    ],
+                },
+                "output": {
+                    "width": options.get("width", options.get("height", 256)),
+                    "height": options.get("height", options.get("width", 256)),
+                },
+                "evalscript": f"""//VERSION=3
+
+                    function setup() {{
+                        return {{
+                            input: [{', '.join([f'"{b}"' for b in bands])}],
+                            output: {{
+                                bands: {len(bands) + 1},
+                                sampleType: "FLOAT32",
+                            }}
+                        }}
+                    }}
+
+                    function evaluatePixel(sample) {{
+                        return [{", ".join(['sample.' + b for b in bands])}, sample.dataMask]
+                    }}
+                """
+            }
+            self.logger.debug(f'Requesting tiff for: {date}')
+            r = requests.post(url, headers=headers, json=request_params)
+            if r.status_code != 200:
+                raise Internal(r.content)
+
+            # convert tiff to numpy:
+            tmp_filename = f'/tmp/test.{self.job_id}.tiff'
+            with open(tmp_filename, 'wb') as f:
+                f.write(r.content)
+                f.close()
+            raster_ds = gdal.Open(tmp_filename, gdal.GA_ReadOnly)
+            image_gdal = raster_ds.ReadAsArray()
+            os.remove(tmp_filename)
+
+            response_data[i, ...] = image_gdal
+            self.logger.debug('Image received and converted.')
+
+        # data is arranged differently than it was with sentinelhub-py,
+        # let's rearrange it:
+        response_data = np.transpose(response_data, (0, 2, 3, 1))
 
         # split mask (IS_DATA) from the data itself:
         rd = np.asarray(response_data)
@@ -194,7 +270,7 @@ class load_collectionEOTask(ProcessEOTask):
             dims=('t', 'y', 'x', 'band'),
             coords={
                 'band': bands,
-                't': dates,
+                't': unique_dates,
             },
             attrs={
                 "band_aliases": band_aliases,
