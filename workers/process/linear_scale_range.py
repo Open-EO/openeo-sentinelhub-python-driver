@@ -22,14 +22,10 @@ class linear_scale_rangeEOTask(ProcessEOTask):
         if math.isclose(inputMin,inputMax):
             raise ProcessArgumentInvalid("The argument 'inputMin' in process 'linear_scale_range' is invalid: Argument must differ from argument 'inputMax'.")
 
-        original_type_was_number = False
+        original_type_was_number, data = self.convert_to_dataarray(data)
 
-        if not isinstance(data, xr.DataArray):
-            original_type_was_number = True
-            data = xr.DataArray(np.array(data, dtype=np.float))
-
-            if data.size == 0:
-                return None
+        if data.size == 0:
+            return None
 
         results = ((data - inputMin) / (inputMax - inputMin)) * (outputMax - outputMin) + outputMin
 

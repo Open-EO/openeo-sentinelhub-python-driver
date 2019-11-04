@@ -15,23 +15,19 @@ class meanEOTask(ProcessEOTask):
         data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray, list])
         ignore_nodata = self.validate_parameter(arguments, "ignore_nodata", default=True, allowed_types=[bool])
 
-        dim, original_type_was_number = None, False
+        ignore_nodata = arguments.get("ignore_nodata", True)
 
-        if not isinstance(data, xr.DataArray):
-            original_type_was_number = True
-            data = xr.DataArray(np.array(data, dtype=np.float))
+        if not isinstance(ignore_nodata, bool):
+            raise ProcessArgumentInvalid("The argument 'ignore_nodata' in process 'mean' is invalid: Argument must be of type 'boolean'.")
 
-            if data.size == 0:
-                return None
+        original_type_was_number, data = self.convert_to_dataarray(data)
 
+        if data.size == 0:
+            return None
+
+        dim = None
         if data.attrs and data.attrs.get("reduce_by"):
             dim = data.attrs.get("reduce_by")[-1]
 
         results = data.mean(dim=dim, skipna=ignore_nodata, keep_attrs=True)
-
-        if original_type_was_number:
-            if np.isnan(results):
-                return None
-            return float(results)
-
-        return results
+        return self.results_in_appropriate_type(results, original_type_was_number)
