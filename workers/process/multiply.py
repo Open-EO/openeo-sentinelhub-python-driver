@@ -12,15 +12,8 @@ class multiplyEOTask(ProcessEOTask):
         reduction dimension. This also allows multi-level reduce calls.
     """
     def process(self, arguments):
-        try:
-            data = arguments["data"]
-        except:
-            raise ProcessArgumentRequired("Process 'multiply/product' requires argument 'data'.")
-
-        ignore_nodata = arguments.get("ignore_nodata", True)
-
-        if not isinstance(ignore_nodata, bool):
-            raise ProcessArgumentInvalid("The argument 'ignore_nodata' in process 'multiply/product' is invalid: Argument must be of type 'boolean'.")
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray, list])
+        ignore_nodata = self.validate_parameter(arguments, "ignore_nodata", default=True, allowed_types=[bool])
 
         if isinstance(data, xr.DataArray) and data.attrs.get('reduce_by'):
             dim = data.attrs['reduce_by']

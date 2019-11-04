@@ -13,15 +13,20 @@ def generate_data():
     def _construct(
             data = ([[[[0.2,0.8]]]], [[[[0.2,0.8]]]]),
             attrs ={"test_keep_attrs": 42},
-            as_list = False
+            dims = ('t','y','x','band'),
+            as_list = False,
+            as_dataarray = False
         ):
         if as_list:
             return data
 
+        if as_dataarray:
+            return xr.DataArray(data, dims=dims, attrs=attrs)
+
         data_list = []
 
         for d in data:
-            xrdata = xr.DataArray(d)
+            xrdata = xr.DataArray(d, dims=dims, attrs=attrs)
             data_list.append(xrdata)
 
         return data_list
@@ -80,4 +85,16 @@ def test_with_xarray_nulls(execute_subtract_process, generate_data, array1, arra
     """
     expected_result = generate_data(data=[expected_data])[0]
     result = execute_subtract_process({"data": (array1,array2)}, ignore_nodata=ignore_nodata)
+    xr.testing.assert_allclose(result, expected_result)
+
+
+@pytest.mark.parametrize('data,reduce_by,expected_data,expected_dims', [
+    ([[[[0.2,3.8]]],[[[1.0,2.0]]]], 't', [[[-0.8,1.8]]], ('y','x','band')),
+])
+def test_xarray_directly(execute_subtract_process, generate_data, data, reduce_by, expected_data, expected_dims):
+    """
+        Test subtract process by passing a DataArray to be reduced directly (instead of a list)
+    """
+    expected_result = generate_data(data=expected_data, dims=expected_dims, attrs={"reduce_by": reduce_by}, as_dataarray=True)
+    result = execute_subtract_process({"data": data, "attrs": {"reduce_by": reduce_by}, "as_dataarray": True})
     xr.testing.assert_allclose(result, expected_result)

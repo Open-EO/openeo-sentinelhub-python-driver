@@ -12,10 +12,8 @@ class meanEOTask(ProcessEOTask):
         reduction dimension. This also allows multi-level reduce calls.
     """
     def process(self, arguments):
-        try:
-            data = arguments["data"]
-        except:
-            raise ProcessArgumentRequired("Process 'mean' requires argument 'data'.")
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray, list])
+        ignore_nodata = self.validate_parameter(arguments, "ignore_nodata", default=True, allowed_types=[bool])
 
         ignore_nodata = arguments.get("ignore_nodata", True)
 

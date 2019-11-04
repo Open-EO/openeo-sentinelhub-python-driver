@@ -12,10 +12,8 @@ class minEOTask(ProcessEOTask):
         reduction dimension. This also allows multi-level reduce calls.
     """
     def process(self, arguments):
-        try:
-            data = arguments["data"]
-        except:
-            raise ProcessArgumentRequired("Process 'min' requires argument 'data'.")
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray, list])
+        ignore_nodata = self.validate_parameter(arguments, "ignore_nodata", default=True, allowed_types=[bool])
 
         ignore_nodata = arguments.get("ignore_nodata", True)
 
@@ -33,3 +31,4 @@ class minEOTask(ProcessEOTask):
 
         results = data.min(dim=dim, skipna=ignore_nodata, keep_attrs=True)
         return self.results_in_appropriate_type(results, original_type_was_number)
+

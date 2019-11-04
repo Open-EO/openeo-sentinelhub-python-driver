@@ -79,21 +79,14 @@ class save_resultEOTask(ProcessEOTask):
     def process(self, arguments):
         self.results = []
 
-        try:
-            data = arguments["data"]
-        except:
-            raise ProcessArgumentRequired("Process 'save_result' requires argument 'data'.")
-        if not isinstance(data, xr.DataArray):
-            raise ProcessArgumentInvalid("The argument 'data' in process 'save_result' is invalid: only cubes can be saved currently.")
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray])
+        output_format = self.validate_parameter(arguments, "format", required=True, allowed_types=[str])
+        output_format = output_format.lower()
+        output_options = self.validate_parameter(arguments, "options", default={}, allowed_types=[dict])
 
-        try:
-            output_format = arguments['format'].lower()
-        except:
-            raise ProcessArgumentRequired("Process 'save_result' requires argument 'format'.")
         if output_format not in GDAL_FORMATS:
             raise ProcessArgumentInvalid(f"The argument 'format' in process 'save_result' is invalid: supported formats are: {', '.join(GDAL_FORMATS.keys())}.")
 
-        output_options = arguments.get('options', {})
         for option in output_options:
             if option not in ['datatype']:
                 raise ProcessArgumentInvalid("The argument 'options' in process 'save_result' is invalid: supported options are: 'datatype'.")

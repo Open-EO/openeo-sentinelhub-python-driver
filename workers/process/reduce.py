@@ -1,5 +1,6 @@
 from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired, iterate
 from eolearn.core import EOWorkflow
+import xarray as xr
 import process
 
 class reduceEOTask(ProcessEOTask):
@@ -39,22 +40,14 @@ class reduceEOTask(ProcessEOTask):
 
 
     def process(self, arguments):
-        try:
-            data = arguments["data"]
-        except:
-            raise ProcessArgumentRequired("Process 'reduce' requires argument 'data'.")
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray])
+        dimension = self.validate_parameter(arguments, "dimension", required=True, allowed_types=[str])
+        reducer = self.validate_parameter(arguments, "reducer", default=None)
+        target_dimension = self.validate_parameter(arguments, "target_dimension", default=None, allowed_types=[str, type(None)])
+        binary = self.validate_parameter(arguments, "binary", default=False, allowed_types=[bool])
 
-        try:
-            dimension = arguments["dimension"]
-
-            if dimension not in data.dims:
-                raise ProcessArgumentInvalid("The argument 'dimension' in process 'reduce' is invalid: Dimension '{}' does not exist in data.".format(dimension))
-        except:
-            raise ProcessArgumentRequired("Process 'reduce' requires argument 'dimension'.")
-
-        reducer = arguments.get("reducer")
-        target_dimension = arguments.get("target_dimension")
-        binary = arguments.get("binary", False)
+        if dimension not in data.dims:
+            raise ProcessArgumentInvalid("The argument 'dimension' in process 'reduce' is invalid: Dimension '{}' does not exist in data.".format(dimension))
 
         if reducer is None:
             if data[dimension].size > 1:

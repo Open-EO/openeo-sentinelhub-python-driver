@@ -143,7 +143,7 @@ def test_collection_id(arguments_factory, execute_load_collection_process):
 
 @pytest.mark.parametrize('invalid_temporal_extent,failure_reason', [
     ([None,None], "Only one boundary can be set to null."),
-    ("A date", "The interval has to be specified as an array with exactly two elements."),
+    ([], "The interval has to be specified as an array with exactly two elements."),
 ])
 def test_temporal_extent_invalid(arguments_factory, execute_load_collection_process, invalid_temporal_extent, failure_reason):
     """
@@ -208,7 +208,7 @@ def test_bands(set_mock_responses_for_collection, arguments_factory, execute_loa
 
 
 @pytest.mark.parametrize('collection_id,temporal_extent,bands,failure_reason', [
-    ("S2L1C", ["2019-08-16", "2019-08-18"], "B01", "Argument must be a list."),
+    ("S2L1C", ["2019-08-16", "2019-08-18"], "B01", "Argument must be of types '["),
     ("S1GRDIW", ["2019-08-16 00:00:00", "2019-08-17 05:19:11"], [], "At least one band must be specified."),
     ("S2L1C", ["2019-08-16", "2019-08-18"], ["B01","B04","Beatles","B09"], "Invalid bands encountered;"),
     ("S1GRDIW", ["2019-08-16 00:00:00", "2019-08-17 05:19:11"], ["Čuki","Kingstoni"], "Invalid bands encountered;"),

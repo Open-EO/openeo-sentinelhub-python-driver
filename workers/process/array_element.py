@@ -13,21 +13,9 @@ class array_elementEOTask(ProcessEOTask):
         reduction dimension. This also allows multi-level reduce calls.
     """
     def process(self, arguments):
-        data = arguments.get("data")
-        if data is None:
-            raise ProcessArgumentRequired("Process 'array_element' requires argument 'data'.")
-        if not isinstance(data, (list,xr.DataArray)):
-            raise ProcessArgumentInvalid("The argument 'data' in process 'array_element' is invalid: Argument must be of type 'array'.")
-
-        index = arguments.get("index")
-        if index is None:
-            raise ProcessArgumentRequired("Process 'array_element' requires argument 'index'.")
-        if not isinstance(index, int):
-            raise ProcessArgumentInvalid("The argument 'index' in process 'array_element' is invalid: Argument must be of type 'integer'.")
-
-        return_nodata = arguments.get("return_nodata", False)
-        if not isinstance(return_nodata, bool):
-            raise ProcessArgumentInvalid("The argument 'return_nodata' in process 'array_element' is invalid: Argument must be of type 'boolean'.")
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray, list])
+        index = self.validate_parameter(arguments, "index", required=True, allowed_types=[int])
+        return_nodata = self.validate_parameter(arguments, "return_nodata", default=False, allowed_types=[bool])
 
         if isinstance(data, xr.DataArray) and data.attrs and data.attrs.get("reduce_by"):
             dim = data.attrs.get("reduce_by")[-1]
