@@ -1,5 +1,5 @@
 import os
-import datetime
+from datetime import datetime, timedelta
 import time
 import re
 import numpy as np
@@ -43,7 +43,7 @@ def _clean_temporal_extent(temporal_extent):
         result[0] = '1970-01-01'
     if result[1] is None:
         # result[1] = 'latest'  # currently this doesn't work
-        result[1] = datetime.datetime.utcnow().isoformat()
+        result[1] = datetime.utcnow().isoformat()
     return result
 
 
@@ -61,6 +61,7 @@ def _raise_exception_based_on_eolearn_message(str_ex):
     # we can't make sense of the message, bail out with generic exception:
     raise Internal("Server error: EOPatch creation failed: {}".format(str_ex))
 
+
 def validate_bands(bands, ALL_BANDS, collection_id):
     if bands is None:
         return ALL_BANDS
@@ -68,6 +69,22 @@ def validate_bands(bands, ALL_BANDS, collection_id):
         valids = ",".join(ALL_BANDS)
         raise ProcessArgumentInvalid("The argument 'bands' in process 'load_collection' is invalid: Invalid bands encountered; valid bands for {} are '[{}]'.".format(collection_id,valids))
     return bands
+
+
+def get_orbit_dates(dates):
+    """
+        We calculate orbit dates by grouping together those dates that are less than an hour apart.
+        Returns a list of objects, each with keys "from" and "to", containing datetime structs.
+    """
+    sorted_dates = sorted(dates)
+    result = []
+    for d in sorted_dates:
+        if len(result) == 0 or d - result[-1]["to"] > timedelta(hours=1):
+            result.append({"from": d, "to": d})  # new orbit
+        else:
+            result[-1]["to"] = d  # same orbit
+
+    return result
 
 
 class SHProcessingAuthTokenSingleton(object):
@@ -182,18 +199,18 @@ class load_collectionEOTask(ProcessEOTask):
             height=height,
         )
         dates = request.get_dates()
-        unique_dates = sorted(list(set(dates)))
-        unique_dates_as_strings = [d.strftime("%Y-%m-%d") for d in unique_dates]
 
-        self.logger.debug(f'Unique dates found: {unique_dates_as_strings}')
-        response_data = np.empty((len(unique_dates), len(bands) + 1, height, width), dtype=np.float32)
+        orbit_dates = get_orbit_dates(dates)
+
+        self.logger.debug(f'Unique dates found: {orbit_dates}')
+        response_data = np.empty((len(orbit_dates), len(bands) + 1, height, width), dtype=np.float32)
         auth_token = SHProcessingAuthTokenSingleton.get()
         url = 'https://services.sentinel-hub.com/api/v1/process'
         headers = {
             'Accept': 'image/tiff',
             'Authorization': f'Bearer {auth_token}'
         }
-        for i, date in enumerate(unique_dates_as_strings):
+        for i, date in enumerate(orbit_dates):
             request_params = {
                 "input": {
                     "bounds": {
@@ -207,8 +224,8 @@ class load_collectionEOTask(ProcessEOTask):
                             "type": dataset,
                             "dataFilter": {
                                 "timeRange": {
-                                    "from": f"{date}T00:00:00+00:00",
-                                    "to": f"{date}T23:59:59+00:00",
+                                    "from": date["from"].strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                                    "to": (date["to"] + timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%S+00:00"),
                                 },
                                 "previewMode": "EXTENDED_PREVIEW",
                             }
@@ -265,12 +282,13 @@ class load_collectionEOTask(ProcessEOTask):
         masked_data = data.view(np.ma.MaskedArray)
         masked_data[~mask] = np.ma.masked
 
+        orbit_dates_middle = [d["from"] + (d["to"] - d["from"]) / 2 for d in orbit_dates]
         xrdata = xr.DataArray(
             masked_data,
             dims=('t', 'y', 'x', 'band'),
             coords={
                 'band': bands,
-                't': unique_dates,
+                't': orbit_dates_middle,
             },
             attrs={
                 "band_aliases": band_aliases,
