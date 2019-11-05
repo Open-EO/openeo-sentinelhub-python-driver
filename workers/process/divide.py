@@ -13,15 +13,8 @@ class divideEOTask(ProcessEOTask):
         reduction dimension. This also allows multi-level reduce calls.
     """
     def process(self, arguments):
-        try:
-            data = arguments["data"]
-        except:
-            raise ProcessArgumentRequired("Process 'divide' requires argument 'data'.")
-
-        ignore_nodata = arguments.get("ignore_nodata", True)
-
-        if not isinstance(ignore_nodata, bool):
-            raise ProcessArgumentInvalid("The argument 'ignore_nodata' in process 'divide' is invalid: Argument must be of type 'boolean'.")
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray, list])
+        ignore_nodata = self.validate_parameter(arguments, "ignore_nodata", default=True, allowed_types=[bool])
 
         original_type_was_number = False
 
@@ -32,10 +25,7 @@ class divideEOTask(ProcessEOTask):
         if len(data) < 2:
             raise ProcessArgumentInvalid("The argument 'data' in process 'divide' is invalid: Array must have at least 2 elements.")
 
-        for i,element in enumerate(data):
-            if not isinstance(element, xr.DataArray):
-                original_type_was_number = True
-                data[i] = xr.DataArray(np.array(element, dtype=np.float))
+        original_type_was_number, data = self.convert_to_dataarray(data, as_list=True)
 
         dividend = data[0]
         multiplication_array = xr.concat(data[1:], dim="temporary_multiplication_dim")
@@ -46,11 +36,4 @@ class divideEOTask(ProcessEOTask):
             total_divisor = total_divisor.fillna(1.0)
 
         results = dividend/total_divisor
-
-        if original_type_was_number:
-            if np.isnan(results):
-                return None
-            else:
-                return float(results)
-
-        return results
+        return self.results_in_appropriate_type(results, original_type_was_number)

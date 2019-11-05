@@ -106,7 +106,7 @@ def test_product(generate_data, array1, array2, expected_data):
 ])
 def test_xarray_directly(execute_multiply_process, generate_data, data, reduce_by, expected_data, expected_dims):
     """
-        Test multiply process by passing a DataArray to be reduced directly ((instead of a list)
+        Test multiply process by passing a DataArray to be reduced directly (instead of a list)
     """
     expected_result = generate_data(data=expected_data, dims=expected_dims, attrs={"reduce_by": reduce_by}, as_dataarray=True)
     result = execute_multiply_process({"data": data, "attrs": {"reduce_by": reduce_by}, "as_dataarray": True})

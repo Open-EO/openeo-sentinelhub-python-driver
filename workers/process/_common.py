@@ -1,6 +1,7 @@
 from copy import deepcopy
 from eolearn.core import EOTask
 import xarray as xr
+import numpy as np
 
 # These exceptions should translate to the list of OpenEO error codes:
 #   https://open-eo.github.io/openeo-api/errors/#openeo-error-codes
@@ -141,13 +142,42 @@ class ProcessEOTask(EOTask):
         types = tuple(allowed_types)
         if not isinstance(param_val, types):
             type_mapping = {
-                int: "number",
+                int: "integer",
                 float: "number",
                 bool: "boolean",
                 type(None): "null",
                 xr.DataArray: "xarray.DataArray",
+                dict: "object",
+                str: "string",
+                list: "array",
             }
             types = ",".join(set([type_mapping[typename] for typename in types]))
             raise ProcessArgumentInvalid("The argument '{}' in process '{}' is invalid: Argument must be of types '[{}]'.".format(param, self.process_id, types))
 
         return param_val
+
+
+    def convert_to_dataarray(self, data, as_list=False):
+        original_type_was_number = True
+
+        if isinstance(data, xr.DataArray):
+            return False ,data
+
+        if as_list:
+            for i,element in enumerate(data):
+                if not isinstance(element, xr.DataArray):
+                    data[i] = xr.DataArray(np.array(element, dtype=np.float))
+                else:
+                    original_type_was_number = False
+        else:
+            data = xr.DataArray(np.array(data, dtype=np.float))
+
+        return original_type_was_number, data
+
+
+    def results_in_appropriate_type(self, results, original_type_was_number):
+        if original_type_was_number:
+            if np.isnan(results):
+                return None
+            return float(results)
+        return results

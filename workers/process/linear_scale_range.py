@@ -10,23 +10,11 @@ class linear_scale_rangeEOTask(ProcessEOTask):
         but this would be very inefficient. Instead, we get passed a whole xarray.
     """
     def process(self, arguments):
-        required_arguments = ["x", "inputMin", "inputMax"]
-
-        for required_argument in required_arguments:
-            try:
-                data = arguments[required_argument]
-            except:
-                raise ProcessArgumentRequired("Process 'linear_scale_range' requires argument '{}'.".format(required_argument))
-
-        number_arguments = ["inputMin","inputMax","outputMin","outputMax"]
-        for number_argument in number_arguments:
-            argument_value = arguments.get(number_argument)
-            if argument_value:
-                if not isinstance(argument_value, (int,float)):
-                    raise ProcessArgumentInvalid("The argument '{}' in process 'linear_scale_range' is invalid: Argument must be of type 'number'.".format(number_argument))
-
-        data, inputMin, inputMax = arguments["x"], arguments["inputMin"], arguments["inputMax"]
-        outputMin, outputMax = arguments.get("outputMin",0), arguments.get("outputMax",1)
+        data = self.validate_parameter(arguments, "x", required=True, allowed_types=[xr.DataArray, int, float, type(None)])
+        inputMin = self.validate_parameter(arguments, "inputMin", required=True, allowed_types=[int, float])
+        inputMax = self.validate_parameter(arguments, "inputMax", required=True, allowed_types=[int, float])
+        outputMin = self.validate_parameter(arguments, "outputMin", default=0, allowed_types=[int, float])
+        outputMax = self.validate_parameter(arguments, "outputMax", default=1, allowed_types=[int, float])
 
         if data is None:
             return None
@@ -34,17 +22,10 @@ class linear_scale_rangeEOTask(ProcessEOTask):
         if math.isclose(inputMin,inputMax):
             raise ProcessArgumentInvalid("The argument 'inputMin' in process 'linear_scale_range' is invalid: Argument must differ from argument 'inputMax'.")
 
-        original_type_was_number = False
+        original_type_was_number, data = self.convert_to_dataarray(data)
 
-        if not isinstance(data, xr.DataArray):
-            if not isinstance(data, (int,float)):
-                raise ProcessArgumentInvalid("The argument 'x' in process 'linear_scale_range' is invalid: Argument must be of type 'number' or 'null'.")
-
-            original_type_was_number = True
-            data = xr.DataArray(np.array(data, dtype=np.float))
-
-            if data.size == 0:
-                return None
+        if data.size == 0:
+            return None
 
         results = ((data - inputMin) / (inputMax - inputMin)) * (outputMax - outputMin) + outputMin
 
