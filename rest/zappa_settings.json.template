@@ -12,7 +12,7 @@
       "BACKEND_VERSION": "@@BACKEND_VERSION@@"
     },
     "memory_size": 128,
-    "timeout_seconds": 20,
+    "timeout_seconds": 31,
     "profile_name": "default",
     "project_name": "sentinelhub-openeo",
     "runtime": "python3.6",

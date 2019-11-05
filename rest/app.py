@@ -41,7 +41,10 @@ if HONEYCOMP_APM_API_KEY:
 
 
 RESULTS_S3_BUCKET_NAME = os.environ.get('RESULTS_S3_BUCKET_NAME', 'com.sinergise.openeo.results')
-REQUEST_TIMEOUT = 120 # In seconds
+# Zappa allows setting AWS Lambda timeout, but there is CloudFront before Lambda with a default
+# timeout of 30 (more like 29) seconds. If we wish to react in time, we need to return in less
+# than that.
+REQUEST_TIMEOUT = 28
 
 FAKE_AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
 FAKE_AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
