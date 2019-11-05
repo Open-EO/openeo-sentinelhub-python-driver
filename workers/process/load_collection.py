@@ -115,7 +115,10 @@ class load_collectionEOTask(ProcessEOTask):
 
         # check if the bbox is within the allowed limits:
         options = arguments.get("options", {})
-        if not (options.get("width") or options.get("height")):
+        if options.get("width") or options.get("height"):
+            width = options.get("width", options.get("height"))
+            height = options.get("height", options.get("width"))
+        else:
             width, height = sentinelhub.geo_utils.bbox_to_dimensions(bbox, 10.0)
             if width * height > 1000 * 1000:
                 raise ProcessArgumentInvalid("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels, but is: {}x{}.".format(width, height))
@@ -175,15 +178,15 @@ class load_collectionEOTask(ProcessEOTask):
             instance_id=SENTINELHUB_INSTANCE_ID,
             bbox=bbox,
             time=temporal_extent,
-            width=256,
-            height=256,
+            width=width,
+            height=height,
         )
         dates = request.get_dates()
         unique_dates = sorted(list(set(dates)))
         unique_dates_as_strings = [d.strftime("%Y-%m-%d") for d in unique_dates]
 
         self.logger.debug(f'Unique dates found: {unique_dates_as_strings}')
-        response_data = np.empty((len(unique_dates), len(bands) + 1, 256, 256), dtype=np.float32)
+        response_data = np.empty((len(unique_dates), len(bands) + 1, height, width), dtype=np.float32)
         auth_token = SHProcessingAuthTokenSingleton.get()
         url = 'https://services.sentinel-hub.com/api/v1/process'
         headers = {
@@ -213,8 +216,8 @@ class load_collectionEOTask(ProcessEOTask):
                     ],
                 },
                 "output": {
-                    "width": options.get("width", options.get("height", 256)),
-                    "height": options.get("height", options.get("width", 256)),
+                    "width": width,
+                    "height": height,
                 },
                 "evalscript": f"""//VERSION=3
 
