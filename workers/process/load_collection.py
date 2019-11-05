@@ -225,6 +225,7 @@ class load_collectionEOTask(ProcessEOTask):
                             "dataFilter": {
                                 "timeRange": {
                                     "from": date["from"].strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                                    # backend doesn't like if from == to, so we need to add 1 second:
                                     "to": (date["to"] + timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%S+00:00"),
                                 },
                                 "previewMode": "EXTENDED_PREVIEW",
