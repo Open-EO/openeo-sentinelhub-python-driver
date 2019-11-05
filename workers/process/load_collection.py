@@ -258,6 +258,7 @@ class load_collectionEOTask(ProcessEOTask):
             r = requests.post(url, headers=headers, json=request_params)
             if r.status_code != 200:
                 raise Internal(r.content)
+            self.logger.debug('Image received.')
 
             # convert tiff to numpy:
             tmp_filename = f'/tmp/test.{self.job_id}.tiff'
@@ -269,7 +270,7 @@ class load_collectionEOTask(ProcessEOTask):
             os.remove(tmp_filename)
 
             response_data[i, ...] = image_gdal
-            self.logger.debug('Image received and converted.')
+            self.logger.debug('Image converted.')
 
         # data is arranged differently than it was with sentinelhub-py,
         # let's rearrange it:
@@ -296,4 +297,5 @@ class load_collectionEOTask(ProcessEOTask):
                 "bbox": bbox,
             },
         )
+        self.logger.debug('Returning xarray.')
         return xrdata
