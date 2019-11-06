@@ -193,7 +193,7 @@ class load_collectionEOTask(ProcessEOTask):
         else:
             raise ProcessArgumentInvalid("The argument 'id' in process 'load_collection' is invalid: unknown collection id")
 
-        self.logger.debug(f'Requesting dates between: ...')
+        self.logger.debug(f'Requesting dates between: {temporal_extent}')
         request = WmsRequest(
             **kwargs,
             instance_id=SENTINELHUB_INSTANCE_ID,
