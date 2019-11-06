@@ -132,7 +132,7 @@ def main():
                     # job is no longer running, so the results will not be used:
                     running_jobs.remove(job_id)
 
-            time.sleep(1.0)
+            time.sleep(5.0)
 
             _feed_monitoring_system()
 
