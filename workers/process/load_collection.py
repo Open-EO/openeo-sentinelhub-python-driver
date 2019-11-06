@@ -210,6 +210,7 @@ class load_collectionEOTask(ProcessEOTask):
             'Accept': 'image/tiff',
             'Authorization': f'Bearer {auth_token}'
         }
+        requests_session = requests.session()
         for i, date in enumerate(orbit_dates):
             request_params = {
                 "input": {
@@ -255,7 +256,7 @@ class load_collectionEOTask(ProcessEOTask):
                 """
             }
             self.logger.debug(f'Requesting tiff for: {date}')
-            r = requests.post(url, headers=headers, json=request_params)
+            r = requests_session.post(url, headers=headers, json=request_params)
             if r.status_code != 200:
                 raise Internal(r.content)
             self.logger.debug('Image received.')
