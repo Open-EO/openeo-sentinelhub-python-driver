@@ -5,6 +5,8 @@ import re
 import numpy as np
 import xarray as xr
 import requests
+from requests_futures.sessions import FuturesSession
+from concurrent.futures import ThreadPoolExecutor
 from osgeo import gdal
 from sentinelhub import WmsRequest, WcsRequest, MimeType, CRS, BBox, CustomUrlParam
 from sentinelhub.constants import AwsConstants
@@ -127,6 +129,7 @@ class load_collectionEOTask(ProcessEOTask):
 
 
     def process(self, arguments):
+        start_time = time.time()
         collection_id = self.validate_parameter(arguments, "id", required=True, allowed_types=[str])
         spatial_extent = self.validate_parameter(arguments, "spatial_extent", required=True)
         temporal_extent = self.validate_parameter(arguments, "temporal_extent", required=True)
@@ -214,8 +217,16 @@ class load_collectionEOTask(ProcessEOTask):
             'Accept': 'image/tiff',
             'Authorization': f'Bearer {auth_token}'
         }
-        requests_session = requests.session()
-        for i, date in enumerate(orbit_dates):
+
+        # We are issuing parallel requests to SH because it makes total execution time much lower.
+        # Parameter adapter_kwargs is solving:
+        #  "WARNING:urllib3.connectionpool:Connection pool is full, discarding connection: ..."
+        # https://stackoverflow.com/a/34893364/593487
+        adapter_kwargs = dict(pool_maxsize=len(orbit_dates))
+        executor = ThreadPoolExecutor(max_workers=len(orbit_dates))
+        requests_session = FuturesSession(executor=executor, adapter_kwargs=adapter_kwargs)
+        response_futures = []
+        for date in orbit_dates:
             request_params = {
                 "input": {
                     "bounds": {
@@ -261,18 +272,22 @@ class load_collectionEOTask(ProcessEOTask):
             }
             self.logger.debug(f'Requesting tiff for: {date}')
             r = requests_session.post(url, headers=headers, json=request_params)
+            response_futures.append(r)
+
+        for i, r_future in enumerate(response_futures):
+            r = r_future.result()
             if r.status_code != 200:
                 raise Internal(r.content)
             self.logger.debug('Image received.')
 
             # convert tiff to numpy:
-            tmp_filename = f'/tmp/test.{self.job_id}.tiff'
-            with open(tmp_filename, 'wb') as f:
-                f.write(r.content)
-                f.close()
-            raster_ds = gdal.Open(tmp_filename, gdal.GA_ReadOnly)
-            image_gdal = raster_ds.ReadAsArray()
-            os.remove(tmp_filename)
+            memory_filename = f"/vsimem/{i}.tif"
+            try:
+                gdal.FileFromMemBuffer(memory_filename, r.content)
+                raster_ds = gdal.Open(memory_filename, gdal.GA_ReadOnly)
+                image_gdal = raster_ds.ReadAsArray()
+            finally:
+                gdal.Unlink(memory_filename)
 
             response_data[i, ...] = image_gdal
             self.logger.debug('Image converted.')
@@ -302,5 +317,5 @@ class load_collectionEOTask(ProcessEOTask):
                 "bbox": bbox,
             },
         )
-        self.logger.debug('Returning xarray.')
+        self.logger.debug(f'Returning xarray, job [{self.job_id}] execution time: {time.time() - start_time}')
         return xrdata
