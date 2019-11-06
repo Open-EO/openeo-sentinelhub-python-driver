@@ -159,6 +159,9 @@ class load_collectionEOTask(ProcessEOTask):
                 layer=SENTINELHUB_LAYER_ID_S2L1C,
                 maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
             )
+            dataFilter_params = {
+                "previewMode": "EXTENDED_PREVIEW",
+            }
             band_aliases = {
                 "nir": "B08",
                 "red": "B04",
@@ -184,6 +187,7 @@ class load_collectionEOTask(ProcessEOTask):
             kwargs = dict(
                 layer=SENTINELHUB_LAYER_ID_S1GRD,
             )
+            dataFilter_params = {}
             band_aliases = {}
 
         else:
@@ -195,8 +199,6 @@ class load_collectionEOTask(ProcessEOTask):
             instance_id=SENTINELHUB_INSTANCE_ID,
             bbox=bbox,
             time=temporal_extent,
-            width=width,
-            height=height,
         )
         dates = request.get_dates()
 
@@ -225,11 +227,11 @@ class load_collectionEOTask(ProcessEOTask):
                             "type": dataset,
                             "dataFilter": {
                                 "timeRange": {
-                                    "from": date["from"].strftime("%Y-%m-%dT%H:%M:%S+00:00"),
-                                    # backend doesn't like if from == to, so we need to add 1 second:
+                                    # backend doesn't like if from == to, so we expand by 1 second every way:
+                                    "from": (date["from"] - timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%S+00:00"),
                                     "to": (date["to"] + timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%S+00:00"),
                                 },
-                                "previewMode": "EXTENDED_PREVIEW",
+                                **dataFilter_params,
                             }
                         },
                     ],
