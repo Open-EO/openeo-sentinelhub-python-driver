@@ -129,6 +129,7 @@ class load_collectionEOTask(ProcessEOTask):
 
 
     def process(self, arguments):
+        start_time = time.time()
         collection_id = self.validate_parameter(arguments, "id", required=True, allowed_types=[str])
         spatial_extent = self.validate_parameter(arguments, "spatial_extent", required=True)
         temporal_extent = self.validate_parameter(arguments, "temporal_extent", required=True)
@@ -312,5 +313,5 @@ class load_collectionEOTask(ProcessEOTask):
                 "bbox": bbox,
             },
         )
-        self.logger.debug('Returning xarray.')
+        self.logger.debug(f'Returning xarray, job [{self.job_id}] execution time: {time.time() - start_time}')
         return xrdata
