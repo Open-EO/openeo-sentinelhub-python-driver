@@ -1,13 +1,16 @@
 import os
-import datetime
+from datetime import datetime, timedelta
+import time
 import re
 import numpy as np
 import xarray as xr
-from sentinelhub import CustomUrlParam, BBox, CRS
+import requests
+from osgeo import gdal
+from sentinelhub import WmsRequest, WcsRequest, MimeType, CRS, BBox, CustomUrlParam
 from sentinelhub.constants import AwsConstants
+from sentinelhub.config import SHConfig
 import sentinelhub.geo_utils
 from eolearn.core import FeatureType, EOPatch
-from eolearn.io import S2L1CWCSInput, S2L1CWMSInput, S1IWWCSInput, S1IWWMSInput
 
 
 from ._common import ProcessEOTask, ProcessArgumentInvalid, Internal
@@ -40,7 +43,7 @@ def _clean_temporal_extent(temporal_extent):
         result[0] = '1970-01-01'
     if result[1] is None:
         # result[1] = 'latest'  # currently this doesn't work
-        result[1] = datetime.datetime.utcnow().isoformat()
+        result[1] = datetime.utcnow().isoformat()
     return result
 
 
@@ -58,6 +61,7 @@ def _raise_exception_based_on_eolearn_message(str_ex):
     # we can't make sense of the message, bail out with generic exception:
     raise Internal("Server error: EOPatch creation failed: {}".format(str_ex))
 
+
 def validate_bands(bands, ALL_BANDS, collection_id):
     if bands is None:
         return ALL_BANDS
@@ -65,6 +69,48 @@ def validate_bands(bands, ALL_BANDS, collection_id):
         valids = ",".join(ALL_BANDS)
         raise ProcessArgumentInvalid("The argument 'bands' in process 'load_collection' is invalid: Invalid bands encountered; valid bands for {} are '[{}]'.".format(collection_id,valids))
     return bands
+
+
+def get_orbit_dates(dates):
+    """
+        We calculate orbit dates by grouping together those dates that are less than an hour apart.
+        Returns a list of objects, each with keys "from" and "to", containing datetime structs.
+    """
+    sorted_dates = sorted(dates)
+    result = []
+    for d in sorted_dates:
+        if len(result) == 0 or d - result[-1]["to"] > timedelta(hours=1):
+            result.append({"from": d, "to": d})  # new orbit
+        else:
+            result[-1]["to"] = d  # same orbit
+
+    return result
+
+
+class SHProcessingAuthTokenSingleton(object):
+    _access_token = None
+    _valid_until = None
+
+    @classmethod
+    def get(cls):
+        if cls._access_token is not None and cls._valid_until > time.time():
+            return cls._access_token
+
+        client_id = os.environ.get('SH_CLIENT_ID')
+        auth_secret = os.environ.get('SH_AUTH_SECRET')
+        if not client_id or not auth_secret:
+            raise Internal("Missing SH credentials")
+
+        url = 'https://services.sentinel-hub.com/oauth/token'
+        data = f'grant_type=client_credentials&client_id={client_id}&client_secret={auth_secret}'
+        r = requests.post(url, headers={'Content-Type': 'application/x-www-form-urlencoded'}, data=data)
+        if r.status_code != 200:
+            raise Internal("Error authenticating, received code: " + str(r.status_code))
+
+        j = r.json()
+        cls._access_token = j["access_token"]
+        cls._valid_until = time.time() + j["expires_in"] - 5
+        return cls._access_token
 
 
 class load_collectionEOTask(ProcessEOTask):
@@ -94,38 +140,35 @@ class load_collectionEOTask(ProcessEOTask):
 
         # check if the bbox is within the allowed limits:
         options = arguments.get("options", {})
-        if not (options.get("width") or options.get("height")):
+        if options.get("width") or options.get("height"):
+            width = options.get("width", options.get("height"))
+            height = options.get("height", options.get("width"))
+        else:
             width, height = sentinelhub.geo_utils.bbox_to_dimensions(bbox, 10.0)
             if width * height > 1000 * 1000:
                 raise ProcessArgumentInvalid("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels, but is: {}x{}.".format(width, height))
 
         band_aliases = {}
 
-        patch = EOPatch()
-
         if collection_id == 'S2L1C':
-            InputClassWCS = S2L1CWCSInput
-            InputClassWMS = S2L1CWMSInput
+            dataset = "S2L1C"
             ALL_BANDS = AwsConstants.S2_L1C_BANDS
             bands = validate_bands(bands, ALL_BANDS, collection_id)
             DEFAULT_RES = '10m'
             kwargs = dict(
-                instance_id=SENTINELHUB_INSTANCE_ID,
                 layer=SENTINELHUB_LAYER_ID_S2L1C,
-                feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
-                custom_url_params={
-                    CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(bands)),
-                },
                 maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
             )
+            dataFilter_params = {
+                "previewMode": "EXTENDED_PREVIEW",
+            }
             band_aliases = {
                 "nir": "B08",
                 "red": "B04",
             }
 
         elif collection_id == 'S1GRDIW':
-            InputClassWCS = S1IWWCSInput
-            InputClassWMS = S1IWWMSInput
+            dataset = "S1GRD"
             # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=available-bands-and-data
             ALL_BANDS = ['VV', 'VH']
             bands = validate_bands(bands, ALL_BANDS, collection_id)
@@ -142,58 +185,122 @@ class load_collectionEOTask(ProcessEOTask):
             #   at the chosen resolution. IW is typically sensed in High resolution, EW in Medium.
             DEFAULT_RES = '10m'
             kwargs = dict(
-                instance_id=SENTINELHUB_INSTANCE_ID,
                 layer=SENTINELHUB_LAYER_ID_S1GRD,
-                feature=(FeatureType.DATA, 'BANDS'), # save under name 'BANDS'
-                custom_url_params={
-                    CustomUrlParam.EVALSCRIPT: 'return [{}];'.format(", ".join(bands)),
-                },
-                maxcc=1.0, # maximum allowed cloud cover of original ESA tiles
             )
+            dataFilter_params = {}
             band_aliases = {}
 
         else:
             raise ProcessArgumentInvalid("The argument 'id' in process 'load_collection' is invalid: unknown collection id")
 
-        # apply options and choose appropriate SentinelHubOGCInput subclass which supports them:
-        if options.get("width") or options.get("height"):
-            kwargs["width"] = options.get("width", options.get("height"))
-            kwargs["height"] = options.get("height", options.get("width"))
-            InputClass = InputClassWMS  # WMS knows width/height
-        elif options.get("resx") or options.get("resy"):
-            kwargs["resx"] = options.get("resx", options.get("resy"))
-            kwargs["resy"] = options.get("resy", options.get("resx"))
-            InputClass = InputClassWCS  # WCS knows resx/resy
-        else:
-            kwargs["resx"] = DEFAULT_RES
-            kwargs["resy"] = DEFAULT_RES
-            InputClass = InputClassWCS
+        self.logger.debug(f'Requesting dates between: {temporal_extent}')
+        request = WmsRequest(
+            **kwargs,
+            instance_id=SENTINELHUB_INSTANCE_ID,
+            bbox=bbox,
+            time=temporal_extent,
+            width=width,
+            height=height,
+        )
+        dates = request.get_dates()
 
-        # fetch the data:
-        try:
-            patch = InputClass(**kwargs).execute(patch, time_interval=temporal_extent, bbox=bbox)
-        except Exception as ex:
-            _raise_exception_based_on_eolearn_message(str(ex))
+        orbit_dates = get_orbit_dates(dates)
 
+        self.logger.debug(f'Unique dates found: {orbit_dates}')
+        response_data = np.empty((len(orbit_dates), len(bands) + 1, height, width), dtype=np.float32)
+        auth_token = SHProcessingAuthTokenSingleton.get()
+        url = 'https://services.sentinel-hub.com/api/v1/process'
+        headers = {
+            'Accept': 'image/tiff',
+            'Authorization': f'Bearer {auth_token}'
+        }
+        requests_session = requests.session()
+        for i, date in enumerate(orbit_dates):
+            request_params = {
+                "input": {
+                    "bounds": {
+                        "bbox": [bbox.min_x, bbox.min_y, bbox.max_x, bbox.max_y],
+                        "properties": {
+                            "crs": "http://www.opengis.net/def/crs/EPSG/0/4326",
+                        }
+                    },
+                    "data": [
+                        {
+                            "type": dataset,
+                            "dataFilter": {
+                                "timeRange": {
+                                    # backend doesn't like if from == to, so we expand by 1 second every way:
+                                    "from": (date["from"] - timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                                    "to": (date["to"] + timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                                },
+                                **dataFilter_params,
+                            }
+                        },
+                    ],
+                },
+                "output": {
+                    "width": width,
+                    "height": height,
+                },
+                "evalscript": f"""//VERSION=3
 
-        # apart from all the bands, we also want to have access to "IS_DATA", which
-        # will be applied as masked_array:
-        data = patch.data["BANDS"]
-        mask = patch.mask["IS_DATA"]
-        mask = mask.reshape(mask.shape[:-1])  # get rid of last axis
+                    function setup() {{
+                        return {{
+                            input: [{', '.join([f'"{b}"' for b in bands])}],
+                            output: {{
+                                bands: {len(bands) + 1},
+                                sampleType: "FLOAT32",
+                            }}
+                        }}
+                    }}
+
+                    function evaluatePixel(sample) {{
+                        return [{", ".join(['sample.' + b for b in bands])}, sample.dataMask]
+                    }}
+                """
+            }
+            self.logger.debug(f'Requesting tiff for: {date}')
+            r = requests_session.post(url, headers=headers, json=request_params)
+            if r.status_code != 200:
+                raise Internal(r.content)
+            self.logger.debug('Image received.')
+
+            # convert tiff to numpy:
+            tmp_filename = f'/tmp/test.{self.job_id}.tiff'
+            with open(tmp_filename, 'wb') as f:
+                f.write(r.content)
+                f.close()
+            raster_ds = gdal.Open(tmp_filename, gdal.GA_ReadOnly)
+            image_gdal = raster_ds.ReadAsArray()
+            os.remove(tmp_filename)
+
+            response_data[i, ...] = image_gdal
+            self.logger.debug('Image converted.')
+
+        # data is arranged differently than it was with sentinelhub-py,
+        # let's rearrange it:
+        response_data = np.transpose(response_data, (0, 2, 3, 1))
+
+        # split mask (IS_DATA) from the data itself:
+        rd = np.asarray(response_data)
+        mask = rd[:, :, :, -1].astype(bool)
+        data = rd[:, :, :, :-1]
+        # use MaskedArray:
         masked_data = data.view(np.ma.MaskedArray)
         masked_data[~mask] = np.ma.masked
 
+        orbit_dates_middle = [d["from"] + (d["to"] - d["from"]) / 2 for d in orbit_dates]
         xrdata = xr.DataArray(
             masked_data,
             dims=('t', 'y', 'x', 'band'),
             coords={
                 'band': bands,
-                't': patch.timestamp,
+                't': orbit_dates_middle,
             },
             attrs={
                 "band_aliases": band_aliases,
                 "bbox": bbox,
             },
         )
+        self.logger.debug('Returning xarray.')
         return xrdata

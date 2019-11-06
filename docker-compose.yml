@@ -73,6 +73,8 @@ services:
       DATA_AWS_S3_ENDPOINT_URL: http://minio:9000
       DYNAMODB_LOCAL_URL: http://dynamodb:8000
       HONEYCOMP_APM_API_KEY: "${HONEYCOMP_APM_API_KEY}"
+      SH_CLIENT_ID: "${SH_CLIENT_ID}"
+      SH_AUTH_SECRET: "${SH_AUTH_SECRET}"
 
 volumes:
   minio-data:

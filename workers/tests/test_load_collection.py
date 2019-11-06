@@ -5,6 +5,7 @@ import urllib.parse as urlparse
 import responses
 import json
 import sys, os
+import logging
 from base64 import b64decode
 
 
@@ -79,7 +80,8 @@ def argumentsS1GRDIW(arguments_factory):
 @pytest.fixture
 def execute_load_collection_process():
     def wrapped(arguments):
-        return process.load_collection.load_collectionEOTask(arguments, "", None).process(arguments)
+        logger = logging.getLogger()
+        return process.load_collection.load_collectionEOTask(arguments, "", logger).process(arguments)
     return wrapped
 
 @pytest.fixture
@@ -114,6 +116,7 @@ def set_mock_responses_for_collection(set_mock_responses):
 ###################################
 
 
+@pytest.mark.skip("Using Processing API now...")
 @pytest.mark.parametrize('collection_id,temporal_extent', [
     ("S2L1C", ["2019-08-16", "2019-08-18"],),
     ("S1GRDIW", ["2019-08-16 00:00:00", "2019-08-17 05:19:11"],),
@@ -155,6 +158,7 @@ def test_temporal_extent_invalid(arguments_factory, execute_load_collection_proc
     assert ex.value.args[0] == f"The argument 'temporal_extent' in process 'load_collection' is invalid: {failure_reason}"
 
 
+@pytest.mark.skip("Using Processing API now...")
 @responses.activate
 def test_bbox_too_big_for_sh_service(set_mock_responses, arguments_factory, execute_load_collection_process):
     # bbox size as reported by sentinelhub-py: (6082, 11)
@@ -189,6 +193,7 @@ def test_bbox_too_big_for_us(set_mock_responses, arguments_factory, execute_load
     assert ex.value.args[0].startswith("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels, but is: ")
 
 
+@pytest.mark.skip("Using Processing API now...")
 @pytest.mark.parametrize('collection_id,temporal_extent,bands,evalscript', [
     ("S2L1C", ["2019-08-16", "2019-08-18"], ["B01","B04"], "return [B01, B04];"),
     ("S1GRDIW", ["2019-08-16 00:00:00", "2019-08-17 05:19:11"], ["VV"], "return [VV];"),
@@ -207,6 +212,7 @@ def test_bands(set_mock_responses_for_collection, arguments_factory, execute_loa
         assert params.get("service") == "wfs" or params.get("evalscript") is not None and b64decode(params["evalscript"]).decode("utf-8") == evalscript
 
 
+@pytest.mark.skip("Using Processing API now...")
 @pytest.mark.parametrize('collection_id,temporal_extent,bands,failure_reason', [
     ("S2L1C", ["2019-08-16", "2019-08-18"], "B01", "Argument must be of types '["),
     ("S1GRDIW", ["2019-08-16 00:00:00", "2019-08-17 05:19:11"], [], "At least one band must be specified."),

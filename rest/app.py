@@ -1,4 +1,5 @@
 import os
+import sys
 import datetime
 from logging import log, INFO, WARN
 import json
@@ -40,7 +41,10 @@ if HONEYCOMP_APM_API_KEY:
 
 
 RESULTS_S3_BUCKET_NAME = os.environ.get('RESULTS_S3_BUCKET_NAME', 'com.sinergise.openeo.results')
-REQUEST_TIMEOUT = 30 # In seconds
+# Zappa allows setting AWS Lambda timeout, but there is CloudFront before Lambda with a default
+# timeout of 30 (more like 29) seconds. If we wish to react in time, we need to return in less
+# than that.
+REQUEST_TIMEOUT = 28
 
 FAKE_AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
 FAKE_AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
@@ -681,5 +685,8 @@ def well_known():
 if __name__ == '__main__':
     # if you need to run this app under HTTPS, install pyOpenSSL
     # (`pip install pyOpenSSL`) and replace app.run with this line:
-    # app.run(ssl_context='adhoc')
-    app.run()
+    if sys.argv[1:] == ['https']:
+        print("Running as HTTPS!")
+        app.run(ssl_context='adhoc')
+    else:
+        app.run()
