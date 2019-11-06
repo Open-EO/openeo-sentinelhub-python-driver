@@ -199,6 +199,8 @@ class load_collectionEOTask(ProcessEOTask):
             instance_id=SENTINELHUB_INSTANCE_ID,
             bbox=bbox,
             time=temporal_extent,
+            width=width,
+            height=height,
         )
         dates = request.get_dates()
 
