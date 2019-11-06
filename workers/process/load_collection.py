@@ -212,7 +212,14 @@ class load_collectionEOTask(ProcessEOTask):
             'Accept': 'image/tiff',
             'Authorization': f'Bearer {auth_token}'
         }
-        requests_session = session = FuturesSession(executor=ThreadPoolExecutor(max_workers=len(orbit_dates)))
+
+        # We are issuing parallel requests to SH because it makes total execution time much lower.
+        # Parameter adapter_kwargs is solving:
+        #  "WARNING:urllib3.connectionpool:Connection pool is full, discarding connection: ..."
+        # https://stackoverflow.com/a/34893364/593487
+        adapter_kwargs = dict(pool_maxsize=len(orbit_dates))
+        executor = ThreadPoolExecutor(max_workers=len(orbit_dates))
+        requests_session = FuturesSession(executor=executor, adapter_kwargs=adapter_kwargs)
         response_futures = []
         for date in orbit_dates:
             request_params = {
