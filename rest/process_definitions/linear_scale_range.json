@@ -10,10 +10,25 @@
         "x": {
             "description": "A number to transform.",
             "schema": {
-                "type": [
-                    "number",
-                    "null"
-                ]
+                "anyOf": [
+                    {
+                        "title": "Data cube",
+                        "description": "Passes data cube directly, avoiding use of `apply`.",
+                        "type": "object",
+                        "format": "raster-cube"
+                    },
+                    {
+                        "title": "Number",
+                        "description": "Passes a single value (typically used within `apply).",
+                        "type": "number"
+                    },
+                    {
+                        "title": "No operation behaviour",
+                        "description": "Specifying `null` passes it through.",
+                        "type": "null"
+                    }
+                ],
+                "default": null
             },
             "required": true
         },
