@@ -1,0 +1,33 @@
+{
+    "id": "assert_equals",
+    "summary": "Asserts the data cubes are equal.",
+    "description": "Compares values within two data cubes and breaks execution (throws an error) if they differ.",
+    "categories": [
+        "development"
+    ],
+    "parameter_order": ["a", "b"],
+    "parameters": {
+        "a": {
+            "description": "A raster data cube that should be compared.",
+            "schema": {
+                "type": "object",
+                "format": "raster-cube"
+            },
+            "required": true
+        },
+        "b": {
+            "description": "A raster data cube that should be compared.",
+            "schema": {
+                "type": "object",
+                "format": "raster-cube"
+            },
+            "required": true
+        }
+    },
+    "returns": {
+        "description": "Returns nothing if data cubes match, throws an error if not.",
+        "schema": {
+            "type": "null"
+        }
+    }
+}

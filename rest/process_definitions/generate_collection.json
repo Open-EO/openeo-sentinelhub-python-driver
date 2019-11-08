@@ -8,7 +8,7 @@
     "parameter_order": ["data", "dims", "coords"],
     "parameters": {
         "data": {
-            "description": "Contents of the generated data-cube as multi-dimensional array. The size of dimensions must match the number of coords.",
+            "description": "Contents of the generated data cube as multi-dimensional array. The size of dimensions must match the number of coords.",
             "schema": {
                 "type": "array",
                 "examples": [
@@ -59,7 +59,7 @@
         }
     },
     "returns": {
-        "description": "The generated data-cube.",
+        "description": "The generated data cube.",
         "schema": {
             "type": "object",
             "format": "raster-cube"
