@@ -6,7 +6,7 @@
         "cubes",
         "import"
     ],
-    "parameter_order": ["id", "spatial_extent", "temporal_extent", "bands", "properties"],
+    "parameter_order": ["id", "spatial_extent", "temporal_extent", "bands", "properties", "options"],
     "parameters": {
         "id": {
             "description": "The collection id.",
@@ -167,6 +167,14 @@
                     }
                 ],
                 "default": null
+            }
+        },
+        "options": {
+            "description": "Custom extension: limits the data by passing collection-specific options to backend.",
+            "experimental": true,
+            "schema": {
+                "type": "object",
+                "default": {}
             }
         }
     },
