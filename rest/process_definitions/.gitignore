@@ -1,3 +1,4 @@
 *
 !.gitignore
 !load_collection.json
+!linear_scale_range.json
