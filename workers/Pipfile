@@ -19,6 +19,8 @@ psutil = "*"
 honeycomb-beeline = "*"
 sentinelhub = "*"
 requests-futures = "*"
+dask = {extras = ["complete"],version = "*"}
+imageio = "*"
 
 [requires]
 python_version = "3.6"
