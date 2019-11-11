@@ -25,8 +25,6 @@ from ._common import ProcessEOTask, ProcessArgumentInvalid, Internal
 SENTINELHUB_INSTANCE_ID = os.environ.get('SENTINELHUB_INSTANCE_ID', None)
 SENTINELHUB_LAYER_ID_S2L1C = os.environ.get('SENTINELHUB_LAYER_ID_S2L1C', None)
 SENTINELHUB_LAYER_ID_S1GRD = os.environ.get('SENTINELHUB_LAYER_ID_S1GRD', None)
-SIZE_LIMIT = 1000
-
 
 def _clean_temporal_extent(temporal_extent):
     """
@@ -102,7 +100,7 @@ def construct_image(data, n_width, n_height):
     return da.concatenate(rows[::-1], axis=0)
 
 
-def download_data(self, dataset, orbit_dates, total_width, total_height, bbox, temporal_extent, bands, dataFilter_params):
+def download_data(self, dataset, orbit_dates, total_width, total_height, bbox, temporal_extent, bands, dataFilter_params, max_chunk_size=1000):
     auth_token = SHProcessingAuthTokenSingleton.get()
     url = 'https://services.sentinel-hub.com/api/v1/process'
     headers = {
@@ -110,7 +108,7 @@ def download_data(self, dataset, orbit_dates, total_width, total_height, bbox, t
         'Authorization': f'Bearer {auth_token}'
     }
 
-    n_width = math.ceil(total_width/SIZE_LIMIT)
+    n_width = math.ceil(total_width/max_chunk_size)
     n_height = math.ceil(total_height/(total_width//n_width + 1))
     bbox_list = BBoxSplitter([bbox.geometry], CRS.WGS84, (n_width, n_height)).get_bbox_list()
     x_image_shapes = [total_width//n_width + 1 if w < total_width % n_width else total_width//n_width for w in range(n_width)]
@@ -121,7 +119,7 @@ def download_data(self, dataset, orbit_dates, total_width, total_height, bbox, t
     requests_session = FuturesSession(executor=executor, adapter_kwargs=adapter_kwargs)
     response_futures = {}
 
-    tile_times,shapes = [],{}
+    orbit_times_middle,shapes = [],{}
 
     tmp_folder = f"/tmp-{self.job_id}"
     if os.path.exists(tmp_folder):
@@ -132,7 +130,7 @@ def download_data(self, dataset, orbit_dates, total_width, total_height, bbox, t
         mean_time = date["from"] + (date["to"] - date["from"]) / 2
         tile_from = mean_time - timedelta(minutes=25)
         tile_to = mean_time + timedelta(minutes=25)
-        tile_times.append(mean_time)
+        orbit_times_middle.append(mean_time)
         shapes[i] = []
 
         for j, bbox_section in enumerate(bbox_list):
@@ -207,7 +205,7 @@ def download_data(self, dataset, orbit_dates, total_width, total_height, bbox, t
 
     response_data = da.stack(response_data)
     self.logger.debug('Images created.')
-    return response_data, tile_times
+    return response_data, orbit_times_middle
 
 
 class SHProcessingAuthTokenSingleton(object):
@@ -326,20 +324,19 @@ class load_collectionEOTask(ProcessEOTask):
         )
         dates = request.get_dates()
         orbit_dates = get_orbit_dates(dates)
-        response_data,tile_times = download_data(self, dataset, orbit_dates, width, height, bbox, temporal_extent, bands, dataFilter_params)
+        response_data,orbit_times_middle = download_data(self, dataset, orbit_dates, width, height, bbox, temporal_extent, bands, dataFilter_params)
 
         mask = response_data[:, :, :, -1:] # ":" keeps the dimension
         mask = np.repeat(mask, len(bands), axis=-1)
         data = response_data[:, :, :, :-1]
         masked_data = da.ma.masked_array(data, mask=~mask)
 
-        orbit_dates_middle = [d["from"] + (d["to"] - d["from"]) / 2 for d in orbit_dates]
         xrdata = xr.DataArray(
             data,
             dims=('t', 'y', 'x', 'band'),
             coords={
                 'band': bands,
-                't': tile_times,
+                't': orbit_times_middle,
             },
             attrs={
                 "band_aliases": band_aliases,
