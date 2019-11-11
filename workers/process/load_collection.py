@@ -327,12 +327,12 @@ class load_collectionEOTask(ProcessEOTask):
         response_data,orbit_times_middle = download_data(self, dataset, orbit_dates, width, height, bbox, temporal_extent, bands, dataFilter_params)
 
         mask = response_data[:, :, :, -1:] # ":" keeps the dimension
-        mask = np.repeat(mask, len(bands), axis=-1)
+        mask = np.repeat(mask, len(bands), axis=-1).astype(bool)
         data = response_data[:, :, :, :-1]
         masked_data = da.ma.masked_array(data, mask=~mask)
 
         xrdata = xr.DataArray(
-            data,
+            masked_data,
             dims=('t', 'y', 'x', 'band'),
             coords={
                 'band': bands,
