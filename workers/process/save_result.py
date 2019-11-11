@@ -83,6 +83,7 @@ class save_resultEOTask(ProcessEOTask):
         output_format = self.validate_parameter(arguments, "format", required=True, allowed_types=[str])
         output_format = output_format.lower()
         output_options = self.validate_parameter(arguments, "options", default={}, allowed_types=[dict])
+        data = data.compute()
 
         if output_format not in GDAL_FORMATS:
             raise ProcessArgumentInvalid(f"The argument 'format' in process 'save_result' is invalid: supported formats are: {', '.join(GDAL_FORMATS.keys())}.")

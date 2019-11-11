@@ -178,7 +178,7 @@ def test_bbox_too_big_for_sh_service(set_mock_responses, arguments_factory, exec
         result = execute_load_collection_process(arguments)
     assert ex.value.args[0].startswith("The argument '<unknown>' in process 'load_collection' is invalid: ")
 
-
+@pytest.mark.skip("No limit anymore")
 def test_bbox_too_big_for_us(set_mock_responses, arguments_factory, execute_load_collection_process):
     # bbox size as reported by sentinelhub-py: (3041, 2215)
     invalid_bbox = {
