@@ -27,8 +27,16 @@ AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', FAKE_AWS_SECRET_
 class JobsPersistence(object):
     dynamodb = boto3.client('dynamodb') if DYNAMODB_PRODUCTION else \
         boto3.client('dynamodb', endpoint_url=DYNAMODB_LOCAL_URL, region_name="eu-central-1", aws_access_key_id=AWS_ACCESS_KEY_ID, aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
-    sqs = boto3.client('sqs') if DYNAMODB_PRODUCTION else \
-        boto3.client('sqs', endpoint_url=SQS_LOCAL_URL, region_name="eu-central-1", aws_access_key_id='x', aws_secret_access_key='x')
+    sqs = boto3.client('sqs',
+        region_name="eu-central-1",
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    ) if DYNAMODB_PRODUCTION else boto3.client('sqs',
+        endpoint_url=SQS_LOCAL_URL,
+        region_name="eu-central-1",
+        aws_access_key_id='x',
+        aws_secret_access_key='x'
+    )
 
     # entity types correspond to DynamoDB tables:
     ET_JOBS = 'shopeneo_jobs'
