@@ -1,5 +1,7 @@
 ## Running locally
 
+Mandatory: whichever method you select, first copy `.env.example` to `.env` and enter the variables there.
+
 First, start up all services:
 ```
 $ docker-compose up -d
