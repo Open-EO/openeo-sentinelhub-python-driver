@@ -116,6 +116,7 @@ def service_factory(app_client):
 def setup_function(function):
     ProcessGraphsPersistence.ensure_table_exists()
     JobsPersistence.ensure_table_exists()
+    JobsPersistence.ensure_queue_exists()
     ServicesPersistence.ensure_table_exists()
 
 

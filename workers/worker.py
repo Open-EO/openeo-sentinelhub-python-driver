@@ -6,6 +6,7 @@ from eolearn.core import EOWorkflow
 
 
 import process
+from dynamodb import JobsPersistence
 
 
 # logger = multiprocessing.get_logger()
@@ -70,8 +71,7 @@ def _execute_process_graph(process_graph, job_id, variables):
     return result_task.results
 
 
-
-def worker_proc(jobs_queue, results_queue, worker_number):
+def worker_proc(jobs_queue, worker_number):
     # worker shouldn't be concerned with signals - parent orchestrates
     # everything and will tell us if we need to quit:
     signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -95,5 +95,12 @@ def worker_proc(jobs_queue, results_queue, worker_number):
             error_code = ex.error_code if hasattr(ex, "error_code") else "Internal"
             http_code = ex.http_code if hasattr(ex, "http_code") else 500
         finally:
-            logger.info("Worker {} putting data about job [{}] to queue".format(worker_number, job["job_id"]))
-            results_queue.put((job["job_id"], results, error_msg, error_code, http_code))
+            job_id = job["job_id"]
+            logger.info("Worker {} writing results for job [{}]".format(worker_number, job_id))
+
+            # write results:
+            try:
+                JobsPersistence.update_running_to_finished(job_id, results, error_msg, error_code, http_code)
+                logger.info("Job {} finished.".format(job_id))
+            except:
+                logger.exception("Unknown error saving results, job will hang indefinitely! {}".format(job_id))
