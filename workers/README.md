@@ -1,6 +1,8 @@
+# Running the workers as a standalone service
+
 ## Installation instructions
 
-Mandatory: whichever method you select, first copy `.env.example` to `.env` and enter the variables there.
+Mandatory: whichever method you select, first copy `../.env.example` to `.env` and enter the variables there.
 
 ### Docker
 

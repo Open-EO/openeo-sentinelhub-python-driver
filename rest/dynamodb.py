@@ -18,6 +18,7 @@ FAKE_AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 # we use local DynamoDB by default, to avoid using AWS for testing by mistake
 DYNAMODB_PRODUCTION = os.environ.get('DYNAMODB_PRODUCTION', '').lower() in ["true", "1", "yes"]
 DYNAMODB_LOCAL_URL = os.environ.get('DYNAMODB_LOCAL_URL', 'http://localhost:8000')
+SQS_LOCAL_URL = os.environ.get('SQS_LOCAL_URL', 'http://localhost:9324')
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', FAKE_AWS_ACCESS_KEY_ID)
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', FAKE_AWS_SECRET_ACCESS_KEY)
 
@@ -124,6 +125,9 @@ class Persistence(object):
 
 class JobsPersistence(Persistence):
     TABLE_NAME = 'shopeneo_jobs'
+    SQS_QUEUE_NAME = 'shopeneo-jobs-queue'
+    sqs = boto3.client('sqs') if DYNAMODB_PRODUCTION else \
+        boto3.client('sqs', endpoint_url=SQS_LOCAL_URL, region_name="eu-central-1", aws_access_key_id='x', aws_secret_access_key='x')
 
     @classmethod
     def create(cls, data):
@@ -159,7 +163,23 @@ class JobsPersistence(Persistence):
             TableName=cls.TABLE_NAME,
             Item=item,
         )
+
+        # notify workers that a new job is available:
+        queue_url = cls.sqs.get_queue_url(QueueName=cls.SQS_QUEUE_NAME)['QueueUrl']
+        response = cls.sqs.send_message(QueueUrl=queue_url, MessageBody=record_id)
+
         return record_id
+
+    @classmethod
+    def ensure_queue_exists(cls):
+        try:
+            queue_info = cls.sqs.get_queue_url(QueueName=cls.SQS_QUEUE_NAME)
+        except:
+            cls.sqs.create_queue(QueueName=cls.SQS_QUEUE_NAME, Attributes={
+                'DelaySeconds': '0',
+                'MessageRetentionPeriod': '60',
+                'ReceiveMessageWaitTimeSeconds': '20',
+            })
 
 
 class ProcessGraphsPersistence(Persistence):
@@ -228,6 +248,7 @@ if __name__ == "__main__":
 
     log(INFO, "Initializing DynamoDB (url: {}, production: {})...".format(DYNAMODB_LOCAL_URL, DYNAMODB_PRODUCTION))
     JobsPersistence.ensure_table_exists()
+    JobsPersistence.ensure_queue_exists()
     ProcessGraphsPersistence.ensure_table_exists()
     ServicesPersistence.ensure_table_exists()
     log(INFO, "DynamoDB initialized.")
