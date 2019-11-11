@@ -35,9 +35,20 @@ services:
       /usr/bin/mc rm -r --force openEo/results;
       /usr/bin/mc mb openEo/results;
       /usr/bin/mc policy download openEo/results;
-      exit 0;
-      "
+      exit 0;"
 
+  sqs:
+    # Native image is much smaller and thus faster, but it is experimental:
+    image: softwaremill/elasticmq-native
+    # image: softwaremill/elasticmq
+    container_name: sqs
+    ports:
+      - '9324:9324'
+    healthcheck:
+      test: ["CMD", "curl", "-s", "http://localhost:9324"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
 
 volumes:
   minio-data:

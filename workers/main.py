@@ -75,10 +75,9 @@ def _feed_monitoring_system():
 def main():
     # create workers:
     jobs_queue = multiprocessing.Queue()
-    results_queue = multiprocessing.Queue()
     processes = []
     for i in range(10):
-        p = multiprocessing.Process(target=worker_proc, args=(jobs_queue, results_queue, i,))
+        p = multiprocessing.Process(target=worker_proc, args=(jobs_queue, i,))
         p.daemon = True
         p.start()
         processes.append(p)
@@ -88,8 +87,18 @@ def main():
     running_jobs = set()
     try:
         while True:
+            _feed_monitoring_system()
+
             # Because we couldn't find a way to get notifications about DynamoDB changes (via Streams)
-            # without polling, we simply poll the DynamoDB directly instead:
+            # without polling, we use SQS to be notified when new jobs surface. We still query DynamoDB
+            # to get them though, even though we receive the job_ids:
+            logger.info("Looking for jobs")
+            jobs_available = JobsPersistence.wait_for_jobs(timeout=20)
+            if not jobs_available:
+                logger.info("No jobs found, waiting for another 20s...")
+                continue
+
+            logger.info("Jobs found!")
             # GET queued AND should_be_cancelled = False
             new_queued = JobsPersistence.query_new_queued()
             for page in new_queued:
@@ -132,21 +141,6 @@ def main():
                     # job is no longer running, so the results will not be used:
                     running_jobs.remove(job_id)
 
-            time.sleep(5.0)
-
-            _feed_monitoring_system()
-
-            # write results:
-            while True:
-                try:
-                    job_id, results, error_msg, error_code, http_code = results_queue.get(False)
-                except queue.Empty:
-                    break
-                try:
-                    JobsPersistence.update_running_to_finished(job_id, results, error_msg, error_code, http_code)
-                    logger.info("Job {} finished.".format(job_id))
-                except:
-                    logger.exception("Unknown error saving results, job will hang indefinitely! {}".format(job_id))
 
     except KeyboardInterrupt:
         logger.info("SIGINT received, exiting.")

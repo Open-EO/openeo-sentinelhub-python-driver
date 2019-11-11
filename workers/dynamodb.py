@@ -20,15 +20,39 @@ FAKE_AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 # we use local DynamoDB by default, to avoid using AWS for testing by mistake
 DYNAMODB_PRODUCTION = os.environ.get('DYNAMODB_PRODUCTION', '').lower() in ["true", "1", "yes"]
 DYNAMODB_LOCAL_URL = os.environ.get('DYNAMODB_LOCAL_URL', 'http://localhost:8000')
+SQS_LOCAL_URL = os.environ.get('SQS_LOCAL_URL', 'http://localhost:9324')
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', FAKE_AWS_ACCESS_KEY_ID)
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', FAKE_AWS_SECRET_ACCESS_KEY)
 
 class JobsPersistence(object):
     dynamodb = boto3.client('dynamodb') if DYNAMODB_PRODUCTION else \
-        boto3.client('dynamodb', endpoint_url=DYNAMODB_LOCAL_URL,region_name="eu-central-1",aws_access_key_id=AWS_ACCESS_KEY_ID,aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+        boto3.client('dynamodb', endpoint_url=DYNAMODB_LOCAL_URL, region_name="eu-central-1", aws_access_key_id=AWS_ACCESS_KEY_ID, aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+    sqs = boto3.client('sqs') if DYNAMODB_PRODUCTION else \
+        boto3.client('sqs', endpoint_url=SQS_LOCAL_URL, region_name="eu-central-1", aws_access_key_id='x', aws_secret_access_key='x')
 
     # entity types correspond to DynamoDB tables:
     ET_JOBS = 'shopeneo_jobs'
+    SQS_QUEUE_NAME = 'shopeneo-jobs-queue'
+
+    @classmethod
+    def wait_for_jobs(cls, timeout=20):
+        # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sqs.html
+        queue_url = cls.sqs.get_queue_url(QueueName=cls.SQS_QUEUE_NAME)['QueueUrl']
+
+        # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sqs.html#SQS.Queue.receive_messages
+        # When we receive the message, it is kept hidden from others for 61 seconds, which is more than
+        # MessageRetentionPeriod (60s) - which essentially means that noone else can retrieve it.
+        messages = cls.sqs.receive_message(
+            QueueUrl=queue_url,
+            MaxNumberOfMessages=10,  # max. 10
+            WaitTimeSeconds=20,
+        )
+        if not messages.get('Messages'):
+            return []
+        delete_batch_entries = [{'Id': str(i + 1), 'ReceiptHandle': m['ReceiptHandle']} for i, m in enumerate(messages['Messages'])]
+        cls.sqs.delete_message_batch(QueueUrl=queue_url, Entries=delete_batch_entries)
+        job_ids = [m['Body'] for m in messages['Messages']]
+        return job_ids
 
     @classmethod
     def query_new_queued(cls):
