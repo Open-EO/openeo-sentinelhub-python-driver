@@ -109,7 +109,7 @@ def download_data(self, dataset, orbit_dates, total_width, total_height, bbox, t
     }
 
     n_width = math.ceil(total_width/max_chunk_size)
-    n_height = math.ceil(total_height/(total_width//n_width + 1))
+    n_height = math.ceil(total_height/(max_chunk_size*max_chunk_size/(total_width//n_width + 1)))
     bbox_list = BBoxSplitter([bbox.geometry], CRS.WGS84, (n_width, n_height)).get_bbox_list()
     x_image_shapes = [total_width//n_width + 1 if w < total_width % n_width else total_width//n_width for w in range(n_width)]
     y_image_shapes = [total_height//n_height + 1 if h < total_height % n_height else total_height//n_height for h in range(n_height)]
