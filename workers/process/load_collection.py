@@ -165,20 +165,20 @@ def download_data(self, dataset, orbit_dates, total_width, total_height, bbox, t
 
                     function setup() {{
                         return {{
-                            input: [{', '.join([f'"{b}"' for b in bands])}],
+                            input: [{', '.join([f'"{b}"' for b in bands])}, "dataMask"],
                             output: {{
-                                bands: {len(bands)},
+                                bands: {len(bands) + 1},
                                 sampleType: "FLOAT32",
                             }}
                         }}
                     }}
 
                     function evaluatePixel(sample) {{
-                        return [{", ".join(['sample.' + b for b in bands])}]
+                        return [{", ".join(['sample.' + b for b in bands])}, sample.dataMask]
                     }}
                 """
             }
-            shapes[i].append((y_image_shapes[j%n_height],x_image_shapes[j//n_height],len(bands)))
+            shapes[i].append((y_image_shapes[j%n_height],x_image_shapes[j//n_height],len(bands)+1))
             r = requests_session.post(url, headers=headers, json=request_params)
             response_futures[r] = {"date":i,"bbox":j}
 
@@ -328,9 +328,14 @@ class load_collectionEOTask(ProcessEOTask):
         orbit_dates = get_orbit_dates(dates)
         response_data,tile_times = download_data(self, dataset, orbit_dates, width, height, bbox, temporal_extent, bands, dataFilter_params)
 
+        mask = response_data[:, :, :, -1:] # ":" keeps the dimension
+        mask = np.repeat(mask, len(bands), axis=-1)
+        data = response_data[:, :, :, :-1]
+        masked_data = da.ma.masked_array(data, mask=~mask)
+
         orbit_dates_middle = [d["from"] + (d["to"] - d["from"]) / 2 for d in orbit_dates]
         xrdata = xr.DataArray(
-            response_data,
+            data,
             dims=('t', 'y', 'x', 'band'),
             coords={
                 'band': bands,
