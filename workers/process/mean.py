@@ -15,9 +15,6 @@ class meanEOTask(ProcessEOTask):
         data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray, list])
         ignore_nodata = self.validate_parameter(arguments, "ignore_nodata", default=True, allowed_types=[bool])
 
-        if not isinstance(ignore_nodata, bool):
-            raise ProcessArgumentInvalid("The argument 'ignore_nodata' in process 'mean' is invalid: Argument must be of type 'boolean'.")
-
         original_type_was_number, data = self.convert_to_dataarray(data)
 
         if data.size == 0:
