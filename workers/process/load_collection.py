@@ -8,11 +8,15 @@ import requests
 from requests_futures.sessions import FuturesSession
 from concurrent.futures import ThreadPoolExecutor
 from osgeo import gdal
-from sentinelhub import WmsRequest, WcsRequest, MimeType, CRS, BBox, CustomUrlParam
+from sentinelhub import WmsRequest, WcsRequest, MimeType, CRS, BBox, CustomUrlParam, BBoxSplitter
 from sentinelhub.constants import AwsConstants
 from sentinelhub.config import SHConfig
 import sentinelhub.geo_utils
 from eolearn.core import FeatureType, EOPatch
+import math
+import imageio
+from dask import delayed
+import dask.array as da
 
 
 from ._common import ProcessEOTask, ProcessArgumentInvalid, Internal
@@ -21,7 +25,6 @@ from ._common import ProcessEOTask, ProcessArgumentInvalid, Internal
 SENTINELHUB_INSTANCE_ID = os.environ.get('SENTINELHUB_INSTANCE_ID', None)
 SENTINELHUB_LAYER_ID_S2L1C = os.environ.get('SENTINELHUB_LAYER_ID_S2L1C', None)
 SENTINELHUB_LAYER_ID_S1GRD = os.environ.get('SENTINELHUB_LAYER_ID_S1GRD', None)
-
 
 def _clean_temporal_extent(temporal_extent):
     """
@@ -89,6 +92,122 @@ def get_orbit_dates(dates):
     return result
 
 
+def construct_image(data, n_width, n_height):
+    rows = []
+    for i in range(n_height):
+        print(data[i::n_height])
+        rows.append(da.concatenate(data[i::n_height], axis=1))
+    return da.concatenate(rows[::-1], axis=0)
+
+
+def download_data(self, dataset, orbit_dates, total_width, total_height, bbox, temporal_extent, bands, dataFilter_params, max_chunk_size=1000):
+    auth_token = SHProcessingAuthTokenSingleton.get()
+    url = 'https://services.sentinel-hub.com/api/v1/process'
+    headers = {
+        'Accept': 'image/tiff',
+        'Authorization': f'Bearer {auth_token}'
+    }
+
+    n_width = math.ceil(total_width/max_chunk_size)
+    n_height = math.ceil(total_height/(max_chunk_size*max_chunk_size/(total_width//n_width + 1)))
+    bbox_list = BBoxSplitter([bbox.geometry], CRS.WGS84, (n_width, n_height)).get_bbox_list()
+    x_image_shapes = [total_width//n_width + 1 if w < total_width % n_width else total_width//n_width for w in range(n_width)]
+    y_image_shapes = [total_height//n_height + 1 if h < total_height % n_height else total_height//n_height for h in range(n_height)]
+
+    adapter_kwargs = dict(pool_maxsize=len(orbit_dates)*n_width*n_height)
+    executor = ThreadPoolExecutor(max_workers=len(orbit_dates)*n_width*n_height)
+    requests_session = FuturesSession(executor=executor, adapter_kwargs=adapter_kwargs)
+    response_futures = {}
+
+    orbit_times_middle,shapes = [],{}
+
+    tmp_folder = f"/tmp-{self.job_id}"
+    if os.path.exists(tmp_folder):
+        os.rmdir(tmp_folder)
+    os.mkdir(tmp_folder)
+
+    for i, date in enumerate(orbit_dates):
+        mean_time = date["from"] + (date["to"] - date["from"]) / 2
+        tile_from = mean_time - timedelta(minutes=25)
+        tile_to = mean_time + timedelta(minutes=25)
+        orbit_times_middle.append(mean_time)
+        shapes[i] = []
+
+        for j, bbox_section in enumerate(bbox_list):
+            request_params = {
+                "input": {
+                    "bounds": {
+                        "bbox": [bbox_section.min_x, bbox_section.min_y, bbox_section.max_x, bbox_section.max_y],
+                        "properties": {
+                            "crs": "http://www.opengis.net/def/crs/EPSG/0/4326",
+                        }
+                    },
+                    "data": [
+                        {
+                            "type": dataset,
+                            "dataFilter": {
+                                "timeRange": {
+                                    "from": tile_from.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                                    "to": tile_to.strftime("%Y-%m-%dT%H:%M:%S+00:00"),
+                                },
+                                **dataFilter_params,
+                            }
+                        },
+                    ],
+                },
+                "output": {
+                    "width": x_image_shapes[j//n_height],
+                    "height": y_image_shapes[j%n_height],
+                },
+                "evalscript": f"""//VERSION=3
+
+                    function setup() {{
+                        return {{
+                            input: [{', '.join([f'"{b}"' for b in bands])}, "dataMask"],
+                            output: {{
+                                bands: {len(bands) + 1},
+                                sampleType: "FLOAT32",
+                            }}
+                        }}
+                    }}
+
+                    function evaluatePixel(sample) {{
+                        return [{", ".join(['sample.' + b for b in bands])}, sample.dataMask]
+                    }}
+                """
+            }
+            shapes[i].append((y_image_shapes[j%n_height],x_image_shapes[j//n_height],len(bands)+1))
+            r = requests_session.post(url, headers=headers, json=request_params)
+            response_futures[r] = {"date":i,"bbox":j}
+
+    dates_filenames = {}
+
+    for r_future, indices in response_futures.items():
+        r = r_future.result()
+        if r.status_code != 200:
+            raise Internal(r.content)
+        self.logger.debug('Image received.')
+
+        tmp_filename = f'{tmp_folder}/image-{indices["date"]}-{indices["bbox"]}.tiff'
+        if dates_filenames.get(indices["date"]) is None:
+            dates_filenames[indices["date"]] = [tmp_filename]
+        else:
+            dates_filenames[indices["date"]].append(tmp_filename)
+        with open(tmp_filename, 'wb') as f:
+            f.write(r.content)
+
+    response_data = []
+    for i in range(len(orbit_dates)):
+        images = [delayed(imageio.imread)(filename) for filename in dates_filenames[i]]
+        images = [da.from_delayed(image, shape=shapes[i][j], dtype=np.float32) for j,image in enumerate(images)]
+        image_gdal = construct_image(images, n_width, n_height)
+        response_data.append(image_gdal)
+
+    response_data = da.stack(response_data)
+    self.logger.debug('Images created.')
+    return response_data, orbit_times_middle
+
+
 class SHProcessingAuthTokenSingleton(object):
     _access_token = None
     _valid_until = None
@@ -148,8 +267,6 @@ class load_collectionEOTask(ProcessEOTask):
             height = options.get("height", options.get("width"))
         else:
             width, height = sentinelhub.geo_utils.bbox_to_dimensions(bbox, 10.0)
-            if width * height > 1000 * 1000:
-                raise ProcessArgumentInvalid("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels, but is: {}x{}.".format(width, height))
 
         band_aliases = {}
 
@@ -206,111 +323,20 @@ class load_collectionEOTask(ProcessEOTask):
             height=height,
         )
         dates = request.get_dates()
-
         orbit_dates = get_orbit_dates(dates)
+        response_data,orbit_times_middle = download_data(self, dataset, orbit_dates, width, height, bbox, temporal_extent, bands, dataFilter_params)
 
-        self.logger.debug(f'Unique dates found: {orbit_dates}')
-        response_data = np.empty((len(orbit_dates), len(bands) + 1, height, width), dtype=np.float32)
-        auth_token = SHProcessingAuthTokenSingleton.get()
-        url = 'https://services.sentinel-hub.com/api/v1/process'
-        headers = {
-            'Accept': 'image/tiff',
-            'Authorization': f'Bearer {auth_token}'
-        }
+        mask = response_data[:, :, :, -1:] # ":" keeps the dimension
+        mask = np.repeat(mask, len(bands), axis=-1).astype(bool)
+        data = response_data[:, :, :, :-1]
+        masked_data = da.ma.masked_array(data, mask=~mask)
 
-        # We are issuing parallel requests to SH because it makes total execution time much lower.
-        # Parameter adapter_kwargs is solving:
-        #  "WARNING:urllib3.connectionpool:Connection pool is full, discarding connection: ..."
-        # https://stackoverflow.com/a/34893364/593487
-        adapter_kwargs = dict(pool_maxsize=len(orbit_dates))
-        executor = ThreadPoolExecutor(max_workers=len(orbit_dates))
-        requests_session = FuturesSession(executor=executor, adapter_kwargs=adapter_kwargs)
-        response_futures = []
-        for date in orbit_dates:
-            request_params = {
-                "input": {
-                    "bounds": {
-                        "bbox": [bbox.min_x, bbox.min_y, bbox.max_x, bbox.max_y],
-                        "properties": {
-                            "crs": "http://www.opengis.net/def/crs/EPSG/0/4326",
-                        }
-                    },
-                    "data": [
-                        {
-                            "type": dataset,
-                            "dataFilter": {
-                                "timeRange": {
-                                    # backend doesn't like if from == to, so we expand by 1 second every way:
-                                    "from": (date["from"] - timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%S+00:00"),
-                                    "to": (date["to"] + timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%S+00:00"),
-                                },
-                                **dataFilter_params,
-                            }
-                        },
-                    ],
-                },
-                "output": {
-                    "width": width,
-                    "height": height,
-                },
-                "evalscript": f"""//VERSION=3
-
-                    function setup() {{
-                        return {{
-                            input: [{', '.join([f'"{b}"' for b in bands])}],
-                            output: {{
-                                bands: {len(bands) + 1},
-                                sampleType: "FLOAT32",
-                            }}
-                        }}
-                    }}
-
-                    function evaluatePixel(sample) {{
-                        return [{", ".join(['sample.' + b for b in bands])}, sample.dataMask]
-                    }}
-                """
-            }
-            self.logger.debug(f'Requesting tiff for: {date}')
-            r = requests_session.post(url, headers=headers, json=request_params)
-            response_futures.append(r)
-
-        for i, r_future in enumerate(response_futures):
-            r = r_future.result()
-            if r.status_code != 200:
-                raise Internal(r.content)
-            self.logger.debug('Image received.')
-
-            # convert tiff to numpy:
-            memory_filename = f"/vsimem/{i}.tif"
-            try:
-                gdal.FileFromMemBuffer(memory_filename, r.content)
-                raster_ds = gdal.Open(memory_filename, gdal.GA_ReadOnly)
-                image_gdal = raster_ds.ReadAsArray()
-            finally:
-                gdal.Unlink(memory_filename)
-
-            response_data[i, ...] = image_gdal
-            self.logger.debug('Image converted.')
-
-        # data is arranged differently than it was with sentinelhub-py,
-        # let's rearrange it:
-        response_data = np.transpose(response_data, (0, 2, 3, 1))
-
-        # split mask (IS_DATA) from the data itself:
-        rd = np.asarray(response_data)
-        mask = rd[:, :, :, -1].astype(bool)
-        data = rd[:, :, :, :-1]
-        # use MaskedArray:
-        masked_data = data.view(np.ma.MaskedArray)
-        masked_data[~mask] = np.ma.masked
-
-        orbit_dates_middle = [d["from"] + (d["to"] - d["from"]) / 2 for d in orbit_dates]
         xrdata = xr.DataArray(
             masked_data,
             dims=('t', 'y', 'x', 'band'),
             coords={
                 'band': bands,
-                't': orbit_dates_middle,
+                't': orbit_times_middle,
             },
             attrs={
                 "band_aliases": band_aliases,
