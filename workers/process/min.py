@@ -15,8 +15,6 @@ class minEOTask(ProcessEOTask):
         data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray, list])
         ignore_nodata = self.validate_parameter(arguments, "ignore_nodata", default=True, allowed_types=[bool])
 
-        ignore_nodata = arguments.get("ignore_nodata", True)
-
         if not isinstance(ignore_nodata, bool):
             raise ProcessArgumentInvalid("The argument 'ignore_nodata' in process 'min' is invalid: Argument must be of type 'boolean'.")
 
