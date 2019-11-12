@@ -46,7 +46,8 @@ def execute_median_process(generate_data):
 @pytest.mark.parametrize('data,ignore_nodata,expected_result', [
     ([1,3,3,6,7,8,9], True, 6),
     ([1,2,3,4,5,6,8,9], True, 4.5),
-    ([-1,0,None,1], False, None)
+    ([-1,-0.5,None,1], True, -0.5),
+    ([-1,0,None,1], False, None),
 ])
 def test_examples(execute_median_process, data, expected_result, ignore_nodata):
     """
