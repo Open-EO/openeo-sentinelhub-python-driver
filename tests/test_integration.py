@@ -543,3 +543,98 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data):
     assert r.status_code == 200, r.data
     expected_data = get_expected_data("tile256x256ndvi.jpeg")
     assert r.data == expected_data, "File is not the same!"
+
+
+@pytest.mark.parametrize('value,double_value,expected_status_code', [
+    (0.5, 1.0, 200),
+    (0.5, 2.0, 400),
+])
+def test_assert_works(app_client, value, double_value, expected_status_code):
+    process_graph = {
+      "gencol1": {
+        "process_id": "generate_collection",
+        "arguments": {
+          "data": [
+            [
+              [
+                [value, 0.15],
+              ],
+              [
+                [0.15, None]
+              ]
+            ]
+          ],
+          "dims": ["x", "y", "t", "band"],
+          "coords": {
+            "x": [12.3],
+            "y": [45.1, 45.2],
+            "t": ["2019-08-01 11:00:12"],
+            "band": ["nir", "red"]
+          }
+        },
+      },
+      "ndvi1": {
+        "process_id": "linear_scale_range",
+        "arguments": {
+          "x": {
+            "from_node": "gencol1"
+          },
+          "inputMin": 0.0,
+          "inputMax": 1.0,
+          "outputMin": 0.0,
+          "outputMax": 2.0,
+        }
+      },
+      "expectedndvi1": {
+        "process_id": "generate_collection",
+        "arguments": {
+          "data": [
+            [
+              [
+                [double_value, 0.3],
+              ],
+              [
+                [0.3, None]
+              ]
+            ]
+          ],
+          "dims": ["x", "y", "t", "band"],
+          "coords": {
+            "x": [12.3],
+            "y": [45.1, 45.2],
+            "t": ["2019-08-01 11:00:12"],
+            "band": ["nir", "red"]
+          }
+        }
+      },
+      "assertndvi1": {
+        "process_id": "assert_equals",
+        "arguments": {
+          "a": {
+            "from_node": "ndvi1"
+          },
+          "b": {
+            "from_node": "expectedndvi1"
+          }
+        },
+      },
+      "result1": {
+        "process_id": "save_result",
+        "arguments": {
+          "data": {
+            "from_node": "gencol1"
+          },
+          "format": "gtiff",
+          "options": {
+            "datatype": "float32"
+          }
+        },
+        "result": True
+      }
+    }
+
+    data = {
+        "process_graph": process_graph,
+    }
+    r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
+    assert r.status_code == expected_status_code, r.data

@@ -1,6 +1,8 @@
 import numpy as np
 import xarray as xr
 import math
+from datetime import datetime
+from sentinelhub import CRS, BBox
 
 from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired
 
@@ -15,6 +17,17 @@ class generate_collectionEOTask(ProcessEOTask):
         dims = self.validate_parameter(arguments, "dims", required=True, allowed_types=[list])
         coords = self.validate_parameter(arguments, "coords", required=True, allowed_types=[dict])
 
-        data = xr.DataArray(data_as_list, coords=coords, dims=dims)
+        if "t" in coords:
+            coords["t"] = [datetime.strptime(d, '%Y-%m-%d %H:%M:%S') for d in coords["t"]]
+
+        data = xr.DataArray(
+            np.array(data_as_list, dtype=np.float),
+            coords=coords,
+            dims=dims,
+            attrs={
+                "band_aliases": {},
+                "bbox": BBox((12.0, 45.0, 13.0, 46.0,), CRS(4326)),
+            },
+        )
         self.logger.info(data)
         return data

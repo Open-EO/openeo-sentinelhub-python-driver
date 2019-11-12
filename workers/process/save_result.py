@@ -136,7 +136,7 @@ class save_resultEOTask(ProcessEOTask):
                 raise ProcessArgumentInvalid("The argument 'format' in process 'save_result' is invalid: GDAL driver not supported.")
             metadata = dst_driver.GetMetadata()
             if metadata.get(gdal.DCAP_CREATE) == "YES":
-                dst_intermediate = dst_driver.Create(filename, xsize=nx, ysize=ny, bands=n_bands, eType=datatype)
+                dst_intermediate = dst_driver.Create(filename, xsize=ny, ysize=nx, bands=n_bands, eType=datatype)
             else:
                 # PNG and JPG are special in that Create() is not supported, but we can create a MEM
                 # GDAL dataset and later use CreateCopy() to copy it.
