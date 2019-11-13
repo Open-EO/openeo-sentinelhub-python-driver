@@ -14,6 +14,31 @@ class assert_equalsEOTask(ProcessEOTask):
         try:
             assert_allclose(a, b)
         except:
+            # since it is important for us to know what the difference is, make
+            # an effort to log both arguments nicely:
+            indented_a = '    ' + str(a).replace('\n', '\n    ')
+            indented_b = '    ' + str(b).replace('\n', '\n    ')
+            message = f"""
+
+
+**************************
+***** ASSERT FAILED! *****
+**************************
+
+-----
+Argument a:
+
+{indented_a}
+
+-----
+Argument b:
+
+{indented_b}
+
+**************************
+
+"""
+            self.logger.info(message)
             raise ProcessArgumentInvalid(f"The argument 'b' in process 'assert_equals' is invalid: Parameters a and b differ (node: '{self.node_name}').")
 
         return None
