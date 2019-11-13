@@ -21,7 +21,7 @@
         }
       }
     },
-    "ndvi1": {
+    "linear1": {
       "process_id": "linear_scale_range",
       "arguments": {
         "x": {
@@ -33,7 +33,7 @@
         "outputMax": 2.0
       }
     },
-    "expectedndvi1": {
+    "expectedlinear1": {
       "process_id": "generate_collection",
       "arguments": {
         "data": [
@@ -55,14 +55,14 @@
         }
       }
     },
-    "assertndvi1": {
+    "assertlinear1": {
       "process_id": "assert_equals",
       "arguments": {
         "a": {
-          "from_node": "ndvi1"
+          "from_node": "linear1"
         },
         "b": {
-          "from_node": "expectedndvi1"
+          "from_node": "expectedlinear1"
         }
       }
     },
