@@ -1,5 +1,6 @@
 import json
 import pytest
+import glob
 
 import sys, os
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rest"))
@@ -573,7 +574,7 @@ def test_assert_works(app_client, value, double_value, expected_status_code):
           }
         },
       },
-      "ndvi1": {
+      "linear1": {
         "process_id": "linear_scale_range",
         "arguments": {
           "x": {
@@ -585,7 +586,7 @@ def test_assert_works(app_client, value, double_value, expected_status_code):
           "outputMax": 2.0,
         }
       },
-      "expectedndvi1": {
+      "expectedlinear1": {
         "process_id": "generate_collection",
         "arguments": {
           "data": [
@@ -607,14 +608,14 @@ def test_assert_works(app_client, value, double_value, expected_status_code):
           }
         }
       },
-      "assertndvi1": {
+      "assertlinear1": {
         "process_id": "assert_equals",
         "arguments": {
           "a": {
-            "from_node": "ndvi1"
+            "from_node": "linear1"
           },
           "b": {
-            "from_node": "expectedndvi1"
+            "from_node": "expectedlinear1"
           }
         },
       },
@@ -638,3 +639,27 @@ def test_assert_works(app_client, value, double_value, expected_status_code):
     }
     r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
     assert r.status_code == expected_status_code, r.data
+
+
+def _get_test_process_graphs():
+    for f in glob.glob(os.path.join(os.path.dirname(__file__), "test_process_graphs/*.json")):
+        if not os.path.isfile(f) or os.path.basename(f).startswith('_'):
+            print("Skipping: {}".format(os.path.basename(f)))
+            continue
+        with open(f, "rt") as f:
+            c = f.read()
+            print(c)
+            yield c
+
+@pytest.mark.parametrize('process_graph_json', _get_test_process_graphs())
+def test_process_graphs(app_client, process_graph_json):
+    """
+        Load process graph definitions from test_process_graph/*.json and execute them
+        via POST /result/, expecting status 200 on each of them.
+    """
+    process_graph = json.loads(process_graph_json)
+    data = {
+        "process_graph": process_graph,
+    }
+    r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
+    assert r.status_code == 200, r.data
