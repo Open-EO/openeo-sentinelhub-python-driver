@@ -38,7 +38,7 @@ def execute_linear_scale_range_process(generate_data):
         if outputMin is not None: arguments["outputMin"] = outputMin
         if outputMax is not None: arguments["outputMax"] = outputMax
 
-        return process.linear_scale_range.linear_scale_rangeEOTask(None, "" , None).process(arguments)
+        return process.linear_scale_range.linear_scale_rangeEOTask(None, "" , None, {}, "node1").process(arguments)
     return wrapped
 
 

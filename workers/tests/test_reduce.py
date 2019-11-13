@@ -38,7 +38,7 @@ def execute_reduce_process(generate_data):
         if target_dimension is not None: arguments["target_dimension"] = target_dimension
         if binary is not None: arguments["binary"] = binary
 
-        return process.reduce.reduceEOTask(None, "" , logger, {}, "reduce1").process(arguments)
+        return process.reduce.reduceEOTask(None, "" , logger, {}, "node1").process(arguments)
     return wrapped
 
 

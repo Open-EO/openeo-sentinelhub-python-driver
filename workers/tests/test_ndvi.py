@@ -38,26 +38,26 @@ def data1(construct_data):
     synthetic_data = [[[2,3]]]
     bands = ["B04","B08"]
     return construct_data(synthetic_data, bands)
-    
+
 
 
 @pytest.fixture
 def actual_result1(construct_data):
-    synthetic_data = [[[0.2]]]   
+    synthetic_data = [[[0.2]]]
     bands = ["ndvi"]
     return construct_data(synthetic_data, bands)
 
 
 @pytest.fixture
 def actual_result2(construct_data):
-    synthetic_data = [[[0.2]]]   
+    synthetic_data = [[[0.2]]]
     bands = ["test_name01"]
     return construct_data(synthetic_data, bands)
 
 
 @pytest.fixture
 def ndviEOTask():
-    return process.ndvi.ndviEOTask(None, "", None)
+    return process.ndvi.ndviEOTask(None, "", None, {}, "node1")
 
 
 ###################################
@@ -80,7 +80,7 @@ def test_missing_data(ndviEOTask):
     """
     with pytest.raises(ProcessArgumentRequired) as ex:
         result = ndviEOTask.process({})
-    
+
     assert ex.value.args[0] == "Process 'ndvi' requires argument 'data'."
 
 

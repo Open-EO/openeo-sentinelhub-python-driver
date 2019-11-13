@@ -16,7 +16,7 @@ JOB_ID = "random_job_id"
 
 @pytest.fixture
 def save_resultEOTask():
-    return process.save_result.save_resultEOTask(None, JOB_ID , None)
+    return process.save_result.save_resultEOTask(None, JOB_ID , None, {}, "node1")
 
 @pytest.fixture
 def create_result_object():
