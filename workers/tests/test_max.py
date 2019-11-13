@@ -64,7 +64,6 @@ def test_examples(execute_max_process, data, expected_result, ignore_nodata):
     ([[[[0.2,0.8]]]], {'reduce_by': ['y']}, ('t','x','band'), [[[0.2,0.8]]]),
     ([[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]], {'reduce_by': ['y']}, ('t','x','band'), [[[0.1, 0.15], [0.15, 0.2]]]),
 ])
-
 def test_with_xarray(execute_max_process, generate_data, data, expected_data, expected_dims, attrs):
     """
         Test max process with xarray.DataArrays
