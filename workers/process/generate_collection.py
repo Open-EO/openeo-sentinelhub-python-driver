@@ -15,7 +15,7 @@ class generate_collectionEOTask(ProcessEOTask):
     def process(self, arguments):
         data_as_list = self.validate_parameter(arguments, "data", required=True, allowed_types=[list])
         dims = self.validate_parameter(arguments, "dims", required=True, allowed_types=[list])
-        coords = self.validate_parameter(arguments, "coords", required=True, allowed_types=[dict])
+        coords = self.validate_parameter(arguments, "coords", allowed_types=[dict], default={})
 
         if "t" in coords:
             coords["t"] = [datetime.strptime(d, '%Y-%m-%d %H:%M:%S') for d in coords["t"]]
