@@ -564,10 +564,10 @@ def test_assert_works(app_client, value, double_value, expected_status_code):
               ]
             ]
           ],
-          "dims": ["x", "y", "t", "band"],
+          "dims": ["y", "x", "t", "band"],
           "coords": {
-            "x": [12.3],
-            "y": [45.1, 45.2],
+            "y": [12.3],
+            "x": [45.1, 45.2],
             "t": ["2019-08-01 11:00:12"],
             "band": ["nir", "red"]
           }
@@ -598,10 +598,10 @@ def test_assert_works(app_client, value, double_value, expected_status_code):
               ]
             ]
           ],
-          "dims": ["x", "y", "t", "band"],
+          "dims": ["y", "x", "t", "band"],
           "coords": {
-            "x": [12.3],
-            "y": [45.1, 45.2],
+            "y": [12.3],
+            "x": [45.1, 45.2],
             "t": ["2019-08-01 11:00:12"],
             "band": ["nir", "red"]
           }
