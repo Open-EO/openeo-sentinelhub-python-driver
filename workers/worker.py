@@ -41,13 +41,13 @@ def _execute_process_graph(process_graph, job_id, variables):
         # We would like to instantiate an appropriate EOTask based on
         # process_id, like this:
         #   tasks_by_name[node_name] = \
-        #           load_collectionEOTask(node_definition['arguments'])
+        #           load_collectionEOTask(node_definition['arguments'], ...)
         process_id = node_definition['process_id']
         task_module_name = '{process_id}'.format(process_id=process_id)
         task_class_name = '{process_id}EOTask'.format(process_id=process_id)
         task_module = getattr(sys.modules[__name__].process, task_module_name)
         task_class = getattr(task_module, task_class_name)
-        tasks_by_name[node_name] = task_class(node_definition['arguments'], job_id, logger, variables)
+        tasks_by_name[node_name] = task_class(node_definition['arguments'], job_id, logger, variables, node_name)
 
         if node_definition.get('result', False):
             result_task = tasks_by_name[node_name]

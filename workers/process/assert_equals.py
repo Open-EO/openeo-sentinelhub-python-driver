@@ -14,6 +14,6 @@ class assert_equalsEOTask(ProcessEOTask):
         try:
             assert_allclose(a, b)
         except:
-            raise ProcessArgumentInvalid("The argument 'b' in process 'assert_equals' is invalid: Parameters a and b differ.")
+            raise ProcessArgumentInvalid(f"The argument 'b' in process 'assert_equals' is invalid: Parameters a and b differ (node: '{self.node_name}').")
 
         return None
