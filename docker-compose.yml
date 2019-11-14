@@ -64,10 +64,10 @@ services:
       context: .
       dockerfile: workers/Dockerfile
     depends_on:
-        dynamodb:
-          condition: service_healthy
-        minio:
-          condition: service_healthy
+      dynamodb:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     environment:
       # SH details should be specified in .env file:
       SENTINELHUB_INSTANCE_ID: "${SENTINELHUB_INSTANCE_ID}"
