@@ -147,7 +147,7 @@ class ProcessEOTask(EOTask):
                 float: "number",
                 bool: "boolean",
                 type(None): "null",
-                xr.DataArray: "xarray.DataArray",
+                xr.DataArray: "raster-cube",
                 dict: "object",
                 str: "string",
                 list: "array",
@@ -165,11 +165,24 @@ class ProcessEOTask(EOTask):
             return False ,data
 
         if as_list:
-            for i,element in enumerate(data):
-                if not isinstance(element, xr.DataArray):
-                    data[i] = xr.DataArray(np.array(element, dtype=np.float))
-                else:
+            model = None
+            for element in data:
+                if isinstance(element, xr.DataArray):
+                    model = element
                     original_type_was_number = False
+                    break
+
+            for i,element in enumerate(data):
+                if isinstance(element, (int, float, type(None))):
+                    if model is not None:
+                        new_data = element * np.ones(model.shape, dtype=np.float)
+                        number_array = model.copy(data=new_data)
+                        data[i] = number_array
+                    else:
+                        data[i] = xr.DataArray(np.array(element, dtype=np.float))
+                elif not isinstance(element, xr.DataArray):
+                    raise ProcessArgumentInvalid("The argument 'data' in process '{}' is invalid: Elements of the array must be of types '[number, null, raster-cube]'.".format(self.process_id))
+
         else:
             data = xr.DataArray(np.array(data, dtype=np.float))
 

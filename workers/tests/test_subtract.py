@@ -98,3 +98,24 @@ def test_xarray_directly(execute_subtract_process, generate_data, data, reduce_b
     expected_result = generate_data(data=expected_data, dims=expected_dims, attrs={"reduce_by": reduce_by}, as_dataarray=True)
     result = execute_subtract_process({"data": data, "attrs": {"reduce_by": reduce_by}, "as_dataarray": True})
     xr.testing.assert_allclose(result, expected_result)
+
+
+@pytest.mark.parametrize('number1,number2,arr1,arr2,expected_data,num_first', [
+    (1000, -200, [[[[500.0,-800.0]]],[[[0.1,5.0]]]], [[[[700.0,2000.0]]],[[[200.0,-5.0]]]], [[[[0,0]]],[[[999.9,1200]]]], True),
+    (1000, -200, [[[[500.0,-800.0]]],[[[0.1,5.0]]]], [[[[700.0,2000.0]]],[[[200.0,-5.0]]]], [[[[-1000,-3600]]],[[[-999.9,-790]]]], False),
+])
+def test_with_numbers(execute_subtract_process, generate_data, number1, number2, arr1, arr2, expected_data, num_first):
+    """
+        Test subtract process by a list of numbers and DataArrays
+    """
+    expected_result = generate_data(data=expected_data, as_dataarray=True)
+    arr1 = generate_data(data=arr1, as_dataarray=True)
+    arr2 = generate_data(data=arr2, as_dataarray=True)
+
+    if num_first:
+        data = [number1, arr1, number2, arr2]
+    else:
+        data = [arr1, number1, arr2, number2]
+
+    result = execute_subtract_process({"data": data, "as_list": True})
+    xr.testing.assert_allclose(result, expected_result)
