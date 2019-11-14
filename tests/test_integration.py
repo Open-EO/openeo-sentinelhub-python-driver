@@ -268,7 +268,7 @@ def test_process_batch_job(app_client, example_process_graph):
     r = app_client.get("/jobs/{}".format(record_id))
     actual = json.loads(r.data.decode('utf-8'))
     assert r.status_code == 200
-    assert actual["status"] in ["queued"]
+    assert actual["status"] in ["queued", "running", "error", "finished"]
 
     r = app_client.get("/jobs/{}/results".format(record_id))
     actual = json.loads(r.data.decode('utf-8'))
