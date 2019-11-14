@@ -92,13 +92,13 @@ def main():
             # Because we couldn't find a way to get notifications about DynamoDB changes (via Streams)
             # without polling, we use SQS to be notified when new jobs surface. We still query DynamoDB
             # to get them though, even though we receive the job_ids:
-            logger.info("Looking for jobs")
-            jobs_available = JobsPersistence.wait_for_jobs(timeout=20)
-            if not jobs_available:
-                logger.info("No jobs found, waiting for another 20s...")
+            logger.info("Sleeping / waiting for wakeup:")
+            wakeup = JobsPersistence.wait_for_wakeup(timeout=20)
+            if not wakeup:
+                logger.info("Continue sleeping...")
                 continue
 
-            logger.info("Jobs found!")
+            logger.info("Woke up!")
             # GET queued AND should_be_cancelled = False
             new_queued = JobsPersistence.query_new_queued()
             for page in new_queued:

@@ -43,7 +43,7 @@ class JobsPersistence(object):
     SQS_QUEUE_NAME = 'shopeneo-jobs-queue'
 
     @classmethod
-    def wait_for_jobs(cls, timeout=20):
+    def wait_for_wakeup(cls, timeout=20):
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sqs.html
         queue_url = cls.sqs.get_queue_url(QueueName=cls.SQS_QUEUE_NAME)['QueueUrl']
 
