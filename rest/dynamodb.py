@@ -34,19 +34,7 @@ class Persistence(object):
         aws_access_key_id=AWS_ACCESS_KEY_ID,
         aws_secret_access_key=AWS_SECRET_ACCESS_KEY
     )
-    
-    SQS_QUEUE_NAME = 'shopeneo-jobs-queue'
-    sqs = boto3.client('sqs',
-        region_name="eu-central-1",
-        aws_access_key_id=AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-    ) if DYNAMODB_PRODUCTION else boto3.client('sqs',
-        endpoint_url=SQS_LOCAL_URL,
-        region_name="eu-central-1",
-        aws_access_key_id='x',
-        aws_secret_access_key='x'
-    )
-
+     
     TABLE_NAME = None
 
     @classmethod
@@ -140,6 +128,17 @@ class Persistence(object):
 
 class JobsPersistence(Persistence):
     TABLE_NAME = 'shopeneo_jobs'
+    SQS_QUEUE_NAME = 'shopeneo-jobs-queue'
+    sqs = boto3.client('sqs',
+        region_name="eu-central-1",
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    ) if DYNAMODB_PRODUCTION else boto3.client('sqs',
+        endpoint_url=SQS_LOCAL_URL,
+        region_name="eu-central-1",
+        aws_access_key_id='x',
+        aws_secret_access_key='x'
+    )
 
     @classmethod
     def create(cls, data):
