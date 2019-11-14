@@ -34,7 +34,7 @@ class Persistence(object):
         aws_access_key_id=AWS_ACCESS_KEY_ID,
         aws_secret_access_key=AWS_SECRET_ACCESS_KEY
     )
-     
+
     TABLE_NAME = None
 
     @classmethod
@@ -82,9 +82,6 @@ class Persistence(object):
                 new_value = str(new_value)
 
         updated_item = cls.dynamodb.update_item(TableName=cls.TABLE_NAME, Key={'id':{'S':record_id}}, UpdateExpression="SET {} = :new_content".format(key), ExpressionAttributeValues={':new_content': {data_type: new_value}})
-               # notify workers that a new job is available:
-        queue_url = cls.sqs.get_queue_url(QueueName=cls.SQS_QUEUE_NAME)['QueueUrl']
-        response = cls.sqs.send_message(QueueUrl=queue_url, MessageBody=record_id)
         return updated_item
 
     @classmethod
