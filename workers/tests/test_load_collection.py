@@ -81,7 +81,7 @@ def argumentsS1GRDIW(arguments_factory):
 def execute_load_collection_process():
     def wrapped(arguments):
         logger = logging.getLogger()
-        return process.load_collection.load_collectionEOTask(arguments, "", logger).process(arguments)
+        return process.load_collection.load_collectionEOTask(arguments, "", logger, {}, "node1").process(arguments)
     return wrapped
 
 @pytest.fixture

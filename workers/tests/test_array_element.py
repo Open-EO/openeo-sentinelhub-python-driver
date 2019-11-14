@@ -36,7 +36,7 @@ def execute_array_element_process(generate_data):
         if index is not None: arguments["index"] = index
         if return_nodata is not None: arguments["return_nodata"] = return_nodata
 
-        return process.array_element.array_elementEOTask(None, "" , None).process(arguments)
+        return process.array_element.array_elementEOTask(None, "" , None, {}, "arrayel1").process(arguments)
     return wrapped
 
 

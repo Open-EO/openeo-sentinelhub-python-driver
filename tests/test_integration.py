@@ -1,5 +1,6 @@
 import json
 import pytest
+import glob
 
 import sys, os
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rest"))
@@ -543,3 +544,122 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data):
     assert r.status_code == 200, r.data
     expected_data = get_expected_data("tile256x256ndvi.jpeg")
     assert r.data == expected_data, "File is not the same!"
+
+
+@pytest.mark.parametrize('value,double_value,expected_status_code', [
+    (0.5, 1.0, 200),
+    (0.5, 2.0, 400),
+])
+def test_assert_works(app_client, value, double_value, expected_status_code):
+    process_graph = {
+      "gencol1": {
+        "process_id": "generate_collection",
+        "arguments": {
+          "data": [
+            [
+              [
+                [value, 0.15],
+              ],
+              [
+                [0.15, None]
+              ]
+            ]
+          ],
+          "dims": ["y", "x", "t", "band"],
+          "coords": {
+            "y": [12.3],
+            "x": [45.1, 45.2],
+            "t": ["2019-08-01 11:00:12"],
+            "band": ["nir", "red"]
+          }
+        },
+      },
+      "linear1": {
+        "process_id": "linear_scale_range",
+        "arguments": {
+          "x": {
+            "from_node": "gencol1"
+          },
+          "inputMin": 0.0,
+          "inputMax": 1.0,
+          "outputMin": 0.0,
+          "outputMax": 2.0,
+        }
+      },
+      "expectedlinear1": {
+        "process_id": "generate_collection",
+        "arguments": {
+          "data": [
+            [
+              [
+                [double_value, 0.3],
+              ],
+              [
+                [0.3, None]
+              ]
+            ]
+          ],
+          "dims": ["y", "x", "t", "band"],
+          "coords": {
+            "y": [12.3],
+            "x": [45.1, 45.2],
+            "t": ["2019-08-01 11:00:12"],
+            "band": ["nir", "red"]
+          }
+        }
+      },
+      "assertlinear1": {
+        "process_id": "assert_equals",
+        "arguments": {
+          "a": {
+            "from_node": "linear1"
+          },
+          "b": {
+            "from_node": "expectedlinear1"
+          }
+        },
+      },
+      "result1": {
+        "process_id": "save_result",
+        "arguments": {
+          "data": {
+            "from_node": "gencol1"
+          },
+          "format": "gtiff",
+          "options": {
+            "datatype": "float32"
+          }
+        },
+        "result": True
+      }
+    }
+
+    data = {
+        "process_graph": process_graph,
+    }
+    r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
+    assert r.status_code == expected_status_code, r.data
+
+
+def _get_test_process_graphs():
+    for f in glob.glob(os.path.join(os.path.dirname(__file__), "test_process_graphs/*.json")):
+        if not os.path.isfile(f) or os.path.basename(f).startswith('_'):
+            print("Skipping: {}".format(os.path.basename(f)))
+            continue
+        with open(f, "rt") as f:
+            c = f.read()
+            print(c)
+            yield c
+
+@pytest.mark.parametrize('process_graph_json', _get_test_process_graphs())
+def test_process_graphs(app_client, process_graph_json):
+    """
+        Load process graph definitions from test_process_graph/*.json and execute them
+        via POST /result/, expecting status 200 on each of them.
+    """
+    process_graph = json.loads(process_graph_json)
+    data = {
+        "process_graph": process_graph,
+    }
+    r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
+    assert r.status_code == 200, r.data

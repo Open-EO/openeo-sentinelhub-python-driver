@@ -55,11 +55,12 @@ class ProcessEOTask(EOTask):
         In other words, subclasses should only extend process() and leave
         execute() as is.
     """
-    def __init__(self, arguments, job_id, logger, variables={}):
+    def __init__(self, arguments, job_id, logger, variables, node_name):
         self._arguments = arguments
         self._variables = variables
         self._arguments_with_data = None
         self._cached_depends_on = None
+        self.node_name = node_name
         self.job_id = job_id
         self.logger = logger
         self.process_id = self.__class__.__name__[:-len("EOTask")]
