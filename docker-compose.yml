@@ -56,11 +56,6 @@ services:
     container_name: sqs
     ports:
       - '9324:9324'
-    healthcheck:
-      test: ["CMD", "curl", "-s", "http://localhost:9324"]
-      interval: 10s
-      timeout: 10s
-      retries: 30
 
   workers:
     image: shopeneo/workers
