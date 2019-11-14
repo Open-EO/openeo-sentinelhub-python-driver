@@ -83,7 +83,6 @@ class save_resultEOTask(ProcessEOTask):
         output_format = self.validate_parameter(arguments, "format", required=True, allowed_types=[str])
         output_format = output_format.lower()
         output_options = self.validate_parameter(arguments, "options", default={}, allowed_types=[dict])
-        data = data.compute()
 
         if output_format not in GDAL_FORMATS:
             raise ProcessArgumentInvalid(f"The argument 'format' in process 'save_result' is invalid: supported formats are: {', '.join(GDAL_FORMATS.keys())}.")
@@ -109,14 +108,14 @@ class save_resultEOTask(ProcessEOTask):
         bbox = data.attrs["bbox"]
         nx = len(data['x'])
         ny = len(data['y'])
-        n_bands = len(data['band'])
 
-        try:
-            data['t']
-        except:
-            data = data.expand_dims({"t": [datetime(2019, 10, 16, 11, 14, 29, 496749)]})
-
+        if 't' not in data.dims:
+            data = data.expand_dims({"t": [datetime.now()]})
         n_timestamps = len(data['t'])
+
+        if 'band' not in data.dims:
+            data = data.expand_dims({"band": ["generic_band"]}, axis=-1)
+        n_bands = len(data['band'])
 
         xmin, ymin = bbox.get_lower_left()
         xmax, ymax = bbox.get_upper_right()
@@ -125,7 +124,7 @@ class save_resultEOTask(ProcessEOTask):
         geotransform = (xmin, xres, 0, ymax, 0, -yres)
 
         for ti in range(n_timestamps):
-            timestamp = data['t'].to_index()[0]
+            timestamp = data['t'].to_index()[ti]
             t_str = timestamp.strftime('%Y-%m-%d_%H-%M-%S')
             filename = os.path.join(tmp_job_dir, f"result-{t_str}.{GDAL_FORMATS[output_format].ext}")
 
