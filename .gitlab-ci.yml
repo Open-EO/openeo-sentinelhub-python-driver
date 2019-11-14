@@ -12,6 +12,7 @@ stages:
 integration tests:
   stage: test
   script:
+    - '[ "`df -m / | tail -n -1 | awk ''{ print $4}''`" -ge "10" ] || (echo "NO DISK SPACE LEFT" && exit 1)'
     - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml build
     - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml up --exit-code-from pytest
   after_script:
