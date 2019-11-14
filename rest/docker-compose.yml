@@ -35,8 +35,7 @@ services:
       /usr/bin/mc rm -r --force openEo/results;
       /usr/bin/mc mb openEo/results;
       /usr/bin/mc policy download openEo/results;
-      exit 0;
-      ;"
+      exit 0"
 
   sqs:
     # Native image is much smaller and thus faster, but it is experimental:

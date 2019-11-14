@@ -15,7 +15,7 @@ integration tests:
     - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml build
     - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml up --exit-code-from pytest
   after_script:
-    - docker-compose down -v
+    - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml down -v
 
 unit tests:
   stage: test
