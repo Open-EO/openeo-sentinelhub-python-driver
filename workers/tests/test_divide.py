@@ -106,7 +106,7 @@ def test_xarray_directly(execute_divide_process, generate_data, data, reduce_by,
 ])
 def test_with_numbers(execute_divide_process, generate_data, number1, number2, arr1, arr2, expected_data, num_first):
     """
-        Test divid process by a list of numbers and DataArrays
+        Test divide process by a list of numbers and DataArrays
     """
     expected_result = generate_data(data=expected_data, as_dataarray=True)
     arr1 = generate_data(data=arr1, as_dataarray=True)
