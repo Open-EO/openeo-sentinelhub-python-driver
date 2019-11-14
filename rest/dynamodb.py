@@ -176,11 +176,32 @@ class JobsPersistence(Persistence):
             Item=item,
         )
 
-        # notify workers that a new job is available:
-        queue_url = cls.sqs.get_queue_url(QueueName=cls.SQS_QUEUE_NAME)['QueueUrl']
-        response = cls.sqs.send_message(QueueUrl=queue_url, MessageBody=record_id)
-
+        if data.get("current_status", "queued") == "queued":
+            cls._alert_workers(record_id)
         return record_id
+
+    @classmethod
+    def update_status(cls, job_id, new_value):
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        cls.update_key(job_id, "last_updated", timestamp)
+        cls.update_key(job_id, "current_status", new_value)
+        cls._alert_workers(job_id)
+
+    @classmethod
+    def set_should_be_cancelled(cls, job_id):
+        cls.update_key(job_id, "should_be_cancelled", True)
+        cls._alert_workers(job_id)
+
+    @classmethod
+    def delete(cls, job_id):
+        cls.dynamodb.delete_item(TableName=cls.TABLE_NAME, Key={'id': {'S': job_id}})
+        cls._alert_workers(job_id)
+
+    @classmethod
+    def _alert_workers(cls, job_id):
+        # alert workers about the change:
+        queue_url = cls.sqs.get_queue_url(QueueName=cls.SQS_QUEUE_NAME)['QueueUrl']
+        cls.sqs.send_message(QueueUrl=queue_url, MessageBody=job_id)
 
     @classmethod
     def ensure_queue_exists(cls):

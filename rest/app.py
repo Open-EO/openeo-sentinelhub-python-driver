@@ -300,10 +300,7 @@ def api_batch_job(job_id):
                 ), 400)
 
         data = flask.request.get_json()
-
-        process_graph_schema = PatchJobsSchema()
-        errors = process_graph_schema.validate(data)
-
+        errors = PatchJobsSchema().validate(data)
         if errors:
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
             return flask.make_response(jsonify(
@@ -316,14 +313,22 @@ def api_batch_job(job_id):
 
         for key in data:
             JobsPersistence.update_key(job_id, key, data[key])
-
-        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        JobsPersistence.update_key(job_id, "last_updated", timestamp)
-        JobsPersistence.update_key(job_id, "current_status", "submitted")
+        JobsPersistence.update_status(job_id, "submitted")
 
         return flask.make_response('Changes to the job applied successfully.', 204)
 
     elif flask.request.method == 'DELETE':
+        JobsPersistence.set_should_be_cancelled(job_id)
+
+        # wait for job to get status 'cancelled':
+        period = 0.5  # check every X seconds
+        n_checks = int(REQUEST_TIMEOUT/period)
+        for _ in range(n_checks):
+            job = JobsPersistence.get_by_id(job_id)
+            if job["current_status"] in ["canceled"]:
+                break
+            time.sleep(0.5)
+
         JobsPersistence.delete(job_id)
         return flask.make_response('The job has been successfully deleted.', 204)
 
@@ -333,11 +338,8 @@ def add_job_to_queue(job_id):
     if flask.request.method == "POST":
         job = JobsPersistence.get_by_id(job_id)
 
-        if job["current_status"] in ["submitted","finished","canceled","error"]:
-            timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
-            JobsPersistence.update_key(job_id, "last_updated", timestamp)
-            JobsPersistence.update_key(job_id, "current_status", "queued")
-
+        if job["current_status"] in ["submitted", "finished", "canceled", "error"]:
+            JobsPersistence.update_status(job_id, "queued")
             return flask.make_response('The creation of the resource has been queued successfully.', 202)
         else:
             return flask.make_response(jsonify(
@@ -402,8 +404,8 @@ def add_job_to_queue(job_id):
     elif flask.request.method == "DELETE":
         job = JobsPersistence.get_by_id(job_id)
 
-        if job["current_status"] in ["queued","running"]:
-            JobsPersistence.update_key(job_id, "should_be_cancelled", True)
+        if job["current_status"] in ["queued" ,"running"]:
+            JobsPersistence.set_should_be_cancelled(job_id)
             return flask.make_response('Processing the job has been successfully canceled.', 200)
 
         return flask.make_response(jsonify(
