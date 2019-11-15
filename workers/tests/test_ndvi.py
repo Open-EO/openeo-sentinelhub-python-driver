@@ -1,6 +1,7 @@
 import pytest
 import sys, os
 import xarray as xr
+import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -19,7 +20,7 @@ FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), 'fixtures')
 def construct_data():
     def _construct(data, bands, dims=('y', 'x', 'band'), band_aliases={"nir": "B08","red": "B04"}):
         xrdata = xr.DataArray(
-            data,
+            np.array(data, dtype=np.float),
             dims=dims,
             coords={
                 'band': bands,
@@ -98,3 +99,15 @@ def test_name(ndviEOTask,data1,actual_result2):
         result = ndviEOTask.process(arguments)
 
     assert ex.value.args[0] == "The argument 'name' in process 'ndvi' is invalid: string does not match the required pattern."
+
+@pytest.mark.parametrize('data,bands,expected_data,expected_bands', [
+    ([[[[0.25, 0.15], [0.15, 0.25]], [[0.58, 0.22],[None, None]]]], ["B08","B04"], [[[[0.25],[-0.25]],[[0.45],[None]]]], ['ndvi']),
+    ])
+def test_multidim(ndviEOTask, construct_data, data, bands, expected_data, expected_bands):
+    """
+        Test ndvi process with data where multiple dimensions have length > 1
+    """
+    arguments = {"data": construct_data(data, bands, dims=('t', 'y', 'x', 'band'))}
+    result = ndviEOTask.process(arguments)
+    expected_result = construct_data(expected_data, expected_bands, dims=('t', 'y', 'x', 'band'))
+    xr.testing.assert_allclose(result, expected_result)
