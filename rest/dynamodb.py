@@ -1,5 +1,6 @@
 import boto3
 from boto3.dynamodb.conditions import Attr,Key
+from botocore.exceptions import ClientError
 import json
 import logging
 from logging import log, INFO
@@ -202,13 +203,14 @@ class JobsPersistence(Persistence):
     @classmethod
     def ensure_queue_exists(cls):
         try:
-            queue_info = cls.sqs.get_queue_url(QueueName=cls.SQS_QUEUE_NAME)
-        except:
             cls.sqs.create_queue(QueueName=cls.SQS_QUEUE_NAME, Attributes={
                 'DelaySeconds': '0',
                 'MessageRetentionPeriod': '60',
                 'ReceiveMessageWaitTimeSeconds': '20',
             })
+            log(INFO, "SQS queue created.")
+        except ClientError:
+            log(INFO, "SQS queue already exists.")
 
 
 class ProcessGraphsPersistence(Persistence):
