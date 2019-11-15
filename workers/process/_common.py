@@ -2,6 +2,7 @@ from copy import deepcopy
 from eolearn.core import EOTask
 import xarray as xr
 import numpy as np
+import dask.array as da
 
 # These exceptions should translate to the list of OpenEO error codes:
 #   https://open-eo.github.io/openeo-api/errors/#openeo-error-codes
@@ -174,10 +175,14 @@ class ProcessEOTask(EOTask):
 
             for i,element in enumerate(data):
                 if isinstance(element, (int, float, type(None))):
+                    ######################################################################
+                    # This is an inefficient hotfix to handle mixed lists of numbers and 
+                    # DataArrays in processes such as sum, subtract, multiply, divide. 
                     if model is not None:
-                        new_data = element * np.ones(model.shape, dtype=np.float)
+                        new_data = element * da.ones_like(model, chunks=1000)
                         number_array = model.copy(data=new_data)
                         data[i] = number_array
+                    ######################################################################
                     else:
                         data[i] = xr.DataArray(np.array(element, dtype=np.float))
                 elif not isinstance(element, xr.DataArray):
