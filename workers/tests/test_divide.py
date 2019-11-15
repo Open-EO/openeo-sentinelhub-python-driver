@@ -98,3 +98,24 @@ def test_xarray_directly(execute_divide_process, generate_data, data, reduce_by,
     expected_result = generate_data(data=expected_data, dims=expected_dims, attrs={"reduce_by": reduce_by}, as_dataarray=True)
     result = execute_divide_process({"data": data, "attrs": {"reduce_by": reduce_by}, "as_dataarray": True})
     xr.testing.assert_allclose(result, expected_result)
+
+
+@pytest.mark.parametrize('number1,number2,arr1,arr2,expected_data,num_first', [
+    (1000, 0.1, [[[[1.0,2.0]]],[[[4.0,5.0]]]], [[[[20.0,10.0]]],[[[5.0,4.0]]]], [[[[500,500]]],[[[500,500]]]], True),
+    (2, 0.05, [[[[1.0,2.0]]],[[[4.0,5.0]]]], [[[[20.0,10.0]]],[[[5.0,4.0]]]], [[[[0.5,2.0]]],[[[8.0,12.5]]]], False),
+])
+def test_with_numbers(execute_divide_process, generate_data, number1, number2, arr1, arr2, expected_data, num_first):
+    """
+        Test divide process by a list of numbers and DataArrays
+    """
+    expected_result = generate_data(data=expected_data, as_dataarray=True)
+    arr1 = generate_data(data=arr1, as_dataarray=True)
+    arr2 = generate_data(data=arr2, as_dataarray=True)
+
+    if num_first:
+        data = [number1, arr1, number2, arr2]
+    else:
+        data = [arr1, number1, arr2, number2]
+
+    result = execute_divide_process({"data": data, "as_list": True})
+    xr.testing.assert_allclose(result, expected_result)
