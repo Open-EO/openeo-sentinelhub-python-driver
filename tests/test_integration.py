@@ -553,7 +553,7 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data):
 def test_assert_works(app_client, value, double_value, expected_status_code):
     process_graph = {
       "gencol1": {
-        "process_id": "generate_collection",
+        "process_id": "create_cube",
         "arguments": {
           "data": [
             [
@@ -587,7 +587,7 @@ def test_assert_works(app_client, value, double_value, expected_status_code):
         }
       },
       "expectedlinear1": {
-        "process_id": "generate_collection",
+        "process_id": "create_cube",
         "arguments": {
           "data": [
             [

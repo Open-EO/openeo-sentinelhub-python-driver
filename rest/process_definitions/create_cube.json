@@ -1,6 +1,6 @@
 {
-    "id": "generate_collection",
-    "summary": "Generate a synthetic collection",
+    "id": "create_cube",
+    "summary": "Create a data cube and fill it with supplied data",
     "description": "Instead of loading a collection (which is what `load_collection` does), this process creates a synthetic collection from supplied data.",
     "categories": [
         "development"
