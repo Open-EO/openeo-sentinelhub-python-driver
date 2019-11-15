@@ -6,7 +6,7 @@ from sentinelhub import CRS, BBox
 
 from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired
 
-class generate_collectionEOTask(ProcessEOTask):
+class create_cubeEOTask(ProcessEOTask):
     """
         This process generates an xarray from input data. It is useful for writing tests, because
         it allows us to generate synthetic data, which we can then process and compare to expected

@@ -1,6 +1,6 @@
 {
     "gencol1": {
-      "process_id": "generate_collection",
+      "process_id": "create_cube",
       "arguments": {
         "data": [
           [
@@ -34,7 +34,7 @@
       }
     },
     "expectedlinear1": {
-      "process_id": "generate_collection",
+      "process_id": "create_cube",
       "arguments": {
         "data": [
           [
