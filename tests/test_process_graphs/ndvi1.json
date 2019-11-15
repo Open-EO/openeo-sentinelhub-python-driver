@@ -1,0 +1,162 @@
+{
+  "gencol1": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [
+            [0.25, 0.15],
+            [0.15, 0.25]
+          ],
+          [
+            [0.58, 0.22],
+            [null, null]
+          ]
+        ]
+      ],
+      "dims": ["x", "y", "t", "band"],
+      "coords": {
+        "t": ["2019-08-01 11:00:12", "2019-08-02 13:00:12"],
+        "band": ["nir", "red"]
+      }
+    }
+  },
+
+  "ndvi1": {
+    "process_id": "ndvi",
+    "arguments": {
+      "data": {
+        "from_node": "gencol1"
+      }
+    }
+  },
+  "expectedndvi1": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [
+            [0.25],
+            [-0.25]
+          ],
+          [
+            [0.45],
+            [null]
+          ]
+        ]
+      ],
+      "dims": ["x", "y", "t", "band"],
+      "coords": {
+        "t": ["2019-08-01 11:00:12", "2019-08-02 13:00:12"],
+        "band": ["ndvi"]
+      }
+    }
+  },
+  "assertndvi1": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "a": {
+        "from_node": "ndvi1"
+      },
+      "b": {
+        "from_node": "expectedndvi1"
+      }
+    }
+  },
+
+  "reducemean1": {
+    "process_id": "reduce",
+    "arguments": {
+      "data": {
+        "from_node": "ndvi1"
+      },
+      "reducer": {
+        "callback": {
+          "2": {
+            "process_id": "mean",
+            "arguments": {
+              "data": {
+                "from_argument": "data"
+              }
+            },
+            "result": true
+          }
+        }
+      },
+      "dimension": "t"
+    }
+  },
+  "expectedreducemean1": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [
+            [0]
+          ],
+          [
+            [0.45]
+          ]
+        ]
+      ],
+      "dims": ["x", "y", "band"],
+      "coords": {
+        "band": ["ndvi"]
+      }
+    }
+  },
+  "assertreducemean1": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "a": {
+        "from_node": "reducemean1"
+      },
+      "b": {
+        "from_node": "expectedreducemean1"
+      }
+    }
+  },
+
+  "linear1": {
+    "process_id": "linear_scale_range",
+    "arguments": {
+      "x": {
+        "from_node": "reducemean1"
+      },
+      "inputMin": 0,
+      "inputMax": 1,
+      "outputMax": 255
+    }
+  },
+  "expectedlinear1": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [
+            [0]
+          ],
+          [
+            [114.75]
+          ]
+        ]
+      ],
+      "dims": ["x", "y", "band"],
+      "coords": {
+        "band": ["ndvi"]
+      }
+    }
+  },
+  "assertlinear1": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "data1": {
+        "from_node": "linear1"
+      },
+      "data2": {
+        "from_node": "expectedreducemean1"
+      }
+    },
+    "result": true
+  }
+}
