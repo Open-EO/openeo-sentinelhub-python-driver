@@ -269,7 +269,7 @@ def test_process_batch_job(app_client, example_process_graph):
     r = app_client.get("/jobs/{}".format(record_id))
     actual = json.loads(r.data.decode('utf-8'))
     assert r.status_code == 200
-    assert actual["status"] in ["queued"]
+    assert actual["status"] in ["queued", "running", "error", "finished"]
 
     r = app_client.get("/jobs/{}/results".format(record_id))
     actual = json.loads(r.data.decode('utf-8'))
@@ -553,7 +553,7 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data):
 def test_assert_works(app_client, value, double_value, expected_status_code):
     process_graph = {
       "gencol1": {
-        "process_id": "generate_collection",
+        "process_id": "create_cube",
         "arguments": {
           "data": [
             [
@@ -587,7 +587,7 @@ def test_assert_works(app_client, value, double_value, expected_status_code):
         }
       },
       "expectedlinear1": {
-        "process_id": "generate_collection",
+        "process_id": "create_cube",
         "arguments": {
           "data": [
             [

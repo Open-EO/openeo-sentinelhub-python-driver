@@ -2,5 +2,5 @@
 !.gitignore
 !load_collection.json
 !linear_scale_range.json
-!generate_collection.json
+!create_cube.json
 !assert_equals.json
