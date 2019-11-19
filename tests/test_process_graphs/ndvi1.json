@@ -14,14 +14,15 @@
           ]
         ]
       ],
-      "dims": ["x", "y", "t", "band"],
+      "dims": ["y", "x", "t", "band"],
       "coords": {
+        "y": [12.3],
+        "x": [45.1, 45.2],
         "t": ["2019-08-01 11:00:12", "2019-08-02 13:00:12"],
         "band": ["nir", "red"]
       }
     }
   },
-
   "ndvi1": {
     "process_id": "ndvi",
     "arguments": {
@@ -45,8 +46,10 @@
           ]
         ]
       ],
-      "dims": ["x", "y", "t", "band"],
+      "dims": ["y", "x", "t", "band"],
       "coords": {
+         "y": [12.3],
+         "x": [45.1, 45.2],
         "t": ["2019-08-01 11:00:12", "2019-08-02 13:00:12"],
         "band": ["ndvi"]
       }
@@ -63,13 +66,13 @@
       }
     }
   },
-
   "reducemean1": {
     "process_id": "reduce",
     "arguments": {
       "data": {
         "from_node": "ndvi1"
       },
+      "dimension": "t",
       "reducer": {
         "callback": {
           "2": {
@@ -82,25 +85,23 @@
             "result": true
           }
         }
-      },
-      "dimension": "t"
+      }
     }
   },
   "expectedreducemean1": {
     "process_id": "create_cube",
     "arguments": {
-      "data": [
+      "data": 
         [
           [
-            [0]
-          ],
-          [
+            [0],
             [0.45]
           ]
-        ]
       ],
-      "dims": ["x", "y", "band"],
+      "dims": ["y", "x", "band"],
       "coords": {
+        "y": [12.3],
+        "x": [45.1, 45.2],
         "band": ["ndvi"]
       }
     }
@@ -116,45 +117,15 @@
       }
     }
   },
-
-  "linear1": {
-    "process_id": "linear_scale_range",
+  "result1": {
+    "process_id": "save_result",
     "arguments": {
-      "x": {
+      "data": {
         "from_node": "reducemean1"
       },
-      "inputMin": 0,
-      "inputMax": 1,
-      "outputMax": 255
-    }
-  },
-  "expectedlinear1": {
-    "process_id": "create_cube",
-    "arguments": {
-      "data": [
-        [
-          [
-            [0]
-          ],
-          [
-            [114.75]
-          ]
-        ]
-      ],
-      "dims": ["x", "y", "band"],
-      "coords": {
-        "band": ["ndvi"]
-      }
-    }
-  },
-  "assertlinear1": {
-    "process_id": "assert_equals",
-    "arguments": {
-      "data1": {
-        "from_node": "linear1"
-      },
-      "data2": {
-        "from_node": "expectedreducemean1"
+      "format": "gtiff",
+      "options": {
+        "datatype": "float32"
       }
     },
     "result": true
