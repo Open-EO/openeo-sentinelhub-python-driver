@@ -74,46 +74,46 @@
     "eo:bands": [
       [
         {
-          "name": "B1",
+          "name": "B01",
           "common_name": "coastal",
           "center_wavelength": 4.439,
           "gsd": 60
         },
         {
-          "name": "B2",
+          "name": "B02",
           "common_name": "blue",
           "center_wavelength": 4.966,
           "gsd": 10
         },
         {
-          "name": "B3",
+          "name": "B03",
           "common_name": "green",
           "center_wavelength": 5.6,
           "gsd": 10
         },
         {
-          "name": "B4",
+          "name": "B04",
           "common_name": "red",
           "center_wavelength": 6.645,
           "gsd": 10
         },
         {
-          "name": "B5",
+          "name": "B05",
           "center_wavelength": 7.039,
           "gsd": 20
         },
         {
-          "name": "B6",
+          "name": "B06",
           "center_wavelength": 7.402,
           "gsd": 20
         },
         {
-          "name": "B7",
+          "name": "B07",
           "center_wavelength": 7.825,
           "gsd": 20
         },
         {
-          "name": "B8",
+          "name": "B08",
           "common_name": "nir",
           "center_wavelength": 8.351,
           "gsd": 10
@@ -124,7 +124,7 @@
           "gsd": 20
         },
         {
-          "name": "B9",
+          "name": "B09",
           "center_wavelength": 9.45,
           "gsd": 60
         },
