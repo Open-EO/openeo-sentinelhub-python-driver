@@ -652,7 +652,7 @@ def _get_test_process_graphs():
             yield c
 
 @pytest.mark.parametrize('process_graph_json', _get_test_process_graphs())
-def test_process_graphs(app_client, process_graph_json):
+def test_run_test_process_graphs(app_client, process_graph_json):
     """
         Load process graph definitions from test_process_graph/*.json and execute them
         via POST /result/, expecting status 200 on each of them.
@@ -663,3 +663,82 @@ def test_process_graphs(app_client, process_graph_json):
     }
     r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
     assert r.status_code == 200, r.data
+
+
+def test_process_graph_api(app_client, example_process_graph):
+    """
+        Get /process_graphs/ (must be empty), test CRUD operations.
+    """
+    # get a list of process graphs, should be empty:
+    r = app_client.get('/process_graphs')
+    assert r.status_code == 200, r.data
+    expected = []
+    actual = json.loads(r.data.decode('utf-8')).get("process_graphs")
+    assert actual == expected
+
+    # create a process graph:
+    data = {
+        "title": "test",
+        "process_graph": example_process_graph,
+    }
+    r = app_client.post('/process_graphs', data=json.dumps(data), content_type='application/json')
+    assert r.status_code == 201, r.data
+    process_graph_id = r.headers["OpenEO-Identifier"]
+
+    # get a list of process graphs again:
+    r = app_client.get('/process_graphs')
+    assert r.status_code == 200, r.data
+    expected = [
+        {
+            "id": process_graph_id,
+            "title": "test",
+            "description": None,
+        },
+    ]
+    actual = json.loads(r.data.decode('utf-8')).get("process_graphs")
+    assert actual == expected
+
+    # get the process graph:
+    r = app_client.get('/process_graphs/{}'.format(process_graph_id))
+    assert r.status_code == 200, r.data
+    expected = {
+        "id": process_graph_id,
+        "title": "test",
+        "description": None,
+        "process_graph": example_process_graph,
+    }
+    actual = json.loads(r.data.decode('utf-8'))
+    assert actual == expected
+
+    # change it:
+    data = {
+        "title": "test2",
+        "description": "asdf",
+    }
+    r = app_client.patch('/process_graphs/{}'.format(process_graph_id), data=json.dumps(data), content_type='application/json')
+    assert r.status_code == 204, r.data
+
+    # get the process graph again:
+    r = app_client.get('/process_graphs/{}'.format(process_graph_id))
+    assert r.status_code == 200, r.data
+    expected = {
+        "id": process_graph_id,
+        "title": "test2",
+        "description": "asdf",
+        "process_graph": example_process_graph,
+    }
+    actual = json.loads(r.data.decode('utf-8'))
+    assert actual == expected
+
+    # delete it:
+    r = app_client.delete('/process_graphs/{}'.format(process_graph_id))
+    assert r.status_code == 204, r.data
+
+    # make sure the record is removed:
+    r = app_client.get('/process_graphs/{}'.format(process_graph_id))
+    assert r.status_code == 404
+    r = app_client.get('/process_graphs')
+    assert r.status_code == 200, r.data
+    expected = []
+    actual = json.loads(r.data.decode('utf-8')).get("process_graphs")
+    assert actual == expected

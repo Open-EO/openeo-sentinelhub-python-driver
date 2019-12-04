@@ -173,9 +173,21 @@ def api_process_graphs():
 @app.route('/process_graphs/<process_graph_id>', methods=["GET", "DELETE", "PATCH"])
 def api_process_graph(process_graph_id):
     if flask.request.method in ['GET', 'HEAD']:
-        process_graph = ProcessGraphsPersistence.get_by_id(process_graph_id)
-        process_graph["id"] = process_graph_id
-        return process_graph, 200
+        record = ProcessGraphsPersistence.get_by_id(process_graph_id)
+        if record is None:
+            return flask.make_response(jsonify(
+                id = process_graph_id,
+                code = "ProcessGraphNotFound",
+                message = "Process graph does not exist.",
+                links = []
+                ), 404)
+        record["id"] = process_graph_id
+        return {
+            "id": process_graph_id,
+            "title": record.get("title", None),
+            "description": record.get("description", None),
+            "process_graph": json.loads(record["process_graph"]),
+        }, 200
 
     elif flask.request.method == 'DELETE':
         ProcessGraphsPersistence.delete(process_graph_id)
