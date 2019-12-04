@@ -127,30 +127,24 @@ def api_service_types():
 
 
 @app.route('/process_graphs', methods=["GET", "POST"])
-@app.route('/process_graphs/<process_graph_id>', methods=["GET", "DELETE", "PATCH"])
-def api_process_graphs(process_graph_id=None):
+def api_process_graphs():
     if flask.request.method in ['GET', 'HEAD']:
-        if process_graph_id is None:
-            process_graphs = []
-            links = []
-            for record in ProcessGraphsPersistence.items():
-                process_graphs.append({
-                    "id": record["id"],
-                    "title": record.get("title", None),
-                    "description": record.get("description", None),
-                })
-                links.append({
-                    "href": "{}/process_graphs/{}".format(flask.request.url_root, record["id"]),
-                    "title": record.get("title", None),
-                })
-            return {
-                "process_graphs": process_graphs,
-                "links": links,
-            }, 200
-        else:
-            process_graph = ProcessGraphsPersistence.get_by_id(process_graph_id)
-            process_graph["id"] = process_graph_id
-            return process_graph, 200
+        process_graphs = []
+        links = []
+        for record in ProcessGraphsPersistence.items():
+            process_graphs.append({
+                "id": record["id"],
+                "title": record.get("title", None),
+                "description": record.get("description", None),
+            })
+            links.append({
+                "href": "{}/process_graphs/{}".format(flask.request.url_root, record["id"]),
+                "title": record.get("title", None),
+            })
+        return {
+            "process_graphs": process_graphs,
+            "links": links,
+        }, 200
 
     elif flask.request.method == 'POST':
         data = flask.request.get_json()
@@ -174,6 +168,14 @@ def api_process_graphs(process_graph_id=None):
         response.headers['Location'] = '/process_graphs/{}'.format(record_id)
         response.headers['OpenEO-Identifier'] = record_id
         return response
+
+
+@app.route('/process_graphs/<process_graph_id>', methods=["GET", "DELETE", "PATCH"])
+def api_process_graph(process_graph_id):
+    if flask.request.method in ['GET', 'HEAD']:
+        process_graph = ProcessGraphsPersistence.get_by_id(process_graph_id)
+        process_graph["id"] = process_graph_id
+        return process_graph, 200
 
     elif flask.request.method == 'DELETE':
         ProcessGraphsPersistence.delete(process_graph_id)
