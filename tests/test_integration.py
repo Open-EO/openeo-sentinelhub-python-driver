@@ -434,6 +434,7 @@ def test_reduce(app_client, get_expected_data):
     expected_data = get_expected_data("test_reduce.tiff")
     assert r.data == expected_data
 
+@pytest.mark.skip("TIFF32f is no longer returned")
 def test_xyz_service(app_client, service_factory, example_process_graph_with_variables, get_expected_data):
     service_id = service_factory(example_process_graph_with_variables, title="Test XYZ service", service_type="xyz")
 

@@ -72,7 +72,39 @@
         "description": "Dual-band cross-polarization, vertical transmit/horizontal receive",
         "polarization": "VH"
       }
-    ]
+    ],
+    "cube:dimensions": {
+      "x": {
+        "type": "spatial",
+        "axis": "x",
+        "extent": [
+          -180,
+          180
+        ]
+      },
+      "y": {
+        "type": "spatial",
+        "axis": "y",
+        "extent": [
+          -90,
+          90
+        ]
+      },
+      "t": {
+        "type": "temporal",
+        "extent": [
+          "2014-10-03T00:00:00Z",
+          null
+        ]
+      },
+      "band": {
+        "type": "bands",
+        "values": [
+          "VV",
+          "VH"
+        ]
+      }
+    }
   },
   "summaries": {
     "sar:pass_direction": [
