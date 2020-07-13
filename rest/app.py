@@ -66,11 +66,14 @@ def after_request(response):
 @app.route('/', methods=["GET"])
 def api_root():
     return {
-        "api_version": "0.4.2",
+        "api_version": "1.0.0",
         "backend_version": os.environ.get('BACKEND_VERSION', "0.0.0").lstrip('v'),
+        "stac_version": "0.9.0",
+        "id": "sentinel-hub-openeo",
         "title": "Sentinel Hub OpenEO",
         "description": "Sentinel Hub OpenEO by [Sinergise](https://sinergise.com)",
         "endpoints": get_endpoints(),
+        "links": get_links(),
     }
 
 
@@ -99,6 +102,31 @@ def get_endpoints():
             "methods": list(rule.methods - set(["OPTIONS", "HEAD"])),
         })
     return endpoints
+
+def get_links():
+    """
+        Returns a list of links related to this service.
+    """
+    return [
+        {
+            "href": "https://www.sentinel-hub.com/",
+            "rel": "about",
+            "type": "text/html",
+            "title": "Sentinel Hub homepage"
+        },
+        {
+            "href": f"{flask.request.url_root}/.well-known/openeo",
+            "rel": "version-history",
+            "type": "application/json",
+            "title": "List of supported openEO versions"
+        },
+        {
+            "href": f"{flask.request.url_root}/collections",
+            "rel": "data",
+            "type": "application/json",
+            "title": "List of Datasets"
+        }
+    ]
 
 
 @app.route('/output_formats', methods=["GET"])
@@ -692,7 +720,7 @@ def validate_process_graph():
 def well_known():
     return flask.make_response(jsonify(
         versions = [{
-            "api_version": "0.4.2",
+            "api_version": "1.0.0",
             "production": False,
             "url": flask.request.url_root
         }]
