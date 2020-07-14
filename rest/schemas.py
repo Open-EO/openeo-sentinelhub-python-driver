@@ -51,20 +51,39 @@ class PatchProcessGraphsSchema(Schema):
 	def validate_process_graph(self, graph):
 		validate_graph_with_known_processes(graph)
 
+class ProcessSchema(Schema):
+	"""
+	Request body
+	POST /jobs
+	'process' field
+	"""
+	process_graph = fields.Dict(required=True)
+	process_id = fields.Str(allow_none=True, attribute="id"),
+	summary = fields.Str(allow_none=True),
+	description = fields.Str(allow_none=True),
+	categories = fields.List(fields.Str(allow_none=True), allow_none=True),
+	parameters = fields.List(fields.Dict(allow_none=True), allow_none=True),
+	returns = fields.Dict(allow_none=True),
+	deprecated = fields.Bool(allow_none=True),
+	experimental = fields.Bool(allow_none=True),
+	exceptions = fields.Dict(allow_none=True),
+	examples = fields.List(fields.Dict(allow_none=True), allow_none=True), 
+	links = fields.List(fields.Dict(allow_none=True), allow_none=True),
+
+	@validates("process_graph")
+	def validate_process_graph(self, graph):
+		validate_graph_with_known_processes(graph)
+
 class PostJobsSchema(Schema):
 	"""
 	Request body
 	POST /jobs
 	"""
-	process_graph = fields.Dict(required=True)
+	process = fields.Nested(ProcessSchema, required=True)
 	description = fields.Str(allow_none=True)
 	title = fields.Str(allow_none=True)
 	plan = fields.Str(allow_none=True)
 	budget = fields.Number(allow_none=True)
-
-	@validates("process_graph")
-	def validate_process_graph(self, graph):
-		validate_graph_with_known_processes(graph)
 
 class PatchJobsSchema(Schema):
 	"""
