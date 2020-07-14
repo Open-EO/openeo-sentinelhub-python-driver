@@ -1,5 +1,5 @@
 {
-  "stac_version": "0.8.0",
+  "stac_version": "0.9.0",
   "stac_extensions": [],
   "id": "S2L1C",
   "title": "Sentinel-2 MSI: MultiSpectral Instrument, Level-1C",

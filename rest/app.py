@@ -654,19 +654,7 @@ def available_collections():
     for file in files:
         with open(file) as f:
             data = json.load(f)
-            basic_info = {
-                "stac_version": data["stac_version"],
-                "id": data["id"],
-                "description": data["description"],
-                "license": data["license"],
-                "extent": data["extent"],
-                "links": data["links"],
-                "title": data.get("title"),
-                "keywords": data.get("keywords"),
-                "version": data.get("version"),
-                "providers": data.get("providers"),
-            }
-            collections.append(basic_info)
+            collections.append(data)
 
     return flask.make_response(jsonify(
         collections = collections,
