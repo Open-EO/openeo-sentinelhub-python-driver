@@ -147,7 +147,7 @@ class JobsPersistence(Persistence):
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         item = {
             'id': {'S': record_id},
-            'process_graph': {'S': json.dumps(data["process"]["process_graph"])},
+            'process': {'S': json.dumps(data["process"])},
             'current_status': {'S': str(data.get("current_status", "queued"))},
             'created': {'S': timestamp},
             'last_updated': {'S': timestamp},

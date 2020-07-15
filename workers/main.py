@@ -116,7 +116,7 @@ def main():
                     running_jobs.add(job_id)
                     jobs_queue.put({
                         'job_id': job_id,
-                        'process_graph': json.loads(job["process_graph"]['S']),
+                        'process_graph': json.loads(job["process"]['S'])["process_graph"],
                         'variables': json.loads(job["variables"]['S']) if "variables" in job else {},
                     })
 
