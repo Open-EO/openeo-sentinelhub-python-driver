@@ -15,7 +15,7 @@ from beeline.middleware.flask import HoneyMiddleware
 
 import globalmaptiles
 from schemas import (
-    PostProcessGraphsSchema,
+    PutProcessGraphSchema,
     PatchProcessGraphsSchema,
     PGValidationSchema,
     PostResultSchema,
@@ -154,60 +154,49 @@ def api_service_types():
     return flask.make_response(jsonify(result), 200)
 
 
-@app.route('/process_graphs', methods=["GET", "POST"])
+@app.route('/process_graphs', methods=["GET"])
 def api_process_graphs():
-    if flask.request.method in ['GET', 'HEAD']:
-        process_graphs = []
-        links = []
-        for record in ProcessGraphsPersistence.items():
-            process_item = {
-                "id": record["id"],
-                "summary": record.get("summary", None),
-                "description": record.get("description", None),
-                "parameters": record.get("parameters", None),
-                "returns": record.get("returns", None),
-            }
-            if record.get("categories"):
-                process_item["categories"] = record.get("categories")
-            if record.get("deprecated"):
-                process_item["deprecated"] = record.get("deprecated")
-            if record.get("experimental"):
-                process_item["experimental"] = record.get("experimental")
-            process_graphs.append(process_item)
-            links.append({
-                "href": "{}/process_graphs/{}".format(flask.request.url_root, record["id"]),
-                "title": record.get("title", None),
-            })
-        return {
-            "processes": process_graphs,
-            "links": links,
-        }, 200
+    process_graphs = []
+    links = []
+    for record in ProcessGraphsPersistence.items():
+        process_item = {
+            "id": record["id"],
+        }
+        if record.get("description"):
+            # It's supposed to be nullable, but validator disagrees
+            process_item["description"] = record.get("description")
+        if record.get("summary"):
+            # It's supposed to be nullable, but validator disagrees
+            process_item["summary"] = record.get("summary")
+        if record.get("returns"):
+            # It's supposed to be nullable, but validator disagrees
+            process_item["returns"] = record.get("returns")
+        if record.get("parameters"):
+            # It's supposed to be nullable, but validator disagrees
+            process_item["parameters"] = record.get("parameters")
+        if record.get("categories"):
+            process_item["categories"] = record.get("categories")
+        if record.get("deprecated"):
+            process_item["deprecated"] = record.get("deprecated")
+        if record.get("experimental"):
+            process_item["experimental"] = record.get("experimental")
 
-    elif flask.request.method == 'POST':
-        data = flask.request.get_json()
+        process_graphs.append(process_item)
 
-        process_graph_schema = PostProcessGraphsSchema()
-        errors = process_graph_schema.validate(data)
-
-        if errors:
-            # Response procedure for validation will depend on how openeo_pg_parser_python will work
-            return flask.make_response(jsonify(
-                id = process_graph_id,
-                code = 400,
-                message = errors,
-                links = []
-                ), 400)
-
-        record_id = ProcessGraphsPersistence.create(data)
-
-        # add requested headers to 201 response:
-        response = flask.make_response('', 201)
-        response.headers['Location'] = '/process_graphs/{}'.format(record_id)
-        response.headers['OpenEO-Identifier'] = record_id
-        return response
+        link_to_pg = {
+            "rel": "related",
+            "href": "{}/process_graphs/{}".format(flask.request.url_root, record["id"]),
+        }
+        if record.get("title", None):
+            link_to_job["title"] = record["title"]
+        links.append(link_to_pg)
+    return {
+        "processes": process_graphs,
+        "links": links,
+    }, 200
 
 
-@app.route('/process_graphs/<process_graph_id>', methods=["GET", "DELETE", "PATCH"])
+@app.route('/process_graphs/<process_graph_id>', methods=["GET", "DELETE", "PUT"])
 def api_process_graph(process_graph_id):
     if flask.request.method in ['GET', 'HEAD']:
         record = ProcessGraphsPersistence.get_by_id(process_graph_id)
@@ -230,10 +219,10 @@ def api_process_graph(process_graph_id):
         ProcessGraphsPersistence.delete(process_graph_id)
         return flask.make_response('The process graph has been successfully deleted.', 204)
 
-    elif flask.request.method == 'PATCH':
+    elif flask.request.method == 'PUT':
         data = flask.request.get_json()
 
-        process_graph_schema = PatchProcessGraphsSchema()
+        process_graph_schema = PutProcessGraphSchema()
         errors = process_graph_schema.validate(data)
 
         if errors:
@@ -245,10 +234,10 @@ def api_process_graph(process_graph_id):
                 links = []
                 ), 400)
 
-        for key in data:
-            ProcessGraphsPersistence.update_key(process_graph_id, key, data[key])
+        ProcessGraphsPersistence.create(data, process_graph_id)
 
-        return flask.make_response('The process graph data has been updated successfully.', 204)
+        response = flask.make_response('The user-defined process has been stored successfully.', 200)
+        return response
 
 
 @app.route('/result', methods=['POST'])
@@ -724,8 +713,9 @@ def validate_process_graph():
     process_graph_schema = PGValidationSchema()
     errors = process_graph_schema.validate(data)
 
+    validation_errors = []
+
     if errors.get("process_graph"):
-        validation_errors = []
         for error in errors.get("process_graph"):
             validation_errors.append({
                 "message": error,
