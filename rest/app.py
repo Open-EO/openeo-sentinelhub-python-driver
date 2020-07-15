@@ -207,11 +207,8 @@ def api_process_graph(process_graph_id):
                 message = "Process graph does not exist.",
                 links = []
                 ), 404)
-        record["id"] = process_graph_id
         return {
             "id": process_graph_id,
-            "title": record.get("title", None),
-            "description": record.get("description", None),
             "process_graph": json.loads(record["process_graph"]),
         }, 200
 
