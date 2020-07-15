@@ -331,7 +331,9 @@ def api_batch_job(job_id):
             id = job_id,
             title = job.get("title", None),
             description = job.get("description", None),
-            process_graph = json.loads(job["process_graph"]),
+            process = {
+                "process_graph": json.loads(job["process_graph"])
+            },
             status = status,  # "status" is reserved word in DynamoDB
             error = job["error_msg"] if status == "error" else None,
             created = job["created"],
