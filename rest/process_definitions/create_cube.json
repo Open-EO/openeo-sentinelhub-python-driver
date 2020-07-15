@@ -6,8 +6,9 @@
         "development"
     ],
     "parameter_order": ["data", "dims", "coords"],
-    "parameters": {
-        "data": {
+    "parameters": [
+        {
+            "name": "data",
             "description": "Contents of the generated data cube as multi-dimensional array. The size of dimensions must match the number of coords.",
             "schema": {
                 "type": "array",
@@ -28,7 +29,8 @@
             },
             "required": true
         },
-        "dims": {
+        {
+            "name": "dims",
             "description": "List of dimensions.",
             "schema": {
                 "type": "array",
@@ -42,7 +44,8 @@
             },
             "required": true
         },
-        "coords": {
+        {
+            "name": "coords",
             "description": "Coordinates (typically times, latitudes, longitudes and band names).",
             "schema": {
                 "type": "object"
@@ -56,7 +59,7 @@
                 }
             ]
         }
-    },
+    ],
     "returns": {
         "description": "The generated data cube.",
         "schema": {
