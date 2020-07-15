@@ -124,9 +124,9 @@ class JobsPersistence(object):
                 raise
 
     @classmethod
-    def update_cancelled_queued_to_submitted(cls, record_id):
+    def update_cancelled_queued_to_created(cls, record_id):
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        updated_item = cls.dynamodb.update_item(TableName=cls.ET_JOBS, Key={'id':{'S':record_id}}, UpdateExpression="SET current_status = :new_status, last_updated = :timestamp, should_be_cancelled = :should_be_cancelled", ExpressionAttributeValues={':new_status': {'S': "submitted"}, ':timestamp': {'S': timestamp}, ':should_be_cancelled': {'BOOL': False}, ':old_status': {'S': "queued"}}, ReturnValues='UPDATED_NEW', ConditionExpression="current_status = :old_status")
+        updated_item = cls.dynamodb.update_item(TableName=cls.ET_JOBS, Key={'id':{'S':record_id}}, UpdateExpression="SET current_status = :new_status, last_updated = :timestamp, should_be_cancelled = :should_be_cancelled", ExpressionAttributeValues={':new_status': {'S': "created"}, ':timestamp': {'S': timestamp}, ':should_be_cancelled': {'BOOL': False}, ':old_status': {'S': "queued"}}, ReturnValues='UPDATED_NEW', ConditionExpression="current_status = :old_status")
         return updated_item
 
     @classmethod

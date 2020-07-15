@@ -276,11 +276,17 @@ def api_jobs():
                 "id": record["id"],
                 "title": record.get("title", None),
                 "description": record.get("description", None),
+                "status": record["current_status"],
+                "created": record["created"]
             })
-            links.append({
+            link_to_job = {
+                "rel": "related",
                 "href": "{}/jobs/{}".format(flask.request.url_root, record.get("id")),
-                "title": record.get("title", None),
-            })
+            }
+            if record.get("title", None):
+                link_to_job["title"] = record["title"]
+            links.append(link_to_job)
+
         return {
             "jobs": jobs,
             "links": links,
@@ -296,7 +302,7 @@ def api_jobs():
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
             return flask.make_response('Invalid request: {}'.format(errors), 400)
 
-        data["current_status"] = "submitted"
+        data["current_status"] = "created"
         data["should_be_cancelled"] = False
 
         record_id = JobsPersistence.create(data)
@@ -328,7 +334,7 @@ def api_batch_job(job_id):
             process_graph = json.loads(job["process_graph"]),
             status = status,  # "status" is reserved word in DynamoDB
             error = job["error_msg"] if status == "error" else None,
-            submitted = job["submitted"],
+            created = job["created"],
             updated = job["last_updated"],
             ), 200)
 
@@ -355,7 +361,7 @@ def api_batch_job(job_id):
 
         for key in data:
             JobsPersistence.update_key(job_id, key, data[key])
-        JobsPersistence.update_status(job_id, "submitted")
+        JobsPersistence.update_status(job_id, "created")
 
         return flask.make_response('Changes to the job applied successfully.', 204)
 
@@ -380,7 +386,7 @@ def add_job_to_queue(job_id):
     if flask.request.method == "POST":
         job = JobsPersistence.get_by_id(job_id)
 
-        if job["current_status"] in ["submitted", "finished", "canceled", "error"]:
+        if job["current_status"] in ["created", "finished", "canceled", "error"]:
             JobsPersistence.update_status(job_id, "queued")
             return flask.make_response('The creation of the resource has been queued successfully.', 202)
         else:

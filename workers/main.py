@@ -124,9 +124,9 @@ def main():
             cancelled_queued = JobsPersistence.query_cancelled_queued()
             for page in cancelled_queued:
                 for job in page["Items"]:
-                    # Set them back to submitted:
+                    # Set them back to created:
                     job_id = job["id"]['S']
-                    JobsPersistence.update_cancelled_queued_to_submitted(job_id)
+                    JobsPersistence.update_cancelled_queued_to_created(job_id)
 
             # GET running AND should_be_cancelled = True
             cancelled_running = JobsPersistence.query_cancelled_running()
