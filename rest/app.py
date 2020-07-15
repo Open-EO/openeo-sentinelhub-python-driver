@@ -160,17 +160,26 @@ def api_process_graphs():
         process_graphs = []
         links = []
         for record in ProcessGraphsPersistence.items():
-            process_graphs.append({
+            process_item = {
                 "id": record["id"],
-                "title": record.get("title", None),
+                "summary": record.get("summary", None),
                 "description": record.get("description", None),
-            })
+                "parameters": record.get("parameters", None),
+                "returns": record.get("returns", None),
+            }
+            if record.get("categories"):
+                process_item["categories"] = record.get("categories")
+            if record.get("deprecated"):
+                process_item["deprecated"] = record.get("deprecated")
+            if record.get("experimental"):
+                process_item["experimental"] = record.get("experimental")
+            process_graphs.append(process_item)
             links.append({
                 "href": "{}/process_graphs/{}".format(flask.request.url_root, record["id"]),
                 "title": record.get("title", None),
             })
         return {
-            "process_graphs": process_graphs,
+            "processes": process_graphs,
             "links": links,
         }, 200
 
@@ -708,15 +717,23 @@ def available_processes():
         ), 200)
 
 
-@app.route('/validation', methods=["GET"])
+@app.route('/validation', methods=["POST"])
 def validate_process_graph():
     data = flask.request.get_json()
 
     process_graph_schema = PGValidationSchema()
     errors = process_graph_schema.validate(data)
 
+    if errors.get("process_graph"):
+        validation_errors = []
+        for error in errors.get("process_graph"):
+            validation_errors.append({
+                "message": error,
+                "code": "ValidationError"
+            })
+
     return {
-        "errors": errors,
+        "errors": validation_errors,
     }, 200
 
 
