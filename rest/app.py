@@ -468,18 +468,22 @@ def api_services():
         links = []
 
         for record in ServicesPersistence.items():
-            services.append({
+            service_item = {
                 "id": record["id"],
                 "title": record.get("title", None),
                 "description": record.get("description", None),
                 "url": "{}service/{}/{}/{{z}}/{{x}}/{{y}}".format(flask.request.url_root, record["service_type"].lower(), record["id"]),
                 "type": record["service_type"],
                 "enabled": record.get("enabled", True),
-                "plan": record.get("plan", None),
                 "costs": 0,
                 "budget": record.get("budget", None),
-            })
+            }
+            if record.get("plan"):
+                service_item["plan"] = record["plan"],
+
+            services.append(service_item)
             links.append({
+                "rel": "related",
                 "href": "{}services/{}".format(flask.request.url_root, record.get("id")),
                 "title": record.get("title", None),
             })
