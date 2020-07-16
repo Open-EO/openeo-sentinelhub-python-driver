@@ -127,15 +127,11 @@ class PatchServicesSchema(Schema):
 	"""
 	title = fields.Str(allow_none=True)
 	description = fields.Str(allow_none=True)
-	process_graph = fields.Dict(allow_none=True)
+	process = fields.Nested(ProcessSchema, required=True)
 	enabled = fields.Bool(allow_none=True)
 	parameters = fields.Dict(allow_none=True)
 	plan = fields.Str(allow_none=True)
 	budget = fields.Number(allow_none=True)
-
-	@validates("process_graph")
-	def validate_process_graph(self, graph):
-		validate_graph_with_known_processes(graph)
 
 class PostResultSchema(Schema):
 	"""
