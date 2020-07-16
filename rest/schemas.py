@@ -27,17 +27,17 @@ class PutProcessGraphSchema(Schema):
 	PUT /process_graphs/process_graph_id
 	"""
 	process_graph = fields.Dict(required=True)
-	process_id = fields.Str(allow_none=True, attribute="id"),
-	summary = fields.Str(allow_none=True),
-	description = fields.Str(allow_none=True),
-	categories = fields.List(fields.Str(allow_none=True), allow_none=True),
-	parameters = fields.List(fields.Dict(allow_none=True), allow_none=True),
-	returns = fields.Dict(allow_none=True),
-	deprecated = fields.Bool(allow_none=True),
-	experimental = fields.Bool(allow_none=True),
-	exceptions = fields.Dict(allow_none=True),
-	examples = fields.List(fields.Dict(allow_none=True), allow_none=True), 
-	links = fields.List(fields.Dict(allow_none=True), allow_none=True),
+	process_id = fields.Str(allow_none=True, attribute="id")
+	summary = fields.Str(allow_none=True)
+	description = fields.Str(allow_none=True)
+	categories = fields.List(fields.Str(allow_none=True), allow_none=True)
+	parameters = fields.List(fields.Dict(allow_none=True), allow_none=True)
+	returns = fields.Dict(allow_none=True)
+	deprecated = fields.Bool(allow_none=True)
+	experimental = fields.Bool(allow_none=True)
+	exceptions = fields.Dict(allow_none=True)
+	examples = fields.List(fields.Dict(allow_none=True), allow_none=True)
+	links = fields.List(fields.Dict(allow_none=True), allow_none=True)
 
 	@validates("process_graph")
 	def validate_process_graph(self, graph):
@@ -63,17 +63,17 @@ class ProcessSchema(Schema):
 	'process' field
 	"""
 	process_graph = fields.Dict(required=True)
-	process_id = fields.Str(allow_none=True, attribute="id"),
-	summary = fields.Str(allow_none=True),
-	description = fields.Str(allow_none=True),
-	categories = fields.List(fields.Str(allow_none=True), allow_none=True),
-	parameters = fields.List(fields.Dict(allow_none=True), allow_none=True),
-	returns = fields.Dict(allow_none=True),
-	deprecated = fields.Bool(allow_none=True),
-	experimental = fields.Bool(allow_none=True),
-	exceptions = fields.Dict(allow_none=True),
-	examples = fields.List(fields.Dict(allow_none=True), allow_none=True), 
-	links = fields.List(fields.Dict(allow_none=True), allow_none=True),
+	process_id = fields.Str(allow_none=True, attribute="id")
+	summary = fields.Str(allow_none=True)
+	description = fields.Str(allow_none=True)
+	categories = fields.List(fields.Str(allow_none=True), allow_none=True)
+	parameters = fields.List(fields.Dict(allow_none=True), allow_none=True)
+	returns = fields.Dict(allow_none=True)
+	deprecated = fields.Bool(allow_none=True)
+	experimental = fields.Bool(allow_none=True)
+	exceptions = fields.Dict(allow_none=True)
+	examples = fields.List(fields.Dict(allow_none=True), allow_none=True)
+	links = fields.List(fields.Dict(allow_none=True), allow_none=True)
 
 	@validates("process_graph")
 	def validate_process_graph(self, graph):
@@ -127,7 +127,7 @@ class PatchServicesSchema(Schema):
 	"""
 	title = fields.Str(allow_none=True)
 	description = fields.Str(allow_none=True)
-	process = fields.Nested(ProcessSchema, required=True)
+	process = fields.Nested(ProcessSchema, allow_none=True)
 	enabled = fields.Bool(allow_none=True)
 	parameters = fields.Dict(allow_none=True)
 	plan = fields.Str(allow_none=True)

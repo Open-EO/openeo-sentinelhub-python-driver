@@ -210,6 +210,8 @@ def api_process_graph(process_graph_id):
         return {
             "id": process_graph_id,
             "process_graph": json.loads(record["process_graph"]),
+            "summary": record.get("summary"),
+            "description": record.get("description"),
         }, 200
 
     elif flask.request.method == 'DELETE':
@@ -218,6 +220,7 @@ def api_process_graph(process_graph_id):
 
     elif flask.request.method == 'PUT':
         data = flask.request.get_json()
+        print(data)
 
         process_graph_schema = PutProcessGraphSchema()
         errors = process_graph_schema.validate(data)
@@ -588,7 +591,7 @@ def api_execute_service(service_id, zoom, tx, ty):
         "tile_size": TILE_SIZE,
     }
     job_data = {
-        'process_graph': json.loads(record["process_graph"]),
+        'process': json.loads(record["process"]),
         'plan': record.get("plan"),
         'budget': record.get("budget"),
         'title': record.get("title"),

@@ -42,7 +42,8 @@ def example_process_graph():
             "north": 42.07112,
             "south": 42.06347
           },
-          "temporal_extent": ["2019-08-16", "2019-08-18"]
+          "temporal_extent": ["2019-08-16", "2019-08-18"],
+          "bands": ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B09", "B10", "B11", "B12"], # This argument is NOT needed, but validator fails without it
         }
       },
       "ndvi1": {
@@ -104,7 +105,9 @@ def service_factory(app_client):
     def wrapped(process_graph, title="MyService", service_type="xyz"):
         data = {
             "title": title,
-            "process_graph": process_graph,
+            "process": {
+              "process_graph": process_graph,
+            },
             "type": service_type,
         }
         r = app_client.post("/services", data=json.dumps(data), content_type='application/json')
@@ -175,20 +178,24 @@ def test_manage_batch_jobs(app_client):
         "south": 47.2
     }
     data = {
-        "process_graph": {
-            "loadco1": {
-                "process_id": "load_collection",
-                "arguments": {
-                    "id": "S2L1C",
-                    "spatial_extent": bbox,
-                    "temporal_extent": ["2017-01-01", "2017-02-01"],
-                },
-                "result": True,
-            },
+        "process": {
+          "process_graph": {
+              "loadco1": {
+                  "process_id": "load_collection",
+                  "arguments": {
+                      "id": "S2L1C",
+                      "spatial_extent": bbox,
+                      "temporal_extent": ["2017-01-01", "2017-02-01"],
+                      "bands": [], # This argument is NOT needed, but validator fails without it
+                  },
+                  "result": True,
+              },
+          },
         },
     }
 
     r = app_client.post("/jobs", data=json.dumps(data), content_type='application/json')
+
     assert r.status_code == 201
 
     record_id = r.headers["OpenEO-Identifier"]
@@ -197,8 +204,8 @@ def test_manage_batch_jobs(app_client):
     actual = json.loads(r.data.decode('utf-8'))
 
     assert r.status_code == 200
-    assert actual["status"] == "submitted"
-    assert actual["process_graph"] == data["process_graph"]
+    assert actual["status"] == "created"
+    assert actual["process"]["process_graph"] == data["process"]["process_graph"]
     assert actual["id"] == record_id
 
     bbox2 = {
@@ -208,16 +215,19 @@ def test_manage_batch_jobs(app_client):
         "south": 41.2
     }
     data2 = {
-        "process_graph": {
-            "loadco1": {
-                "process_id": "load_collection",
-                "arguments": {
-                    "id": "S2L1C",
-                    "spatial_extent": bbox2,
-                    "temporal_extent": ["2017-01-01", "2017-03-01"],
-                },
-                "result": True,
-            },
+        "process": {
+          "process_graph": {
+              "loadco1": {
+                  "process_id": "load_collection",
+                  "arguments": {
+                      "id": "S2L1C",
+                      "spatial_extent": bbox2,
+                      "temporal_extent": ["2017-01-01", "2017-03-01"],
+                      "bands": [], # This argument is NOT needed, but validator fails without it
+                  },
+                  "result": True,
+              },
+          },
         },
         "title": "Load collection test"
     }
@@ -230,7 +240,7 @@ def test_manage_batch_jobs(app_client):
     actual = json.loads(r.data.decode('utf-8'))
 
     assert r.status_code == 200
-    assert actual["process_graph"] == data2["process_graph"]
+    assert actual["process"]["process_graph"] == data2["process"]["process_graph"]
     assert actual["title"] == data2["title"]
 
     r = app_client.delete("/jobs/{}".format(record_id))
@@ -247,7 +257,9 @@ def test_process_batch_job(app_client, example_process_graph):
          - test /jobs/job_id/results endpoints
     """
     data = {
-        "process_graph": example_process_graph,
+        "process": {
+          "process_graph": example_process_graph,
+        }
     }
     r = app_client.post("/jobs", data=json.dumps(data), content_type='application/json')
     assert r.status_code == 201
@@ -285,7 +297,9 @@ def test_result(app_client, example_process_graph):
          - test /result endpoint
     """
     data = {
-        "process_graph": example_process_graph,
+        "process": {
+          "process_graph": example_process_graph,
+        }
     }
     r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
     assert r.status_code == 200
@@ -303,7 +317,9 @@ def test_services_crud(app_client, example_process_graph):
 
     data = {
         "title": "MyService",
-        "process_graph": example_process_graph,
+        "process": {
+          "process_graph": example_process_graph,
+        },
         "type": "xyz",
     }
     r = app_client.post("/services", data=json.dumps(data), content_type='application/json')
@@ -321,7 +337,6 @@ def test_services_crud(app_client, example_process_graph):
         "url": "http://localhost/service/xyz/{}/{{z}}/{{x}}/{{y}}".format(service_id),
         "type": data["type"],
         "enabled": True,
-        "plan": None,
         "costs": 0,
         "budget": None,
     }
@@ -346,10 +361,11 @@ def test_services_crud(app_client, example_process_graph):
     actual = json.loads(r.data.decode('utf-8'))
     # get record supports additional fields:
     expected.update({
-        "process_graph": example_process_graph,
-        "parameters": {},
+        "process": {
+          "process_graph": example_process_graph,
+        },
         "attributes": {},
-        "submitted": actual["submitted"],
+        "created": actual["created"],
     })
     assert actual == expected
 
@@ -373,57 +389,59 @@ def test_reduce(app_client, get_expected_data):
          - test /result endpoint with reduce process
     """
     data = {
-        "process_graph": {
-            "loadco1": {
-            "process_id": "load_collection",
-              "arguments": {
-                "id": "S2L1C",
-                "spatial_extent": {
-                  "west": 12.32271,
-                  "east": 12.33572,
-                  "north": 42.07112,
-                  "south": 42.06347
-                },
-                "temporal_extent": ["2019-08-16", "2019-08-25"]
-              }
-            },
-            "reduce1": {
-              "process_id": "reduce",
-              "arguments": {
-                "data": {"from_node": "loadco1"},
-                "dimension": "t",
-                "reducer": {
-                    "callback": {
-                        "min": {
-                          "process_id": "min",
-                          "arguments": {
-                            "data": {"from_argument": "data"}
-                          },
-                        },
-                        "mean": {
-                          "process_id": "mean",
-                          "arguments": {
-                            "data": {"from_argument": "data"}
-                          },
-                        },
-                        "sum": {
-                          "process_id": "sum",
-                          "arguments": {
-                            "data": [{"from_node": "min"},{"from_node": "mean"}]
-                          },
-                          "result": True
-                        }
-                    }
+        "process": {
+          "process_graph": {
+              "loadco1": {
+              "process_id": "load_collection",
+                "arguments": {
+                  "id": "S2L1C",
+                  "spatial_extent": {
+                    "west": 12.32271,
+                    "east": 12.33572,
+                    "north": 42.07112,
+                    "south": 42.06347
+                  },
+                  "temporal_extent": ["2019-08-16", "2019-08-25"]
                 }
-              }
-            },
-            "result1": {
-              "process_id": "save_result",
-              "arguments": {
-                "data": {"from_node": "reduce1"},
-                "format": "gtiff"
               },
-              "result": True
+              "reduce1": {
+                "process_id": "reduce",
+                "arguments": {
+                  "data": {"from_node": "loadco1"},
+                  "dimension": "t",
+                  "reducer": {
+                      "callback": {
+                          "min": {
+                            "process_id": "min",
+                            "arguments": {
+                              "data": {"from_argument": "data"}
+                            },
+                          },
+                          "mean": {
+                            "process_id": "mean",
+                            "arguments": {
+                              "data": {"from_argument": "data"}
+                            },
+                          },
+                          "sum": {
+                            "process_id": "sum",
+                            "arguments": {
+                              "data": [{"from_node": "min"},{"from_node": "mean"}]
+                            },
+                            "result": True
+                          }
+                      }
+                  }
+                }
+              },
+              "result1": {
+                "process_id": "save_result",
+                "arguments": {
+                  "data": {"from_node": "reduce1"},
+                  "format": "gtiff"
+                },
+                "result": True
+              }
             }
           }
         }
@@ -468,6 +486,7 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data):
               "variable_id": "spatial_extent_south"
             }
           },
+          "bands": ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B09", "B10", "B11", "B12"], # This argument is NOT needed, but validator fails without it
           "temporal_extent": [
             "2019-08-01",
             "2019-08-18"
@@ -636,7 +655,9 @@ def test_assert_works(app_client, value, double_value, expected_status_code):
     }
 
     data = {
-        "process_graph": process_graph,
+        "process": {
+          "process_graph": process_graph,
+        }
     }
     r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
     assert r.status_code == expected_status_code, r.data
@@ -660,7 +681,9 @@ def test_run_test_process_graphs(app_client, process_graph_json):
     """
     process_graph = json.loads(process_graph_json)
     data = {
-        "process_graph": process_graph,
+        "process": {
+          "process_graph": process_graph,
+        }
     }
     r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
     assert r.status_code == 200, r.data
@@ -674,17 +697,17 @@ def test_process_graph_api(app_client, example_process_graph):
     r = app_client.get('/process_graphs')
     assert r.status_code == 200, r.data
     expected = []
-    actual = json.loads(r.data.decode('utf-8')).get("process_graphs")
+    actual = json.loads(r.data.decode('utf-8')).get("processes")
     assert actual == expected
 
     # create a process graph:
+    process_graph_id = "testing_process_graph"
     data = {
-        "title": "test",
+        "summary": "test",
         "process_graph": example_process_graph,
     }
-    r = app_client.post('/process_graphs', data=json.dumps(data), content_type='application/json')
-    assert r.status_code == 201, r.data
-    process_graph_id = r.headers["OpenEO-Identifier"]
+    r = app_client.put(f'/process_graphs/{process_graph_id}', data=json.dumps(data), content_type='application/json')
+    assert r.status_code == 200, r.data
 
     # get a list of process graphs again:
     r = app_client.get('/process_graphs')
@@ -692,11 +715,10 @@ def test_process_graph_api(app_client, example_process_graph):
     expected = [
         {
             "id": process_graph_id,
-            "title": "test",
-            "description": None,
+            "summary": "test",
         },
     ]
-    actual = json.loads(r.data.decode('utf-8')).get("process_graphs")
+    actual = json.loads(r.data.decode('utf-8')).get("processes")
     assert actual == expected
 
     # get the process graph:
@@ -704,27 +726,28 @@ def test_process_graph_api(app_client, example_process_graph):
     assert r.status_code == 200, r.data
     expected = {
         "id": process_graph_id,
-        "title": "test",
-        "description": None,
+        "summary": "test",
         "process_graph": example_process_graph,
+        "description": None,
     }
     actual = json.loads(r.data.decode('utf-8'))
     assert actual == expected
 
     # change it:
     data = {
-        "title": "test2",
+        "summary": "test2",
         "description": "asdf",
+        "process_graph": example_process_graph,
     }
-    r = app_client.patch('/process_graphs/{}'.format(process_graph_id), data=json.dumps(data), content_type='application/json')
-    assert r.status_code == 204, r.data
+    r = app_client.put('/process_graphs/{}'.format(process_graph_id), data=json.dumps(data), content_type='application/json')
+    assert r.status_code == 200, r.data
 
     # get the process graph again:
     r = app_client.get('/process_graphs/{}'.format(process_graph_id))
     assert r.status_code == 200, r.data
     expected = {
         "id": process_graph_id,
-        "title": "test2",
+        "summary": "test2",
         "description": "asdf",
         "process_graph": example_process_graph,
     }
@@ -741,5 +764,5 @@ def test_process_graph_api(app_client, example_process_graph):
     r = app_client.get('/process_graphs')
     assert r.status_code == 200, r.data
     expected = []
-    actual = json.loads(r.data.decode('utf-8')).get("process_graphs")
+    actual = json.loads(r.data.decode('utf-8')).get("processes")
     assert actual == expected
