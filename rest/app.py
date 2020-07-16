@@ -521,21 +521,24 @@ def api_service(service_id):
             ), 404)
 
     if flask.request.method == 'GET':
-        return flask.make_response(jsonify({
+        service = {
             "id": record["id"],
             "title": record.get("title", None),
             "description": record.get("description", None),
-            "process_graph": json.loads(record["process_graph"]),
+            "process": json.loads(record["process"]),
             "url": "{}service/{}/{}/{{z}}/{{x}}/{{y}}".format(flask.request.url_root, record["service_type"].lower(), record["id"]),
             "type": record["service_type"],
             "enabled": record.get("enabled", True),
-            "parameters": {},
             "attributes": {},
-            "submitted": record["submitted"],
-            "plan": record.get("plan", None),
+            "created": record["created"],
             "costs": 0,
             "budget": record.get("budget", None),
-        }), 200)
+        }
+        if record.get("plan"):
+            service["plan"] = record["plan"]
+        if record.get("configuration") and json.loads(record["configuration"]):
+            service["configuration"] = json.loads(record["configuration"])
+        return flask.make_response(jsonify(service), 200)
 
     elif flask.request.method == 'PATCH':
         data = flask.request.get_json()

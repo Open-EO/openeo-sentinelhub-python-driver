@@ -266,10 +266,10 @@ class ServicesPersistence(Persistence):
         item = {
             'id': {'S': record_id},
             'service_type': {'S': str(data.get("type"))},
-            'process_graph': {'S': json.dumps(data.get("process_graph"))},
+            'process': {'S': json.dumps(data.get("process"))},
             'enabled': {'BOOL': data.get("enabled", True)},
-            'parameters': {'S': str(data.get("parameters"))},
-            'submitted': {'S': timestamp},
+            'configuration': {'S': json.dumps(data.get("configuration"))},
+            'created': {'S': timestamp},
         }
         for optional_field in ["title", "description", "plan", "budget"]:
             if data.get(optional_field) is not None:
