@@ -3,5 +3,13 @@ ADD . /
 RUN chmod +x download-process-definitions.sh
 RUN ./download-process-definitions.sh
 WORKDIR /tests
-RUN pip3 install pipenv
+RUN apt-get update
+RUN apt-get install -y software-properties-common
+RUN apt-get update
+RUN apt-get -y install bison flex
+RUN apt-get update
+RUN apt-get -y install build-essential python-dev python-pip libxml2-dev pkg-config zlib1g-dev
+#RUN apt-get install build-essential python-dev libxml2 libxml2-dev zlib1g-dev
+RUN pip3 install pipenv==2018.11.26 #https://github.com/pypa/pipenv/issues/4220
+RUN pip3 install python-igraph
 RUN pipenv install --system --deploy --dev
