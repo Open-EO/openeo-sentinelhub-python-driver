@@ -43,7 +43,6 @@ def example_process_graph():
             "south": 42.06347
           },
           "temporal_extent": ["2019-08-16", "2019-08-18"],
-          "bands": ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B09", "B10", "B11", "B12"], # This argument is NOT needed, but validator fails without it
         }
       },
       "ndvi1": {
@@ -186,7 +185,6 @@ def test_manage_batch_jobs(app_client):
                       "id": "S2L1C",
                       "spatial_extent": bbox,
                       "temporal_extent": ["2017-01-01", "2017-02-01"],
-                      "bands": [], # This argument is NOT needed, but validator fails without it
                   },
                   "result": True,
               },
@@ -223,7 +221,6 @@ def test_manage_batch_jobs(app_client):
                       "id": "S2L1C",
                       "spatial_extent": bbox2,
                       "temporal_extent": ["2017-01-01", "2017-03-01"],
-                      "bands": [], # This argument is NOT needed, but validator fails without it
                   },
                   "result": True,
               },
@@ -486,7 +483,6 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data):
               "variable_id": "spatial_extent_south"
             }
           },
-          "bands": ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B09", "B10", "B11", "B12"], # This argument is NOT needed, but validator fails without it
           "temporal_extent": [
             "2019-08-01",
             "2019-08-18"
