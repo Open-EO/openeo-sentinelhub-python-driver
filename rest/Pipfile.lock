@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "33834f807a699b92bdb209aceb3a5be6058cb7251afa9ddbdd6aa244ac282790"
+            "sha256": "759bf33ba4a3691302d1f00c95bede4b1f0882d882c10a292621b5b3d5231684"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -25,18 +25,18 @@
         },
         "boto3": {
             "hashes": [
-                "sha256:e6ab26155b2f83798218106580ab2b3cd47691e25aba912e0351502eda8d86e0",
-                "sha256:f7aa33b382cc9e73ef7f590b885e72732ad2bd9628c5e312c9aeb8ba011c6820"
+                "sha256:542fa3499624dfa3312fd5a6f45bc221d0871c73c5d91c57e5c6435b6f4463cc",
+                "sha256:6bf841797d5ec9f7770a335d919c5ea20d1980c1eb39b009e58f6de2879ff2cd"
             ],
             "index": "pypi",
-            "version": "==1.14.20"
+            "version": "==1.14.24"
         },
         "botocore": {
             "hashes": [
-                "sha256:d1bf8c2085719221683edf54913c6155c68705f26ab4a72c45e4de5176a8cf7b",
-                "sha256:e7fee600092b51ca8016c541d5c50a8b39179d5c184ec3fd430400d99ba0c55a"
+                "sha256:023e390e1caaf4aab55bd6b87738777d25e7b6f3098fb77e356e638c0baa491b",
+                "sha256:2e07c0b88563d793cca8186c7fa42cfd5b8ece4fed31c928e0676091f3bb815d"
             ],
-            "version": "==1.17.20"
+            "version": "==1.17.24"
         },
         "certifi": {
             "hashes": [
@@ -181,10 +181,10 @@
         },
         "marshmallow": {
             "hashes": [
-                "sha256:0f3a630f6a2fd124929f1bdcb5df65bd14cc8f49f52a18d0bdcfa0c42414e4a7",
-                "sha256:ba949379cb6ef73655f72075e82b31cf57012a5557ede642fc8614ab0354f869"
+                "sha256:67bf4cae9d3275b3fc74bd7ff88a7c98ee8c57c94b251a67b031dc293ecc4b76",
+                "sha256:a2a5eefb4b75a3b43f05be1cca0b6686adf56af7465c3ca629e5ad8d1e1fe13d"
             ],
-            "version": "==3.7.0"
+            "version": "==3.7.1"
         },
         "more-itertools": {
             "hashes": [
@@ -194,8 +194,8 @@
             "version": "==8.4.0"
         },
         "openeo-pg-parser-python": {
-            "git": "https://github.com/Open-EO/openeo-pg-parser-python.git",
-            "ref": "48b9ddcfb33e137a6d1962d797a8068976e01bcb"
+            "git": "https://github.com/Ardweaden/openeo-pg-parser-python.git",
+            "ref": "7e652cb656187cdd8f0b0168d2eea937807fdb34"
         },
         "packaging": {
             "hashes": [
@@ -322,18 +322,18 @@
         },
         "boto3": {
             "hashes": [
-                "sha256:e6ab26155b2f83798218106580ab2b3cd47691e25aba912e0351502eda8d86e0",
-                "sha256:f7aa33b382cc9e73ef7f590b885e72732ad2bd9628c5e312c9aeb8ba011c6820"
+                "sha256:542fa3499624dfa3312fd5a6f45bc221d0871c73c5d91c57e5c6435b6f4463cc",
+                "sha256:6bf841797d5ec9f7770a335d919c5ea20d1980c1eb39b009e58f6de2879ff2cd"
             ],
             "index": "pypi",
-            "version": "==1.14.20"
+            "version": "==1.14.24"
         },
         "botocore": {
             "hashes": [
-                "sha256:d1bf8c2085719221683edf54913c6155c68705f26ab4a72c45e4de5176a8cf7b",
-                "sha256:e7fee600092b51ca8016c541d5c50a8b39179d5c184ec3fd430400d99ba0c55a"
+                "sha256:023e390e1caaf4aab55bd6b87738777d25e7b6f3098fb77e356e638c0baa491b",
+                "sha256:2e07c0b88563d793cca8186c7fa42cfd5b8ece4fed31c928e0676091f3bb815d"
             ],
-            "version": "==1.17.20"
+            "version": "==1.17.24"
         },
         "certifi": {
             "hashes": [
@@ -553,10 +553,10 @@
         },
         "tqdm": {
             "hashes": [
-                "sha256:63ef7a6d3eb39f80d6b36e4867566b3d8e5f1fe3d6cb50c5e9ede2b3198ba7b7",
-                "sha256:7810e627bcf9d983a99d9ff8a0c09674400fd2927eddabeadf153c14a2ec8656"
+                "sha256:6baa75a88582b1db6d34ce4690da5501d2a1cb65c34664840a456b2c9f794d29",
+                "sha256:fcb7cb5b729b60a27f300b15c1ffd4744f080fb483b88f31dc8654b082cc8ea5"
             ],
-            "version": "==4.47.0"
+            "version": "==4.48.0"
         },
         "troposphere": {
             "hashes": [

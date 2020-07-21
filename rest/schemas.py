@@ -27,7 +27,7 @@ class PutProcessGraphSchema(Schema):
 	PUT /process_graphs/process_graph_id
 	"""
 	process_graph = fields.Dict(required=True)
-	process_id = fields.Str(allow_none=True, attribute="id")
+	process_id = fields.Str(allow_none=True, data_key="id")
 	summary = fields.Str(allow_none=True)
 	description = fields.Str(allow_none=True)
 	categories = fields.List(fields.Str(allow_none=True), allow_none=True)
@@ -63,7 +63,7 @@ class ProcessSchema(Schema):
 	'process' field
 	"""
 	process_graph = fields.Dict(required=True)
-	process_id = fields.Str(allow_none=True, attribute="id")
+	process_id = fields.Str(allow_none=True, data_key="id")
 	summary = fields.Str(allow_none=True)
 	description = fields.Str(allow_none=True)
 	categories = fields.List(fields.Str(allow_none=True), allow_none=True)
