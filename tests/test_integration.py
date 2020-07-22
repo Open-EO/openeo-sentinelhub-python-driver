@@ -336,6 +336,7 @@ def test_services_crud(app_client, example_process_graph):
         "enabled": True,
         "costs": 0,
         "budget": None,
+        "configuration": {}
     }
     assert services[0] == expected
 

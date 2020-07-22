@@ -220,7 +220,6 @@ def api_process_graph(process_graph_id):
 
     elif flask.request.method == 'PUT':
         data = flask.request.get_json()
-        print(data)
 
         process_graph_schema = PutProcessGraphSchema()
         errors = process_graph_schema.validate(data)
@@ -483,6 +482,10 @@ def api_services():
             }
             if record.get("plan"):
                 service_item["plan"] = record["plan"],
+            if record.get("configuration") and json.loads(record["configuration"]):
+                service_item["configuration"] = json.loads(record["configuration"])
+            else:
+                service_item["configuration"] = {}
 
             services.append(service_item)
             links.append({
@@ -541,6 +544,8 @@ def api_service(service_id):
             service["plan"] = record["plan"]
         if record.get("configuration") and json.loads(record["configuration"]):
             service["configuration"] = json.loads(record["configuration"])
+        else:
+            service["configuration"] = {}
         return flask.make_response(jsonify(service), 200)
 
     elif flask.request.method == 'PATCH':
