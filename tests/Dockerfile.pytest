@@ -3,5 +3,5 @@ ADD . /
 RUN chmod +x download-process-definitions.sh
 RUN ./download-process-definitions.sh
 WORKDIR /tests
-RUN pip3 install pipenv
+RUN pip3 install pipenv==2018.11.26 #https://github.com/pypa/pipenv/issues/4220
 RUN pipenv install --system --deploy --dev

@@ -147,9 +147,9 @@ class JobsPersistence(Persistence):
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         item = {
             'id': {'S': record_id},
-            'process_graph': {'S': json.dumps(data.get("process_graph"))},
+            'process': {'S': json.dumps(data["process"])},
             'current_status': {'S': str(data.get("current_status", "queued"))},
-            'submitted': {'S': timestamp},
+            'created': {'S': timestamp},
             'last_updated': {'S': timestamp},
             'should_be_cancelled': {'BOOL': data.get("should_be_cancelled", False)},
             'error_msg': {'S': str(data.get("error_msg"))},
@@ -217,25 +217,40 @@ class ProcessGraphsPersistence(Persistence):
     TABLE_NAME = 'shopeneo_process_graphs'
 
     @classmethod
-    def create(cls, data):
+    def create(cls, data, record_id):
         """
-            Creates a new record and returns its record ID (UUID).
+            Creates a new record.
         """
-        record_id = str(uuid.uuid4())
         item = {
             'id': {'S': record_id},
             'process_graph': {'S': json.dumps(data.get("process_graph"))},
         }
-        if data.get("title"):
-            item["title"] = {'S': str(data.get("title"))}
+        if data.get("summary"):
+            item["summary"] = {'S': str(data.get("summary"))}
         if data.get("description"):
             item["description"] = {'S': str(data.get("description"))}
+        if data.get("categories"):
+            item["categories"] = {'L': data.get("categories")}
+        if data.get("parameters"):
+            item["parameters"] = {'L': data.get("parameters")}
+        if data.get("returns"):
+            item["returns"] = {'M': data.get("returns")}
+        if data.get("deprecated"):
+            item["deprecated"] = {'BOOL': data.get("deprecated")}
+        if data.get("experimental"):
+            item["experimental"] = {'BOOL': data.get("experimental")}
+        if data.get("exceptions"):
+            item["exceptions"] = {'M': data.get("exceptions")}
+        if data.get("examples"):
+            item["examples"] = {'L': data.get("examples")}
+        if data.get("links"):
+            item["links"] = {'L': data.get("links")}
 
-        cls.dynamodb.put_item(
+        response = cls.dynamodb.put_item(
             TableName=cls.TABLE_NAME,
             Item=item,
         )
-        return record_id
+        return response
 
 
 class ServicesPersistence(Persistence):
@@ -251,10 +266,10 @@ class ServicesPersistence(Persistence):
         item = {
             'id': {'S': record_id},
             'service_type': {'S': str(data.get("type"))},
-            'process_graph': {'S': json.dumps(data.get("process_graph"))},
+            'process': {'S': json.dumps(data.get("process"))},
             'enabled': {'BOOL': data.get("enabled", True)},
-            'parameters': {'S': str(data.get("parameters"))},
-            'submitted': {'S': timestamp},
+            'configuration': {'S': json.dumps(data.get("configuration"))},
+            'created': {'S': timestamp},
         }
         for optional_field in ["title", "description", "plan", "budget"]:
             if data.get(optional_field) is not None:

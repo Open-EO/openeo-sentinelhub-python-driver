@@ -16,7 +16,7 @@ flask = "*"
 pytest = "*"
 boto3 = "*"
 flask-marshmallow = "*"
-openeo-pg-parser-python = {git = "https://github.com/Open-EO/openeo-pg-parser-python.git@2124e7998697354ac0be37a1e26cbda0ff4b7058#egg=openeo-pg-parser-python"}
+openeo-pg-parser-python = {git = "https://github.com/Ardweaden/openeo-pg-parser-python.git@7e652cb656187cdd8f0b0168d2eea937807fdb34#egg=openeo-pg-parser"}
 requests = "*"
 flask-cors = "*"
 honeycomb-beeline = "*"

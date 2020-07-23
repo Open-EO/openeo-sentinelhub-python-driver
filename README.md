@@ -145,8 +145,8 @@ $ curl http://localhost:5000/jobs/6520894b-d41d-40d1-bcff-67eafab4eced
       "result": true
     }
   },
-  "status": "submitted",
-  "submitted": [
+  "status": "created",
+  "created": [
     "2019-08-30T09:18:12.250595+00:00"
   ],
   "title": null

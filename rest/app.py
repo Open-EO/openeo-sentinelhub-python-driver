@@ -15,7 +15,7 @@ from beeline.middleware.flask import HoneyMiddleware
 
 import globalmaptiles
 from schemas import (
-    PostProcessGraphsSchema,
+    PutProcessGraphSchema,
     PatchProcessGraphsSchema,
     PGValidationSchema,
     PostResultSchema,
@@ -66,11 +66,14 @@ def after_request(response):
 @app.route('/', methods=["GET"])
 def api_root():
     return {
-        "api_version": "0.4.2",
+        "api_version": "1.0.0",
         "backend_version": os.environ.get('BACKEND_VERSION', "0.0.0").lstrip('v'),
+        "stac_version": "0.9.0",
+        "id": "sentinel-hub-openeo",
         "title": "Sentinel Hub OpenEO",
         "description": "Sentinel Hub OpenEO by [Sinergise](https://sinergise.com)",
         "endpoints": get_endpoints(),
+        "links": get_links(),
     }
 
 
@@ -100,6 +103,31 @@ def get_endpoints():
         })
     return endpoints
 
+def get_links():
+    """
+        Returns a list of links related to this service.
+    """
+    return [
+        {
+            "href": "https://www.sentinel-hub.com/",
+            "rel": "about",
+            "type": "text/html",
+            "title": "Sentinel Hub homepage"
+        },
+        {
+            "href": f"{flask.request.url_root}.well-known/openeo",
+            "rel": "version-history",
+            "type": "application/json",
+            "title": "List of supported openEO versions"
+        },
+        {
+            "href": f"{flask.request.url_root}collections",
+            "rel": "data",
+            "type": "application/json",
+            "title": "List of Datasets"
+        }
+    ]
+
 
 @app.route('/output_formats', methods=["GET"])
 def api_output_formats():
@@ -126,51 +154,49 @@ def api_service_types():
     return flask.make_response(jsonify(result), 200)
 
 
-@app.route('/process_graphs', methods=["GET", "POST"])
+@app.route('/process_graphs', methods=["GET"])
 def api_process_graphs():
-    if flask.request.method in ['GET', 'HEAD']:
-        process_graphs = []
-        links = []
-        for record in ProcessGraphsPersistence.items():
-            process_graphs.append({
-                "id": record["id"],
-                "title": record.get("title", None),
-                "description": record.get("description", None),
-            })
-            links.append({
-                "href": "{}/process_graphs/{}".format(flask.request.url_root, record["id"]),
-                "title": record.get("title", None),
-            })
-        return {
-            "process_graphs": process_graphs,
-            "links": links,
-        }, 200
+    process_graphs = []
+    links = []
+    for record in ProcessGraphsPersistence.items():
+        process_item = {
+            "id": record["id"],
+        }
+        if record.get("description"):
+            # It's supposed to be nullable, but validator disagrees
+            process_item["description"] = record.get("description")
+        if record.get("summary"):
+            # It's supposed to be nullable, but validator disagrees
+            process_item["summary"] = record.get("summary")
+        if record.get("returns"):
+            # It's supposed to be nullable, but validator disagrees
+            process_item["returns"] = record.get("returns")
+        if record.get("parameters"):
+            # It's supposed to be nullable, but validator disagrees
+            process_item["parameters"] = record.get("parameters")
+        if record.get("categories"):
+            process_item["categories"] = record.get("categories")
+        if record.get("deprecated"):
+            process_item["deprecated"] = record.get("deprecated")
+        if record.get("experimental"):
+            process_item["experimental"] = record.get("experimental")
 
-    elif flask.request.method == 'POST':
-        data = flask.request.get_json()
+        process_graphs.append(process_item)
 
-        process_graph_schema = PostProcessGraphsSchema()
-        errors = process_graph_schema.validate(data)
-
-        if errors:
-            # Response procedure for validation will depend on how openeo_pg_parser_python will work
-            return flask.make_response(jsonify(
-                id = process_graph_id,
-                code = 400,
-                message = errors,
-                links = []
-                ), 400)
-
-        record_id = ProcessGraphsPersistence.create(data)
-
-        # add requested headers to 201 response:
-        response = flask.make_response('', 201)
-        response.headers['Location'] = '/process_graphs/{}'.format(record_id)
-        response.headers['OpenEO-Identifier'] = record_id
-        return response
+        link_to_pg = {
+            "rel": "related",
+            "href": "{}/process_graphs/{}".format(flask.request.url_root, record["id"]),
+        }
+        if record.get("title", None):
+            link_to_job["title"] = record["title"]
+        links.append(link_to_pg)
+    return {
+        "processes": process_graphs,
+        "links": links,
+    }, 200
 
 
-@app.route('/process_graphs/<process_graph_id>', methods=["GET", "DELETE", "PATCH"])
+@app.route('/process_graphs/<process_graph_id>', methods=["GET", "DELETE", "PUT"])
 def api_process_graph(process_graph_id):
     if flask.request.method in ['GET', 'HEAD']:
         record = ProcessGraphsPersistence.get_by_id(process_graph_id)
@@ -181,22 +207,21 @@ def api_process_graph(process_graph_id):
                 message = "Process graph does not exist.",
                 links = []
                 ), 404)
-        record["id"] = process_graph_id
         return {
             "id": process_graph_id,
-            "title": record.get("title", None),
-            "description": record.get("description", None),
             "process_graph": json.loads(record["process_graph"]),
+            "summary": record.get("summary"),
+            "description": record.get("description"),
         }, 200
 
     elif flask.request.method == 'DELETE':
         ProcessGraphsPersistence.delete(process_graph_id)
         return flask.make_response('The process graph has been successfully deleted.', 204)
 
-    elif flask.request.method == 'PATCH':
+    elif flask.request.method == 'PUT':
         data = flask.request.get_json()
 
-        process_graph_schema = PatchProcessGraphsSchema()
+        process_graph_schema = PutProcessGraphSchema()
         errors = process_graph_schema.validate(data)
 
         if errors:
@@ -208,10 +233,10 @@ def api_process_graph(process_graph_id):
                 links = []
                 ), 400)
 
-        for key in data:
-            ProcessGraphsPersistence.update_key(process_graph_id, key, data[key])
+        ProcessGraphsPersistence.create(data, process_graph_id)
 
-        return flask.make_response('The process graph data has been updated successfully.', 204)
+        response = flask.make_response('The user-defined process has been stored successfully.', 200)
+        return response
 
 
 @app.route('/result', methods=['POST'])
@@ -248,11 +273,17 @@ def api_jobs():
                 "id": record["id"],
                 "title": record.get("title", None),
                 "description": record.get("description", None),
+                "status": record["current_status"],
+                "created": record["created"]
             })
-            links.append({
+            link_to_job = {
+                "rel": "related",
                 "href": "{}/jobs/{}".format(flask.request.url_root, record.get("id")),
-                "title": record.get("title", None),
-            })
+            }
+            if record.get("title", None):
+                link_to_job["title"] = record["title"]
+            links.append(link_to_job)
+
         return {
             "jobs": jobs,
             "links": links,
@@ -268,7 +299,7 @@ def api_jobs():
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
             return flask.make_response('Invalid request: {}'.format(errors), 400)
 
-        data["current_status"] = "submitted"
+        data["current_status"] = "created"
         data["should_be_cancelled"] = False
 
         record_id = JobsPersistence.create(data)
@@ -297,10 +328,12 @@ def api_batch_job(job_id):
             id = job_id,
             title = job.get("title", None),
             description = job.get("description", None),
-            process_graph = json.loads(job["process_graph"]),
+            process = {
+                "process_graph": json.loads(job["process"])["process_graph"]
+            },
             status = status,  # "status" is reserved word in DynamoDB
             error = job["error_msg"] if status == "error" else None,
-            submitted = job["submitted"],
+            created = job["created"],
             updated = job["last_updated"],
             ), 200)
 
@@ -327,7 +360,7 @@ def api_batch_job(job_id):
 
         for key in data:
             JobsPersistence.update_key(job_id, key, data[key])
-        JobsPersistence.update_status(job_id, "submitted")
+        JobsPersistence.update_status(job_id, "created")
 
         return flask.make_response('Changes to the job applied successfully.', 204)
 
@@ -352,7 +385,7 @@ def add_job_to_queue(job_id):
     if flask.request.method == "POST":
         job = JobsPersistence.get_by_id(job_id)
 
-        if job["current_status"] in ["submitted", "finished", "canceled", "error"]:
+        if job["current_status"] in ["created", "finished", "canceled", "error"]:
             JobsPersistence.update_status(job_id, "queued")
             return flask.make_response('The creation of the resource has been queued successfully.', 202)
         else:
@@ -437,18 +470,26 @@ def api_services():
         links = []
 
         for record in ServicesPersistence.items():
-            services.append({
+            service_item = {
                 "id": record["id"],
                 "title": record.get("title", None),
                 "description": record.get("description", None),
                 "url": "{}service/{}/{}/{{z}}/{{x}}/{{y}}".format(flask.request.url_root, record["service_type"].lower(), record["id"]),
                 "type": record["service_type"],
                 "enabled": record.get("enabled", True),
-                "plan": record.get("plan", None),
                 "costs": 0,
                 "budget": record.get("budget", None),
-            })
+            }
+            if record.get("plan"):
+                service_item["plan"] = record["plan"],
+            if record.get("configuration") and json.loads(record["configuration"]):
+                service_item["configuration"] = json.loads(record["configuration"])
+            else:
+                service_item["configuration"] = {}
+
+            services.append(service_item)
             links.append({
+                "rel": "related",
                 "href": "{}services/{}".format(flask.request.url_root, record.get("id")),
                 "title": record.get("title", None),
             })
@@ -486,21 +527,26 @@ def api_service(service_id):
             ), 404)
 
     if flask.request.method == 'GET':
-        return flask.make_response(jsonify({
+        service = {
             "id": record["id"],
             "title": record.get("title", None),
             "description": record.get("description", None),
-            "process_graph": json.loads(record["process_graph"]),
+            "process": json.loads(record["process"]),
             "url": "{}service/{}/{}/{{z}}/{{x}}/{{y}}".format(flask.request.url_root, record["service_type"].lower(), record["id"]),
             "type": record["service_type"],
             "enabled": record.get("enabled", True),
-            "parameters": {},
             "attributes": {},
-            "submitted": record["submitted"],
-            "plan": record.get("plan", None),
+            "created": record["created"],
             "costs": 0,
             "budget": record.get("budget", None),
-        }), 200)
+        }
+        if record.get("plan"):
+            service["plan"] = record["plan"]
+        if record.get("configuration") and json.loads(record["configuration"]):
+            service["configuration"] = json.loads(record["configuration"])
+        else:
+            service["configuration"] = {}
+        return flask.make_response(jsonify(service), 200)
 
     elif flask.request.method == 'PATCH':
         data = flask.request.get_json()
@@ -550,7 +596,7 @@ def api_execute_service(service_id, zoom, tx, ty):
         "tile_size": TILE_SIZE,
     }
     job_data = {
-        'process_graph': json.loads(record["process_graph"]),
+        'process': json.loads(record["process"]),
         'plan': record.get("plan"),
         'budget': record.get("budget"),
         'title': record.get("title"),
@@ -633,10 +679,6 @@ def available_collections():
                 "license": data["license"],
                 "extent": data["extent"],
                 "links": data["links"],
-                "title": data.get("title"),
-                "keywords": data.get("keywords"),
-                "version": data.get("version"),
-                "providers": data.get("providers"),
             }
             collections.append(basic_info)
 
@@ -676,15 +718,24 @@ def available_processes():
         ), 200)
 
 
-@app.route('/validation', methods=["GET"])
+@app.route('/validation', methods=["POST"])
 def validate_process_graph():
     data = flask.request.get_json()
 
     process_graph_schema = PGValidationSchema()
     errors = process_graph_schema.validate(data)
 
+    validation_errors = []
+
+    if errors.get("process_graph"):
+        for error in errors.get("process_graph"):
+            validation_errors.append({
+                "message": error,
+                "code": "ValidationError"
+            })
+
     return {
-        "errors": errors,
+        "errors": validation_errors,
     }, 200
 
 
@@ -692,7 +743,7 @@ def validate_process_graph():
 def well_known():
     return flask.make_response(jsonify(
         versions = [{
-            "api_version": "0.4.2",
+            "api_version": "1.0.0",
             "production": False,
             "url": flask.request.url_root
         }]

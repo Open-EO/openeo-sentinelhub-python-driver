@@ -6,8 +6,9 @@
         "development"
     ],
     "parameter_order": ["a", "b"],
-    "parameters": {
-        "a": {
+    "parameters": [
+        {
+            "name": "a",
             "description": "A raster data cube that should be compared.",
             "schema": {
                 "type": "object",
@@ -15,7 +16,8 @@
             },
             "required": true
         },
-        "b": {
+        {
+            "name": "b",
             "description": "A raster data cube that should be compared.",
             "schema": {
                 "type": "object",
@@ -23,7 +25,7 @@
             },
             "required": true
         }
-    },
+    ],
     "returns": {
         "description": "Returns nothing if data cubes match, throws an error if not.",
         "schema": {
