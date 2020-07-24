@@ -188,7 +188,7 @@ def api_process_graphs():
             "href": "{}/process_graphs/{}".format(flask.request.url_root, record["id"]),
         }
         if record.get("title", None):
-            link_to_job["title"] = record["title"]
+            link_to_pg["title"] = record["title"]
         links.append(link_to_pg)
     return {
         "processes": process_graphs,
@@ -274,7 +274,7 @@ def api_jobs():
                 "title": record.get("title", None),
                 "description": record.get("description", None),
                 "status": record["current_status"],
-                "created": record["created"]
+                "created": record.get("created", record.get("submitted"))
             })
             link_to_job = {
                 "rel": "related",
@@ -491,7 +491,6 @@ def api_services():
             links.append({
                 "rel": "related",
                 "href": "{}services/{}".format(flask.request.url_root, record.get("id")),
-                "title": record.get("title", None),
             })
         return {
             "services": services,
