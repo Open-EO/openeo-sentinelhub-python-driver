@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [dev-packages]
-zappa = "*"
+zappa = "==0.48.2"
 pylint = "*"
 responses = "*"
 
@@ -14,7 +14,7 @@ python_version = "3.6"
 [packages]
 flask = "*"
 pytest = "*"
-boto3 = "*"
+boto3 = "==1.10.1"
 flask-marshmallow = "*"
 openeo-pg-parser-python = {git = "https://github.com/Ardweaden/openeo-pg-parser-python.git@7e652cb656187cdd8f0b0168d2eea937807fdb34#egg=openeo-pg-parser"}
 requests = "*"
