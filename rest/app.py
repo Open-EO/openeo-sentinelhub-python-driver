@@ -365,16 +365,20 @@ def api_batch_job(job_id):
         return flask.make_response('Changes to the job applied successfully.', 204)
 
     elif flask.request.method == 'DELETE':
-        JobsPersistence.set_should_be_cancelled(job_id)
+        # for queued and running jobs, we need to mark them to be cancelled and wait for their status to change:
+        if job["current_status"] in ["queued", "running"]:
+            JobsPersistence.set_should_be_cancelled(job_id)
 
-        # wait for job to get status 'cancelled':
-        period = 0.5  # check every X seconds
-        n_checks = int(REQUEST_TIMEOUT/period)
-        for _ in range(n_checks):
-            job = JobsPersistence.get_by_id(job_id)
-            if job["current_status"] in ["canceled"]:
-                break
-            time.sleep(0.5)
+            # wait for job to get status 'cancelled':
+            period = 0.5  # check every X seconds
+            n_checks = int(REQUEST_TIMEOUT/period)
+            for _ in range(n_checks):
+                job = JobsPersistence.get_by_id(job_id)
+                if job["current_status"] not in ["queued", "running"]:
+                    break
+                time.sleep(0.5)
+            if job["current_status"] in ["queued", "running"]:
+                return flask.make_response('Could not stop the job properly.', 500)
 
         JobsPersistence.delete(job_id)
         return flask.make_response('The job has been successfully deleted.', 204)
