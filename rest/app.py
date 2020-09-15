@@ -274,7 +274,7 @@ def api_jobs():
                 "title": record.get("title", None),
                 "description": record.get("description", None),
                 "status": record["current_status"],
-                "created": record.get("created", record.get("submitted"))
+                "created": record["created"]
             })
             link_to_job = {
                 "rel": "related",
@@ -451,16 +451,17 @@ def add_job_to_queue(job_id):
     elif flask.request.method == "DELETE":
         job = JobsPersistence.get_by_id(job_id)
 
-        if job["current_status"] in ["queued" ,"running"]:
-            JobsPersistence.set_should_be_cancelled(job_id)
-            return flask.make_response('Processing the job has been successfully canceled.', 200)
+        JobsPersistence.set_should_be_cancelled(job_id)
 
-        return flask.make_response(jsonify(
-            id = job_id,
-            code = "JobNotStarted",
-            message = "Job hasn't been started yet.",
-            links = []
-            ), 400)
+        period = 0.5  # check every X seconds
+        n_checks = int(REQUEST_TIMEOUT/period)
+        for _ in range(n_checks):
+            job = JobsPersistence.get_by_id(job_id)
+            if job["current_status"] in ["created", "queued", "canceled", "running", "finished"]:
+                return flask.make_response('Processing the job has been successfully canceled.', 204)
+            time.sleep(0.5)
+        
+        return flask.make_response('Could not cancel the job properly.', 500)
 
 
 @app.route('/services', methods=['GET','POST'])
