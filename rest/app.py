@@ -188,7 +188,7 @@ def api_process_graphs():
             "href": "{}/process_graphs/{}".format(flask.request.url_root, record["id"]),
         }
         if record.get("title", None):
-            link_to_job["title"] = record["title"]
+            link_to_pg["title"] = record["title"]
         links.append(link_to_pg)
     return {
         "processes": process_graphs,
@@ -455,16 +455,17 @@ def add_job_to_queue(job_id):
     elif flask.request.method == "DELETE":
         job = JobsPersistence.get_by_id(job_id)
 
-        if job["current_status"] in ["queued" ,"running"]:
-            JobsPersistence.set_should_be_cancelled(job_id)
-            return flask.make_response('Processing the job has been successfully canceled.', 200)
+        JobsPersistence.set_should_be_cancelled(job_id)
 
-        return flask.make_response(jsonify(
-            id = job_id,
-            code = "JobNotStarted",
-            message = "Job hasn't been started yet.",
-            links = []
-            ), 400)
+        period = 0.5  # check every X seconds
+        n_checks = int(REQUEST_TIMEOUT/period)
+        for _ in range(n_checks):
+            job = JobsPersistence.get_by_id(job_id)
+            if job["current_status"] not in ["queued", "running"]:
+                return flask.make_response('Processing the job has been successfully canceled.', 204)
+            time.sleep(period)
+        
+        return flask.make_response('Could not cancel the job properly.', 500)
 
 
 @app.route('/services', methods=['GET','POST'])
@@ -495,7 +496,6 @@ def api_services():
             links.append({
                 "rel": "related",
                 "href": "{}services/{}".format(flask.request.url_root, record.get("id")),
-                "title": record.get("title", None),
             })
         return {
             "services": services,
