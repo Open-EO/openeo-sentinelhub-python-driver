@@ -457,9 +457,9 @@ def add_job_to_queue(job_id):
         n_checks = int(REQUEST_TIMEOUT/period)
         for _ in range(n_checks):
             job = JobsPersistence.get_by_id(job_id)
-            if job["current_status"] in ["created", "queued", "canceled", "running", "finished"]:
+            if job["current_status"] not in ["queued", "running"]:
                 return flask.make_response('Processing the job has been successfully canceled.', 204)
-            time.sleep(0.5)
+            time.sleep(period)
         
         return flask.make_response('Could not cancel the job properly.', 500)
 

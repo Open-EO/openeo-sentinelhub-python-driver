@@ -263,9 +263,7 @@ def test_process_batch_job(app_client, example_process_graph):
     record_id = r.headers["OpenEO-Identifier"]
 
     r = app_client.delete("/jobs/{}/results".format(record_id))
-    actual = json.loads(r.data.decode('utf-8'))
-    assert r.status_code == 400
-    assert actual["code"]  == "JobNotStarted"
+    assert r.status_code == 204
 
     r = app_client.post("/jobs/{}/results".format(record_id))
     assert r.status_code == 202
@@ -286,7 +284,7 @@ def test_process_batch_job(app_client, example_process_graph):
     assert  actual["code"] == "JobNotFinished"
 
     r = app_client.delete("/jobs/{}/results".format(record_id))
-    assert r.status_code == 200
+    assert r.status_code == 204
 
 
 def test_result(app_client, example_process_graph):
