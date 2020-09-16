@@ -49,11 +49,13 @@ def generate_data():
             attrs = {}
         ):
         class BBox:
-            def get_lower_left(self):
-                return (ymin,xmin)
+            @property
+            def lower_left(self):
+                return (ymin, xmin)
 
-            def get_upper_right(self):
-                return (ymax,xmax)
+            @property
+            def upper_right(self):
+                return (ymax, xmax)
 
         fake_bbox = BBox()
         attrs = {"band_aliases": band_aliases, "bbox": fake_bbox, **attrs}
