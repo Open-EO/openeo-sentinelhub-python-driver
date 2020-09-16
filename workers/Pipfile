@@ -9,7 +9,6 @@ responses = "*"
 pylint = "*"
 
 [packages]
-pandas = "==0.24.2"
 python-dotenv = "*"
 xarray = "*"
 gdal = "==2.2.2"
