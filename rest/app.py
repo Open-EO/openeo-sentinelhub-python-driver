@@ -376,7 +376,7 @@ def api_batch_job(job_id):
                 job = JobsPersistence.get_by_id(job_id)
                 if job["current_status"] not in ["queued", "running"]:
                     break
-                time.sleep(0.5)
+                time.sleep(period)
             if job["current_status"] in ["queued", "running"]:
                 return flask.make_response('Could not stop the job properly.', 500)
 
@@ -621,7 +621,7 @@ def _execute_and_wait_for_job(job_data):
             job = JobsPersistence.get_by_id(job_id)
             if job["current_status"] in ["finished","error"]:
                 break
-            time.sleep(0.5)
+            time.sleep(period)
 
     JobsPersistence.delete(job_id)
 
