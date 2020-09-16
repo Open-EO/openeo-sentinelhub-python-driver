@@ -117,8 +117,8 @@ class save_resultEOTask(ProcessEOTask):
             data = data.expand_dims({"band": ["generic_band"]}, axis=-1)
         n_bands = len(data['band'])
 
-        xmin, ymin = bbox.get_lower_left()
-        xmax, ymax = bbox.get_upper_right()
+        xmin, ymin = bbox.lower_left
+        xmax, ymax = bbox.upper_right
         xres = (xmax - xmin) / float(nx)
         yres = (ymax - ymin) / float(ny)
         geotransform = (xmin, xres, 0, ymax, 0, -yres)
