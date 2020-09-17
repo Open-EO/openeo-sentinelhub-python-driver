@@ -52,6 +52,8 @@ AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', FAKE_AWS_ACCESS_KEY_ID)
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', FAKE_AWS_SECRET_ACCESS_KEY)
 S3_LOCAL_URL = os.environ.get('DATA_AWS_S3_ENDPOINT_URL')
 
+STAC_VERSION = "0.9.0"
+
 @app.after_request
 def after_request(response):
     response.headers['Access-Control-Allow-Origin'] = '*'
@@ -68,7 +70,7 @@ def api_root():
     return {
         "api_version": "1.0.0",
         "backend_version": os.environ.get('BACKEND_VERSION', "0.0.0").lstrip('v'),
-        "stac_version": "0.9.0",
+        "stac_version": STAC_VERSION,
         "id": "sentinel-hub-openeo",
         "title": "Sentinel Hub OpenEO",
         "description": "Sentinel Hub OpenEO by [Sinergise](https://sinergise.com)",
@@ -415,6 +417,7 @@ def add_job_to_queue(job_id):
             return flask.make_response(jsonify(
                 id = job_id,
                 code = job["error_code"],
+                level = "error",
                 message = job["error_msg"],
                 links = []
                 ), 424)
@@ -440,15 +443,18 @@ def add_job_to_queue(job_id):
             )
             mime_type = result["type"]
             links.append({
+                'rel': "related",
                 'href': url,
                 'type': mime_type,
             })
 
         return flask.make_response(jsonify(
+                stac_version = STAC_VERSION,
                 id = job_id,
-                title = job.get("title", None),
-                description = job.get("description", None),
-                updated = job["last_updated"],  # "updated" is a reserved word in DynamoDB
+                type = "Feature",
+                geometry = None,
+                properties = {"datetime": None},
+                assets = {},
                 links = links,
             ), 200)
 
