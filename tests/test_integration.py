@@ -695,6 +695,15 @@ def test_process_graph_api(app_client, example_process_graph):
     actual = json.loads(r.data.decode('utf-8')).get("processes")
     assert actual == expected
 
+    # Use invalid process graph id:
+    process_graph_id = "c91ea247-2ec0-4048-ab6c-1c31c3ecfa7e"
+    data = {
+        "summary": "invalid id",
+        "process_graph": example_process_graph,
+    }
+    r = app_client.put(f'/process_graphs/{process_graph_id}', data=json.dumps(data), content_type='application/json')
+    assert r.status_code == 400, r.data
+
     # create a process graph:
     process_graph_id = "testing_process_graph"
     data = {

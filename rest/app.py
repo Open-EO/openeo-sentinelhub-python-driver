@@ -12,6 +12,7 @@ from flask import Flask, url_for, jsonify
 from flask_cors import CORS
 import beeline
 from beeline.middleware.flask import HoneyMiddleware
+import re
 
 import globalmaptiles
 from schemas import (
@@ -225,6 +226,9 @@ def api_process_graph(process_graph_id):
 
         process_graph_schema = PutProcessGraphSchema()
         errors = process_graph_schema.validate(data)
+
+        if not re.match(r'^\w+$', process_graph_id):
+            errors = "Process graph id does not match the required pattern";
 
         if errors:
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
