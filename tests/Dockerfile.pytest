@@ -6,5 +6,4 @@ WORKDIR /tests
 RUN pip3 install pipenv
 RUN \
     cd ../rest && \
-    apt install -y yacc && \
     pipenv install --system --deploy --dev
