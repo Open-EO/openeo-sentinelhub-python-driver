@@ -4,4 +4,7 @@ RUN chmod +x download-process-definitions.sh
 RUN ./download-process-definitions.sh
 WORKDIR /tests
 RUN pip3 install pipenv
-RUN pipenv install --system --deploy --dev
+RUN \
+    cd ../rest && \
+    apt install -y yacc && \
+    pipenv install --system --deploy --dev
