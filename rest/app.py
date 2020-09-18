@@ -12,6 +12,7 @@ import boto3
 import flask
 from flask import Flask, url_for, jsonify
 from flask_cors import CORS
+from flask_basicauth import BasicAuth
 import beeline
 from beeline.middleware.flask import HoneyMiddleware
 
@@ -34,6 +35,11 @@ app.url_map.strict_slashes = False
 
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
+
+basic_auth = BasicAuth(app)
+app.config['BASIC_AUTH_USERNAME'] = 'test'
+app.config['BASIC_AUTH_PASSWORD'] = 'test'
+
 
 # application performance monitoring:
 HONEYCOMP_APM_API_KEY = os.environ.get('HONEYCOMP_APM_API_KEY')
@@ -58,9 +64,11 @@ STAC_VERSION = "0.9.0"
 
 @app.after_request
 def after_request(response):
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Headers'] = 'Accept, Content-Type'  # missing websockets-specific headers
+    # we can't use '*': https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/Errors/CORSNotSupportingCredentials
+    response.headers['Access-Control-Allow-Origin'] = flask.request.environ['HTTP_ORIGIN']
+    response.headers['Access-Control-Allow-Headers'] = 'Authorization, Accept, Content-Type'
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, DELETE, PUT, PATCH, OPTIONS'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
     # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Expose-Headers
     response.headers['Access-Control-Expose-Headers'] = 'OpenEO-Costs, Location, OpenEO-Identifier'
     response.headers['Access-Control-Max-Age'] = '3600'  # https://damon.ghost.io/killing-cors-preflight-requests-on-a-react-spa/
@@ -131,6 +139,14 @@ def get_links():
             "title": "List of Datasets"
         }
     ]
+
+
+@app.route('/credentials/basic', methods=["GET"])
+@basic_auth.required
+def api_credentials_basic():
+    return flask.make_response(jsonify({
+        "access_token": "test"
+    }), 200)
 
 
 @app.route('/output_formats', methods=["GET"])
