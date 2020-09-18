@@ -33,8 +33,17 @@ from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersiste
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
-cors = CORS(app)
-app.config['CORS_HEADERS'] = 'Content-Type'
+cors = CORS(
+    app,
+    origins='*',
+    # we can't use '*': https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/Errors/CORSNotSupportingCredentials
+    send_wildcard=False,
+    allow_headers=['Authorization', 'Accept', 'Content-Type'],
+    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Expose-Headers
+    expose_headers=['OpenEO-Costs', 'Location', 'OpenEO-Identifier'],
+    supports_credentials=True,
+    max_age=3600,
+)
 
 basic_auth = BasicAuth(app)
 app.config['BASIC_AUTH_USERNAME'] = 'test'
@@ -61,18 +70,6 @@ AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', FAKE_AWS_SECRET_
 S3_LOCAL_URL = os.environ.get('DATA_AWS_S3_ENDPOINT_URL')
 
 STAC_VERSION = "0.9.0"
-
-@app.after_request
-def after_request(response):
-    # we can't use '*': https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/Errors/CORSNotSupportingCredentials
-    response.headers['Access-Control-Allow-Origin'] = flask.request.environ['HTTP_ORIGIN']
-    response.headers['Access-Control-Allow-Headers'] = 'Authorization, Accept, Content-Type'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, DELETE, PUT, PATCH, OPTIONS'
-    response.headers['Access-Control-Allow-Credentials'] = 'true'
-    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Expose-Headers
-    response.headers['Access-Control-Expose-Headers'] = 'OpenEO-Costs, Location, OpenEO-Identifier'
-    response.headers['Access-Control-Max-Age'] = '3600'  # https://damon.ghost.io/killing-cors-preflight-requests-on-a-react-spa/
-    return response
 
 
 @app.route('/', methods=["GET"])
