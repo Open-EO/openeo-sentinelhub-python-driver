@@ -1,10 +1,12 @@
-import os
-import sys
 import datetime
-from logging import log, INFO, WARN
-import json
 import glob
+import json
+from logging import log, INFO, WARN
+import os
+import re
+import sys
 import time
+
 import requests
 import boto3
 import flask
@@ -12,7 +14,6 @@ from flask import Flask, url_for, jsonify
 from flask_cors import CORS
 import beeline
 from beeline.middleware.flask import HoneyMiddleware
-import re
 
 import globalmaptiles
 from schemas import (
@@ -474,7 +475,7 @@ def add_job_to_queue(job_id):
             if job["current_status"] not in ["queued", "running"]:
                 return flask.make_response('Processing the job has been successfully canceled.', 204)
             time.sleep(period)
-        
+
         return flask.make_response('Could not cancel the job properly.', 500)
 
 
