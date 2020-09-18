@@ -4,3 +4,4 @@ zappa_settings.json
 __pycache__
 .pytest_cache
 .pyc
+.python-version
