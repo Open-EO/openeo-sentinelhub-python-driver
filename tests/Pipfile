@@ -7,7 +7,6 @@ name = "pypi"
 zappa = "*"
 pylint = "*"
 responses = "*"
-numpy = "*"
 
 [requires]
 python_version = "3.6"
@@ -17,7 +16,9 @@ flask = "*"
 pytest = "*"
 boto3 = "*"
 flask-marshmallow = "*"
+openeo-pg-parser = {editable = true, git = "https://github.com/Ardweaden/openeo-pg-parser-python", ref = "7e652cb656187cdd8f0b0168d2eea937807fdb34"}
 requests = "*"
 flask-cors = "*"
 honeycomb-beeline = "*"
-openeo-pg-parser = {editable = true, git = "https://github.com/Ardweaden/openeo-pg-parser-python", ref = "7e652cb656187cdd8f0b0168d2eea937807fdb34"}
+numpy = "*"
+flask-basicauth = "*"
