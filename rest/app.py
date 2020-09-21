@@ -1,18 +1,20 @@
-import os
-import sys
 import datetime
-from logging import log, INFO, WARN
-import json
 import glob
+import json
+from logging import log, INFO, WARN
+import os
+import re
+import sys
 import time
+
 import requests
 import boto3
 import flask
 from flask import Flask, url_for, jsonify
 from flask_cors import CORS
+from flask_basicauth import BasicAuth
 import beeline
 from beeline.middleware.flask import HoneyMiddleware
-import re
 
 import globalmaptiles
 from schemas import (
@@ -31,8 +33,22 @@ from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersiste
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
-cors = CORS(app)
-app.config['CORS_HEADERS'] = 'Content-Type'
+cors = CORS(
+    app,
+    origins='*',
+    # we can't use '*': https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/Errors/CORSNotSupportingCredentials
+    send_wildcard=False,
+    allow_headers=['Authorization', 'Accept', 'Content-Type'],
+    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Expose-Headers
+    expose_headers=['OpenEO-Costs', 'Location', 'OpenEO-Identifier'],
+    supports_credentials=True,
+    max_age=3600,
+)
+
+basic_auth = BasicAuth(app)
+app.config['BASIC_AUTH_USERNAME'] = 'test'
+app.config['BASIC_AUTH_PASSWORD'] = 'test'
+
 
 # application performance monitoring:
 HONEYCOMP_APM_API_KEY = os.environ.get('HONEYCOMP_APM_API_KEY')
@@ -54,16 +70,6 @@ AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', FAKE_AWS_SECRET_
 S3_LOCAL_URL = os.environ.get('DATA_AWS_S3_ENDPOINT_URL')
 
 STAC_VERSION = "0.9.0"
-
-@app.after_request
-def after_request(response):
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Headers'] = 'Accept, Content-Type'  # missing websockets-specific headers
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, DELETE, PUT, PATCH, OPTIONS'
-    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Expose-Headers
-    response.headers['Access-Control-Expose-Headers'] = 'OpenEO-Costs, Location, OpenEO-Identifier'
-    response.headers['Access-Control-Max-Age'] = '3600'  # https://damon.ghost.io/killing-cors-preflight-requests-on-a-react-spa/
-    return response
 
 
 @app.route('/', methods=["GET"])
@@ -130,6 +136,14 @@ def get_links():
             "title": "List of Datasets"
         }
     ]
+
+
+@app.route('/credentials/basic', methods=["GET"])
+@basic_auth.required
+def api_credentials_basic():
+    return flask.make_response(jsonify({
+        "access_token": "test"
+    }), 200)
 
 
 @app.route('/output_formats', methods=["GET"])
@@ -474,7 +488,7 @@ def add_job_to_queue(job_id):
             if job["current_status"] not in ["queued", "running"]:
                 return flask.make_response('Processing the job has been successfully canceled.', 204)
             time.sleep(period)
-        
+
         return flask.make_response('Could not cancel the job properly.', 500)
 
 
