@@ -1,7 +1,7 @@
 import datetime
 import glob
 import json
-from logging import log, INFO, WARN
+from logging import log, INFO, WARN, ERROR
 import os
 import re
 import sys
@@ -45,9 +45,34 @@ cors = CORS(
     max_age=3600,
 )
 
-basic_auth = BasicAuth(app)
-app.config['BASIC_AUTH_USERNAME'] = 'test'
-app.config['BASIC_AUTH_PASSWORD'] = 'test'
+
+class BasicAuthSentinelHub(BasicAuth):
+    def check_credentials(self, username, password):
+        """ We expect HTTP Basic username / password to be SentinelHub clientId / clientSecret, with
+            which we obtain the auth token from the service.
+        """
+        r = requests.post(
+            'https://services.sentinel-hub.com/oauth/token',
+            data={
+                "grant_type": "client_credentials",
+                "client_id": username,
+                "client_secret": password,
+            }
+        )
+        if r.status_code != 200:
+            log(INFO, f"Access denied: {r.status_code} {r.text}")
+            return False
+
+        j = r.json()
+        access_token = j.get("access_token")
+        if not access_token:
+            log(ERROR, f"Error decoding access token from: {r.text}")
+            return False
+
+        flask.g.basic_auth_access_token = access_token
+        return True
+
+basic_auth = BasicAuthSentinelHub(app)
 
 
 # application performance monitoring:
@@ -142,7 +167,7 @@ def get_links():
 @basic_auth.required
 def api_credentials_basic():
     return flask.make_response(jsonify({
-        "access_token": "test"
+        "access_token": flask.g.basic_auth_access_token,
     }), 200)
 
 
