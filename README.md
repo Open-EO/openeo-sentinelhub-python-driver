@@ -33,6 +33,70 @@ Then the REST API server can be run:
 
 ## REST
 
+### Get auth token
+
+Authenticate using your Sentinel Hub clientId and clientSecret:
+```
+$ curl -u '<SH-client-id>:<SH-client-secret>' http://127.0.0.1:5000/credentials/basic
+```
+
+Save the token to an env var for later examples:
+```
+$ export AUTH_TOKEN='...'
+```
+
+### Process and download data synchronously
+
+Trigger processing:
+
+```
+POST /results HTTP/1.1
+Content-Type: application/json
+
+{
+   "loadco1": {
+      "process_id": "load_collection",
+      "arguments": {
+         "id": "S2L1C",
+         "temporal_extent": [
+            "2019-08-16",
+            "2019-08-18"
+         ],
+         "spatial_extent": {
+            "west": 12.32271,
+            "east": 12.33572,
+            "north": 42.07112,
+            "south": 42.06347
+         }
+      }
+   },
+   "ndvi1": {
+      "process_id": "ndvi",
+      "arguments": {
+         "data": {
+            "from_node": "loadco1"
+         }
+      }
+   },
+   "result1": {
+      "process_id": "save_result",
+      "arguments": {
+         "data": {
+            "from_node": "ndvi1"
+         },
+         "format": "gtiff"
+      },
+      "result": true
+   }
+}
+```
+
+Using curl:
+```bash
+$ curl -i -X POST -H "Authorization: Bearer basic//$AUTH_TOKEN" -H "Content-Type: application/json" -d '{ "process": { "loadco1": { "process_id": "load_collection", "arguments": { "id": "S2L1C", "temporal_extent": [ "2019-08-16", "2019-08-18" ], "spatial_extent": { "west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347 } } }, "ndvi1": { "process_id": "ndvi", "arguments": { "data": { "from_node": "loadco1" } } }, "result1": { "process_id": "save_result", "arguments": { "data": { "from_node": "ndvi1" }, "format": "gtiff" }, "result": true} } }' http://localhost:5000/result/
+```
+
+
 ### Jobs
 
 List all jobs:

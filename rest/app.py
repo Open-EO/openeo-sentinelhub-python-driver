@@ -28,6 +28,7 @@ from schemas import (
     PatchServicesSchema,
 )
 from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
+from openeoerrors import OpenEOError, AuthenticationRequired, AuthenticationSchemeInvalid, TokenInvalid
 
 
 app = Flask(__name__)
@@ -95,6 +96,31 @@ AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', FAKE_AWS_SECRET_
 S3_LOCAL_URL = os.environ.get('DATA_AWS_S3_ENDPOINT_URL')
 
 STAC_VERSION = "0.9.0"
+
+
+def _extract_auth_token(headers):
+    # note that the extracted token is not necessarily valid - this needs to be checked separately
+    auth_header = headers.get('Authorization')
+    if not auth_header:
+        raise AuthenticationRequired()
+    must_start_with = "bearer basic//"
+    if auth_header[0:len(must_start_with)].lower() != must_start_with:
+        raise AuthenticationSchemeInvalid()
+
+    token = auth_header[len(must_start_with):]
+    if not token:
+        raise TokenInvalid()
+    return token
+
+
+@app.errorhandler(OpenEOError)
+def openeo_exception_handler(error):
+    return flask.make_response(jsonify(
+        id = error.record_id,
+        code = error.error_code,
+        message = error.message,
+        links = []
+        ), error.http_code)
 
 
 @app.route('/', methods=["GET"])
@@ -287,10 +313,11 @@ def api_process_graph(process_graph_id):
 @app.route('/result', methods=['POST'])
 def api_result():
     if flask.request.method == 'POST':
-        data = flask.request.get_json()
+        job_data = flask.request.get_json()
+        auth_token = _extract_auth_token(flask.request.headers)
 
         schema = PostResultSchema()
-        errors = schema.validate(data)
+        errors = schema.validate(job_data)
 
         if errors:
             log(WARN, "Invalid request: {}".format(errors))
@@ -301,10 +328,10 @@ def api_result():
                 links = []
                 ), 400)
 
-        data["current_status"] = "queued"
-        data["should_be_cancelled"] = False
-
-        return _execute_and_wait_for_job(data)
+        job_data["current_status"] = "queued"
+        job_data["should_be_cancelled"] = False
+        job_data["auth_token"] = auth_token
+        return _execute_and_wait_for_job(job_data)
 
 
 @app.route('/jobs', methods=['GET','POST'])

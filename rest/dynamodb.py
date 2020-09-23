@@ -167,6 +167,8 @@ class JobsPersistence(Persistence):
             item['plan'] = {'S': str(data.get("plan"))}
         if data.get("budget"):
             item['budget'] = {'S': str(data.get("budget"))}
+        if data.get("auth_token"):
+            item['auth_token'] = {'S': str(data.get("auth_token"))}
 
         cls.dynamodb.put_item(
             TableName=cls.TABLE_NAME,
