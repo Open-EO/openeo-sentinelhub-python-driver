@@ -208,6 +208,32 @@ def download_data(self, dataset, orbit_dates, total_width, total_height, bbox, t
     return response_data, orbit_times_middle
 
 
+def get_collection_times(self, sh_collection_id, bbox, temporal_extent):
+    auth_token = SHProcessingAuthTokenSingleton.get()
+    url = 'https://services.sentinel-hub.com/api/v1/catalog/search'
+    headers = {
+        'Authorization': f'Bearer {auth_token}',
+        'Content-Type': 'application/json'
+    }
+
+    request_payload = {
+        "bbox": [bbox.min_x, bbox.min_y, bbox.max_x, bbox.max_y],
+        "datetime": temporal_extent[0] + "Z/" + temporal_extent[1] + "Z",
+        "collections": [sh_collection_id]
+    }
+    
+    r = requests.post(url, headers=headers, json=request_payload)
+    if r.status_code != 200:
+        raise Internal("Error retrieving SH catalog, received code: " + str(r.status_code))
+
+    datetimes = []
+    for feature in r.json()["features"]:
+    	datetimes.append(datetime.strptime(feature["properties"]["datetime"], "%Y-%m-%dT%H:%M:%SZ"))
+    
+    self.logger.debug(sorted(list(set(datetimes))))
+    return sorted(list(set(datetimes)))
+    
+
 class SHProcessingAuthTokenSingleton(object):
     _access_token = None
     _valid_until = None
@@ -254,6 +280,7 @@ class load_collectionEOTask(ProcessEOTask):
         temporal_extent = self.validate_parameter(arguments, "temporal_extent", required=True)
         temporal_extent = _clean_temporal_extent(temporal_extent)
         bands = self.validate_parameter(arguments, "bands", default=None, allowed_types=[type(None), list])
+        properties = self.validate_parameter(arguments, "properties", required=False)
 
         if bands is not None and not len(bands):
             raise ProcessArgumentInvalid("The argument 'bands' in process 'load_collection' is invalid: At least one band must be specified.")
@@ -309,21 +336,44 @@ class load_collectionEOTask(ProcessEOTask):
             )
             dataFilter_params = {}
             band_aliases = {}
+           
+        elif collection_id == 'BYOC':
+            if properties is None:
+                raise ProcessArgumentInvalid("The argument 'properties' in process 'load_collection' is not defined. It's needed to contain BYOC parameters.")
+                
+            byoc_collection_id = properties["byoc_collection_id"] or None
+            if byoc_collection_id is None:
+                raise ProcessArgumentInvalid("\"byoc_collection_id\" parameter not provided in \"properties\".")
+                
+            if bands is None or not isinstance(bands, list):
+                raise ProcessArgumentInvalid("\"bands\" is not a list of valid band names.")
+                
+            dataset = "byoc-" + byoc_collection_id
+            kwargs = {}
+            dataFilter_params = {}
+            band_aliases = {}
+            
+            self.logger.debug(f'Requesting dates between: {temporal_extent}')
+            dates = get_collection_times(self, byoc_collection_id, bbox, temporal_extent)
+            orbit_dates = [{"from": d, "to": d} for d in dates]
 
         else:
             raise ProcessArgumentInvalid("The argument 'id' in process 'load_collection' is invalid: unknown collection id")
 
-        self.logger.debug(f'Requesting dates between: {temporal_extent}')
-        request = WmsRequest(
-            **kwargs,
-            instance_id=SENTINELHUB_INSTANCE_ID,
-            bbox=bbox,
-            time=temporal_extent,
-            width=width,
-            height=height,
-        )
-        dates = request.get_dates()
-        orbit_dates = get_orbit_dates(dates)
+        if collection_id != 'BYOC':    
+            self.logger.debug(f'Requesting dates between: {temporal_extent}')
+ 
+            request = WmsRequest(
+                **kwargs,
+                instance_id=SENTINELHUB_INSTANCE_ID,
+                bbox=bbox,
+                time=temporal_extent,
+                width=width,
+                height=height,
+            )
+            dates = request.get_dates()
+            orbit_dates = get_orbit_dates(dates)
+        
         response_data,orbit_times_middle = download_data(self, dataset, orbit_dates, width, height, bbox, temporal_extent, bands, dataFilter_params)
 
         mask = response_data[:, :, :, -1:] # ":" keeps the dimension
