@@ -35,7 +35,7 @@ def execute_median_process(generate_data):
         if data_arguments is not None: arguments["data"] = generate_data(**data_arguments)
         if ignore_nodata is not None: arguments["ignore_nodata"] = ignore_nodata
 
-        return process.median.medianEOTask(None, "" , None, {}, "node1").process(arguments)
+        return process.median.medianEOTask(None, "" , None, {}, "node1", {}).process(arguments)
     return wrapped
 
 
