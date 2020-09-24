@@ -27,7 +27,7 @@ class reduceEOTask(ProcessEOTask):
             class_name = node_definition["process_id"] + "EOTask"
             class_obj = getattr(getattr(process,node_definition["process_id"]), class_name)
             full_node_name = f'{self.node_name}/{node_name}'
-            tasks[node_name] = class_obj(node_arguments, self.job_id, self.logger, self._variables, full_node_name)
+            tasks[node_name] = class_obj(node_arguments, self.job_id, self.logger, self._variables, full_node_name, self.job_metadata)
 
             if node_definition.get('result', False):
                 result_task = tasks[node_name]

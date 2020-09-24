@@ -486,7 +486,7 @@ def test_xyz_service(app_client, service_factory, example_process_graph_with_var
     assert r.data == expected_data
 
 
-def test_xyz_service_2(app_client, service_factory, get_expected_data):
+def test_xyz_service_2(app_client, service_factory, get_expected_data, authorization_header):
     process_graph = {
       "loadco1": {
         "process_id": "load_collection",
@@ -579,7 +579,11 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data):
     service_id = service_factory(process_graph, title="Test XYZ service", service_type="xyz")
 
     zoom, tx, ty = 14, 8660, 5908
-    r = app_client.get('/service/xyz/{}/{}/{}/{}'.format(service_id, int(zoom), int(tx), int(ty)))
+
+    r = app_client.get(f'/service/xyz/{service_id}/{int(zoom)}/{int(tx)}/{int(ty)}')
+    assert r.status_code == 401, r.data
+
+    r = app_client.get(f'/service/xyz/{service_id}/{int(zoom)}/{int(tx)}/{int(ty)}', headers={"Authorization": authorization_header})
     assert r.status_code == 200, r.data
     expected_data = get_expected_data("tile256x256ndvi.jpeg")
     assert r.data == expected_data, "File is not the same!"
