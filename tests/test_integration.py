@@ -593,7 +593,7 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
     (0.5, 1.0, 200),
     (0.5, 2.0, 400),
 ])
-def test_assert_works(app_client, value, double_value, expected_status_code):
+def test_assert_works(app_client, value, double_value, expected_status_code, authorization_header):
     process_graph = {
       "gencol1": {
         "process_id": "create_cube",
@@ -682,7 +682,7 @@ def test_assert_works(app_client, value, double_value, expected_status_code):
           "process_graph": process_graph,
         }
     }
-    r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
+    r = app_client.post('/result', data=json.dumps(data), content_type='application/json', headers={"Authorization": authorization_header})
     assert r.status_code == expected_status_code, r.data
 
 
@@ -697,7 +697,7 @@ def _get_test_process_graphs():
             yield c
 
 @pytest.mark.parametrize('process_graph_json', _get_test_process_graphs())
-def test_run_test_process_graphs(app_client, process_graph_json):
+def test_run_test_process_graphs(app_client, process_graph_json, authorization_header):
     """
         Load process graph definitions from test_process_graph/*.json and execute them
         via POST /result/, expecting status 200 on each of them.
@@ -708,7 +708,7 @@ def test_run_test_process_graphs(app_client, process_graph_json):
           "process_graph": process_graph,
         }
     }
-    r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
+    r = app_client.post('/result', data=json.dumps(data), content_type='application/json', headers={"Authorization": authorization_header})
     assert r.status_code == 200, r.data
 
 
