@@ -29,6 +29,25 @@ Then the REST API server can be run:
 <pipenv> $ python app.py
 ```
 
+### Troubleshooting
+
+If validator complains about process graphs that are clearly correct (and which are valid on production deployment), there are two things than can be done:
+
+1) Remove and reinstall python environment:
+
+    ```
+    $ cd rest/
+    $ pipenv --rm
+    $ pipenv install
+    ```
+
+2) Remove and re-download process definitions:
+
+    ```
+    $ rm rest/process_definitions/*
+    $ ./download-process-definitions.sh
+    ```
+
 # Examples
 
 ## REST
@@ -54,46 +73,50 @@ POST /results HTTP/1.1
 Content-Type: application/json
 
 {
-   "loadco1": {
-      "process_id": "load_collection",
-      "arguments": {
-         "id": "S2L1C",
-         "temporal_extent": [
-            "2019-08-16",
-            "2019-08-18"
-         ],
-         "spatial_extent": {
-            "west": 12.32271,
-            "east": 12.33572,
-            "north": 42.07112,
-            "south": 42.06347
-         }
-      }
-   },
-   "ndvi1": {
-      "process_id": "ndvi",
-      "arguments": {
-         "data": {
-            "from_node": "loadco1"
-         }
-      }
-   },
-   "result1": {
-      "process_id": "save_result",
-      "arguments": {
-         "data": {
-            "from_node": "ndvi1"
-         },
-         "format": "gtiff"
+  "process": {
+    "process_graph": {
+      "loadco1": {
+        "process_id": "load_collection",
+        "arguments": {
+          "id": "S2L1C",
+          "temporal_extent": [
+              "2019-08-16",
+              "2019-08-18"
+          ],
+          "spatial_extent": {
+              "west": 12.32271,
+              "east": 12.33572,
+              "north": 42.07112,
+              "south": 42.06347
+          }
+        }
       },
-      "result": true
-   }
+      "ndvi1": {
+          "process_id": "ndvi",
+          "arguments": {
+            "data": {
+                "from_node": "loadco1"
+            }
+          }
+      },
+      "result1": {
+          "process_id": "save_result",
+          "arguments": {
+            "data": {
+                "from_node": "ndvi1"
+            },
+            "format": "gtiff"
+          },
+          "result": true
+      }
+    }
+  }
 }
 ```
 
 Using curl:
 ```bash
-$ curl -i -X POST -H "Authorization: Bearer basic//$AUTH_TOKEN" -H "Content-Type: application/json" -d '{ "process": { "loadco1": { "process_id": "load_collection", "arguments": { "id": "S2L1C", "temporal_extent": [ "2019-08-16", "2019-08-18" ], "spatial_extent": { "west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347 } } }, "ndvi1": { "process_id": "ndvi", "arguments": { "data": { "from_node": "loadco1" } } }, "result1": { "process_id": "save_result", "arguments": { "data": { "from_node": "ndvi1" }, "format": "gtiff" }, "result": true} } }' http://localhost:5000/result/
+$ curl -i -X POST -H "Authorization: Bearer basic//$AUTH_TOKEN" -H "Content-Type: application/json" -d '{ "process": { "process_graph": { "loadco1": { "process_id": "load_collection", "arguments": { "id": "S2L1C", "temporal_extent": [ "2019-08-16", "2019-08-18" ], "spatial_extent": { "west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347 } } }, "ndvi1": { "process_id": "ndvi", "arguments": { "data": { "from_node": "loadco1" } } }, "result1": { "process_id": "save_result", "arguments": { "data": { "from_node": "ndvi1" }, "format": "gtiff" }, "result": true} } } }' http://localhost:5000/result/
 ```
 
 
