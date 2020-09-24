@@ -185,6 +185,7 @@ def download_data(self, dataset, orbit_dates, total_width, total_height, bbox, t
     for r_future, indices in response_futures.items():
         r = r_future.result()
         if r.status_code != 200:
+            # this is not always correct handling: (the error could be triggered by invalid or expired auth token)
             raise Internal(r.content)
         self.logger.debug('Image received.')
 
