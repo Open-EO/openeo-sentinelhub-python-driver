@@ -187,6 +187,10 @@ class JobsPersistence(Persistence):
         cls._alert_workers(job_id)
 
     @classmethod
+    def update_auth_token(cls, job_id, new_value):
+        cls.update_key(job_id, "auth_token", new_value)
+
+    @classmethod
     def set_should_be_cancelled(cls, job_id):
         cls.update_key(job_id, "should_be_cancelled", True)
         cls._alert_workers(job_id)

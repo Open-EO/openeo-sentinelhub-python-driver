@@ -460,9 +460,11 @@ def api_batch_job(job_id):
 def add_job_to_queue(job_id):
     if flask.request.method == "POST":
         job = JobsPersistence.get_by_id(job_id)
+        auth_token = _extract_auth_token(flask.request.headers)
 
         if job["current_status"] in ["created", "finished", "canceled", "error"]:
             JobsPersistence.update_status(job_id, "queued")
+            JobsPersistence.update_auth_token(job_id, auth_token)
             return flask.make_response('The creation of the resource has been queued successfully.', 202)
         else:
             return flask.make_response(jsonify(

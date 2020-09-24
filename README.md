@@ -133,33 +133,35 @@ POST /jobs HTTP/1.1
 Content-Type: application/json
 
 {
-  "process_graph": {
-    "loadco1": {
-      "process_id": "load_collection",
-      "arguments": {
-        "id": "S2L1C",
-        "spatial_extent": {
-          "west": 12.32271,
-          "east": 12.33572,
-          "north": 42.07112,
-          "south": 42.06347
-        },
-        "temporal_extent": ["2019-08-16", "2019-08-18"]
-      }
-    },
-    "ndvi1": {
-      "process_id": "ndvi",
-      "arguments": {
-        "data": {"from_node": "loadco1"}
-      }
-    },
-    "result1": {
-      "process_id": "save_result",
-      "arguments": {
-        "data": {"from_node": "ndvi1"},
-        "format": "gtiff"
+  "process": {
+    "process_graph": {
+      "loadco1": {
+        "process_id": "load_collection",
+        "arguments": {
+          "id": "S2L1C",
+          "spatial_extent": {
+            "west": 12.32271,
+            "east": 12.33572,
+            "north": 42.07112,
+            "south": 42.06347
+          },
+          "temporal_extent": ["2019-08-16", "2019-08-18"]
+        }
       },
-      "result": true
+      "ndvi1": {
+        "process_id": "ndvi",
+        "arguments": {
+          "data": {"from_node": "loadco1"}
+        }
+      },
+      "result1": {
+        "process_id": "save_result",
+        "arguments": {
+          "data": {"from_node": "ndvi1"},
+          "format": "gtiff"
+        },
+        "result": true
+      }
     }
   }
 }
@@ -167,7 +169,7 @@ Content-Type: application/json
 
 Using curl:
 ```bash
-$ curl -i -X POST -H "Content-Type: application/json" -d '{"process_graph": {"loadco1": {"process_id": "load_collection", "arguments": {"id": "S2L1C", "temporal_extent": ["2019-08-16", "2019-08-18"], "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347}}}, "ndvi1": {"process_id": "ndvi", "arguments": {"data": {"from_node": "loadco1"}}}, "result1": {"process_id": "save_result", "arguments": {"data": {"from_node": "ndvi1"}, "format": "gtiff"}, "result": true}}}' http://localhost:5000/jobs/
+$ curl -i -X POST -H "Content-Type: application/json" -d '{"process": {"process_graph": {"loadco1": {"process_id": "load_collection", "arguments": {"id": "S2L1C", "temporal_extent": ["2019-08-16", "2019-08-18"], "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347}}}, "ndvi1": {"process_id": "ndvi", "arguments": {"data": {"from_node": "loadco1"}}}, "result1": {"process_id": "save_result", "arguments": {"data": {"from_node": "ndvi1"}, "format": "gtiff"}, "result": true}}}}' http://localhost:5000/jobs/
 ```
 
 Listing all jobs should now include the new job: (note that id will be different)
@@ -242,7 +244,7 @@ $ curl http://localhost:5000/jobs/6520894b-d41d-40d1-bcff-67eafab4eced
 
 And start it by using the returned `id`:
 ```
-$ curl -X POST http://localhost:5000/jobs/6520894b-d41d-40d1-bcff-67eafab4eced/results
+$ curl -X POST -H "Authorization: Bearer basic//$AUTH_TOKEN" http://localhost:5000/jobs/6520894b-d41d-40d1-bcff-67eafab4eced/results
 ```
 
 ### Services
