@@ -265,7 +265,7 @@ def test_manage_batch_jobs(app_client):
     assert r.status_code == 404
 
 
-def test_process_batch_job(app_client, example_process_graph):
+def test_process_batch_job(app_client, example_process_graph, authorization_header):
     """
          - test /jobs/job_id/results endpoints
     """
@@ -276,30 +276,34 @@ def test_process_batch_job(app_client, example_process_graph):
     }
     r = app_client.post("/jobs", data=json.dumps(data), content_type='application/json')
     assert r.status_code == 201
-    record_id = r.headers["OpenEO-Identifier"]
+    job_id = r.headers["OpenEO-Identifier"]
 
-    r = app_client.delete("/jobs/{}/results".format(record_id))
+    r = app_client.delete(f"/jobs/{job_id}/results")
     assert r.status_code == 204
 
-    r = app_client.post("/jobs/{}/results".format(record_id))
+    # without authorization header, this call fails:
+    r = app_client.post(f"/jobs/{job_id}/results")
+    assert r.status_code == 401
+
+    r = app_client.post(f"/jobs/{job_id}/results", headers={"Authorization": authorization_header})
     assert r.status_code == 202
 
-    r = app_client.post("/jobs/{}/results".format(record_id))
+    r = app_client.post(f"/jobs/{job_id}/results", headers={"Authorization": authorization_header})
     actual = json.loads(r.data.decode('utf-8'))
     assert r.status_code == 400
     assert actual["code"] == "JobLocked"
 
-    r = app_client.get("/jobs/{}".format(record_id))
+    r = app_client.get(f"/jobs/{job_id}")
     actual = json.loads(r.data.decode('utf-8'))
     assert r.status_code == 200
     assert actual["status"] in ["queued", "running", "error", "finished"]
 
-    r = app_client.get("/jobs/{}/results".format(record_id))
+    r = app_client.get(f"/jobs/{job_id}/results")
     actual = json.loads(r.data.decode('utf-8'))
     assert r.status_code == 400
     assert  actual["code"] == "JobNotFinished"
 
-    r = app_client.delete("/jobs/{}/results".format(record_id))
+    r = app_client.delete(f"/jobs/{job_id}/results")
     assert r.status_code == 204
 
 
