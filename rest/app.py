@@ -656,6 +656,8 @@ def api_service(service_id):
 
 @app.route('/service/xyz/<service_id>/<int:zoom>/<int:tx>/<int:ty>', methods=['GET'])
 def api_execute_service(service_id, zoom, tx, ty):
+    auth_token = _extract_auth_token(flask.request.headers)
+
     record = ServicesPersistence.get_by_id(service_id)
     if record is None or record["service_type"].lower() != 'xyz':
         return flask.make_response(jsonify(
@@ -684,6 +686,7 @@ def api_execute_service(service_id, zoom, tx, ty):
         'title': record.get("title"),
         'description': record.get("description"),
         'variables': variables,
+        'auth_token': auth_token,
     }
     return _execute_and_wait_for_job(job_data)
 
