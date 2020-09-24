@@ -101,7 +101,7 @@ def construct_image(data, n_width, n_height):
 
 
 def download_data(self, dataset, orbit_dates, total_width, total_height, bbox, temporal_extent, bands, dataFilter_params, max_chunk_size=1000):
-    auth_token = SHProcessingAuthTokenSingleton.get()
+    auth_token = self.job_metadata.get("auth_token")
     url = 'https://services.sentinel-hub.com/api/v1/process'
     headers = {
         'Accept': 'image/tiff',
@@ -208,32 +208,6 @@ def download_data(self, dataset, orbit_dates, total_width, total_height, bbox, t
     return response_data, orbit_times_middle
 
 
-class SHProcessingAuthTokenSingleton(object):
-    _access_token = None
-    _valid_until = None
-
-    @classmethod
-    def get(cls):
-        if cls._access_token is not None and cls._valid_until > time.time():
-            return cls._access_token
-
-        client_id = os.environ.get('SH_CLIENT_ID')
-        auth_secret = os.environ.get('SH_AUTH_SECRET')
-        if not client_id or not auth_secret:
-            raise Internal("Missing SH credentials")
-
-        url = 'https://services.sentinel-hub.com/oauth/token'
-        data = f'grant_type=client_credentials&client_id={client_id}&client_secret={auth_secret}'
-        r = requests.post(url, headers={'Content-Type': 'application/x-www-form-urlencoded'}, data=data)
-        if r.status_code != 200:
-            raise Internal("Error authenticating, received code: " + str(r.status_code))
-
-        j = r.json()
-        cls._access_token = j["access_token"]
-        cls._valid_until = time.time() + j["expires_in"] - 5
-        return cls._access_token
-
-
 class load_collectionEOTask(ProcessEOTask):
     @staticmethod
     def _convert_bbox(spatial_extent):
@@ -324,7 +298,7 @@ class load_collectionEOTask(ProcessEOTask):
         )
         dates = request.get_dates()
         orbit_dates = get_orbit_dates(dates)
-        response_data,orbit_times_middle = download_data(self, dataset, orbit_dates, width, height, bbox, temporal_extent, bands, dataFilter_params)
+        response_data, orbit_times_middle = download_data(self, dataset, orbit_dates, width, height, bbox, temporal_extent, bands, dataFilter_params)
 
         mask = response_data[:, :, :, -1:] # ":" keeps the dimension
         mask = np.repeat(mask, len(bands), axis=-1).astype(bool)

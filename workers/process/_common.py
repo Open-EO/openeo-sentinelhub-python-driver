@@ -55,8 +55,13 @@ class ProcessEOTask(EOTask):
 
         In other words, subclasses should only extend process() and leave
         execute() as is.
+
+        Params:
+        - arguments: node arguments as specified in the process graph
+        - variables: provided upon execution by the service - should replace the values in arguments appropriately (this class takes care of that)
+        - job_metadata: additional data that was provided when the job was started (for example auth_token)
     """
-    def __init__(self, arguments, job_id, logger, variables, node_name):
+    def __init__(self, arguments, job_id, logger, variables, node_name, job_metadata):
         self._arguments = arguments
         self._variables = variables
         self._arguments_with_data = None
@@ -64,6 +69,7 @@ class ProcessEOTask(EOTask):
         self.node_name = node_name
         self.job_id = job_id
         self.logger = logger
+        self.job_metadata = job_metadata
         self.process_id = self.__class__.__name__[:-len("EOTask")]
 
     @staticmethod
@@ -176,8 +182,8 @@ class ProcessEOTask(EOTask):
             for i,element in enumerate(data):
                 if isinstance(element, (int, float, type(None))):
                     ######################################################################
-                    # This is an inefficient hotfix to handle mixed lists of numbers and 
-                    # DataArrays in processes such as sum, subtract, multiply, divide. 
+                    # This is an inefficient hotfix to handle mixed lists of numbers and
+                    # DataArrays in processes such as sum, subtract, multiply, divide.
                     if model is not None:
                         new_data = element * da.ones_like(model, chunks=1000)
                         number_array = model.copy(data=new_data)
