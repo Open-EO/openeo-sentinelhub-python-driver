@@ -197,17 +197,18 @@ def api_credentials_basic():
     }), 200)
 
 
-@app.route('/output_formats', methods=["GET"])
-def api_output_formats():
-    files = glob.iglob("output_formats/*.json")
+@app.route('/file_formats', methods=["GET"])
+def api_file_formats():
     output_formats = {}
-
-    for file in files:
+    for file in glob.iglob("output_formats/*.json"):
         with open(file) as f:
             output_format = os.path.splitext(os.path.basename(file))[0]
             output_formats[output_format] = json.load(f)
 
-    return flask.make_response(jsonify(output_formats), 200)
+    return flask.make_response(jsonify({
+        "input": {},
+        "output": output_formats,
+    }), 200)
 
 
 @app.route('/service_types', methods=["GET"])
