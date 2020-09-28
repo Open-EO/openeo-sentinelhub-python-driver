@@ -265,7 +265,7 @@ OpenEO-Identifier: df9cf197-9125-4db6-a684-e9e02678cb4b
 
 As with jobs, IDs will be different. Then we can issue requests using the returned service `id`:
 ```
-$ curl http://localhost:5000/service/xyz/df9cf197-9125-4db6-a684-e9e02678cb4b/15/17194/11145 > /tmp/test.jpeg
+$ curl -H "Authorization: Bearer basic//$AUTH_TOKEN" http://localhost:5000/service/xyz/df9cf197-9125-4db6-a684-e9e02678cb4b/15/17194/11145 > /tmp/test.jpeg
 ```
 
 
