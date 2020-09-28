@@ -1,7 +1,2 @@
 *
 !.gitignore
-!load_collection.json
-!linear_scale_range.json
-!create_cube.json
-!assert_equals.json
-!reduce.json
