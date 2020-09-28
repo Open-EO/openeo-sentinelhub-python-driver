@@ -6,14 +6,13 @@
    "id":"BYOC",
    "title":"Bring your own COG (Cloud optimized GeoTIFF)",
    "description":"",
-   "license":"proprietary",
+   "license":"various",
    "keywords":[],
    "providers":[
       {
-         "url":"https://sentinel-hub.com/develop/documentation/eo_products/Sentinel2EOproducts",
          "name":"Sentinel Hub",
          "roles":[
-            "host"
+            "processor"
          ]
       }
    ],
@@ -22,26 +21,22 @@
          "bbox":[
             [
                -180,
-               -56,
+               -90,
                180,
-               83
+               90
             ]
          ]
       },
       "temporal":{
          "interval":[
             [
-               "2015-06-23T00:00:00Z",
+               null,
                null
             ]
          ]
       }
    },
    "properties":{
-      "datetime":{
-         "min":"2015-06-23T00:00:00Z",
-         "max":"2019-07-10T13:44:56Z"
-      },
       "license":[
          "proprietary"
       ],
@@ -128,14 +123,14 @@
          "type":"spatial",
          "axis":"y",
          "extent":[
-            -56,
-            83
+            -90,
+            90
          ]
       },
       "t":{
          "type":"temporal",
          "extent":[
-            "2015-06-23T00:00:00Z",
+            null,
             null
          ]
       },
@@ -149,11 +144,5 @@
    "other_properties":{
 
    },
-   "links":[
-      {
-         "rel":"license",
-         "href":"https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf",
-         "title":"Legal notice on the use of Copernicus Sentinel Data and Service Information"
-      }
-   ]
+   "links":[]
 }

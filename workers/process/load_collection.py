@@ -280,7 +280,7 @@ class load_collectionEOTask(ProcessEOTask):
         temporal_extent = self.validate_parameter(arguments, "temporal_extent", required=True)
         temporal_extent = _clean_temporal_extent(temporal_extent)
         bands = self.validate_parameter(arguments, "bands", default=None, allowed_types=[type(None), list])
-        properties = self.validate_parameter(arguments, "properties", required=False)
+        properties = self.validate_parameter(arguments, "properties", required=False, allowed_types=[type(None), dict])
 
         if bands is not None and not len(bands):
             raise ProcessArgumentInvalid("The argument 'bands' in process 'load_collection' is invalid: At least one band must be specified.")
@@ -341,7 +341,7 @@ class load_collectionEOTask(ProcessEOTask):
             if properties is None:
                 raise ProcessArgumentInvalid("The argument 'properties' in process 'load_collection' is not defined. It's needed to contain BYOC parameters.")
                 
-            byoc_collection_id = properties["byoc_collection_id"] or None
+            byoc_collection_id = properties.get("byoc_collection_id")
             if byoc_collection_id is None:
                 raise ProcessArgumentInvalid("\"byoc_collection_id\" parameter not provided in \"properties\".")
                 
