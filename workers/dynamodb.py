@@ -91,7 +91,7 @@ class JobsPersistence(object):
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         # depending on whether error_msg is set, update either results or error_msg field:
         if error_msg:
-            update_expression="SET current_status = :new_status, error_msg = :error_msg, error_code = :error_code, http_code = :http_code, last_updated = :timestamp"
+            update_expression="SET current_status = :new_status, error_msg = :error_msg, error_code = :error_code, http_code = :http_code, last_updated = :timestamp, auth_token = :auth_token"
             values={
                 ':old_status': {'S': "running"},
                 ':new_status': {'S': "error"},
@@ -99,14 +99,16 @@ class JobsPersistence(object):
                 ':error_msg': {'S': error_msg},
                 ':error_code': {'S': str(error_code)},
                 ':http_code': {'S': str(http_code)},
+                ':auth_token': {'S': "/"},  # DynamoDB doesn't allow empty strings
             }
         else:
-            update_expression="SET current_status = :new_status, results = :results, last_updated = :timestamp"
+            update_expression="SET current_status = :new_status, results = :results, last_updated = :timestamp, auth_token = :auth_token"
             values={
                 ':old_status': {'S': "running"},
                 ':new_status': {'S': "finished"},
                 ':timestamp': {'S': timestamp},
                 ':results': {'S': json.dumps(results)},
+                ':auth_token': {'S': "/"},
             }
         try:
             updated_item = cls.dynamodb.update_item(
@@ -126,13 +128,37 @@ class JobsPersistence(object):
     @classmethod
     def update_cancelled_queued_to_created(cls, record_id):
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        updated_item = cls.dynamodb.update_item(TableName=cls.ET_JOBS, Key={'id':{'S':record_id}}, UpdateExpression="SET current_status = :new_status, last_updated = :timestamp, should_be_cancelled = :should_be_cancelled", ExpressionAttributeValues={':new_status': {'S': "created"}, ':timestamp': {'S': timestamp}, ':should_be_cancelled': {'BOOL': False}, ':old_status': {'S': "queued"}}, ReturnValues='UPDATED_NEW', ConditionExpression="current_status = :old_status")
+        updated_item = cls.dynamodb.update_item(
+            TableName=cls.ET_JOBS,
+            Key={'id': {'S': record_id}},
+            UpdateExpression="SET current_status = :new_status, last_updated = :timestamp, should_be_cancelled = :should_be_cancelled, auth_token = :auth_token",
+            ExpressionAttributeValues={
+                ':new_status': {'S': "created"},
+                ':timestamp': {'S': timestamp},
+                ':should_be_cancelled': {'BOOL': False},
+                ':old_status': {'S': "queued"},
+                ':auth_token': {'S': "/"},
+            },
+            ReturnValues='UPDATED_NEW',
+            ConditionExpression="current_status = :old_status",
+        )
         return updated_item
 
     @classmethod
     def update_cancelled_running_to_canceled(cls, record_id):
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        updated_item = cls.dynamodb.update_item(TableName=cls.ET_JOBS, Key={'id':{'S':record_id}}, UpdateExpression="SET current_status = :new_status, last_updated = :timestamp, should_be_cancelled = :should_be_cancelled", ExpressionAttributeValues={':new_status': {'S': "canceled"}, ':timestamp': {'S': timestamp}, ':should_be_cancelled': {'BOOL': False}, ':old_status': {'S': "running"}}, ReturnValues='UPDATED_NEW', ConditionExpression="current_status = :old_status")
+        updated_item = cls.dynamodb.update_item(
+            TableName=cls.ET_JOBS,
+            Key={'id': {'S': record_id}},
+            UpdateExpression="SET current_status = :new_status, last_updated = :timestamp, should_be_cancelled = :should_be_cancelled, auth_token = :auth_token",
+            ExpressionAttributeValues={
+                ':new_status': {'S': "canceled"},
+                ':timestamp': {'S': timestamp},
+                ':should_be_cancelled': {'BOOL': False},
+                ':old_status': {'S': "running"},
+                ':auth_token': {'S': "/"},
+            },
+            ReturnValues='UPDATED_NEW',
+            ConditionExpression="current_status = :old_status",
+        )
         return updated_item
-
-
