@@ -167,6 +167,8 @@ class JobsPersistence(Persistence):
             item['plan'] = {'S': str(data.get("plan"))}
         if data.get("budget"):
             item['budget'] = {'S': str(data.get("budget"))}
+        if data.get("auth_token"):
+            item['auth_token'] = {'S': str(data.get("auth_token"))}
 
         cls.dynamodb.put_item(
             TableName=cls.TABLE_NAME,
@@ -183,6 +185,10 @@ class JobsPersistence(Persistence):
         cls.update_key(job_id, "last_updated", timestamp)
         cls.update_key(job_id, "current_status", new_value)
         cls._alert_workers(job_id)
+
+    @classmethod
+    def update_auth_token(cls, job_id, new_value):
+        cls.update_key(job_id, "auth_token", new_value)
 
     @classmethod
     def set_should_be_cancelled(cls, job_id):

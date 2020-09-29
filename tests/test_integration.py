@@ -1,3 +1,4 @@
+import base64
 import json
 import pytest
 import glob
@@ -114,6 +115,21 @@ def service_factory(app_client):
         service_id = r.headers["OpenEO-Identifier"]
         return service_id
     return wrapped
+
+
+@pytest.fixture
+def authorization_header(app_client):
+    SH_CLIENT_ID = os.environ.get('TESTS_SH_CLIENT_ID', None)
+    SH_CLIENT_SECRET = os.environ.get('TESTS_SH_CLIENT_SECRET', None)
+    if not SH_CLIENT_ID or not SH_CLIENT_SECRET:
+        raise Exception("This test needs TESTS_SH_CLIENT_ID and TESTS_SH_CLIENT_SECRET env vars to be set.")
+
+    r = app_client.get("/credentials/basic", headers={
+        "Authorization": "Basic " + base64.b64encode(bytes(f"{SH_CLIENT_ID}:{SH_CLIENT_SECRET}", "utf-8")).decode("utf-8"),
+    })
+    assert r.status_code == 200, r.data
+    j = r.json
+    return f'Bearer basic//{j["access_token"]}'
 
 
 def setup_function(function):
@@ -249,7 +265,7 @@ def test_manage_batch_jobs(app_client):
     assert r.status_code == 404
 
 
-def test_process_batch_job(app_client, example_process_graph):
+def test_process_batch_job(app_client, example_process_graph, authorization_header):
     """
          - test /jobs/job_id/results endpoints
     """
@@ -260,34 +276,38 @@ def test_process_batch_job(app_client, example_process_graph):
     }
     r = app_client.post("/jobs", data=json.dumps(data), content_type='application/json')
     assert r.status_code == 201
-    record_id = r.headers["OpenEO-Identifier"]
+    job_id = r.headers["OpenEO-Identifier"]
 
-    r = app_client.delete("/jobs/{}/results".format(record_id))
+    r = app_client.delete(f"/jobs/{job_id}/results")
     assert r.status_code == 204
 
-    r = app_client.post("/jobs/{}/results".format(record_id))
+    # without authorization header, this call fails:
+    r = app_client.post(f"/jobs/{job_id}/results")
+    assert r.status_code == 401
+
+    r = app_client.post(f"/jobs/{job_id}/results", headers={"Authorization": authorization_header})
     assert r.status_code == 202
 
-    r = app_client.post("/jobs/{}/results".format(record_id))
+    r = app_client.post(f"/jobs/{job_id}/results", headers={"Authorization": authorization_header})
     actual = json.loads(r.data.decode('utf-8'))
     assert r.status_code == 400
     assert actual["code"] == "JobLocked"
 
-    r = app_client.get("/jobs/{}".format(record_id))
+    r = app_client.get(f"/jobs/{job_id}")
     actual = json.loads(r.data.decode('utf-8'))
     assert r.status_code == 200
     assert actual["status"] in ["queued", "running", "error", "finished"]
 
-    r = app_client.get("/jobs/{}/results".format(record_id))
+    r = app_client.get(f"/jobs/{job_id}/results")
     actual = json.loads(r.data.decode('utf-8'))
     assert r.status_code == 400
     assert  actual["code"] == "JobNotFinished"
 
-    r = app_client.delete("/jobs/{}/results".format(record_id))
+    r = app_client.delete(f"/jobs/{job_id}/results")
     assert r.status_code == 204
 
 
-def test_result(app_client, example_process_graph):
+def test_result(app_client, example_process_graph, authorization_header):
     """
          - test /result endpoint
     """
@@ -296,7 +316,11 @@ def test_result(app_client, example_process_graph):
           "process_graph": example_process_graph,
         }
     }
+
     r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
+    assert r.status_code == 401
+
+    r = app_client.post('/result', data=json.dumps(data), content_type='application/json', headers={"Authorization": authorization_header})
     assert r.status_code == 200
 
 
@@ -462,7 +486,7 @@ def test_xyz_service(app_client, service_factory, example_process_graph_with_var
     assert r.data == expected_data
 
 
-def test_xyz_service_2(app_client, service_factory, get_expected_data):
+def test_xyz_service_2(app_client, service_factory, get_expected_data, authorization_header):
     process_graph = {
       "loadco1": {
         "process_id": "load_collection",
@@ -555,7 +579,11 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data):
     service_id = service_factory(process_graph, title="Test XYZ service", service_type="xyz")
 
     zoom, tx, ty = 14, 8660, 5908
-    r = app_client.get('/service/xyz/{}/{}/{}/{}'.format(service_id, int(zoom), int(tx), int(ty)))
+
+    r = app_client.get(f'/service/xyz/{service_id}/{int(zoom)}/{int(tx)}/{int(ty)}')
+    assert r.status_code == 401, r.data
+
+    r = app_client.get(f'/service/xyz/{service_id}/{int(zoom)}/{int(tx)}/{int(ty)}', headers={"Authorization": authorization_header})
     assert r.status_code == 200, r.data
     expected_data = get_expected_data("tile256x256ndvi.jpeg")
     assert r.data == expected_data, "File is not the same!"
@@ -565,7 +593,7 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data):
     (0.5, 1.0, 200),
     (0.5, 2.0, 400),
 ])
-def test_assert_works(app_client, value, double_value, expected_status_code):
+def test_assert_works(app_client, value, double_value, expected_status_code, authorization_header):
     process_graph = {
       "gencol1": {
         "process_id": "create_cube",
@@ -654,7 +682,7 @@ def test_assert_works(app_client, value, double_value, expected_status_code):
           "process_graph": process_graph,
         }
     }
-    r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
+    r = app_client.post('/result', data=json.dumps(data), content_type='application/json', headers={"Authorization": authorization_header})
     assert r.status_code == expected_status_code, r.data
 
 
@@ -669,7 +697,7 @@ def _get_test_process_graphs():
             yield c
 
 @pytest.mark.parametrize('process_graph_json', _get_test_process_graphs())
-def test_run_test_process_graphs(app_client, process_graph_json):
+def test_run_test_process_graphs(app_client, process_graph_json, authorization_header):
     """
         Load process graph definitions from test_process_graph/*.json and execute them
         via POST /result/, expecting status 200 on each of them.
@@ -680,7 +708,7 @@ def test_run_test_process_graphs(app_client, process_graph_json):
           "process_graph": process_graph,
         }
     }
-    r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
+    r = app_client.post('/result', data=json.dumps(data), content_type='application/json', headers={"Authorization": authorization_header})
     assert r.status_code == 200, r.data
 
 

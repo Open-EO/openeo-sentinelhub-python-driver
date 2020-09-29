@@ -5,16 +5,22 @@ Requirements:
 - pipenv
 - Docker + docker-compose
 
-First copy `.env.example` to `.env` in the root directory of the project and enter valid variables.
 
-Make sure process definitions have been downloaded (by running `download-process-definitions.sh`).
+## Preparation
+
+- in the root directory of the project copy `.env.example` to `.env`  and enter valid variables
+
+- make sure process definitions have been downloaded (by running `download-process-definitions.sh`)
+
+## Running tests
 
 Procedure for running tests:
 ```
 $ docker-compose up -d
-$ cd tests/
+$ cd rest/
+$ pipenv install --dev
 $ pipenv shell
-<shell> $ pipenv install --dev
+<shell> $ cd ../tests/
 <shell> $ pytest -x -v test_integration.py
 ```
 

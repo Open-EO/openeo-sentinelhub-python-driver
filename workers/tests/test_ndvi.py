@@ -58,7 +58,7 @@ def actual_result2(construct_data):
 
 @pytest.fixture
 def ndviEOTask():
-    return process.ndvi.ndviEOTask(None, "", None, {}, "node1")
+    return process.ndvi.ndviEOTask(None, "", None, {}, "node1", {})
 
 
 ###################################

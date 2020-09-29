@@ -40,7 +40,7 @@ def execute_multiply_process(generate_data):
         if data_arguments is not None: arguments["data"] = generate_data(**data_arguments)
         if ignore_nodata is not None: arguments["ignore_nodata"] = ignore_nodata
 
-        return process.multiply.multiplyEOTask(None, "" , None, {}, "node1").process(arguments)
+        return process.multiply.multiplyEOTask(None, "" , None, {}, "node1", {}).process(arguments)
     return wrapped
 
 
@@ -97,7 +97,7 @@ def test_product(generate_data, array1, array2, expected_data):
     """
     expected_result = generate_data(data=[expected_data])[0]
     arguments = ({"data": generate_data(data=[array1,array2])})
-    result = process.product.productEOTask(None, "", None, {}, "node1").process(arguments)
+    result = process.product.productEOTask(None, "", None, {}, "node1", {}).process(arguments)
     xr.testing.assert_allclose(result, expected_result)
 
 
@@ -129,6 +129,6 @@ def test_with_numbers(execute_multiply_process, generate_data, number1, number2,
         data = [number1, arr1, number2, arr2]
     else:
         data = [arr1, number1, arr2, number2]
-        
+
     result = execute_multiply_process({"data": data, "as_list": True})
     xr.testing.assert_allclose(result, expected_result)

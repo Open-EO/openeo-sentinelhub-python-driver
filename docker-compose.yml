@@ -80,8 +80,6 @@ services:
       DYNAMODB_LOCAL_URL: http://dynamodb:8000
       SQS_LOCAL_URL: http://sqs:9324
       HONEYCOMP_APM_API_KEY: "${HONEYCOMP_APM_API_KEY}"
-      SH_CLIENT_ID: "${SH_CLIENT_ID}"
-      SH_AUTH_SECRET: "${SH_AUTH_SECRET}"
 
 volumes:
   minio-data:
