@@ -14,7 +14,7 @@ do
     then
       echo "Process definition already exists: ${process}"
     else
-      wget -P ./rest/process_definitions/ https://raw.githubusercontent.com/Open-EO/openeo-processes/1.0.0-rc.1/$filename_json --no-clobber
+      wget -P ./rest/process_definitions/ https://raw.githubusercontent.com/Open-EO/openeo-processes/1.0.0/$filename_json --no-clobber
     fi
   fi
 done
