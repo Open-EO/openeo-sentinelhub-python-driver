@@ -6,8 +6,9 @@ from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequi
 
 class linear_scale_rangeEOTask(ProcessEOTask):
     """
-        This process is often used within apply process. Apply could pass each of the values separately, 
-        but this would be very inefficient. Instead, we get passed a whole xarray.
+        This process is often used within apply process. Apply could pass each of the values separately,
+        but this would be very inefficient. Instead, we get passed a whole xarray, which is the reason
+        why we allow `xr.DataArray` as "data" parameter type.
     """
     def process(self, arguments):
         data = self.validate_parameter(arguments, "x", required=True, allowed_types=[xr.DataArray, int, float, type(None)])
