@@ -6,7 +6,7 @@ from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequi
 
 class array_elementEOTask(ProcessEOTask):
     """
-        This process is often used within reduce_dimension process. Reduce could pass each of the vectors separately,
+        This process is often used within reduce_dimension process, which could pass each of the vectors separately,
         but this would be very inefficient. Instead, we get passed a whole xarray with an attribute reduce_by.
         In order to know, over which dimension should a callback process be applied, reduce_dimension appends the
         reduction dimension to the reduce_by attribute of the data. The last element of this list is the current
