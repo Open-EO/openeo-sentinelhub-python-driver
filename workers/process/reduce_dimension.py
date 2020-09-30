@@ -3,7 +3,7 @@ from eolearn.core import EOWorkflow
 import xarray as xr
 import process
 
-class reduceEOTask(ProcessEOTask):
+class reduce_dimensionEOTask(ProcessEOTask):
     def generate_workflow_dependencies(self, graph, parent_arguments):
 
         def set_from_arguments(args, parent_arguments):
@@ -45,14 +45,13 @@ class reduceEOTask(ProcessEOTask):
         dimension = self.validate_parameter(arguments, "dimension", required=True, allowed_types=[str])
         reducer = self.validate_parameter(arguments, "reducer", default=None)
         target_dimension = self.validate_parameter(arguments, "target_dimension", default=None, allowed_types=[str, type(None)])
-        binary = self.validate_parameter(arguments, "binary", default=False, allowed_types=[bool])
 
         if dimension not in data.dims:
-            raise ProcessArgumentInvalid("The argument 'dimension' in process 'reduce' is invalid: Dimension '{}' does not exist in data.".format(dimension))
+            raise ProcessArgumentInvalid("The argument 'dimension' in process 'reduce_dimension' is invalid: Dimension '{}' does not exist in data.".format(dimension))
 
         if reducer is None:
             if data[dimension].size > 1:
-                raise ProcessArgumentInvalid("The argument 'dimension' in process 'reduce' is invalid: Dimension '{}' has more than one value, but reducer is not specified.".format(dimension))
+                raise ProcessArgumentInvalid("The argument 'dimension' in process 'reduce_dimension' is invalid: Dimension '{}' has more than one value, but reducer is not specified.".format(dimension))
             return data.squeeze(dimension, drop=True)
         else:
             if not data.attrs.get("reduce_by"):

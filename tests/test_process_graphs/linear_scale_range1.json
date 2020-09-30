@@ -22,15 +22,28 @@
       }
     },
     "linear1": {
-      "process_id": "linear_scale_range",
+      "process_id": "apply",
       "arguments": {
-        "x": {
+        "data": {
           "from_node": "gencol1"
         },
-        "inputMin": 0.0,
-        "inputMax": 1.0,
-        "outputMin": 0.0,
-        "outputMax": 2.0
+        "process": {
+          "callback": {
+            "lsr": {
+              "process_id": "linear_scale_range",
+              "arguments": {
+                "x": {
+                  "from_argument": "x"
+                },
+                "inputMin": 0.0,
+                "inputMax": 1.0,
+                "outputMin": 0.0,
+                "outputMax": 2.0
+              },
+              "result": true
+            }
+          }
+        }
       }
     },
     "expectedlinear1": {

@@ -406,7 +406,7 @@ def test_services_crud(app_client, example_process_graph):
 @pytest.mark.skip("Without width/height (just resx/y) the dimensions are not 100% the same as with OGC services. We should still try to fix it better.")
 def test_reduce(app_client, get_expected_data):
     """
-         - test /result endpoint with reduce process
+         - test /result endpoint with reduce_dimension process
     """
     data = {
         "process": {
@@ -425,7 +425,7 @@ def test_reduce(app_client, get_expected_data):
                 }
               },
               "reduce1": {
-                "process_id": "reduce",
+                "process_id": "reduce_dimension",
                 "arguments": {
                   "data": {"from_node": "loadco1"},
                   "dimension": "t",
@@ -529,7 +529,7 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
         }
       },
       "reduce1": {
-        "process_id": "reduce",
+        "process_id": "reduce_dimension",
         "arguments": {
           "data": {
             "from_node": "ndvi1"
@@ -551,14 +551,27 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
         }
       },
       "linear1": {
-        "process_id": "linear_scale_range",
+        "process_id": "apply",
         "arguments": {
-          "x": {
+          "data": {
             "from_node": "reduce1"
           },
-          "inputMin": 0,
-          "inputMax": 1,
-          "outputMax": 255
+          "process": {
+            "callback": {
+              "lsr": {
+                "process_id": "linear_scale_range",
+                "arguments": {
+                  "x": {
+                    "from_argument": "x"
+                  },
+                  "inputMin": 0,
+                  "inputMax": 1,
+                  "outputMax": 255
+                },
+                "result": True
+              },
+            }
+          }
         }
       },
       "result1": {
@@ -618,15 +631,28 @@ def test_assert_works(app_client, value, double_value, expected_status_code, aut
         },
       },
       "linear1": {
-        "process_id": "linear_scale_range",
+        "process_id": "apply",
         "arguments": {
-          "x": {
+          "data": {
             "from_node": "gencol1"
           },
-          "inputMin": 0.0,
-          "inputMax": 1.0,
-          "outputMin": 0.0,
-          "outputMax": 2.0,
+          "process": {
+            "callback": {
+              "lsr": {
+                "process_id": "linear_scale_range",
+                "arguments": {
+                  "x": {
+                    "from_argument": "x"
+                  },
+                  "inputMin": 0.0,
+                  "inputMax": 1.0,
+                  "outputMin": 0.0,
+                  "outputMax": 2.0,
+                },
+                "result": True
+              },
+            }
+          }
         }
       },
       "expectedlinear1": {

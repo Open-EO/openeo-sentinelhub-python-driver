@@ -22,7 +22,7 @@ def _execute_process_graph(process_graph, job_id, variables, job_metadata):
     #
     #   loadco1 = load_collectionEOTask(process_graph["loadco1"]["arguments"])
     #   ndvi1 = ndviEOTask(process_graph["ndvi1"]["arguments"])
-    #   reduce1 = reduceEOTask(process_graph["reduce1"]["arguments"])
+    #   reduce1 = reduce_dimensionEOTask(process_graph["reduce1"]["arguments"])
     #   tasks = [
     #       (loadco1, [], "Node name: load1"),
     #       (ndvi1, [loadco1], "Node name: ndvi1"),
