@@ -324,7 +324,7 @@ def test_process_batch_job(app_client, example_process_graph, authorization_head
     assert r.status_code == 204
 
 
-def test_result_normal(app_client, example_process_graph, authorization_header):
+def test_result_not_encoded_secret(app_client, example_process_graph, authorization_header):
     """
          - test /result endpoint
     """
