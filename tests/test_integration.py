@@ -125,7 +125,24 @@ def authorization_header(app_client):
         raise Exception("This test needs TESTS_SH_CLIENT_ID and TESTS_SH_CLIENT_SECRET env vars to be set.")
 
     r = app_client.get("/credentials/basic", headers={
-        "Authorization": "Basic " + base64.b64encode(bytes(f"{SH_CLIENT_ID}:{SH_CLIENT_SECRET}", "utf-8")).decode("utf-8"),
+        "Authorization": "Basic " + base64.b64encode(bytes(f"{SH_CLIENT_ID}:{SH_CLIENT_SECRET}", "ascii")).decode("ascii"),
+    })
+    assert r.status_code == 200, r.data
+    j = r.json
+    return f'Bearer basic//{j["access_token"]}'
+
+
+@pytest.fixture
+def authorization_header_base64(app_client):
+    # same as authorization_header fixture, except that client_secret is base64 encoded:
+    SH_CLIENT_ID = os.environ.get('TESTS_SH_CLIENT_ID', None)
+    SH_CLIENT_SECRET = os.environ.get('TESTS_SH_CLIENT_SECRET', None)
+    if not SH_CLIENT_ID or not SH_CLIENT_SECRET:
+        raise Exception("This test needs TESTS_SH_CLIENT_ID and TESTS_SH_CLIENT_SECRET env vars to be set.")
+
+    secret = base64.b64encode(bytes(SH_CLIENT_SECRET, 'ascii')).decode('ascii').rstrip()
+    r = app_client.get("/credentials/basic", headers={
+        "Authorization": "Basic " + base64.b64encode(bytes(f"{SH_CLIENT_ID}:{secret}", "ascii")).decode("ascii"),
     })
     assert r.status_code == 200, r.data
     j = r.json
@@ -307,7 +324,7 @@ def test_process_batch_job(app_client, example_process_graph, authorization_head
     assert r.status_code == 204
 
 
-def test_result(app_client, example_process_graph, authorization_header):
+def test_result_not_encoded_secret(app_client, example_process_graph, authorization_header):
     """
          - test /result endpoint
     """
@@ -321,6 +338,23 @@ def test_result(app_client, example_process_graph, authorization_header):
     assert r.status_code == 401
 
     r = app_client.post('/result', data=json.dumps(data), content_type='application/json', headers={"Authorization": authorization_header})
+    assert r.status_code == 200
+
+
+def test_result_base64_encoded_secret(app_client, example_process_graph, authorization_header_base64):
+    """
+         - test /result endpoint, but this time use a base64-encoded version of password (both should work)
+    """
+    data = {
+        "process": {
+          "process_graph": example_process_graph,
+        }
+    }
+
+    r = app_client.post('/result', data=json.dumps(data), content_type='application/json')
+    assert r.status_code == 401
+
+    r = app_client.post('/result', data=json.dumps(data), content_type='application/json', headers={"Authorization": authorization_header_base64})
     assert r.status_code == 200
 
 

@@ -1,3 +1,4 @@
+import base64
 import datetime
 import glob
 import json
@@ -51,13 +52,17 @@ class BasicAuthSentinelHub(BasicAuth):
     def check_credentials(self, username, password):
         """ We expect HTTP Basic username / password to be SentinelHub clientId / clientSecret, with
             which we obtain the auth token from the service.
+            Password (clientSecret) can be supplied verbatim or as base64-encoded string, to avoid
+            problems with non-ASCII characters. Anything longer than 50 characters will be treated
+            as BASE64-encoded string.
         """
+        secret = password if len(password) <= 50 else base64.b64decode(bytes(password, 'ascii')).decode('ascii')
         r = requests.post(
             'https://services.sentinel-hub.com/oauth/token',
             data={
                 "grant_type": "client_credentials",
                 "client_id": username,
-                "client_secret": password,
+                "client_secret": secret,
             }
         )
         if r.status_code != 200:
