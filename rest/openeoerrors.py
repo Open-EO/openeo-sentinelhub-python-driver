@@ -1,6 +1,7 @@
 # These exceptions should translate to the list of OpenEO error codes:
 #   https://api.openeo.org/errors.json
 
+
 class OpenEOError(Exception):
     record_id = None
 

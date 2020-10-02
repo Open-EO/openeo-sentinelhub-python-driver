@@ -7,28 +7,36 @@ import dask.array as da
 # These exceptions should translate to the list of OpenEO error codes:
 #   https://open-eo.github.io/openeo-api/errors/#openeo-error-codes
 
+
 class ExecFailedError(Exception):
     def __init__(self, msg):
         self.msg = msg
 
+
 class UserError(ExecFailedError):
     http_code = 400
+
 
 class Internal(ExecFailedError):
     error_code = "Internal"
     http_code = 500
 
+
 class ProcessArgumentInvalid(UserError):
     error_code = "ProcessArgumentInvalid"
+
 
 class VariableValueMissing(UserError):
     error_code = "VariableValueMissing"
 
+
 class ProcessUnsupported(UserError):
     error_code = "ProcessUnsupported"
 
+
 class ProcessArgumentRequired(UserError):
     error_code = "ProcessArgumentRequired"
+
 
 class StorageFailure(Internal):
     error_code = "StorageFailure"
@@ -36,31 +44,32 @@ class StorageFailure(Internal):
 
 def iterate(obj):
     if isinstance(obj, list):
-        for i,v in enumerate(obj):
-            yield i,v
+        for i, v in enumerate(obj):
+            yield i, v
     elif isinstance(obj, dict):
         for k, v in obj.items():
-            yield k,v
+            yield k, v
 
 
 class ProcessEOTask(EOTask):
-    """ Original EOTask (eolearn package) uses constructor and execute() to
-        process data.
+    """Original EOTask (eolearn package) uses constructor and execute() to
+    process data.
 
-        ProcessEOTask:
-        - gives us a list of the tasks we depend on (based on arguments - where
-          the data comes from)
-        - uses execute() to apply the data from previous tasks and from variables to arguments
-        - calls process() with these arguments
+    ProcessEOTask:
+    - gives us a list of the tasks we depend on (based on arguments - where
+      the data comes from)
+    - uses execute() to apply the data from previous tasks and from variables to arguments
+    - calls process() with these arguments
 
-        In other words, subclasses should only extend process() and leave
-        execute() as is.
+    In other words, subclasses should only extend process() and leave
+    execute() as is.
 
-        Params:
-        - arguments: node arguments as specified in the process graph
-        - variables: provided upon execution by the service - should replace the values in arguments appropriately (this class takes care of that)
-        - job_metadata: additional data that was provided when the job was started (for example auth_token)
+    Params:
+    - arguments: node arguments as specified in the process graph
+    - variables: provided upon execution by the service - should replace the values in arguments appropriately (this class takes care of that)
+    - job_metadata: additional data that was provided when the job was started (for example auth_token)
     """
+
     def __init__(self, arguments, job_id, logger, variables, node_name, job_metadata):
         self._arguments = arguments
         self._variables = variables
@@ -70,20 +79,20 @@ class ProcessEOTask(EOTask):
         self.job_id = job_id
         self.logger = logger
         self.job_metadata = job_metadata
-        self.process_id = self.__class__.__name__[:-len("EOTask")]
+        self.process_id = self.__class__.__name__[: -len("EOTask")]
 
     @staticmethod
     def _get_from_nodes(arguments):
-        """ Process graph dependencies are determined by usage of special
-            'from_node' dicts. This function traverses arguments recursively
-            and figures out which tasks this task depends on.
+        """Process graph dependencies are determined by usage of special
+        'from_node' dicts. This function traverses arguments recursively
+        and figures out which tasks this task depends on.
         """
 
         from_nodes = []
         for k, v in iterate(arguments):
-            if isinstance(v, dict) and len(v) == 1 and 'from_node' in v:
-                from_nodes.append(v['from_node'])
-            elif isinstance(v, dict) and len(v) == 1 and 'callback' in v:
+            if isinstance(v, dict) and len(v) == 1 and "from_node" in v:
+                from_nodes.append(v["from_node"])
+            elif isinstance(v, dict) and len(v) == 1 and "callback" in v:
                 # we don't traverse callbacks, because they might have their own
                 # 'from_node' arguments, but on a deeper level:
                 continue
@@ -100,23 +109,22 @@ class ProcessEOTask(EOTask):
     @staticmethod
     def _apply_data_to_arguments(arguments, values_by_node, variables):
         for k, v in iterate(arguments):
-            if isinstance(v, dict) and len(v) == 1 and 'from_node' in v:
-                arguments[k] = values_by_node[v['from_node']]
-            elif isinstance(v, dict) and len(v) == 1 and 'variable_id' in v:
-                arguments[k] = variables[v['variable_id']]
-            elif isinstance(v, dict) and len(v) == 1 and 'callback' in v:
+            if isinstance(v, dict) and len(v) == 1 and "from_node" in v:
+                arguments[k] = values_by_node[v["from_node"]]
+            elif isinstance(v, dict) and len(v) == 1 and "variable_id" in v:
+                arguments[k] = variables[v["variable_id"]]
+            elif isinstance(v, dict) and len(v) == 1 and "callback" in v:
                 continue  # we don't traverse callbacks
             elif isinstance(v, dict) or isinstance(v, list):
                 ProcessEOTask._apply_data_to_arguments(arguments[k], values_by_node, variables)
 
     def _update_arguments_with_data(self, prev_results):
-        """ prev_results: tuple of previous results, in the same order that
-                depends_on() returned.
+        """prev_results: tuple of previous results, in the same order that
+        depends_on() returned.
         """
         self._arguments_with_data = deepcopy(self._arguments)
         values_by_node = dict(zip(self.depends_on(), prev_results))
         ProcessEOTask._apply_data_to_arguments(self._arguments_with_data, values_by_node, self._variables)
-
 
     def execute(self, *prev_results):
         self.logger.debug("[{}]: updating arguments for task {}...".format(self.job_id, self.__class__.__name__))
@@ -127,12 +135,11 @@ class ProcessEOTask(EOTask):
         return result
 
     def process(self, arguments_with_data):
-        """ Each process EOTask should implement this function instead of using
-            execute(). The arguments already have all relevant vars substituded
-            for values ('from_node',...).
+        """Each process EOTask should implement this function instead of using
+        execute(). The arguments already have all relevant vars substituded
+        for values ('from_node',...).
         """
         raise Exception("This process is not implemented yet.")
-
 
     def validate_parameter(self, arguments, param, required=False, allowed_types=[], default=None):
         if required:
@@ -141,8 +148,8 @@ class ProcessEOTask(EOTask):
             except KeyError:
                 raise ProcessArgumentRequired("Process '{}' requires argument '{}'.".format(self.process_id, param))
         else:
-            param_val = arguments.get(param, 'argument not present')
-            if param_val == 'argument not present':
+            param_val = arguments.get(param, "argument not present")
+            if param_val == "argument not present":
                 return default
 
         if not allowed_types:
@@ -160,16 +167,19 @@ class ProcessEOTask(EOTask):
                 list: "array",
             }
             types = ",".join(set([type_mapping[typename] for typename in types]))
-            raise ProcessArgumentInvalid("The argument '{}' in process '{}' is invalid: Argument must be of types '[{}]'.".format(param, self.process_id, types))
+            raise ProcessArgumentInvalid(
+                "The argument '{}' in process '{}' is invalid: Argument must be of types '[{}]'.".format(
+                    param, self.process_id, types
+                )
+            )
 
         return param_val
-
 
     def convert_to_dataarray(self, data, as_list=False):
         original_type_was_number = True
 
         if isinstance(data, xr.DataArray):
-            return False ,data
+            return False, data
 
         if as_list:
             model = None
@@ -179,7 +189,7 @@ class ProcessEOTask(EOTask):
                     original_type_was_number = False
                     break
 
-            for i,element in enumerate(data):
+            for i, element in enumerate(data):
                 if isinstance(element, (int, float, type(None))):
                     ######################################################################
                     # This is an inefficient hotfix to handle mixed lists of numbers and
@@ -192,13 +202,16 @@ class ProcessEOTask(EOTask):
                     else:
                         data[i] = xr.DataArray(np.array(element, dtype=np.float))
                 elif not isinstance(element, xr.DataArray):
-                    raise ProcessArgumentInvalid("The argument 'data' in process '{}' is invalid: Elements of the array must be of types '[number, null, raster-cube]'.".format(self.process_id))
+                    raise ProcessArgumentInvalid(
+                        "The argument 'data' in process '{}' is invalid: Elements of the array must be of types '[number, null, raster-cube]'.".format(
+                            self.process_id
+                        )
+                    )
 
         else:
             data = xr.DataArray(np.array(data, dtype=np.float))
 
         return original_type_was_number, data
-
 
     def results_in_appropriate_type(self, results, original_type_was_number):
         if original_type_was_number:

@@ -12,6 +12,7 @@ import psutil
 
 
 from dotenv import load_dotenv
+
 load_dotenv(verbose=True)
 
 
@@ -24,7 +25,7 @@ for handler in logger.handlers:
     logger.removeHandler(handler)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
-ch.setFormatter(logging.Formatter('%(asctime)s [%(processName)s] %(levelname)s %(message)s'))
+ch.setFormatter(logging.Formatter("%(asctime)s [%(processName)s] %(levelname)s %(message)s"))
 logger.addHandler(ch)
 
 
@@ -35,10 +36,10 @@ signal.signal(signal.SIGINT, signal.default_int_handler)
 
 
 # application performance monitoring:
-HONEYCOMP_APM_API_KEY = os.environ.get('HONEYCOMP_APM_API_KEY')
+HONEYCOMP_APM_API_KEY = os.environ.get("HONEYCOMP_APM_API_KEY")
 beeline_client = None
 if HONEYCOMP_APM_API_KEY:
-    beeline.init(writekey=HONEYCOMP_APM_API_KEY, dataset='OpenEO - workers', service_name='OpenEO')
+    beeline.init(writekey=HONEYCOMP_APM_API_KEY, dataset="OpenEO - workers", service_name="OpenEO")
     beeline_client = beeline.get_beeline().client
 
 
@@ -64,11 +65,13 @@ def _feed_monitoring_system():
     metric_used_mem = mem.total - mem.free
 
     ev = beeline_client.new_event()
-    ev.add({
-        'peak_mem': metric_peak_memory,
-        'cpu': metric_cpu,
-        'used_mem': metric_used_mem,
-    })
+    ev.add(
+        {
+            "peak_mem": metric_peak_memory,
+            "cpu": metric_cpu,
+            "used_mem": metric_used_mem,
+        }
+    )
     ev.send()
 
 
@@ -77,7 +80,13 @@ def main():
     jobs_queue = multiprocessing.Queue()
     processes = []
     for i in range(10):
-        p = multiprocessing.Process(target=worker_proc, args=(jobs_queue, i,))
+        p = multiprocessing.Process(
+            target=worker_proc,
+            args=(
+                jobs_queue,
+                i,
+            ),
+        )
         p.daemon = True
         p.start()
         processes.append(p)
@@ -103,7 +112,7 @@ def main():
             new_queued = JobsPersistence.query_new_queued()
             for page in new_queued:
                 for job in page["Items"]:
-                    job_id = job["id"]['S']
+                    job_id = job["id"]["S"]
                     logger.info("Found a job: {}".format(job_id))
 
                     success = JobsPersistence.update_queued_to_running(job_id)
@@ -114,26 +123,28 @@ def main():
                         continue
 
                     running_jobs.add(job_id)
-                    jobs_queue.put({
-                        'job_id': job_id,
-                        'process_graph': json.loads(job["process"]['S'])["process_graph"],
-                        'variables': json.loads(job["variables"]['S']) if "variables" in job else {},
-                        'auth_token': str(job["auth_token"]['S']) if "auth_token" in job else None,
-                    })
+                    jobs_queue.put(
+                        {
+                            "job_id": job_id,
+                            "process_graph": json.loads(job["process"]["S"])["process_graph"],
+                            "variables": json.loads(job["variables"]["S"]) if "variables" in job else {},
+                            "auth_token": str(job["auth_token"]["S"]) if "auth_token" in job else None,
+                        }
+                    )
 
             # GET queued AND should_be_cancelled = True
             cancelled_queued = JobsPersistence.query_cancelled_queued()
             for page in cancelled_queued:
                 for job in page["Items"]:
                     # Set them back to created:
-                    job_id = job["id"]['S']
+                    job_id = job["id"]["S"]
                     JobsPersistence.update_cancelled_queued_to_created(job_id)
 
             # GET running AND should_be_cancelled = True
             cancelled_running = JobsPersistence.query_cancelled_running()
             for page in cancelled_running:
                 for job in page["Items"]:
-                    job_id = job["id"]['S']
+                    job_id = job["id"]["S"]
                     if job_id not in running_jobs:
                         continue
 
@@ -142,16 +153,15 @@ def main():
                     # job is no longer running, so the results will not be used:
                     running_jobs.remove(job_id)
 
-
     except KeyboardInterrupt:
         logger.info("SIGINT received, exiting.")
-
 
     # clean up and quit:
     for i in range(len(processes)):
         jobs_queue.put(SIGNAL_QUIT_JOB)
     for p in processes:
         p.join()
+
 
 if __name__ == "__main__":
     main()

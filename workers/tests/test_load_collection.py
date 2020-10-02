@@ -12,7 +12,8 @@ from base64 import b64decode
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
 from process._common import ProcessArgumentInvalid
-FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), 'fixtures')
+
+FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), "fixtures")
 
 
 ###################################
@@ -21,13 +22,17 @@ FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), 'fixtures')
 
 
 def assert_wcs_bbox_matches(wcs_params, crs, west, east, north, south):
-    assert wcs_params['crs'] == crs
+    assert wcs_params["crs"] == crs
 
-    if crs == 'EPSG:4326':
-        if wcs_params['version'] == '1.1.2':
-            assert wcs_params['bbox'] == '{south},{west},{north},{east}'.format(west=west, east=east, north=north, south=south)
-        elif wcs_params['version'] == '1.0.0':
-            assert wcs_params['bbox'] == '{west},{south},{east},{north}'.format(west=west, east=east, north=north, south=south)
+    if crs == "EPSG:4326":
+        if wcs_params["version"] == "1.1.2":
+            assert wcs_params["bbox"] == "{south},{west},{north},{east}".format(
+                west=west, east=east, north=north, south=south
+            )
+        elif wcs_params["version"] == "1.0.0":
+            assert wcs_params["bbox"] == "{west},{south},{east},{north}".format(
+                west=west, east=east, north=north, south=south
+            )
         else:
             assert False, "The tests do not know how to handle this version!"
     else:
@@ -53,13 +58,8 @@ def arguments_factory():
     def wrapped(
         collection_id,
         temporal_extent=["2019-08-16", "2019-08-18"],
-        bbox = {
-            "west": 12.32271,
-            "east": 12.33572,
-            "north": 42.07112,
-            "south": 42.06347
-        },
-        bands = None
+        bbox={"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+        bands=None,
     ):
         return {
             "id": collection_id,
@@ -67,47 +67,66 @@ def arguments_factory():
             "temporal_extent": temporal_extent,
             "bands": bands,
         }
+
     return wrapped
+
 
 @pytest.fixture
 def argumentsS2L1C(arguments_factory):
     return arguments_factory("S2L1C")
 
+
 @pytest.fixture
 def argumentsS1GRDIW(arguments_factory):
     return arguments_factory("S1GRDIW")
+
 
 @pytest.fixture
 def execute_load_collection_process():
     def wrapped(arguments):
         logger = logging.getLogger()
-        return process.load_collection.load_collectionEOTask(arguments, "", logger, {}, "node1", {"auth_token": "basic//test123"}).process(arguments)
+        return process.load_collection.load_collectionEOTask(
+            arguments, "", logger, {}, "node1", {"auth_token": "basic//test123"}
+        ).process(arguments)
+
     return wrapped
+
 
 @pytest.fixture
 def set_mock_responses():
     def wrapped(mock_info):
         for mi in mock_info:
-            filename = os.path.join(FIXTURES_FOLDER, mi['filename'])
+            filename = os.path.join(FIXTURES_FOLDER, mi["filename"])
             assert os.path.isfile(filename), "Please run load_fixtures.sh!"
-            is_json = os.path.splitext(mi['filename'])[-1] == '.json'
-            body = json.dumps(json.load(open(filename, 'rb'))) if is_json else open(filename, 'rb').read()
+            is_json = os.path.splitext(mi["filename"])[-1] == ".json"
+            body = json.dumps(json.load(open(filename, "rb"))) if is_json else open(filename, "rb").read()
             responses.add(
                 responses.GET,
-                re.compile(mi['regex']),
+                re.compile(mi["regex"]),
                 body=body,
                 match_querystring=True,
-                status=mi.get('status_code', 200),
+                status=mi.get("status_code", 200),
             )
+
     return wrapped
+
 
 @pytest.fixture
 def set_mock_responses_for_collection(set_mock_responses):
     def wrapped(identifier):
-        return set_mock_responses([
-            {'regex': r'^.*sentinel-hub.com/ogc/wfs/.*$', 'filename': f'response_load_collection_{identifier.lower()}.json'},
-            {'regex': r'^.*sentinel-hub.com/ogc/wcs/.*$', 'filename': f'response_load_collection_{identifier.lower()}.tiff'},
-        ])
+        return set_mock_responses(
+            [
+                {
+                    "regex": r"^.*sentinel-hub.com/ogc/wfs/.*$",
+                    "filename": f"response_load_collection_{identifier.lower()}.json",
+                },
+                {
+                    "regex": r"^.*sentinel-hub.com/ogc/wcs/.*$",
+                    "filename": f"response_load_collection_{identifier.lower()}.tiff",
+                },
+            ]
+        )
+
     return wrapped
 
 
@@ -117,26 +136,41 @@ def set_mock_responses_for_collection(set_mock_responses):
 
 
 @pytest.mark.skip("Using Processing API now...")
-@pytest.mark.parametrize('collection_id,temporal_extent', [
-    ("S2L1C", ["2019-08-16", "2019-08-18"],),
-    ("S1GRDIW", ["2019-08-16 00:00:00", "2019-08-17 05:19:11"],),
-])
+@pytest.mark.parametrize(
+    "collection_id,temporal_extent",
+    [
+        (
+            "S2L1C",
+            ["2019-08-16", "2019-08-18"],
+        ),
+        (
+            "S1GRDIW",
+            ["2019-08-16 00:00:00", "2019-08-17 05:19:11"],
+        ),
+    ],
+)
 @responses.activate
-def test_correct(set_mock_responses_for_collection, arguments_factory, execute_load_collection_process, collection_id, temporal_extent):
+def test_correct(
+    set_mock_responses_for_collection,
+    arguments_factory,
+    execute_load_collection_process,
+    collection_id,
+    temporal_extent,
+):
     """
-        Test load_collection process with correct parameters (S2L1C, S1GRDIW,...)
+    Test load_collection process with correct parameters (S2L1C, S1GRDIW,...)
     """
     set_mock_responses_for_collection(collection_id)
     arguments = arguments_factory(collection_id, temporal_extent=temporal_extent)
     result = execute_load_collection_process(arguments)
     assert len(responses.calls) == 2
     params = query_params_from_url(responses.calls[1].request.url)
-    assert_wcs_bbox_matches(params, 'EPSG:4326', **arguments["spatial_extent"])
+    assert_wcs_bbox_matches(params, "EPSG:4326", **arguments["spatial_extent"])
 
 
 def test_collection_id(arguments_factory, execute_load_collection_process):
     """
-        Test load_collection process with incorrect collection id
+    Test load_collection process with incorrect collection id
     """
     arguments = arguments_factory("non-existent")
     with pytest.raises(ProcessArgumentInvalid) as ex:
@@ -144,18 +178,25 @@ def test_collection_id(arguments_factory, execute_load_collection_process):
     assert ex.value.args[0] == "The argument 'id' in process 'load_collection' is invalid: unknown collection id"
 
 
-@pytest.mark.parametrize('invalid_temporal_extent,failure_reason', [
-    ([None,None], "Only one boundary can be set to null."),
-    ([], "The interval has to be specified as an array with exactly two elements."),
-])
-def test_temporal_extent_invalid(arguments_factory, execute_load_collection_process, invalid_temporal_extent, failure_reason):
+@pytest.mark.parametrize(
+    "invalid_temporal_extent,failure_reason",
+    [
+        ([None, None], "Only one boundary can be set to null."),
+        ([], "The interval has to be specified as an array with exactly two elements."),
+    ],
+)
+def test_temporal_extent_invalid(
+    arguments_factory, execute_load_collection_process, invalid_temporal_extent, failure_reason
+):
     """
-        Test load_collection process with incorrect temporal_extent
+    Test load_collection process with incorrect temporal_extent
     """
-    arguments = arguments_factory("S2L1C", temporal_extent = invalid_temporal_extent)
+    arguments = arguments_factory("S2L1C", temporal_extent=invalid_temporal_extent)
     with pytest.raises(ProcessArgumentInvalid) as ex:
         result = execute_load_collection_process(arguments)
-    assert ex.value.args[0] == f"The argument 'temporal_extent' in process 'load_collection' is invalid: {failure_reason}"
+    assert (
+        ex.value.args[0] == f"The argument 'temporal_extent' in process 'load_collection' is invalid: {failure_reason}"
+    )
 
 
 @pytest.mark.skip("Using Processing API now...")
@@ -164,44 +205,60 @@ def test_bbox_too_big_for_sh_service(set_mock_responses, arguments_factory, exec
     # bbox size as reported by sentinelhub-py: (6082, 11)
     invalid_bbox = {
         "west": 14.6,
-        "south": 47.,
+        "south": 47.0,
         "east": 15.4,
         "north": 47.001,
     }
-    set_mock_responses([
-        {'regex': r'^.*sentinel-hub.com/ogc/wfs/.*$', 'filename': 'invalid_bbox.json'},
-        {'regex': r'^.*sentinel-hub.com/ogc/wcs/.*$', 'filename': 'invalid_bbox.xml', 'status_code': 400},
-    ])
+    set_mock_responses(
+        [
+            {"regex": r"^.*sentinel-hub.com/ogc/wfs/.*$", "filename": "invalid_bbox.json"},
+            {"regex": r"^.*sentinel-hub.com/ogc/wcs/.*$", "filename": "invalid_bbox.xml", "status_code": 400},
+        ]
+    )
 
-    arguments = arguments_factory("S2L1C", bbox = invalid_bbox)
+    arguments = arguments_factory("S2L1C", bbox=invalid_bbox)
     with pytest.raises(ProcessArgumentInvalid) as ex:
         result = execute_load_collection_process(arguments)
     assert ex.value.args[0].startswith("The argument '<unknown>' in process 'load_collection' is invalid: ")
+
 
 @pytest.mark.skip("No limit anymore")
 def test_bbox_too_big_for_us(set_mock_responses, arguments_factory, execute_load_collection_process):
     # bbox size as reported by sentinelhub-py: (3041, 2215)
     invalid_bbox = {
         "west": 14.6,
-        "south": 47.,
-        "east": 15.,
+        "south": 47.0,
+        "east": 15.0,
         "north": 47.2,
     }
-    arguments = arguments_factory("S2L1C", bbox = invalid_bbox)
+    arguments = arguments_factory("S2L1C", bbox=invalid_bbox)
     with pytest.raises(ProcessArgumentInvalid) as ex:
         result = execute_load_collection_process(arguments)
-    assert ex.value.args[0].startswith("The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels, but is: ")
+    assert ex.value.args[0].startswith(
+        "The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels, but is: "
+    )
 
 
 @pytest.mark.skip("Using Processing API now...")
-@pytest.mark.parametrize('collection_id,temporal_extent,bands,evalscript', [
-    ("S2L1C", ["2019-08-16", "2019-08-18"], ["B01","B04"], "return [B01, B04];"),
-    ("S1GRDIW", ["2019-08-16 00:00:00", "2019-08-17 05:19:11"], ["VV"], "return [VV];"),
-])
+@pytest.mark.parametrize(
+    "collection_id,temporal_extent,bands,evalscript",
+    [
+        ("S2L1C", ["2019-08-16", "2019-08-18"], ["B01", "B04"], "return [B01, B04];"),
+        ("S1GRDIW", ["2019-08-16 00:00:00", "2019-08-17 05:19:11"], ["VV"], "return [VV];"),
+    ],
+)
 @responses.activate
-def test_bands(set_mock_responses_for_collection, arguments_factory, execute_load_collection_process, collection_id, temporal_extent, bands, evalscript):
+def test_bands(
+    set_mock_responses_for_collection,
+    arguments_factory,
+    execute_load_collection_process,
+    collection_id,
+    temporal_extent,
+    bands,
+    evalscript,
+):
     """
-        Test load_collection process for different bands
+    Test load_collection process for different bands
     """
     set_mock_responses_for_collection("bands_{}".format(collection_id))
     arguments = arguments_factory(collection_id, temporal_extent=temporal_extent, bands=bands)
@@ -209,24 +266,40 @@ def test_bands(set_mock_responses_for_collection, arguments_factory, execute_loa
     assert len(responses.calls) == 2
     for call in responses.calls:
         params = query_params_from_url(call.request.url)
-        assert params.get("service") == "wfs" or params.get("evalscript") is not None and b64decode(params["evalscript"]).decode("utf-8") == evalscript
+        assert (
+            params.get("service") == "wfs"
+            or params.get("evalscript") is not None
+            and b64decode(params["evalscript"]).decode("utf-8") == evalscript
+        )
 
 
 @pytest.mark.skip("Using Processing API now...")
-@pytest.mark.parametrize('collection_id,temporal_extent,bands,failure_reason', [
-    ("S2L1C", ["2019-08-16", "2019-08-18"], "B01", "Argument must be of types '["),
-    ("S1GRDIW", ["2019-08-16 00:00:00", "2019-08-17 05:19:11"], [], "At least one band must be specified."),
-    ("S2L1C", ["2019-08-16", "2019-08-18"], ["B01","B04","Beatles","B09"], "Invalid bands encountered;"),
-    ("S1GRDIW", ["2019-08-16 00:00:00", "2019-08-17 05:19:11"], ["Čuki","Kingstoni"], "Invalid bands encountered;"),
-])
+@pytest.mark.parametrize(
+    "collection_id,temporal_extent,bands,failure_reason",
+    [
+        ("S2L1C", ["2019-08-16", "2019-08-18"], "B01", "Argument must be of types '["),
+        ("S1GRDIW", ["2019-08-16 00:00:00", "2019-08-17 05:19:11"], [], "At least one band must be specified."),
+        ("S2L1C", ["2019-08-16", "2019-08-18"], ["B01", "B04", "Beatles", "B09"], "Invalid bands encountered;"),
+        (
+            "S1GRDIW",
+            ["2019-08-16 00:00:00", "2019-08-17 05:19:11"],
+            ["Čuki", "Kingstoni"],
+            "Invalid bands encountered;",
+        ),
+    ],
+)
 @responses.activate
-def test_incorrect_bands(arguments_factory, execute_load_collection_process, collection_id, temporal_extent, bands, failure_reason):
+def test_incorrect_bands(
+    arguments_factory, execute_load_collection_process, collection_id, temporal_extent, bands, failure_reason
+):
     """
-        Test load_collection process with incorrect bands
+    Test load_collection process with incorrect bands
     """
     arguments = arguments_factory(collection_id, temporal_extent=temporal_extent, bands=bands)
 
     with pytest.raises(ProcessArgumentInvalid) as ex:
         result = execute_load_collection_process(arguments)
 
-    assert ex.value.args[0].startswith("The argument 'bands' in process 'load_collection' is invalid: {}".format(failure_reason))
+    assert ex.value.args[0].startswith(
+        "The argument 'bands' in process 'load_collection' is invalid: {}".format(failure_reason)
+    )

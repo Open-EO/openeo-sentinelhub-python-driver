@@ -32,7 +32,6 @@ def _execute_process_graph(process_graph, job_id, variables, job_metadata):
     #   workflow = EOWorkflow(tasks)
     #   workflow.execute({})
 
-
     # first create all the tasks and remember their names, so we will be able
     # to reference them when looking for tasks that current task depends on:
     tasks_by_name = {}
@@ -42,25 +41,25 @@ def _execute_process_graph(process_graph, job_id, variables, job_metadata):
         # process_id, like this:
         #   tasks_by_name[node_name] = \
         #           load_collectionEOTask(node_definition['arguments'], ...)
-        process_id = node_definition['process_id']
-        task_module_name = '{process_id}'.format(process_id=process_id)
-        task_class_name = '{process_id}EOTask'.format(process_id=process_id)
+        process_id = node_definition["process_id"]
+        task_module_name = "{process_id}".format(process_id=process_id)
+        task_class_name = "{process_id}EOTask".format(process_id=process_id)
         task_module = getattr(sys.modules[__name__].process, task_module_name)
         task_class = getattr(task_module, task_class_name)
-        tasks_by_name[node_name] = task_class(node_definition['arguments'], job_id, logger, variables, node_name, job_metadata)
+        tasks_by_name[node_name] = task_class(
+            node_definition["arguments"], job_id, logger, variables, node_name, job_metadata
+        )
 
-        if node_definition.get('result', False):
+        if node_definition.get("result", False):
             result_task = tasks_by_name[node_name]
-            if process_id != 'save_result':
+            if process_id != "save_result":
                 raise process.VariableValueMissing("No value specified for process graph variable 'save_result'.")
-
 
     # create a list of tasks for workflow:
     tasks = []
     for node_name, task in tasks_by_name.items():
         depends_on = [tasks_by_name[x] for x in task.depends_on()]
-        tasks.append((task, depends_on, 'Node name: ' + node_name))
-
+        tasks.append((task, depends_on, "Node name: " + node_name))
 
     workflow = EOWorkflow(tasks)
 
