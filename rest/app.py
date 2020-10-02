@@ -1,7 +1,8 @@
+import base64
 import datetime
 import glob
 import json
-from logging import log, INFO, WARN
+from logging import log, INFO, WARN, ERROR
 import os
 import re
 import sys
@@ -28,6 +29,7 @@ from schemas import (
     PatchServicesSchema,
 )
 from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
+from openeoerrors import OpenEOError, AuthenticationRequired, AuthenticationSchemeInvalid, TokenInvalid
 
 
 app = Flask(__name__)
@@ -45,9 +47,38 @@ cors = CORS(
     max_age=3600,
 )
 
-basic_auth = BasicAuth(app)
-app.config['BASIC_AUTH_USERNAME'] = 'test'
-app.config['BASIC_AUTH_PASSWORD'] = 'test'
+
+class BasicAuthSentinelHub(BasicAuth):
+    def check_credentials(self, username, password):
+        """ We expect HTTP Basic username / password to be SentinelHub clientId / clientSecret, with
+            which we obtain the auth token from the service.
+            Password (clientSecret) can be supplied verbatim or as base64-encoded string, to avoid
+            problems with non-ASCII characters. Anything longer than 50 characters will be treated
+            as BASE64-encoded string.
+        """
+        secret = password if len(password) <= 50 else base64.b64decode(bytes(password, 'ascii')).decode('ascii')
+        r = requests.post(
+            'https://services.sentinel-hub.com/oauth/token',
+            data={
+                "grant_type": "client_credentials",
+                "client_id": username,
+                "client_secret": secret,
+            }
+        )
+        if r.status_code != 200:
+            log(INFO, f"Access denied: {r.status_code} {r.text}")
+            return False
+
+        j = r.json()
+        access_token = j.get("access_token")
+        if not access_token:
+            log(ERROR, f"Error decoding access token from: {r.text}")
+            return False
+
+        flask.g.basic_auth_access_token = access_token
+        return True
+
+basic_auth = BasicAuthSentinelHub(app)
 
 
 # application performance monitoring:
@@ -70,6 +101,31 @@ AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', FAKE_AWS_SECRET_
 S3_LOCAL_URL = os.environ.get('DATA_AWS_S3_ENDPOINT_URL')
 
 STAC_VERSION = "0.9.0"
+
+
+def _extract_auth_token(headers):
+    # note that the extracted token is not necessarily valid - this needs to be checked separately
+    auth_header = headers.get('Authorization')
+    if not auth_header:
+        raise AuthenticationRequired()
+    must_start_with = "bearer basic//"
+    if auth_header[0:len(must_start_with)].lower() != must_start_with:
+        raise AuthenticationSchemeInvalid()
+
+    token = auth_header[len(must_start_with):]
+    if not token:
+        raise TokenInvalid()
+    return token
+
+
+@app.errorhandler(OpenEOError)
+def openeo_exception_handler(error):
+    return flask.make_response(jsonify(
+        id = error.record_id,
+        code = error.error_code,
+        message = error.message,
+        links = []
+        ), error.http_code)
 
 
 @app.route('/', methods=["GET"])
@@ -142,21 +198,22 @@ def get_links():
 @basic_auth.required
 def api_credentials_basic():
     return flask.make_response(jsonify({
-        "access_token": "test"
+        "access_token": flask.g.basic_auth_access_token,
     }), 200)
 
 
-@app.route('/output_formats', methods=["GET"])
-def api_output_formats():
-    files = glob.iglob("output_formats/*.json")
+@app.route('/file_formats', methods=["GET"])
+def api_file_formats():
     output_formats = {}
-
-    for file in files:
+    for file in glob.iglob("output_formats/*.json"):
         with open(file) as f:
             output_format = os.path.splitext(os.path.basename(file))[0]
             output_formats[output_format] = json.load(f)
 
-    return flask.make_response(jsonify(output_formats), 200)
+    return flask.make_response(jsonify({
+        "input": {},
+        "output": output_formats,
+    }), 200)
 
 
 @app.route('/service_types', methods=["GET"])
@@ -262,10 +319,11 @@ def api_process_graph(process_graph_id):
 @app.route('/result', methods=['POST'])
 def api_result():
     if flask.request.method == 'POST':
-        data = flask.request.get_json()
+        job_data = flask.request.get_json()
+        auth_token = _extract_auth_token(flask.request.headers)
 
         schema = PostResultSchema()
-        errors = schema.validate(data)
+        errors = schema.validate(job_data)
 
         if errors:
             log(WARN, "Invalid request: {}".format(errors))
@@ -276,10 +334,10 @@ def api_result():
                 links = []
                 ), 400)
 
-        data["current_status"] = "queued"
-        data["should_be_cancelled"] = False
-
-        return _execute_and_wait_for_job(data)
+        job_data["current_status"] = "queued"
+        job_data["should_be_cancelled"] = False
+        job_data["auth_token"] = auth_token
+        return _execute_and_wait_for_job(job_data)
 
 
 @app.route('/jobs', methods=['GET','POST'])
@@ -408,9 +466,11 @@ def api_batch_job(job_id):
 def add_job_to_queue(job_id):
     if flask.request.method == "POST":
         job = JobsPersistence.get_by_id(job_id)
+        auth_token = _extract_auth_token(flask.request.headers)
 
         if job["current_status"] in ["created", "finished", "canceled", "error"]:
             JobsPersistence.update_status(job_id, "queued")
+            JobsPersistence.update_auth_token(job_id, auth_token)
             return flask.make_response('The creation of the resource has been queued successfully.', 202)
         else:
             return flask.make_response(jsonify(
@@ -602,6 +662,8 @@ def api_service(service_id):
 
 @app.route('/service/xyz/<service_id>/<int:zoom>/<int:tx>/<int:ty>', methods=['GET'])
 def api_execute_service(service_id, zoom, tx, ty):
+    auth_token = _extract_auth_token(flask.request.headers)
+
     record = ServicesPersistence.get_by_id(service_id)
     if record is None or record["service_type"].lower() != 'xyz':
         return flask.make_response(jsonify(
@@ -630,6 +692,7 @@ def api_execute_service(service_id, zoom, tx, ty):
         'title': record.get("title"),
         'description': record.get("description"),
         'variables': variables,
+        'auth_token': auth_token,
     }
     return _execute_and_wait_for_job(job_data)
 

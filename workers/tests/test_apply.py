@@ -35,7 +35,7 @@ def execute_apply_process(generate_data):
         if data_arguments is not None: arguments["data"] = generate_data(**data_arguments)
         if process_callback is not None: arguments["process"] = process_callback
 
-        return process.apply.applyEOTask(None, "" , logger, {}, "apply1").process(arguments)
+        return process.apply.applyEOTask(None, "" , logger, {}, "apply1", {}).process(arguments)
     return wrapped
 
 

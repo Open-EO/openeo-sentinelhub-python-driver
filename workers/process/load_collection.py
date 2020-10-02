@@ -101,7 +101,7 @@ def construct_image(data, n_width, n_height):
 
 
 def download_data(self, dataset, orbit_dates, total_width, total_height, bbox, temporal_extent, bands, dataFilter_params, max_chunk_size=1000):
-    auth_token = SHProcessingAuthTokenSingleton.get()
+    auth_token = self.job_metadata.get("auth_token")
     url = 'https://services.sentinel-hub.com/api/v1/process'
     headers = {
         'Accept': 'image/tiff',
@@ -185,6 +185,7 @@ def download_data(self, dataset, orbit_dates, total_width, total_height, bbox, t
     for r_future, indices in response_futures.items():
         r = r_future.result()
         if r.status_code != 200:
+            # this is not always correct handling: (the error could be triggered by invalid or expired auth token)
             raise Internal(r.content)
         self.logger.debug('Image received.')
 
@@ -209,7 +210,7 @@ def download_data(self, dataset, orbit_dates, total_width, total_height, bbox, t
 
 
 def get_collection_times(self, sh_collection_id, bbox, temporal_extent):
-    auth_token = SHProcessingAuthTokenSingleton.get()
+    auth_token = self.job_metadata.get("auth_token")
     url = 'https://services.sentinel-hub.com/api/v1/catalog/search'
     headers = {
         'Authorization': f'Bearer {auth_token}',
@@ -221,7 +222,7 @@ def get_collection_times(self, sh_collection_id, bbox, temporal_extent):
         "datetime": temporal_extent[0] + "Z/" + temporal_extent[1] + "Z",
         "collections": [sh_collection_id]
     }
-    
+
     r = requests.post(url, headers=headers, json=request_payload)
     if r.status_code != 200:
         raise Internal("Error retrieving SH catalog, received code: " + str(r.status_code))
@@ -229,35 +230,9 @@ def get_collection_times(self, sh_collection_id, bbox, temporal_extent):
     datetimes = []
     for feature in r.json()["features"]:
     	datetimes.append(datetime.strptime(feature["properties"]["datetime"], "%Y-%m-%dT%H:%M:%SZ"))
-    
+
     self.logger.debug(sorted(list(set(datetimes))))
     return sorted(list(set(datetimes)))
-    
-
-class SHProcessingAuthTokenSingleton(object):
-    _access_token = None
-    _valid_until = None
-
-    @classmethod
-    def get(cls):
-        if cls._access_token is not None and cls._valid_until > time.time():
-            return cls._access_token
-
-        client_id = os.environ.get('SH_CLIENT_ID')
-        auth_secret = os.environ.get('SH_AUTH_SECRET')
-        if not client_id or not auth_secret:
-            raise Internal("Missing SH credentials")
-
-        url = 'https://services.sentinel-hub.com/oauth/token'
-        data = f'grant_type=client_credentials&client_id={client_id}&client_secret={auth_secret}'
-        r = requests.post(url, headers={'Content-Type': 'application/x-www-form-urlencoded'}, data=data)
-        if r.status_code != 200:
-            raise Internal("Error authenticating, received code: " + str(r.status_code))
-
-        j = r.json()
-        cls._access_token = j["access_token"]
-        cls._valid_until = time.time() + j["expires_in"] - 5
-        return cls._access_token
 
 
 class load_collectionEOTask(ProcessEOTask):
@@ -336,23 +311,23 @@ class load_collectionEOTask(ProcessEOTask):
             )
             dataFilter_params = {}
             band_aliases = {}
-           
+
         elif collection_id == 'BYOC':
             if properties is None:
                 raise ProcessArgumentInvalid("The argument 'properties' in process 'load_collection' is not defined. It's needed to contain BYOC parameters.")
-                
+
             byoc_collection_id = properties.get("byoc_collection_id")
             if byoc_collection_id is None:
                 raise ProcessArgumentInvalid("\"byoc_collection_id\" parameter not provided in \"properties\".")
-                
+
             if bands is None or not isinstance(bands, list):
                 raise ProcessArgumentInvalid("\"bands\" is not a list of valid band names.")
-                
+
             dataset = "byoc-" + byoc_collection_id
             kwargs = {}
             dataFilter_params = {}
             band_aliases = {}
-            
+
             self.logger.debug(f'Requesting dates between: {temporal_extent}')
             dates = get_collection_times(self, byoc_collection_id, bbox, temporal_extent)
             orbit_dates = [{"from": d, "to": d} for d in dates]
@@ -360,9 +335,9 @@ class load_collectionEOTask(ProcessEOTask):
         else:
             raise ProcessArgumentInvalid("The argument 'id' in process 'load_collection' is invalid: unknown collection id")
 
-        if collection_id != 'BYOC':    
+        if collection_id != 'BYOC':
             self.logger.debug(f'Requesting dates between: {temporal_extent}')
- 
+
             request = WmsRequest(
                 **kwargs,
                 instance_id=SENTINELHUB_INSTANCE_ID,
@@ -373,8 +348,8 @@ class load_collectionEOTask(ProcessEOTask):
             )
             dates = request.get_dates()
             orbit_dates = get_orbit_dates(dates)
-        
-        response_data,orbit_times_middle = download_data(self, dataset, orbit_dates, width, height, bbox, temporal_extent, bands, dataFilter_params)
+
+        response_data, orbit_times_middle = download_data(self, dataset, orbit_dates, width, height, bbox, temporal_extent, bands, dataFilter_params)
 
         mask = response_data[:, :, :, -1:] # ":" keeps the dimension
         mask = np.repeat(mask, len(bands), axis=-1).astype(bool)

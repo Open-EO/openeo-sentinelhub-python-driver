@@ -118,6 +118,7 @@ def main():
                         'job_id': job_id,
                         'process_graph': json.loads(job["process"]['S'])["process_graph"],
                         'variables': json.loads(job["variables"]['S']) if "variables" in job else {},
+                        'auth_token': str(job["auth_token"]['S']) if "auth_token" in job else None,
                     })
 
             # GET queued AND should_be_cancelled = True

@@ -1,9 +1,13 @@
-from marshmallow import Schema, fields, validates, ValidationError, validate
-from openeo_pg_parser.validate import validate_process_graph
+import copy
 import glob
 import json
+from logging import log, INFO
 import os
-import copy
+import traceback
+
+from marshmallow import Schema, fields, validates, ValidationError, validate
+from openeo_pg_parser.validate import validate_process_graph
+
 
 def validate_graph_with_known_processes(graph):
 	path_to_current_file = os.path.realpath(__file__)
@@ -18,6 +22,7 @@ def validate_graph_with_known_processes(graph):
 		if not valid:
 			raise ValidationError("Invalid process graph")
 	except Exception as e:
+		log(INFO, traceback.format_exc())
 		raise ValidationError("Invalid process graph: " + str(e))
 
 

@@ -6,11 +6,11 @@ from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequi
 
 class array_elementEOTask(ProcessEOTask):
     """
-        This process is often used within reduce process. Reduce could pass each of the vectors separately, 
+        This process is often used within reduce_dimension process, which could pass each of the vectors separately,
         but this would be very inefficient. Instead, we get passed a whole xarray with an attribute reduce_by.
-        In order to know, over which dimension should a callback process be applied, reduce appends the
+        In order to know, over which dimension should a callback process be applied, reduce_dimension appends the
         reduction dimension to the reduce_by attribute of the data. The last element of this list is the current
-        reduction dimension. This also allows multi-level reduce calls.
+        reduction dimension. This also allows multi-level reduce_dimension calls.
     """
     def process(self, arguments):
         data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray, list])
@@ -24,7 +24,7 @@ class array_elementEOTask(ProcessEOTask):
             except IndexError:
                 if return_nodata:
                     """
-                        According to documentation (https://open-eo.github.io/openeo-api/processreference/#array_element): 
+                        According to documentation (https://open-eo.github.io/openeo-api/processreference/#array_element):
                             '''return_nodata: By default this process throws an IndexOutOfBounds exception if the index is invalid. If you want to return null instead, set this flag to true.'''
                         Thus, our understanding is that the array_element process should return a result of the same shape as a valid index would, but with all values set to null.
                         No elegant solution using the existing instance of DataArray with numpy or xarray functions was found, so we construct a new DataArray and copy the attributes.

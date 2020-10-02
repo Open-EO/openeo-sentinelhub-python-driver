@@ -29,9 +29,96 @@ Then the REST API server can be run:
 <pipenv> $ python app.py
 ```
 
+### Troubleshooting
+
+If validator complains about process graphs that are clearly correct (and which are valid on production deployment), there are two things than can be done:
+
+1) Remove and reinstall python environment:
+
+    ```
+    $ cd rest/
+    $ pipenv --rm
+    $ pipenv install
+    ```
+
+2) Remove and re-download process definitions:
+
+    ```
+    $ rm rest/process_definitions/*
+    $ ./download-process-definitions.sh
+    ```
+
 # Examples
 
 ## REST
+
+### Get auth token
+
+Authenticate using your Sentinel Hub clientId and clientSecret:
+```
+$ curl -u '<SH-client-id>:<SH-client-secret>' http://127.0.0.1:5000/credentials/basic
+```
+
+Save the token to an env var for later examples:
+```
+$ export AUTH_TOKEN='...'
+```
+
+### Process and download data synchronously
+
+Trigger processing:
+
+```
+POST /results HTTP/1.1
+Content-Type: application/json
+
+{
+  "process": {
+    "process_graph": {
+      "loadco1": {
+        "process_id": "load_collection",
+        "arguments": {
+          "id": "S2L1C",
+          "temporal_extent": [
+              "2019-08-16",
+              "2019-08-18"
+          ],
+          "spatial_extent": {
+              "west": 12.32271,
+              "east": 12.33572,
+              "north": 42.07112,
+              "south": 42.06347
+          }
+        }
+      },
+      "ndvi1": {
+          "process_id": "ndvi",
+          "arguments": {
+            "data": {
+                "from_node": "loadco1"
+            }
+          }
+      },
+      "result1": {
+          "process_id": "save_result",
+          "arguments": {
+            "data": {
+                "from_node": "ndvi1"
+            },
+            "format": "gtiff"
+          },
+          "result": true
+      }
+    }
+  }
+}
+```
+
+Using curl:
+```bash
+$ curl -i -X POST -H "Authorization: Bearer basic//$AUTH_TOKEN" -H "Content-Type: application/json" -d '{ "process": { "process_graph": { "loadco1": { "process_id": "load_collection", "arguments": { "id": "S2L1C", "temporal_extent": [ "2019-08-16", "2019-08-18" ], "spatial_extent": { "west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347 } } }, "ndvi1": { "process_id": "ndvi", "arguments": { "data": { "from_node": "loadco1" } } }, "result1": { "process_id": "save_result", "arguments": { "data": { "from_node": "ndvi1" }, "format": "gtiff" }, "result": true} } } }' http://localhost:5000/result/
+```
+
 
 ### Jobs
 
@@ -46,33 +133,35 @@ POST /jobs HTTP/1.1
 Content-Type: application/json
 
 {
-  "process_graph": {
-    "loadco1": {
-      "process_id": "load_collection",
-      "arguments": {
-        "id": "S2L1C",
-        "spatial_extent": {
-          "west": 12.32271,
-          "east": 12.33572,
-          "north": 42.07112,
-          "south": 42.06347
-        },
-        "temporal_extent": ["2019-08-16", "2019-08-18"]
-      }
-    },
-    "ndvi1": {
-      "process_id": "ndvi",
-      "arguments": {
-        "data": {"from_node": "loadco1"}
-      }
-    },
-    "result1": {
-      "process_id": "save_result",
-      "arguments": {
-        "data": {"from_node": "ndvi1"},
-        "format": "gtiff"
+  "process": {
+    "process_graph": {
+      "loadco1": {
+        "process_id": "load_collection",
+        "arguments": {
+          "id": "S2L1C",
+          "spatial_extent": {
+            "west": 12.32271,
+            "east": 12.33572,
+            "north": 42.07112,
+            "south": 42.06347
+          },
+          "temporal_extent": ["2019-08-16", "2019-08-18"]
+        }
       },
-      "result": true
+      "ndvi1": {
+        "process_id": "ndvi",
+        "arguments": {
+          "data": {"from_node": "loadco1"}
+        }
+      },
+      "result1": {
+        "process_id": "save_result",
+        "arguments": {
+          "data": {"from_node": "ndvi1"},
+          "format": "gtiff"
+        },
+        "result": true
+      }
     }
   }
 }
@@ -80,7 +169,7 @@ Content-Type: application/json
 
 Using curl:
 ```bash
-$ curl -i -X POST -H "Content-Type: application/json" -d '{"process_graph": {"loadco1": {"process_id": "load_collection", "arguments": {"id": "S2L1C", "temporal_extent": ["2019-08-16", "2019-08-18"], "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347}}}, "ndvi1": {"process_id": "ndvi", "arguments": {"data": {"from_node": "loadco1"}}}, "result1": {"process_id": "save_result", "arguments": {"data": {"from_node": "ndvi1"}, "format": "gtiff"}, "result": true}}}' http://localhost:5000/jobs/
+$ curl -i -X POST -H "Content-Type: application/json" -d '{"process": {"process_graph": {"loadco1": {"process_id": "load_collection", "arguments": {"id": "S2L1C", "temporal_extent": ["2019-08-16", "2019-08-18"], "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347}}}, "ndvi1": {"process_id": "ndvi", "arguments": {"data": {"from_node": "loadco1"}}}, "result1": {"process_id": "save_result", "arguments": {"data": {"from_node": "ndvi1"}, "format": "gtiff"}, "result": true}}}}' http://localhost:5000/jobs/
 ```
 
 Listing all jobs should now include the new job: (note that id will be different)
@@ -155,7 +244,7 @@ $ curl http://localhost:5000/jobs/6520894b-d41d-40d1-bcff-67eafab4eced
 
 And start it by using the returned `id`:
 ```
-$ curl -X POST http://localhost:5000/jobs/6520894b-d41d-40d1-bcff-67eafab4eced/results
+$ curl -X POST -H "Authorization: Bearer basic//$AUTH_TOKEN" http://localhost:5000/jobs/6520894b-d41d-40d1-bcff-67eafab4eced/results
 ```
 
 ### Services
@@ -167,7 +256,7 @@ $ curl http://localhost:5000/service_types
 
 Currently, only `XYZ` service type is supported. We create the service:
 ```
-$ curl -i http://localhost:5000/services' -H 'Content-Type: application/json;charset=utf-8' -d '{"title":null,"description":null,"process_graph":{"loadco1":{"process_id":"load_collection","arguments":{"id":"S2L1C","spatial_extent":{"west":{"variable_id":"spatial_extent_west"},"east":{"variable_id":"spatial_extent_east"},"north":{"variable_id":"spatial_extent_north"},"south":{"variable_id":"spatial_extent_south"}},"temporal_extent":["2019-08-01","2019-08-18"],"bands":["B04","B08"],"options":{"width":256,"height":256}}},"ndvi1":{"process_id":"ndvi","arguments":{"data":{"from_node":"loadco1"}}},"reduce1":{"process_id":"reduce","arguments":{"data":{"from_node":"ndvi1"},"reducer":{"callback":{"2":{"process_id":"mean","arguments":{"data":{"from_argument":"data"}},"result":true}}},"dimension":"t"}},"linear1":{"process_id":"linear_scale_range","arguments":{"x":{"from_node":"reduce1"},"inputMin":0,"inputMax":1,"outputMax":255}},"result1":{"process_id":"save_result","arguments":{"data":{"from_node":"linear1"},"format":"JPEG","options":{"datatype":"byte"}},"result":true}},"type":"XYZ","enabled":true,"parameters":{},"plan":null,"budget":null}'
+$ curl -i 'http://localhost:5000/services' -H 'Content-Type: application/json;charset=utf-8' -d '{"title":null,"description":null,"process": {"process_graph":{"loadco1": {"process_id": "load_collection", "arguments": {"id": "S2L1C", "temporal_extent": ["2019-08-16", "2019-08-18"], "spatial_extent": {"west":{"variable_id":"spatial_extent_west"},"east":{"variable_id":"spatial_extent_east"},"north":{"variable_id":"spatial_extent_north"},"south":{"variable_id":"spatial_extent_south"}}}}, "ndvi1": {"process_id": "ndvi", "arguments": {"data": {"from_node": "loadco1"}}}, "result1": {"process_id": "save_result", "arguments": {"data": {"from_node": "ndvi1"}, "format": "gtiff"}, "result": true}}},"type":"XYZ","enabled":true,"plan":null,"budget":null}'
 ...
 Location: http://localhost:5000/services/df9cf197-9125-4db6-a684-e9e02678cb4b
 OpenEO-Identifier: df9cf197-9125-4db6-a684-e9e02678cb4b
@@ -176,7 +265,7 @@ OpenEO-Identifier: df9cf197-9125-4db6-a684-e9e02678cb4b
 
 As with jobs, IDs will be different. Then we can issue requests using the returned service `id`:
 ```
-$ curl http://localhost:5000/service/xyz/df9cf197-9125-4db6-a684-e9e02678cb4b/15/17194/11145 > /tmp/test.jpeg
+$ curl -H "Authorization: Bearer basic//$AUTH_TOKEN" http://localhost:5000/service/xyz/df9cf197-9125-4db6-a684-e9e02678cb4b/15/17194/11145 > /tmp/test.jpeg
 ```
 
 
