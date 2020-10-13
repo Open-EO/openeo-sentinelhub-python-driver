@@ -7,7 +7,7 @@ from io import BufferedReader
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessArgumentInvalid, ProcessArgumentRequired
+from process._common import ProcessParameterInvalid, ProcessArgumentRequired
 
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -194,17 +194,20 @@ def test_required_params(execute_save_result_process, missing_required_parameter
 
 
 @pytest.mark.parametrize(
-    "invalid_parameter,failure_reason",
+    "invalid_parameter,failure_param,failure_reason",
     [
-        ({"file_format": "xcf"}, ("format", "supported formats are: gtiff, png, jpeg")),
-        ({"options": {"option_name": "option_value"}}, ("options", "supported options are: 'datatype'")),
+        ({"file_format": "xcf"}, "format", "Supported formats are: gtiff, png, jpeg."),
+        (
+            {"options": {"option_name": "option_value"}},
+            "options",
+            "Supported options are: 'datatype'.",
+        ),
     ],
 )
-def test_invalid_params(execute_save_result_process, invalid_parameter, failure_reason):
+def test_invalid_params(execute_save_result_process, invalid_parameter, failure_param, failure_reason):
     """
     Test save_result process with invalid parameters
     """
-    with pytest.raises(ProcessArgumentInvalid) as ex:
+    with pytest.raises(ProcessParameterInvalid) as ex:
         result = execute_save_result_process(**invalid_parameter)
-
-    assert ex.value.args[0] == "The argument '{}' in process 'save_result' is invalid: {}.".format(*failure_reason)
+    assert ex.value.args == ("save_result", failure_param, failure_reason)

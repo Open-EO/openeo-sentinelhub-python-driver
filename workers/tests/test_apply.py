@@ -162,12 +162,16 @@ def test_multiple_results_forbidden(execute_apply_process, generate_data):
                     "outputMax": 1,
                 },
                 "result": True,
-            }
-        }
+            },
+        },
     }
 
     data_arguments = {"data": [np.nan, -3, 3, 0, np.nan], "dims": ("t")}
 
     with pytest.raises(ProcessParameterInvalid) as ex:
         result = execute_apply_process(data_arguments=data_arguments, process_callback=process_callback)
-    assert ex.value.args == ('linear_scale_range', 'result', 'only one node in a (sub)graph can have result set to true',)
+    assert ex.value.args == (
+        "linear_scale_range",
+        "result",
+        "Only one node in a (sub)graph can have result set to true.",
+    )

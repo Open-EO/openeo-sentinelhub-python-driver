@@ -1,4 +1,4 @@
-from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired, iterate
+from ._common import ProcessEOTask, ProcessParameterInvalid, iterate
 from eolearn.core import EOWorkflow
 import xarray as xr
 import process
@@ -50,18 +50,16 @@ class reduce_dimensionEOTask(ProcessEOTask):
         )
 
         if dimension not in data.dims:
-            raise ProcessArgumentInvalid(
-                "The argument 'dimension' in process 'reduce_dimension' is invalid: Dimension '{}' does not exist in data.".format(
-                    dimension
-                )
+            raise ProcessParameterInvalid(
+                "reduce_dimension", "dimension", f"Dimension '{dimension}' does not exist in data."
             )
 
         if reducer is None:
             if data[dimension].size > 1:
-                raise ProcessArgumentInvalid(
-                    "The argument 'dimension' in process 'reduce_dimension' is invalid: Dimension '{}' has more than one value, but reducer is not specified.".format(
-                        dimension
-                    )
+                raise ProcessParameterInvalid(
+                    "reduce_dimension",
+                    "dimension",
+                    f"Dimension '{dimension}' has more than one value, but reducer is not specified.",
                 )
             return data.squeeze(dimension, drop=True)
         else:

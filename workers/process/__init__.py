@@ -6,7 +6,7 @@ from ._common import (
     ExecFailedError,
     UserError,
     Internal,
-    ProcessArgumentInvalid,
+    ProcessParameterInvalid,
     VariableValueMissing,
     ProcessUnsupported,
     StorageFailure,

@@ -1,4 +1,4 @@
-from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired
+from ._common import ProcessEOTask, ProcessParameterInvalid
 import xarray as xr
 import re
 
@@ -10,9 +10,7 @@ class ndviEOTask(ProcessEOTask):
         data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray])
         name = self.validate_parameter(arguments, "name", default="ndvi", allowed_types=[str])
         if not re.match("^[A-Za-z0-9_]+$", name):
-            raise ProcessArgumentInvalid(
-                "The argument 'name' in process 'ndvi' is invalid: string does not match the required pattern."
-            )
+            raise ProcessParameterInvalid("ndvi", "name", "String does not match the required pattern.")
 
         nir_band = data.attrs["band_aliases"].get("nir", "nir")
         red_band = data.attrs["band_aliases"].get("red", "red")

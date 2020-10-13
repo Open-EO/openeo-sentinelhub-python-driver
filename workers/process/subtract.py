@@ -3,7 +3,7 @@ import xarray as xr
 
 xr.set_options(keep_attrs=True)
 
-from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired
+from ._common import ProcessEOTask, ProcessParameterInvalid
 
 
 class subtractEOTask(ProcessEOTask):
@@ -26,9 +26,7 @@ class subtractEOTask(ProcessEOTask):
             return 2 * data.isel({dim: 0}) - data.sum(dim=dim, skipna=ignore_nodata, keep_attrs=True)
 
         if len(data) < 2:
-            raise ProcessArgumentInvalid(
-                "The argument 'data' in process 'subtract' is invalid: Array must have at least 2 elements."
-            )
+            raise ProcessParameterInvalid("subtract", "data", "Array must have at least 2 elements.")
 
         original_type_was_number, data = self.convert_to_dataarray(data, as_list=True)
 

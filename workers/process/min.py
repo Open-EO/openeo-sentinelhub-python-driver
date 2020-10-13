@@ -1,7 +1,7 @@
 import numpy as np
 import xarray as xr
 
-from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired
+from ._common import ProcessEOTask
 
 
 class minEOTask(ProcessEOTask):

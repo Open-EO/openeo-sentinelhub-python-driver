@@ -19,7 +19,7 @@ from dask import delayed
 import dask.array as da
 
 
-from ._common import ProcessEOTask, ProcessArgumentInvalid, Internal
+from ._common import ProcessEOTask, ProcessParameterInvalid, Internal
 
 
 SENTINELHUB_INSTANCE_ID = os.environ.get("SENTINELHUB_INSTANCE_ID", None)
@@ -40,12 +40,12 @@ def _clean_temporal_extent(temporal_extent):
     # https://open-eo.github.io/openeo-api/processreference/#load_collection
     # > Also supports open intervals by setting one of the boundaries to null, but never both.
     if temporal_extent == [None, None]:
-        raise ProcessArgumentInvalid(
-            "The argument 'temporal_extent' in process 'load_collection' is invalid: Only one boundary can be set to null."
-        )
+        raise ProcessParameterInvalid("load_collection", "temporal_extent", "Only one boundary can be set to null.")
     if not isinstance(temporal_extent, list) or len(temporal_extent) != 2:
-        raise ProcessArgumentInvalid(
-            "The argument 'temporal_extent' in process 'load_collection' is invalid: The interval has to be specified as an array with exactly two elements."
+        raise ProcessParameterInvalid(
+            "load_collection",
+            "temporal_extent",
+            "The interval has to be specified as an array with exactly two elements.",
         )
 
     result = [None if t is None else t.rstrip("Z") for t in temporal_extent]
@@ -66,7 +66,7 @@ def _raise_exception_based_on_eolearn_message(str_ex):
         g = m.groups()
         status_code = int(g[2])
         if 400 <= status_code < 500:
-            raise ProcessArgumentInvalid(f"The argument '<unknown>' in process 'load_collection' is invalid: {str_ex}")
+            raise ProcessParameterInvalid("load_collection", "<unknown>", str_ex)
 
     # we can't make sense of the message, bail out with generic exception:
     raise Internal("Server error: EOPatch creation failed: {}".format(str_ex))
@@ -77,10 +77,8 @@ def validate_bands(bands, ALL_BANDS, collection_id):
         return ALL_BANDS
     if not set(bands).issubset(ALL_BANDS):
         valids = ",".join(ALL_BANDS)
-        raise ProcessArgumentInvalid(
-            "The argument 'bands' in process 'load_collection' is invalid: Invalid bands encountered; valid bands for {} are '[{}]'.".format(
-                collection_id, valids
-            )
+        raise ProcessParameterInvalid(
+            "load_collection", "bands", f"Invalid bands encountered; valid bands for {collection_id} are '[{valids}]'."
         )
     return bands
 
@@ -278,9 +276,7 @@ class load_collectionEOTask(ProcessEOTask):
         properties = self.validate_parameter(arguments, "properties", required=False, allowed_types=[type(None), dict])
 
         if bands is not None and not len(bands):
-            raise ProcessArgumentInvalid(
-                "The argument 'bands' in process 'load_collection' is invalid: At least one band must be specified."
-            )
+            raise ProcessParameterInvalid("load_collection", "bands", "At least one band must be specified.")
 
         bbox = load_collectionEOTask._convert_bbox(spatial_extent)
 
@@ -335,18 +331,12 @@ class load_collectionEOTask(ProcessEOTask):
             band_aliases = {}
 
         elif collection_id == "BYOC":
-            if properties is None:
-                raise ProcessArgumentInvalid(
-                    "The argument 'properties' in process 'load_collection' is not defined. It's needed to contain BYOC parameters."
+            if properties is None or properties.get("byoc_collection_id") is None:
+                raise ProcessParameterInvalid(
+                    "load_collection", "properties", 'Parameter "byoc_collection_id" not provided in "properties".'
                 )
 
-            byoc_collection_id = properties.get("byoc_collection_id")
-            if byoc_collection_id is None:
-                raise ProcessArgumentInvalid('"byoc_collection_id" parameter not provided in "properties".')
-
-            if bands is None or not isinstance(bands, list):
-                raise ProcessArgumentInvalid('"bands" is not a list of valid band names.')
-
+            byoc_collection_id = properties["byoc_collection_id"]
             dataset = "byoc-" + byoc_collection_id
             kwargs = {}
             dataFilter_params = {}
@@ -357,9 +347,7 @@ class load_collectionEOTask(ProcessEOTask):
             orbit_dates = [{"from": d, "to": d} for d in dates]
 
         else:
-            raise ProcessArgumentInvalid(
-                "The argument 'id' in process 'load_collection' is invalid: unknown collection id"
-            )
+            raise ProcessParameterInvalid("load_collection", "id", "Unknown collection id.")
 
         if collection_id != "BYOC":
             self.logger.debug(f"Requesting dates between: {temporal_extent}")

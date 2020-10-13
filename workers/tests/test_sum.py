@@ -5,7 +5,7 @@ import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessArgumentInvalid, ProcessArgumentRequired
+from process._common import ProcessParameterInvalid, ProcessArgumentRequired
 
 
 @pytest.fixture
@@ -97,24 +97,19 @@ def test_with_xarray_nulls(execute_sum_process, generate_data, array1, array2, e
 
 
 @pytest.mark.parametrize(
-    "exception,data_arguments,ignore_nodata,message",
+    "exception,data_arguments,ignore_nodata,exception_args",
     [
-        (ProcessArgumentRequired, None, None, "Process 'sum' requires argument 'data'."),
-        (
-            ProcessArgumentInvalid,
-            {},
-            1,
-            "The argument 'ignore_nodata' in process 'sum' is invalid: Argument must be of types '[boolean]'.",
-        ),
+        (ProcessArgumentRequired, None, None, ("Process 'sum' requires argument 'data'.",)),
+        (ProcessParameterInvalid, {}, 1, ("sum", "ignore_nodata", "Argument must be of types '[boolean]'.")),
     ],
 )
-def test_parameter_validation(execute_sum_process, exception, data_arguments, ignore_nodata, message):
+def test_parameter_validation(execute_sum_process, exception, data_arguments, ignore_nodata, exception_args):
     """
     Test parameter validation
     """
     with pytest.raises(exception) as ex:
         result = execute_sum_process(data_arguments=data_arguments, ignore_nodata=ignore_nodata)
-    assert ex.value.args[0] == message
+    assert ex.value.args == exception_args
 
 
 @pytest.mark.parametrize(

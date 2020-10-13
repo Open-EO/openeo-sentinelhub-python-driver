@@ -33,7 +33,11 @@ class applyEOTask(ProcessEOTask):
 
             if node_definition.get("result", False):
                 if result_task:
-                    raise ProcessParameterInvalid(node_definition["process_id"], "result", "only one node in a (sub)graph can have result set to true")
+                    raise ProcessParameterInvalid(
+                        node_definition["process_id"],
+                        "result",
+                        "Only one node in a (sub)graph can have result set to true.",
+                    )
                 result_task = tasks[node_name]
 
         dependencies = []

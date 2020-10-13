@@ -3,7 +3,7 @@ import xarray as xr
 
 xr.set_options(keep_attrs=True)
 
-from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired
+from ._common import ProcessEOTask, ProcessParameterInvalid
 
 
 class array_elementEOTask(ProcessEOTask):
@@ -38,15 +38,11 @@ class array_elementEOTask(ProcessEOTask):
                     new_dims = list(data.dims)
                     new_dims.remove(dim)
                     return xr.DataArray(new_values, dims=new_dims, coords=data.coords, attrs=data.attrs)
-                raise ProcessArgumentInvalid(
-                    "The argument 'index' in process 'array_element' is invalid: Index out of bounds."
-                )
+                raise ProcessParameterInvalid("array_element", "index", "Index out of bounds.")
         else:
             try:
                 return data[index]
             except IndexError:
                 if return_nodata:
                     return None
-                raise ProcessArgumentInvalid(
-                    "The argument 'index' in process 'array_element' is invalid: Index out of bounds."
-                )
+                raise ProcessParameterInvalid("array_element", "index", "Index out of bounds.")

@@ -11,7 +11,7 @@ from base64 import b64decode
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessArgumentInvalid
+from process._common import ProcessParameterInvalid
 
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -173,9 +173,9 @@ def test_collection_id(arguments_factory, execute_load_collection_process):
     Test load_collection process with incorrect collection id
     """
     arguments = arguments_factory("non-existent")
-    with pytest.raises(ProcessArgumentInvalid) as ex:
+    with pytest.raises(ProcessParameterInvalid) as ex:
         result = execute_load_collection_process(arguments)
-    assert ex.value.args[0] == "The argument 'id' in process 'load_collection' is invalid: unknown collection id"
+    assert ex.value.args == ("load_collection", "id", "Unknown collection id.")
 
 
 @pytest.mark.parametrize(
@@ -192,11 +192,9 @@ def test_temporal_extent_invalid(
     Test load_collection process with incorrect temporal_extent
     """
     arguments = arguments_factory("S2L1C", temporal_extent=invalid_temporal_extent)
-    with pytest.raises(ProcessArgumentInvalid) as ex:
+    with pytest.raises(ProcessParameterInvalid) as ex:
         result = execute_load_collection_process(arguments)
-    assert (
-        ex.value.args[0] == f"The argument 'temporal_extent' in process 'load_collection' is invalid: {failure_reason}"
-    )
+    assert ex.value.args == ("load_collection", "temporal_extent", failure_reason)
 
 
 @pytest.mark.skip("Using Processing API now...")
@@ -217,9 +215,10 @@ def test_bbox_too_big_for_sh_service(set_mock_responses, arguments_factory, exec
     )
 
     arguments = arguments_factory("S2L1C", bbox=invalid_bbox)
-    with pytest.raises(ProcessArgumentInvalid) as ex:
+    with pytest.raises(ProcessParameterInvalid) as ex:
         result = execute_load_collection_process(arguments)
-    assert ex.value.args[0].startswith("The argument '<unknown>' in process 'load_collection' is invalid: ")
+    assert ex.value.args[0] == "load_collection"
+    assert ex.value.args[1] == "<unknown>"
 
 
 @pytest.mark.skip("No limit anymore")
@@ -232,11 +231,11 @@ def test_bbox_too_big_for_us(set_mock_responses, arguments_factory, execute_load
         "north": 47.2,
     }
     arguments = arguments_factory("S2L1C", bbox=invalid_bbox)
-    with pytest.raises(ProcessArgumentInvalid) as ex:
+    with pytest.raises(ProcessParameterInvalid) as ex:
         result = execute_load_collection_process(arguments)
-    assert ex.value.args[0].startswith(
-        "The argument 'spatial_extent' in process 'load_collection' is invalid: The resulting image size must be below 1000x1000 pixels, but is: "
-    )
+    assert ex.value.args[0] == "load_collection"
+    assert ex.value.args[1] == "spatial_extent"
+    assert ex.value.args[2].startswith("The resulting image size must be below 1000x1000 pixels, but is: ")
 
 
 @pytest.mark.skip("Using Processing API now...")
@@ -297,9 +296,7 @@ def test_incorrect_bands(
     """
     arguments = arguments_factory(collection_id, temporal_extent=temporal_extent, bands=bands)
 
-    with pytest.raises(ProcessArgumentInvalid) as ex:
+    with pytest.raises(ProcessParameterInvalid) as ex:
         result = execute_load_collection_process(arguments)
-
-    assert ex.value.args[0].startswith(
-        "The argument 'bands' in process 'load_collection' is invalid: {}".format(failure_reason)
-    )
+    assert ex.value.args[0] == "load_collection"
+    assert ex.value.args[1] == "bands"
