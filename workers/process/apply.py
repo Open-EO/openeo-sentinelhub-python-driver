@@ -1,4 +1,4 @@
-from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired, iterate
+from ._common import ProcessEOTask, ProcessParameterInvalid, iterate
 from eolearn.core import EOWorkflow
 import xarray as xr
 import process
@@ -32,6 +32,8 @@ class applyEOTask(ProcessEOTask):
             )
 
             if node_definition.get("result", False):
+                if result_task:
+                    raise ProcessParameterInvalid(node_definition["process_id"], "result", "only one node in a (sub)graph can have result set to true")
                 result_task = tasks[node_name]
 
         dependencies = []

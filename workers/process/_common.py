@@ -22,8 +22,15 @@ class Internal(ExecFailedError):
     http_code = 500
 
 
+# deprecated:
 class ProcessArgumentInvalid(UserError):
     error_code = "ProcessArgumentInvalid"
+
+
+class ProcessParameterInvalid(UserError):
+    error_code = "ProcessParameterInvalid"
+    def __init__(self, process_id, parameter, reason):
+        super().__init__(f"The value passed for parameter '{parameter}' in process '{process_id}' is invalid: {reason}")
 
 
 class VariableValueMissing(UserError):
