@@ -3,7 +3,6 @@ import sys, os
 import xarray as xr
 import datetime
 import logging
-import multiprocessing
 import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -14,7 +13,6 @@ from process._common import ProcessParameterInvalid
 @pytest.fixture
 def generate_data():
     def _construct(data=[[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]], dims=("t", "y", "x", "band")):
-
         xrdata = xr.DataArray(data, dims=dims)
         return xrdata
 
@@ -23,7 +21,7 @@ def generate_data():
 
 @pytest.fixture
 def execute_apply_process(generate_data):
-    logger = multiprocessing.log_to_stderr()
+    logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
 
     def wrapped(data_arguments={}, process_callback=None, logger=logger):
