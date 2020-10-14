@@ -157,8 +157,12 @@ class ProcessEOTask(EOTask):
 
         if not allowed_types:
             return param_val
-        types = tuple(allowed_types)
-        if not isinstance(param_val, types):
+
+        # if parameter is int and we expect a number (float), convert automatically:
+        if isinstance(param_val, int) and float in allowed_types:
+            param_val = float(param_val)
+
+        if not isinstance(param_val, tuple(allowed_types)):
             type_mapping = {
                 int: "integer",
                 float: "number",
@@ -169,7 +173,7 @@ class ProcessEOTask(EOTask):
                 str: "string",
                 list: "array",
             }
-            types = ",".join(set([type_mapping[typename] for typename in types]))
+            types = ",".join(set([type_mapping[typename] for typename in allowed_types]))
             raise ProcessParameterInvalid(self.process_id, param, f"Argument must be of types '[{types}]'.")
 
         return param_val
