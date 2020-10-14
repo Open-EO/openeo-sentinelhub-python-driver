@@ -5,15 +5,15 @@ import process
 
 
 class applyEOTask(ProcessEOTask):
-    def generate_workflow_dependencies(self, graph, parent_arguments):
-        def set_from_arguments(args, parent_arguments):
+    def generate_workflow_dependencies(self, graph, parent_data):
+        def set_from_arguments(args, parent_data):
             for key, value in iterate(args):
                 if isinstance(value, dict) and len(value) == 1 and "from_argument" in value:
-                    args[key] = parent_arguments["data"]
+                    args[key] = parent_data
                 elif isinstance(value, dict) and len(value) == 1 and "callback" in value:
                     continue
                 elif isinstance(value, dict) or isinstance(value, list):
-                    args[key] = set_from_arguments(value, parent_arguments)
+                    args[key] = set_from_arguments(value, parent_data)
 
             return args
 
@@ -22,7 +22,7 @@ class applyEOTask(ProcessEOTask):
 
         for node_name, node_definition in graph.items():
             node_arguments = node_definition["arguments"]
-            node_arguments = set_from_arguments(node_arguments, parent_arguments)
+            node_arguments = set_from_arguments(node_arguments, parent_data)
 
             class_name = node_definition["process_id"] + "EOTask"
             class_obj = getattr(getattr(process, node_definition["process_id"]), class_name)
@@ -51,7 +51,7 @@ class applyEOTask(ProcessEOTask):
         data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray])
         process = self.validate_parameter(arguments, "process", required=True)
 
-        dependencies, result_task = self.generate_workflow_dependencies(process["callback"], arguments)
+        dependencies, result_task = self.generate_workflow_dependencies(process["callback"], data)
         workflow = EOWorkflow(dependencies)
         all_results = workflow.execute({})
         return all_results[result_task]
