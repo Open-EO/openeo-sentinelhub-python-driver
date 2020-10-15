@@ -22,8 +22,11 @@ class Internal(ExecFailedError):
     http_code = 500
 
 
-class ProcessArgumentInvalid(UserError):
-    error_code = "ProcessArgumentInvalid"
+class ProcessParameterInvalid(UserError):
+    error_code = "ProcessParameterInvalid"
+
+    def __init__(self, process_id, parameter, reason):
+        super().__init__(f"The value passed for parameter '{parameter}' in process '{process_id}' is invalid: {reason}")
 
 
 class VariableValueMissing(UserError):
@@ -167,11 +170,7 @@ class ProcessEOTask(EOTask):
                 list: "array",
             }
             types = ",".join(set([type_mapping[typename] for typename in types]))
-            raise ProcessArgumentInvalid(
-                "The argument '{}' in process '{}' is invalid: Argument must be of types '[{}]'.".format(
-                    param, self.process_id, types
-                )
-            )
+            raise ProcessParameterInvalid(self.process_id, param, f"Argument must be of types '[{types}]'.")
 
         return param_val
 
@@ -202,10 +201,10 @@ class ProcessEOTask(EOTask):
                     else:
                         data[i] = xr.DataArray(np.array(element, dtype=np.float))
                 elif not isinstance(element, xr.DataArray):
-                    raise ProcessArgumentInvalid(
-                        "The argument 'data' in process '{}' is invalid: Elements of the array must be of types '[number, null, raster-cube]'.".format(
-                            self.process_id
-                        )
+                    raise ProcessParameterInvalid(
+                        self.process_id,
+                        "data",
+                        "Elements of the array must be of types '[number, null, raster-cube]'.",
                     )
 
         else:

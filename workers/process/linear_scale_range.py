@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 import math
 
-from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired
+from ._common import ProcessEOTask, ProcessParameterInvalid
 
 
 class linear_scale_rangeEOTask(ProcessEOTask):
@@ -25,8 +25,8 @@ class linear_scale_rangeEOTask(ProcessEOTask):
             return None
 
         if math.isclose(inputMin, inputMax):
-            raise ProcessArgumentInvalid(
-                "The argument 'inputMin' in process 'linear_scale_range' is invalid: Argument must differ from argument 'inputMax'."
+            raise ProcessParameterInvalid(
+                "linear_scale_range", "inputMin", "Argument must differ from argument 'inputMax'."
             )
 
         original_type_was_number, data = self.convert_to_dataarray(data)

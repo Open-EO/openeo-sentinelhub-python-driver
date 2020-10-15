@@ -1,7 +1,7 @@
 import xarray as xr
 from xarray.testing import assert_allclose
 
-from ._common import ProcessEOTask, ProcessArgumentInvalid, ProcessArgumentRequired
+from ._common import ProcessEOTask, ProcessParameterInvalid
 
 
 class assert_equalsEOTask(ProcessEOTask):
@@ -41,8 +41,10 @@ Argument b:
 
 """
             self.logger.info(message)
-            raise ProcessArgumentInvalid(
-                f"The argument 'b' in process 'assert_equals' is invalid: Parameters a and b differ (node: '{self.node_name}')."
+            raise ProcessParameterInvalid(
+                "assert_equals",
+                "b",
+                f"Parameters a and b differ (node: '{self.node_name}').",
             )
 
         return None

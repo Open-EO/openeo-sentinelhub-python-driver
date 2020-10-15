@@ -6,7 +6,7 @@ import boto3
 import xarray as xr
 
 
-from ._common import ProcessEOTask, StorageFailure, ProcessArgumentInvalid, ProcessArgumentRequired
+from ._common import ProcessEOTask, StorageFailure, ProcessParameterInvalid
 
 
 S3_BUCKET_NAME = "com.sinergise.openeo.results"
@@ -89,23 +89,25 @@ class save_resultEOTask(ProcessEOTask):
         output_options = self.validate_parameter(arguments, "options", default={}, allowed_types=[dict])
 
         if output_format not in GDAL_FORMATS:
-            raise ProcessArgumentInvalid(
-                f"The argument 'format' in process 'save_result' is invalid: supported formats are: {', '.join(GDAL_FORMATS.keys())}."
+            raise ProcessParameterInvalid(
+                "save_result",
+                "format",
+                f"Supported formats are: {', '.join(GDAL_FORMATS.keys())}.",
             )
 
         for option in output_options:
             if option not in ["datatype"]:
-                raise ProcessArgumentInvalid(
-                    "The argument 'options' in process 'save_result' is invalid: supported options are: 'datatype'."
-                )
+                raise ProcessParameterInvalid("save_result", "options", "Supported options are: 'datatype'.")
 
         default_datatype = GDAL_FORMATS[output_format].default_datatype
         datatype_string = output_options.get("datatype", default_datatype).lower()
         datatype = self.GDAL_DATATYPES.get(datatype_string)
 
         if not datatype:
-            raise ProcessArgumentInvalid(
-                f"The argument 'options' in process 'save_result' is invalid: unknown value for option 'datatype', allowed values are [{', '.join(self.GDAL_DATATYPES.keys())}]."
+            raise ProcessParameterInvalid(
+                "save_result",
+                "options",
+                f"Unknown value for option 'datatype', allowed values are [{', '.join(self.GDAL_DATATYPES.keys())}].",
             )
 
         # https://stackoverflow.com/a/33950009
@@ -142,9 +144,7 @@ class save_resultEOTask(ProcessEOTask):
             # https://gdal.org/tutorials/raster_api_tut.html#techniques-for-creating-files
             dst_driver = gdal.GetDriverByName(output_format)
             if not dst_driver:
-                raise ProcessArgumentInvalid(
-                    "The argument 'format' in process 'save_result' is invalid: GDAL driver not supported."
-                )
+                raise ProcessParameterInvalid("save_result", "format", "GDAL driver not supported.")
             metadata = dst_driver.GetMetadata()
             if metadata.get(gdal.DCAP_CREATE) == "YES":
                 dst_intermediate = dst_driver.Create(filename, xsize=nx, ysize=ny, bands=n_bands, eType=datatype)
@@ -179,8 +179,10 @@ class save_resultEOTask(ProcessEOTask):
                 # with PNG and JPG, we still need to copy from MEM to appropriate GDAL dataset:
                 dst_final = dst_driver.CreateCopy(filename, dst_intermediate, strict=0)
                 if not dst_final:
-                    raise ProcessArgumentInvalid(
-                        f"The argument 'format' in process 'save_result' is invalid: could not create data file in format [{output_format}] for [{n_bands}] bands and datatype [{datatype_string}]."
+                    raise ProcessParameterInvalid(
+                        "save_result",
+                        "format",
+                        f"Could not create data file in format [{output_format}] for [{n_bands}] bands and datatype [{datatype_string}].",
                     )
                 dst_final.FlushCache()
                 dst_final = None  # careful, this is needed, otherwise S3 mocking will fail in unit tests

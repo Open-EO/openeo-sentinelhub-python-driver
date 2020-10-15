@@ -7,7 +7,7 @@ import multiprocessing
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessArgumentInvalid, ProcessArgumentRequired
+from process._common import ProcessParameterInvalid
 
 
 @pytest.fixture
@@ -53,11 +53,12 @@ def test_no_reducer(execute_reduce_dimension_process, generate_data):
     """
     Test reduce_dimension process without reducer
     """
-    with pytest.raises(ProcessArgumentInvalid) as ex:
+    with pytest.raises(ProcessParameterInvalid) as ex:
         result = execute_reduce_dimension_process()
-    assert (
-        ex.value.args[0]
-        == "The argument 'dimension' in process 'reduce_dimension' is invalid: Dimension 'band' has more than one value, but reducer is not specified."
+    assert ex.value.args == (
+        "reduce_dimension",
+        "dimension",
+        "Dimension 'band' has more than one value, but reducer is not specified.",
     )
 
     expected_result = generate_data = generate_data(

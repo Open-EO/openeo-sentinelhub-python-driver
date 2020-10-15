@@ -5,7 +5,7 @@ import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessArgumentInvalid, ProcessArgumentRequired
+from process._common import ProcessParameterInvalid
 
 
 @pytest.fixture
@@ -97,9 +97,9 @@ def test_with_xarray_out_bounds(execute_array_element_process, generate_data):
     """
     Test array_element process with xarray.DataArrays with out of bounds index
     """
-    with pytest.raises(ProcessArgumentInvalid) as ex:
+    with pytest.raises(ProcessParameterInvalid) as ex:
         result = execute_array_element_process(index=5)
-    assert ex.value.args[0] == "The argument 'index' in process 'array_element' is invalid: Index out of bounds."
+    assert ex.value.args == ("array_element", "index", "Index out of bounds.")
 
 
 @pytest.mark.parametrize(

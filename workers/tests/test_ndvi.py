@@ -6,7 +6,7 @@ import numpy as np
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import process
-from process._common import ProcessArgumentRequired, ProcessArgumentInvalid
+from process._common import ProcessArgumentRequired, ProcessParameterInvalid
 
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -95,13 +95,9 @@ def test_name(ndviEOTask, data1, actual_result2):
     assert result == actual_result2
 
     arguments = {"data": data1, "name": "...wrong///"}
-    with pytest.raises(ProcessArgumentInvalid) as ex:
+    with pytest.raises(ProcessParameterInvalid) as ex:
         result = ndviEOTask.process(arguments)
-
-    assert (
-        ex.value.args[0]
-        == "The argument 'name' in process 'ndvi' is invalid: string does not match the required pattern."
-    )
+    assert ex.value.args == ("ndvi", "name", "String does not match the required pattern.")
 
 
 @pytest.mark.parametrize(
