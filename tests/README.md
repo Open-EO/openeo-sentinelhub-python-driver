@@ -16,6 +16,7 @@ Requirements:
 
 Procedure for running tests:
 ```
+$ docker-compose build
 $ docker-compose up -d
 $ cd rest/
 $ pipenv install --dev
