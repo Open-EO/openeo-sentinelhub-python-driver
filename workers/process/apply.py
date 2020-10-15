@@ -58,11 +58,16 @@ class applyEOTask(ProcessEOTask):
         workflow = EOWorkflow(dependencies)
         all_results = workflow.execute({})
 
-        # the returned data should no longer be treated as numbers:
-        result_datatype = all_results[result_task].attrs["simulated_datatype"]
-        if result_datatype[0] != float:
+        # always reset when not needed anymore, otherwise some other (unrelated) processes might get the wrong type:
+        data.attrs["simulated_datatype"] = None
+
+        result = all_results[result_task]
+
+        # we expect the result to be simulated numbers, but then we return it as datacube:
+        if result.attrs["simulated_datatype"][0] != float:
             raise ProcessParameterInvalid(
                 "apply", "process", "Result of process callback should be of types [number,null]"
             )
-        del all_results[result_task].attrs["simulated_datatype"]
-        return all_results[result_task]
+        result.attrs["simulated_datatype"] = None
+
+        return result

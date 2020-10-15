@@ -632,7 +632,7 @@ def test_assert_works(app_client, value, double_value, expected_status_code, aut
         },
         "result1": {
             "process_id": "save_result",
-            "arguments": {"data": {"from_node": "gencol1"}, "format": "gtiff", "options": {"datatype": "float32"}},
+            "arguments": {"data": {"from_node": "linear1"}, "format": "gtiff", "options": {"datatype": "float32"}},
             "result": True,
         },
     }
