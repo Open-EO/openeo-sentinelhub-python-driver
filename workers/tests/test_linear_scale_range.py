@@ -9,7 +9,12 @@ import process
 
 @pytest.fixture
 def generate_data():
-    def _construct(data=[[[[0.2, 0.8]]]], dims=("t", "y", "x", "band"), attrs={"reduce_by": ["band"]}, as_number=False):
+    def _construct(
+        data=[[[[0.2, 0.8]]]],
+        dims=("t", "y", "x", "band"),
+        attrs={"reduce_by": ["band"], "simulated_datatype": (float,)},
+        as_number=False,
+    ):
         if as_number:
             return data
 

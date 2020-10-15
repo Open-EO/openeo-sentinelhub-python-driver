@@ -13,13 +13,11 @@ class linear_scale_rangeEOTask(ProcessEOTask):
     """
 
     def process(self, arguments):
-        data = self.validate_parameter(
-            arguments, "x", required=True, allowed_types=[xr.DataArray, int, float, type(None)]
-        )
-        inputMin = self.validate_parameter(arguments, "inputMin", required=True, allowed_types=[int, float])
-        inputMax = self.validate_parameter(arguments, "inputMax", required=True, allowed_types=[int, float])
-        outputMin = self.validate_parameter(arguments, "outputMin", default=0, allowed_types=[int, float])
-        outputMax = self.validate_parameter(arguments, "outputMax", default=1, allowed_types=[int, float])
+        data = self.validate_parameter(arguments, "x", required=True, allowed_types=[float, type(None)])
+        inputMin = self.validate_parameter(arguments, "inputMin", required=True, allowed_types=[float])
+        inputMax = self.validate_parameter(arguments, "inputMax", required=True, allowed_types=[float])
+        outputMin = self.validate_parameter(arguments, "outputMin", default=0, allowed_types=[float])
+        outputMax = self.validate_parameter(arguments, "outputMax", default=1, allowed_types=[float])
 
         if data is None:
             return None
@@ -38,5 +36,8 @@ class linear_scale_rangeEOTask(ProcessEOTask):
 
         if original_type_was_number:
             return float(results)
+
+        if isinstance(results, xr.DataArray):
+            results.attrs["simulated_datatype"] = (float,)
 
         return results
