@@ -52,14 +52,17 @@ class applyEOTask(ProcessEOTask):
         process = self.validate_parameter(arguments, "process", required=True)
 
         # mark the data - while it is still an xarray DataArray, the operations can only be applied to each element:
-        if not data.attrs.get("simulated_datatype"):
-            data.attrs["simulated_datatype"] = []
-        data.attrs["simulated_datatype"].append((float,))
+        data.attrs["simulated_datatype"] = (float,)
 
         dependencies, result_task = self.generate_workflow_dependencies(process["callback"], data)
         workflow = EOWorkflow(dependencies)
         all_results = workflow.execute({})
 
         # the returned data should no longer be treated as numbers:
-        all_results[result_task].attrs["simulated_datatype"].pop()
+        result_datatype = all_results[result_task].attrs["simulated_datatype"]
+        if result_datatype[0] != float:
+            raise ProcessParameterInvalid(
+                "apply", "process", "Result of process callback should be of types [number,null]"
+            )
+        del all_results[result_task].attrs["simulated_datatype"]
         return all_results[result_task]

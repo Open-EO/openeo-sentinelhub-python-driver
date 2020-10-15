@@ -90,7 +90,7 @@ def test_apply_simple(execute_process):
         dims=("t", "y", "x", "band"),
     )
     xr.testing.assert_allclose(result, expected_result)
-    assert result.attrs["simulated_datatype"] == []
+    assert result.attrs.get("simulated_datatype", None) is None
 
 
 @pytest.mark.skip(

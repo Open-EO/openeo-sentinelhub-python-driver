@@ -178,8 +178,8 @@ class ProcessEOTask(EOTask):
         allowed_types_str = ",".join([TYPE_MAPPING[typename] for typename in allowed_types])
 
         # xr.DataArray might be simulating another data type:
-        if isinstance(param_val, xr.DataArray) and len(param_val.attrs.get("simulated_datatype", [])) > 0:
-            if param_val.attrs["simulated_datatype"][-1][0] not in allowed_types:
+        if isinstance(param_val, xr.DataArray) and param_val.attrs.get("simulated_datatype", None):
+            if param_val.attrs["simulated_datatype"][0] not in allowed_types:
                 raise ProcessParameterInvalid(
                     self.process_id, param, f"Argument must be of types '[{allowed_types_str}]'."
                 )

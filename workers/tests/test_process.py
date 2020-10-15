@@ -62,7 +62,7 @@ from process._common import ProcessParameterInvalid
             None,
         ),
         (
-            {"x": xr.DataArray([[1, 2]], dims=("x", "y"), attrs={"simulated_datatype": [(float,)]})},
+            {"x": xr.DataArray([[1, 2]], dims=("x", "y"), attrs={"simulated_datatype": (float,)})},
             "x",
             False,
             [xr.DataArray],
