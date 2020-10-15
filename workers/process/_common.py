@@ -183,11 +183,13 @@ class ProcessEOTask(EOTask):
                 raise ProcessParameterInvalid(
                     self.process_id, param, f"Argument must be of types '[{allowed_types_str}]'."
                 )
+            else:
+                return param_val
 
         if not isinstance(param_val, tuple(allowed_types)):
             raise ProcessParameterInvalid(self.process_id, param, f"Argument must be of types '[{allowed_types_str}]'.")
-
-        return param_val
+        else:
+            return param_val
 
     def convert_to_dataarray(self, data, as_list=False):
         original_type_was_number = True
