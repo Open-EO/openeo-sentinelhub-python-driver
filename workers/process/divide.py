@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import xarray as xr
 
@@ -16,29 +18,34 @@ class divideEOTask(ProcessEOTask):
     """
 
     def process(self, arguments):
-        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray, list])
-        ignore_nodata = self.validate_parameter(arguments, "ignore_nodata", default=True, allowed_types=[bool])
+        x = self.validate_parameter(arguments, "x", required=True, allowed_types=[float, type(None)])
+        y = self.validate_parameter(arguments, "y", required=True, allowed_types=[float, type(None)])
 
-        original_type_was_number = False
+        # we might be passing the xr.DataArray and just simulating numbers, but let's take
+        # care of "normal" use-case first:
+        if not isinstance(x, xr.DataArray) and not isinstance(y, xr.DataArray):
+            if x is None or y is None:
+                return None
+            if y == 0:
+                return None if x == 0 else math.inf if x > 0 else -math.inf
+            return x / y
 
-        if isinstance(data, xr.DataArray) and data.attrs.get("reduce_by"):
-            dim = data.attrs["reduce_by"]
-            return data.isel({dim: 0}) ** 2 / data.prod(dim=dim, skipna=ignore_nodata, keep_attrs=True)
+        # at least one parameter is xr.DataArray
+        original_attrs = x.attrs if isinstance(x, xr.DataArray) else y.attrs
 
-        if len(data) < 2:
-            raise ProcessParameterInvalid("divide", "data", "Array must have at least 2 elements.")
+        # we can't divide if one of the parameters is None:
+        if x is None:
+            # careful, dtype is mandatory or the results will be weird:
+            x = xr.full_like(y, fill_value=np.nan, dtype=np.double)
+        if y is None:
+            y = xr.full_like(x, fill_value=np.nan, dtype=np.double)
 
-        original_type_was_number, data = self.convert_to_dataarray(data, as_list=True)
-
-        dividend = data[0]
-        multiplication_array = xr.concat(data[1:], dim="temporary_multiplication_dim")
-        total_divisor = multiplication_array.prod(
-            dim="temporary_multiplication_dim", skipna=ignore_nodata, keep_attrs=True
-        )
-
-        if ignore_nodata:
-            dividend = dividend.fillna(1.0)
-            total_divisor = total_divisor.fillna(1.0)
-
-        results = dividend / total_divisor
-        return self.results_in_appropriate_type(results, original_type_was_number)
+        try:
+            # xarray knows how to divide DataArrays and numbers in every combination:
+            result = x / y
+        except ValueError as ex:
+            # non-matching dimensions could result in an exception:
+            #   ValueError: arguments without labels along dimension '...' cannot be aligned because they have different dimension sizes: ...
+            raise ProcessParameterInvalid("divide", "x/y", str(ex))
+        result.attrs = original_attrs
+        return result

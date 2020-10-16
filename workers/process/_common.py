@@ -18,7 +18,7 @@ TYPE_MAPPING = {
 
 
 # These exceptions should translate to the list of OpenEO error codes:
-#   https://open-eo.github.io/openeo-api/errors/#openeo-error-codes
+#   https://api.openeo.org/1.0.0/errors.json
 
 
 class ExecFailedError(Exception):
