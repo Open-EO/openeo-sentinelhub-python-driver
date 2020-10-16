@@ -1,3 +1,9 @@
 [tool.black]
 line-length = 120
 
+[tool.pytest.ini_options]
+filterwarnings = [
+    # note the use of single quote below to denote "raw" strings in TOML
+    'ignore:The usage of `cmp` is deprecated:DeprecationWarning',
+    'ignore:The imp module is deprecated:DeprecationWarning',
+]
