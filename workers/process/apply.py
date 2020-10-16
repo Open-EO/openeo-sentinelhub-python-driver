@@ -51,15 +51,15 @@ class applyEOTask(ProcessEOTask):
         data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray])
         process = self.validate_parameter(arguments, "process", required=True)
 
+        # marking the data will change the `data` attributes, so we need to do shallow copy (we don't change the
+        # data here, so there is no need for deep copy)
+        data = data.copy(deep=False)
         # mark the data - while it is still an xarray DataArray, the operations can only be applied to each element:
         data.attrs["simulated_datatype"] = (float,)
 
         dependencies, result_task = self.generate_workflow_dependencies(process["callback"], data)
         workflow = EOWorkflow(dependencies)
         all_results = workflow.execute({})
-
-        # always reset when not needed anymore, otherwise some other (unrelated) processes might get the wrong type:
-        data.attrs["simulated_datatype"] = None
 
         result = all_results[result_task]
 
@@ -68,6 +68,8 @@ class applyEOTask(ProcessEOTask):
             raise ProcessParameterInvalid(
                 "apply", "process", "Result of process callback should be of types [number,null]"
             )
+        # no need to make a (shallow) copy of result, since we are the only ones who can use this result; we
+        # can just unmark the simulated datatype and return the datacube:
         result.attrs["simulated_datatype"] = None
 
         return result
