@@ -36,11 +36,66 @@ def execute_apply_process(generate_data):
     return wrapped
 
 
+@pytest.fixture
+def execute_process():
+    logger = logging.getLogger()
+
+    def wrapped(arguments):
+        return process.apply.applyEOTask(None, "", logger, {}, "apply1", {}).process(arguments)
+
+    return wrapped
+
+
 ###################################
 # tests:
 ###################################
 
 
+def test_apply_simple(execute_process):
+    """
+    Test apply process with linear_scale_range
+    """
+    # prepare data:
+    data = xr.DataArray(
+        [[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]],
+        dims=("t", "y", "x", "band"),
+    )
+    process_callback = {
+        "lsr": {
+            "process_id": "linear_scale_range",
+            "arguments": {
+                "x": {"from_argument": "x"},
+                "inputMin": 0,
+                "inputMax": 1,
+                "outputMin": 1,
+                "outputMax": 2,
+            },
+            "result": True,
+        }
+    }
+
+    # execute process:
+    result = execute_process(
+        {
+            "data": data,
+            "process": {
+                "callback": process_callback,
+            },
+        }
+    )
+
+    # check results:
+    expected_result = xr.DataArray(
+        [[[[1.1, 1.15], [1.15, 1.2]], [[1.05, 1.1], [0.1, 1.05]]]],
+        dims=("t", "y", "x", "band"),
+    )
+    xr.testing.assert_allclose(result, expected_result)
+    assert result.attrs.get("simulated_datatype", None) is None
+
+
+@pytest.mark.skip(
+    "apply can no longer be called recursively because of data types (callback gets a number, apply expects datacube)"
+)
 def test_recursive_callback(execute_apply_process, generate_data):
     """
     Test apply process with a recursive callback, which applies linear_scale_range multiple times

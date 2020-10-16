@@ -4,6 +4,19 @@ import xarray as xr
 import numpy as np
 import dask.array as da
 
+
+TYPE_MAPPING = {
+    int: "integer",
+    float: "number",
+    bool: "boolean",
+    type(None): "null",
+    xr.DataArray: "raster-cube",
+    dict: "object",
+    str: "string",
+    list: "array",
+}
+
+
 # These exceptions should translate to the list of OpenEO error codes:
 #   https://open-eo.github.io/openeo-api/errors/#openeo-error-codes
 
@@ -151,9 +164,9 @@ class ProcessEOTask(EOTask):
             except KeyError:
                 raise ProcessArgumentRequired("Process '{}' requires argument '{}'.".format(self.process_id, param))
         else:
-            param_val = arguments.get(param, "argument not present")
-            if param_val == "argument not present":
+            if param not in arguments:
                 return default
+            param_val = arguments[param]
 
         if not allowed_types:
             return param_val
@@ -162,21 +175,21 @@ class ProcessEOTask(EOTask):
         if isinstance(param_val, int) and float in allowed_types:
             param_val = float(param_val)
 
-        if not isinstance(param_val, tuple(allowed_types)):
-            type_mapping = {
-                int: "integer",
-                float: "number",
-                bool: "boolean",
-                type(None): "null",
-                xr.DataArray: "raster-cube",
-                dict: "object",
-                str: "string",
-                list: "array",
-            }
-            types = ",".join(set([type_mapping[typename] for typename in allowed_types]))
-            raise ProcessParameterInvalid(self.process_id, param, f"Argument must be of types '[{types}]'.")
+        allowed_types_str = ",".join([TYPE_MAPPING[typename] for typename in allowed_types])
 
-        return param_val
+        # xr.DataArray might be simulating another data type:
+        if isinstance(param_val, xr.DataArray) and param_val.attrs.get("simulated_datatype", None):
+            if param_val.attrs["simulated_datatype"][0] not in allowed_types:
+                raise ProcessParameterInvalid(
+                    self.process_id, param, f"Argument must be of types '[{allowed_types_str}]'."
+                )
+            else:
+                return param_val
+
+        if not isinstance(param_val, tuple(allowed_types)):
+            raise ProcessParameterInvalid(self.process_id, param, f"Argument must be of types '[{allowed_types_str}]'.")
+        else:
+            return param_val
 
     def convert_to_dataarray(self, data, as_list=False):
         original_type_was_number = True
