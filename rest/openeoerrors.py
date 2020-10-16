@@ -1,5 +1,5 @@
 # These exceptions should translate to the list of OpenEO error codes:
-#   https://api.openeo.org/errors.json
+#   https://api.openeo.org/1.0.0/errors.json
 
 
 class OpenEOError(Exception):
