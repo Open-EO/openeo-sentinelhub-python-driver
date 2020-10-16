@@ -1,8 +1,15 @@
 from copy import deepcopy
-from eolearn.core import EOTask
-import xarray as xr
-import numpy as np
+import datetime
+import re
+
 import dask.array as da
+from eolearn.core import EOTask
+import numpy as np
+import xarray as xr
+
+
+# additional datatypes which do not have corresponding pairs in python:
+DATA_TYPE_TEMPORAL_INTERVAL = "temporal-interval"
 
 
 TYPE_MAPPING = {
@@ -14,6 +21,7 @@ TYPE_MAPPING = {
     dict: "object",
     str: "string",
     list: "array",
+    DATA_TYPE_TEMPORAL_INTERVAL: "temporal-interval",
 }
 
 
@@ -58,6 +66,12 @@ class StorageFailure(Internal):
     error_code = "StorageFailure"
 
 
+# internal exceptions:
+class ValidationError(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
+
 def iterate(obj):
     if isinstance(obj, list):
         for i, v in enumerate(obj):
@@ -65,6 +79,31 @@ def iterate(obj):
     elif isinstance(obj, dict):
         for k, v in obj.items():
             yield k, v
+
+
+def _parse_rfc3339(dt, default_h=0, default_m=0, default_s=0):
+    g = re.match(r"^([0-9]{4})-([0-9]{2})-([0-9]{2})([ Tt]([0-9]{2}):([0-9]{2}):([0-9]{2})(\.([0-9]+))?[Z]?)?$", dt)
+    return datetime.datetime(
+        year=int(g.group(1)),
+        month=int(g.group(2)),
+        day=int(g.group(3)),
+        hour=int(g.group(4)) if g.group(4) is not None else 0,
+        minute=int(g.group(5)) if g.group(5) is not None else 0,
+        second=int(g.group(6)) if g.group(6) is not None else 0,
+        microsecond=int(g.group(8)) if g.group(8) is not None else 0,
+    )
+
+
+def _validate_temporal_interval(param):
+    if not isinstance(param, list) or len(param) != 2:
+        raise ValidationError("Expecting a list with exactly 2 elements.")
+    if param[0] is None and param[1] is None:
+        raise ValidationError("At least one of the interval boundaries must not be null.")
+    result = [
+        None if param[0] is None else _parse_rfc3339(param[0]),
+        None if param[1] is None else _parse_rfc3339(param[1]),
+    ]
+    return result
 
 
 class ProcessEOTask(EOTask):
@@ -185,6 +224,17 @@ class ProcessEOTask(EOTask):
                 )
             else:
                 return param_val
+
+        # check if param matches temporal-interval data type:
+        if DATA_TYPE_TEMPORAL_INTERVAL in allowed_types:
+            try:
+                param_val = _validate_temporal_interval(param_val)
+                return param_val
+            except ValidationError as ex:
+                if len(allowed_types) == 1:
+                    raise ProcessParameterInvalid(self.process_id, param, ex.msg)
+                else:
+                    pass  # parameter might still match other (less restrictive) data types
 
         if not isinstance(param_val, tuple(allowed_types)):
             raise ProcessParameterInvalid(self.process_id, param, f"Argument must be of types '[{allowed_types_str}]'.")
