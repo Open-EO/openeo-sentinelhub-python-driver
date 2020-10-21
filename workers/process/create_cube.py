@@ -27,7 +27,6 @@ class create_cubeEOTask(ProcessEOTask):
             coords=coords,
             dims=dims,
             attrs={
-                "band_aliases": {},
                 "bbox": BBox(
                     (
                         12.0,
