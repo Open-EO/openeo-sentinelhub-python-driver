@@ -144,3 +144,51 @@ def test_with_overlap_conflicts(execute_process):
     arguments = {"cube1": cube1, "cube2": cube2, "overlap_resolver": overlap_resolver}
     result = execute_process(arguments)
     xr.testing.assert_allclose(result, expected_cube)
+
+
+def test_with_different_dimensions(execute_process):
+    cube1 = xr.DataArray(
+        [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
+        dims=("t", "y", "x", "band"),
+        coords={
+            "t": [
+                datetime(2014, 3, 4),
+                datetime(2014, 3, 5),
+                datetime(2014, 3, 6),
+            ],
+            "band": ["B01", "B02"],
+        },
+    )
+    cube2 = xr.DataArray(
+        [[[0.26, 0.81]]],
+        dims=("y", "x", "band"),
+        coords={
+            "band": ["B01", "B02"],
+        },
+    )
+    expected_cube = xr.DataArray(
+        [[[[0.46, 1.61]]], [[[1.16, 1.11]]], [[[0.76, 1.31]]]],
+        dims=("t", "y", "x", "band"),
+        coords={
+            "t": [
+                datetime(2014, 3, 4),
+                datetime(2014, 3, 5),
+                datetime(2014, 3, 6),
+            ],
+            "band": ["B01", "B02"],
+            "x": [0],
+            "y": [0],
+        },
+    )
+    overlap_resolver = {
+        "process_graph": {
+            "resolver": {
+                "process_id": "sum",
+                "arguments": {"data": [{"from_argument": "x"}, {"from_argument": "y"}]},
+                "result": True,
+            }
+        }
+    }
+    arguments = {"cube1": cube1, "cube2": cube2, "overlap_resolver": overlap_resolver}
+    result = execute_process(arguments)
+    xr.testing.assert_allclose(result, expected_cube)

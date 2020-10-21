@@ -17,6 +17,12 @@ def merge_coords(cube1_dimension, cube2_dimension):
     )[temporary_merging_dim]
 
 
+def add_dimension_and_coords(cube, dimension_name, dimension, axis):
+    cube = cube.expand_dims(dim={dimension_name: len(dimension)}, axis=axis)
+    cube = cube.assign_coords({dimension_name: dimension.data})
+    return cube
+
+
 def get_value(cube, coord):
     try:
         return cube.sel(coord).data.tolist()
@@ -82,22 +88,34 @@ class merge_cubesEOTask(ProcessEOTask):
         context = self.validate_parameter(arguments, "context", required=False, default=None)
 
         all_dimensions = tuple(dict.fromkeys(cube1.dims + cube2.dims))
-        result = xr.DataArray()
 
+        result = xr.DataArray()
+        # We iterate over the union of all dimension of the two cubes
         for i, dimension_name in enumerate(all_dimensions):
+            # If both cubes have the dimension, we merge the coordinates
             if dimension_name in cube1.dims and dimension_name in cube2.dims:
                 dimension = merge_coords(cube1[dimension_name], cube2[dimension_name])
+            # If only one of the cubes has the dimension, we add it to the other one
             elif dimension_name in cube1.dims:
                 dimension = cube1[dimension_name]
+                cube2 = add_dimension_and_coords(cube2, dimension_name, dimension, i)
             else:
                 dimension = cube2[dimension_name]
-            result = result.expand_dims(dim={dimension_name: len(dimension)}, axis=i)
-            result = result.assign_coords({dimension_name: dimension.data})
+                cube1 = add_dimension_and_coords(cube1, dimension_name, dimension, i)
+
+            # We add the dimension and (merged) coordinates to the result
+            # We should end up with an empty (filled with `nan`s) DataArray of correct dimensions and coords
+            result = add_dimension_and_coords(result, dimension_name, dimension, i)
+
+        # After expand_dims, DataArray is readonly. Workaround is to copy it
+        # https://github.com/pydata/xarray/issues/2891#issuecomment-482880911
+        result = result.copy()
 
         dimension_sizes = result.sizes
-        result = result.copy()  # https://github.com/pydata/xarray/issues/2891#issuecomment-482880911
 
+        # Now we fill our empty array with values
         for i in range(result.size):
+            # We get the coord values (timestamp, lat, lng ...) for each position (e.g. at result[0,0,0,0])
             coord = tuple([i % dimension_sizes[dimension_name] for dimension_name in all_dimensions])
             coord_labels = result[coord].coords
             cube1_value_at_coord = get_value(cube1, coord_labels)
@@ -108,6 +126,12 @@ class merge_cubesEOTask(ProcessEOTask):
                 and cube2_value_at_coord is not None
                 and cube1_value_at_coord != cube2_value_at_coord
             ):
+                if overlap_resolver is None:
+                    raise ProcessParameterInvalid(
+                        "merge_cubes",
+                        "overlap_resolver",
+                        "Overlapping data cubes, but no overlap resolver has been specified.",
+                    )
                 resolved_value = run_overlap_resolver(
                     cube1_value_at_coord, cube2_value_at_coord, deepcopy(overlap_resolver), logger=self.logger
                 )
