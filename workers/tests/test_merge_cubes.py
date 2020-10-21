@@ -5,6 +5,7 @@ import sys
 import numpy as np
 import pytest
 import xarray as xr
+import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
@@ -23,12 +24,19 @@ def execute_process():
     return wrapped
 
 
+@pytest.fixture
+def bands():
+    return pd.MultiIndex.from_arrays(
+        [["B04", "B08"], ["red", "nir"], [0.665, 0.842]], names=("_name", "_alias", "_wavelength")
+    )
+
+
 ###################################
 # tests:
 ###################################
 
 
-def test_identical_cubes(execute_process):
+def test_identical_cubes(execute_process, bands):
     cube1 = xr.DataArray(
         [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
         dims=("t", "y", "x", "band"),
@@ -38,7 +46,7 @@ def test_identical_cubes(execute_process):
                 datetime(2014, 3, 5),
                 datetime(2014, 3, 6),
             ],
-            "band": ["B01", "B02"],
+            "band": bands,
             "x": [0],
             "y": [0],
         },
@@ -49,7 +57,7 @@ def test_identical_cubes(execute_process):
     xr.testing.assert_allclose(result, cube1)
 
 
-def test_temporally_separated_cubes(execute_process):
+def test_temporally_separated_cubes(execute_process, bands):
     cube1 = xr.DataArray(
         [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
         dims=("t", "y", "x", "band"),
@@ -59,7 +67,7 @@ def test_temporally_separated_cubes(execute_process):
                 datetime(2014, 3, 5),
                 datetime(2014, 3, 6),
             ],
-            "band": ["B01", "B02"],
+            "band": bands,
         },
     )
     cube2 = xr.DataArray(
@@ -70,7 +78,7 @@ def test_temporally_separated_cubes(execute_process):
                 datetime(2014, 3, 8),
                 datetime(2014, 3, 9),
             ],
-            "band": ["B01", "B02"],
+            "band": bands,
         },
     )
     expected_cube = cube1 = xr.DataArray(
@@ -84,7 +92,7 @@ def test_temporally_separated_cubes(execute_process):
                 datetime(2014, 3, 8),
                 datetime(2014, 3, 9),
             ],
-            "band": ["B01", "B02"],
+            "band": bands,
             "x": [0],
             "y": [0],
         },
@@ -94,7 +102,7 @@ def test_temporally_separated_cubes(execute_process):
     xr.testing.assert_allclose(result, expected_cube)
 
 
-def test_with_overlap_conflicts(execute_process):
+def test_with_overlap_conflicts(execute_process, bands):
     cube1 = xr.DataArray(
         [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
         dims=("t", "y", "x", "band"),
@@ -104,7 +112,7 @@ def test_with_overlap_conflicts(execute_process):
                 datetime(2014, 3, 5),
                 datetime(2014, 3, 6),
             ],
-            "band": ["B01", "B02"],
+            "band": bands,
         },
     )
     cube2 = xr.DataArray(
@@ -115,7 +123,7 @@ def test_with_overlap_conflicts(execute_process):
                 datetime(2014, 3, 5),
                 datetime(2014, 3, 6),
             ],
-            "band": ["B01", "B02"],
+            "band": bands,
         },
     )
     expected_cube = xr.DataArray(
@@ -127,7 +135,7 @@ def test_with_overlap_conflicts(execute_process):
                 datetime(2014, 3, 5),
                 datetime(2014, 3, 6),
             ],
-            "band": ["B01", "B02"],
+            "band": bands,
             "x": [0],
             "y": [0],
         },
@@ -146,7 +154,7 @@ def test_with_overlap_conflicts(execute_process):
     xr.testing.assert_allclose(result, expected_cube)
 
 
-def test_with_overlap_conflicts_and_no_overlap_resolver(execute_process):
+def test_with_overlap_conflicts_and_no_overlap_resolver(execute_process, bands):
     cube1 = xr.DataArray(
         [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
         dims=("t", "y", "x", "band"),
@@ -156,7 +164,7 @@ def test_with_overlap_conflicts_and_no_overlap_resolver(execute_process):
                 datetime(2014, 3, 5),
                 datetime(2014, 3, 6),
             ],
-            "band": ["B01", "B02"],
+            "band": bands,
         },
     )
     cube2 = xr.DataArray(
@@ -167,7 +175,7 @@ def test_with_overlap_conflicts_and_no_overlap_resolver(execute_process):
                 datetime(2014, 3, 5),
                 datetime(2014, 3, 6),
             ],
-            "band": ["B01", "B02"],
+            "band": bands,
         },
     )
     arguments = {"cube1": cube1, "cube2": cube2}
@@ -180,7 +188,7 @@ def test_with_overlap_conflicts_and_no_overlap_resolver(execute_process):
     )
 
 
-def test_with_different_dimensions(execute_process):
+def test_with_different_dimensions(execute_process, bands):
     cube1 = xr.DataArray(
         [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
         dims=("t", "y", "x", "band"),
@@ -190,14 +198,14 @@ def test_with_different_dimensions(execute_process):
                 datetime(2014, 3, 5),
                 datetime(2014, 3, 6),
             ],
-            "band": ["B01", "B02"],
+            "band": bands,
         },
     )
     cube2 = xr.DataArray(
         [[[0.26, 0.81]]],
         dims=("y", "x", "band"),
         coords={
-            "band": ["B01", "B02"],
+            "band": bands,
         },
     )
     expected_cube = xr.DataArray(
@@ -209,7 +217,7 @@ def test_with_different_dimensions(execute_process):
                 datetime(2014, 3, 5),
                 datetime(2014, 3, 6),
             ],
-            "band": ["B01", "B02"],
+            "band": bands,
             "x": [0],
             "y": [0],
         },
