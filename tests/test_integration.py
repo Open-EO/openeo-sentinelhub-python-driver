@@ -587,7 +587,12 @@ def test_assert_works(app_client, value, double_value, expected_status_code, aut
                     ]
                 ],
                 "dims": ["y", "x", "t", "band"],
-                "coords": {"y": [12.3], "x": [45.1, 45.2], "t": ["2019-08-01 11:00:12"], "band": ["nir", "red"]},
+                "coords": {
+                    "y": [12.3],
+                    "x": [45.1, 45.2],
+                    "t": ["2019-08-01 11:00:12"],
+                    "band": [["nir", "red"], [None, None], [0.85, 0.66]],
+                },
             },
         },
         "linear1": {
@@ -623,7 +628,12 @@ def test_assert_works(app_client, value, double_value, expected_status_code, aut
                     ]
                 ],
                 "dims": ["y", "x", "t", "band"],
-                "coords": {"y": [12.3], "x": [45.1, 45.2], "t": ["2019-08-01 11:00:12"], "band": ["nir", "red"]},
+                "coords": {
+                    "y": [12.3],
+                    "x": [45.1, 45.2],
+                    "t": ["2019-08-01 11:00:12"],
+                    "band": [["nir", "red"], [None, None], [0.85, 0.66]],
+                },
             },
         },
         "assertlinear1": {
