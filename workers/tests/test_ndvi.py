@@ -18,46 +18,6 @@ FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), "fixtures")
 
 
 @pytest.fixture
-def construct_data():
-    def _construct(data, bands, dims=("y", "x", "band"), band_aliases={"nir": "B08", "red": "B04"}):
-        xrdata = xr.DataArray(
-            np.array(data, dtype=np.float),
-            dims=dims,
-            coords={
-                "band": bands,
-            },
-            attrs={
-                "band_aliases": band_aliases,
-                "bbox": "",
-            },
-        )
-        return xrdata
-
-    return _construct
-
-
-@pytest.fixture
-def data1(construct_data):
-    synthetic_data = [[[2, 3]]]
-    bands = ["B04", "B08"]
-    return construct_data(synthetic_data, bands)
-
-
-@pytest.fixture
-def actual_result1(construct_data):
-    synthetic_data = [[[0.2]]]
-    bands = ["ndvi"]
-    return construct_data(synthetic_data, bands)
-
-
-@pytest.fixture
-def actual_result2(construct_data):
-    synthetic_data = [[[0.2]]]
-    bands = ["test_name01"]
-    return construct_data(synthetic_data, bands)
-
-
-@pytest.fixture
 def ndviEOTask():
     return process.ndvi.ndviEOTask(None, "", None, {}, "node1", {})
 
