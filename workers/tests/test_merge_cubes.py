@@ -146,6 +146,40 @@ def test_with_overlap_conflicts(execute_process):
     xr.testing.assert_allclose(result, expected_cube)
 
 
+def test_with_overlap_conflicts_and_no_overlap_resolver(execute_process):
+    cube1 = xr.DataArray(
+        [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
+        dims=("t", "y", "x", "band"),
+        coords={
+            "t": [
+                datetime(2014, 3, 4),
+                datetime(2014, 3, 5),
+                datetime(2014, 3, 6),
+            ],
+            "band": ["B01", "B02"],
+        },
+    )
+    cube2 = xr.DataArray(
+        [[[[0.26, 0.81]]], [[[0.91, 0.31]]]],
+        dims=("t", "y", "x", "band"),
+        coords={
+            "t": [
+                datetime(2014, 3, 5),
+                datetime(2014, 3, 6),
+            ],
+            "band": ["B01", "B02"],
+        },
+    )
+    arguments = {"cube1": cube1, "cube2": cube2}
+    with pytest.raises(ProcessParameterInvalid) as ex:
+        result = execute_process(arguments)
+    assert ex.value.args == (
+        "merge_cubes",
+        "overlap_resolver",
+        "Overlapping data cubes, but no overlap resolver has been specified.",
+    )
+
+
 def test_with_different_dimensions(execute_process):
     cube1 = xr.DataArray(
         [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
