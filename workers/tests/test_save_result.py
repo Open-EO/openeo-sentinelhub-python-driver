@@ -1,13 +1,17 @@
-import pytest
-import sys, os
-import xarray as xr
 import datetime
+import os
+import sys
+
 from botocore.stub import Stubber, ANY
 from io import BufferedReader
+import pandas as pd
+import pytest
+import xarray as xr
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
 from process._common import ProcessParameterInvalid, ProcessArgumentRequired
+
 
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -49,7 +53,6 @@ def generate_data():
         data=[[[[0.2]]]],
         dims=("t", "y", "x", "band"),
         coords={"band": ["ndvi"], "t": [datetime.datetime.now()]},
-        band_aliases={"nir": "B08", "red": "B04"},
         attrs={},
     ):
         class BBox:
@@ -62,7 +65,15 @@ def generate_data():
                 return (ymax, xmax)
 
         fake_bbox = BBox()
-        attrs = {"band_aliases": band_aliases, "bbox": fake_bbox, **attrs}
+        attrs = {"bbox": fake_bbox, **attrs}
+
+        if "band" in coords:
+            bands = coords["band"]
+            aliases = [None] * len(bands)
+            wavelengths = [None] * len(bands)
+            coords["band"] = pd.MultiIndex.from_arrays(
+                [bands, aliases, wavelengths], names=("_name", "_alias", "_wavelength")
+            )
 
         xrdata = xr.DataArray(
             data,

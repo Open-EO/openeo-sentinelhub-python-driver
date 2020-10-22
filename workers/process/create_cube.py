@@ -1,7 +1,9 @@
-import numpy as np
-import xarray as xr
-import math
 from datetime import datetime
+import math
+
+import numpy as np
+import pandas as pd
+import xarray as xr
 from sentinelhub import CRS, BBox
 
 from ._common import ProcessEOTask
@@ -22,22 +24,38 @@ class create_cubeEOTask(ProcessEOTask):
         if "t" in coords:
             coords["t"] = [datetime.strptime(d, "%Y-%m-%d %H:%M:%S") for d in coords["t"]]
 
-        data = xr.DataArray(
-            np.array(data_as_list, dtype=np.float),
-            coords=coords,
-            dims=dims,
-            attrs={
-                "band_aliases": {},
-                "bbox": BBox(
-                    (
-                        12.0,
-                        45.0,
-                        13.0,
-                        46.0,
+        if "band" in coords:
+            bands = coords["band"][0]
+            aliases = coords["band"][1]
+            wavelenghts = coords["band"][2]
+            coords["band"] = pd.MultiIndex.from_arrays(
+                [bands, aliases, wavelenghts], names=("_name", "_alias", "_wavelength")
+            )
+
+        try:
+            data = xr.DataArray(
+                np.array(data_as_list, dtype=np.float),
+                coords=coords,
+                dims=dims,
+                attrs={
+                    "bbox": BBox(
+                        (
+                            12.0,
+                            45.0,
+                            13.0,
+                            46.0,
+                        ),
+                        CRS(4326),
                     ),
-                    CRS(4326),
-                ),
-            },
-        )
+                },
+            )
+        except:
+            # if exception happens, log the parameters for easier debugging:
+            self.logger.exception("Creating raster-cube failed, parameters were:")
+            self.logger.info(f"    data_as_list: {repr(data_as_list)}")
+            self.logger.info(f"    dims: {repr(dims)}")
+            self.logger.info(f"    coords: {repr(coords)}")
+            raise
+
         self.logger.info(data)
         return data

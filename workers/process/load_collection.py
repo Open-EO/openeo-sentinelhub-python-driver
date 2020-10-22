@@ -1,23 +1,24 @@
-import os
 from datetime import datetime, timedelta
-import time
-import re
-import numpy as np
-import xarray as xr
-import requests
-from requests_futures.sessions import FuturesSession
-from concurrent.futures import ThreadPoolExecutor
-from osgeo import gdal
-from sentinelhub import WmsRequest, WcsRequest, MimeType, CRS, BBox, CustomUrlParam, BBoxSplitter
-from sentinelhub.constants import AwsConstants
-from sentinelhub.config import SHConfig
-import sentinelhub.geo_utils
-from eolearn.core import FeatureType, EOPatch
 import math
-import imageio
+import os
+import re
+import time
+
+from concurrent.futures import ThreadPoolExecutor
 from dask import delayed
 import dask.array as da
-
+from eolearn.core import FeatureType, EOPatch
+import numpy as np
+import imageio
+from osgeo import gdal
+import pandas as pd
+import requests
+from requests_futures.sessions import FuturesSession
+from sentinelhub import WmsRequest, WcsRequest, MimeType, CRS, BBox, CustomUrlParam, BBoxSplitter
+from sentinelhub.config import SHConfig
+from sentinelhub.constants import AwsConstants
+import sentinelhub.geo_utils
+import xarray as xr
 
 from ._common import ProcessEOTask, ProcessParameterInvalid, Internal
 
@@ -25,6 +26,15 @@ from ._common import ProcessEOTask, ProcessParameterInvalid, Internal
 SENTINELHUB_INSTANCE_ID = os.environ.get("SENTINELHUB_INSTANCE_ID", None)
 SENTINELHUB_LAYER_ID_S2L1C = os.environ.get("SENTINELHUB_LAYER_ID_S2L1C", None)
 SENTINELHUB_LAYER_ID_S1GRD = os.environ.get("SENTINELHUB_LAYER_ID_S1GRD", None)
+
+
+S2_L1C_BANDS = ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B09", "B10", "B11", "B12"]
+# https://custom-scripts.sentinel-hub.com/custom-scripts/sentinel-2/bands/
+S2_L1C_WAVELENGTHS = [0.443, 0.49, 0.56, 0.665, 0.705, 0.74, 0.783, 0.842, 0.865, 0.945, 1.375, 1.61, 2.19]
+S2_L1C_ALIASES = ["aerosol", "blue", "green", "red", "red-edge", None, None, "nir", None, None, None, "swir1", "swir2"]
+
+# https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=available-bands-and-data
+S1_GRD_IW_BANDS = ["VV", "VH"]
 
 
 def _clean_temporal_extent(temporal_extent):
@@ -288,12 +298,12 @@ class load_collectionEOTask(ProcessEOTask):
         else:
             width, height = sentinelhub.geo_utils.bbox_to_dimensions(bbox, 10.0)
 
-        band_aliases = {}
+        band_aliases = None
+        band_wavelengths = None
 
         if collection_id == "S2L1C":
             dataset = "S2L1C"
-            ALL_BANDS = AwsConstants.S2_L1C_BANDS
-            bands = validate_bands(bands, ALL_BANDS, collection_id)
+            bands = validate_bands(bands, S2_L1C_BANDS, collection_id)
             DEFAULT_RES = "10m"
             kwargs = dict(
                 layer=SENTINELHUB_LAYER_ID_S2L1C,
@@ -302,16 +312,12 @@ class load_collectionEOTask(ProcessEOTask):
             dataFilter_params = {
                 "previewMode": "EXTENDED_PREVIEW",
             }
-            band_aliases = {
-                "nir": "B08",
-                "red": "B04",
-            }
+            band_aliases = S2_L1C_ALIASES
+            band_wavelengths = S2_L1C_WAVELENGTHS
 
         elif collection_id == "S1GRDIW":
             dataset = "S1GRD"
-            # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=available-bands-and-data
-            ALL_BANDS = ["VV", "VH"]
-            bands = validate_bands(bands, ALL_BANDS, collection_id)
+            bands = validate_bands(bands, S1_GRD_IW_BANDS, collection_id)
 
             # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=resolution-pixel-spacing
             #   Value     Description
@@ -328,7 +334,6 @@ class load_collectionEOTask(ProcessEOTask):
                 layer=SENTINELHUB_LAYER_ID_S1GRD,
             )
             dataFilter_params = {}
-            band_aliases = {}
 
         elif collection_id == "BYOC":
             if properties is None or properties.get("byoc_collection_id") is None:
@@ -340,7 +345,6 @@ class load_collectionEOTask(ProcessEOTask):
             dataset = "byoc-" + byoc_collection_id
             kwargs = {}
             dataFilter_params = {}
-            band_aliases = {}
 
             self.logger.debug(f"Requesting dates between: {temporal_extent}")
             dates = get_collection_times(self, byoc_collection_id, bbox, temporal_extent)
@@ -367,20 +371,35 @@ class load_collectionEOTask(ProcessEOTask):
             self, dataset, orbit_dates, width, height, bbox, temporal_extent, bands, dataFilter_params
         )
 
+        # The last dimension in the returned data is dataMask (https://docs.sentinel-hub.com/api/latest/user-guides/datamask/).
+        # xarray provides its own mechanism for masking data, let's use it:
         mask = response_data[:, :, :, -1:]  # ":" keeps the dimension
         mask = np.repeat(mask, len(bands), axis=-1).astype(bool)
         data = response_data[:, :, :, :-1]
         masked_data = da.ma.masked_array(data, mask=~mask)
 
+        # Each band has:
+        # - band name
+        # - (optional) alias
+        # - (optional) wavelength
+        # Since some processes (filter_bands, ndvi) depend on this information, we must include it in the datacube
+        # using MultiIndex coordinates: https://xarray.pydata.org/en/stable/data-structures.html#multiindex-coordinates
+        if band_aliases is None:
+            band_aliases = [None] * len(bands)
+        if band_wavelengths is None:
+            band_wavelengths = [None] * len(bands)
+        bands_multiindex = pd.MultiIndex.from_arrays(
+            [bands, band_aliases, band_wavelengths], names=("_name", "_alias", "_wavelength")
+        )
+
         xrdata = xr.DataArray(
             masked_data,
             dims=("t", "y", "x", "band"),
             coords={
-                "band": bands,
+                "band": bands_multiindex,
                 "t": orbit_times_middle,
             },
             attrs={
-                "band_aliases": band_aliases,
                 "bbox": bbox,
             },
         )
