@@ -204,6 +204,24 @@ def test_with_overlap_conflicts(execute_process, cube1, cube2, overlap_resolver,
                 },
             ),
         ),
+        (
+            xr.DataArray(
+                [[None]],
+                dims=("y", "x"),
+                coords={
+                    "x": [0],
+                    "y": [0],
+                },
+            ),
+            xr.DataArray(
+                [[None]],
+                dims=("y", "x"),
+                coords={
+                    "x": [0],
+                    "y": [0],
+                },
+            ),
+        ),
     ],
 )
 def test_with_overlap_conflicts_and_no_overlap_resolver(execute_process, cube1, cube2):

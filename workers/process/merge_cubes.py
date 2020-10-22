@@ -23,9 +23,9 @@ def add_dimension_and_coords(cube, dimension_name, dimension, axis):
 
 def get_value(cube, coord):
     try:
-        return cube.sel(coord).data.tolist()
+        return True, cube.sel(coord).data.tolist()
     except:
-        return None
+        return False, None
 
 
 class merge_cubesEOTask(ProcessEOTask):
@@ -95,10 +95,10 @@ class merge_cubesEOTask(ProcessEOTask):
             # We get the coord values (timestamp, lat, lng ...) for each position (e.g. at result[0,0,0,0])
             coord = tuple([i % dimension_sizes[dimension_name] for dimension_name in all_dimensions])
             coord_labels = result[coord].coords
-            cube1_value_at_coord = get_value(cube1, coord_labels)
-            cube2_value_at_coord = get_value(cube2, coord_labels)
+            cube1_has_value, cube1_value_at_coord = get_value(cube1, coord_labels)
+            cube2_has_value, cube2_value_at_coord = get_value(cube2, coord_labels)
 
-            if cube1_value_at_coord is not None and cube2_value_at_coord is not None:
+            if cube1_has_value and cube2_has_value:
                 if overlap_resolver is None:
                     raise ProcessParameterInvalid(
                         "merge_cubes",
@@ -107,7 +107,7 @@ class merge_cubesEOTask(ProcessEOTask):
                     )
                 resolved_value = self.run_overlap_resolver(cube1_value_at_coord, cube2_value_at_coord, overlap_resolver)
                 result[coord] = resolved_value
-            elif cube1_value_at_coord is not None:
+            elif cube1_has_value:
                 result[coord] = cube1_value_at_coord
             else:
                 result[coord] = cube2_value_at_coord
