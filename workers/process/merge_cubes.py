@@ -1,6 +1,5 @@
 import datetime
 import math
-from copy import deepcopy
 
 import numpy as np
 import xarray as xr
@@ -35,9 +34,8 @@ class merge_cubesEOTask(ProcessEOTask):
     """
 
     def run_overlap_resolver(self, cube1_value, cube2_value, overlap_resolver):
-        # We have to deepcopy the overlap_resolver graph, as generate_workflow_dependencies mutates it
         dependencies, result_task = self.generate_workflow_dependencies(
-            deepcopy(overlap_resolver["process_graph"]), {"x": cube1_value, "y": cube2_value}
+            overlap_resolver["process_graph"], {"x": cube1_value, "y": cube2_value}
         )
         workflow = EOWorkflow(dependencies)
         all_results = workflow.execute({})
@@ -51,6 +49,7 @@ class merge_cubesEOTask(ProcessEOTask):
         context = self.validate_parameter(arguments, "context", required=False, default=None)
 
         all_dimensions = tuple(dict.fromkeys(cube1.dims + cube2.dims))
+        overlapping_dimension_found = False
 
         result = xr.DataArray()
         # We iterate over the union of all dimension of the two cubes
@@ -58,6 +57,17 @@ class merge_cubesEOTask(ProcessEOTask):
             # If both cubes have the dimension, we merge the coordinates
             if dimension_name in cube1.dims and dimension_name in cube2.dims:
                 dimension = merge_coords(cube1[dimension_name], cube2[dimension_name])
+                if (
+                    cube1[dimension_name].size != cube2[dimension_name].size
+                    or cube1[dimension_name].size != dimension[dimension_name].size
+                ):
+                    if overlapping_dimension_found:
+                        raise ProcessParameterInvalid(
+                            "merge_cubes",
+                            "cube1/cube2",
+                            "Only one of the dimensions can have different labels.",
+                        )
+                    overlapping_dimension_found = True
             # If only one of the cubes has the dimension, we add it to the other one
             elif dimension_name in cube1.dims:
                 dimension = cube1[dimension_name]

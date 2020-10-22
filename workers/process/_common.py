@@ -300,6 +300,7 @@ class ProcessEOTask(EOTask):
 
         result_task = None
         tasks = {}
+        graph = deepcopy(graph)
 
         for node_name, node_definition in graph.items():
             node_arguments = node_definition["arguments"]

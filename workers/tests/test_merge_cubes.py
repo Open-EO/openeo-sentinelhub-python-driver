@@ -234,3 +234,26 @@ def test_with_different_dimensions(execute_process, bands):
     arguments = {"cube1": cube1, "cube2": cube2, "overlap_resolver": overlap_resolver}
     result = execute_process(arguments)
     xr.testing.assert_allclose(result, expected_cube)
+
+
+def test_incompatible_cubes(execute_process, bands):
+    cube1 = xr.DataArray(
+        [[0.2]],
+        dims=("y", "x"),
+        coords={
+            "x": [0],
+            "y": [0],
+        },
+    )
+    cube2 = xr.DataArray(
+        [[0.2]],
+        dims=("y", "x"),
+        coords={
+            "x": [1],
+            "y": [1],
+        },
+    )
+    arguments = {"cube1": cube1, "cube2": cube2}
+    with pytest.raises(ProcessParameterInvalid) as ex:
+        result = execute_process(arguments)
+    assert ex.value.args == ("merge_cubes", "cube1/cube2", "Only one of the dimensions can have different labels.")
