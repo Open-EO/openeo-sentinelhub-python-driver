@@ -48,6 +48,10 @@ class merge_cubesEOTask(ProcessEOTask):
         overlap_resolver = self.validate_parameter(arguments, "overlap_resolver", required=False, default=None)
         context = self.validate_parameter(arguments, "context", required=False, default=None)
 
+        # Documentation doesn't make it clear whether cubes with different dimensions and mismatching labels on a common
+        # dimension are "compatible" or not.
+        # If cubes have different dimensions, we merge them into a higher dimensional cube which includes all, and then
+        # merge and resolve overlap in (at most one) common overlapping dimension.
         all_dimensions = tuple(dict.fromkeys(cube1.dims + cube2.dims))
         overlapping_dimension_found = False
 
@@ -58,8 +62,8 @@ class merge_cubesEOTask(ProcessEOTask):
             if dimension_name in cube1.dims and dimension_name in cube2.dims:
                 dimension = merge_coords(cube1[dimension_name], cube2[dimension_name])
                 if (
-                    cube1[dimension_name].size != cube2[dimension_name].size
-                    or cube1[dimension_name].size != dimension[dimension_name].size
+                    cube1[dimension_name].size != dimension[dimension_name].size
+                    or cube1[dimension_name].size != cube2[dimension_name].size
                 ):
                     if overlapping_dimension_found:
                         raise ProcessParameterInvalid(
@@ -94,16 +98,12 @@ class merge_cubesEOTask(ProcessEOTask):
             cube1_value_at_coord = get_value(cube1, coord_labels)
             cube2_value_at_coord = get_value(cube2, coord_labels)
 
-            if (
-                cube1_value_at_coord is not None
-                and cube2_value_at_coord is not None
-                and cube1_value_at_coord != cube2_value_at_coord
-            ):
+            if cube1_value_at_coord is not None and cube2_value_at_coord is not None:
                 if overlap_resolver is None:
                     raise ProcessParameterInvalid(
                         "merge_cubes",
                         "overlap_resolver",
-                        "Overlapping data cubes, but no overlap resolver has been specified.",
+                        "Overlapping data cubes, but no overlap resolver has been specified. (OverlapResolverMissing)",
                     )
                 resolved_value = self.run_overlap_resolver(cube1_value_at_coord, cube2_value_at_coord, overlap_resolver)
                 result[coord] = resolved_value

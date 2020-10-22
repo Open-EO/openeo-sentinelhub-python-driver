@@ -36,34 +36,6 @@ def bands():
 
 
 @pytest.mark.parametrize(
-    "cube",
-    [
-        (
-            xr.DataArray(
-                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 4),
-                        datetime(2014, 3, 5),
-                        datetime(2014, 3, 6),
-                    ],
-                    "band": bands(),
-                    "x": [0],
-                    "y": [0],
-                },
-            )
-        ),
-    ],
-)
-def test_identical_cubes(execute_process, cube):
-    cube2 = cube.copy()
-    arguments = {"cube1": cube, "cube2": cube2}
-    result = execute_process(arguments)
-    xr.testing.assert_allclose(result, cube)
-
-
-@pytest.mark.parametrize(
     "cube1,cube2,expected_cube",
     [
         (
@@ -202,6 +174,36 @@ def test_with_overlap_conflicts(execute_process, cube1, cube2, overlap_resolver,
                 },
             ),
         ),
+        (
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                    ],
+                    "band": bands(),
+                    "x": [0],
+                    "y": [0],
+                },
+            ),
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                    ],
+                    "band": bands(),
+                    "x": [0],
+                    "y": [0],
+                },
+            ),
+        ),
     ],
 )
 def test_with_overlap_conflicts_and_no_overlap_resolver(execute_process, cube1, cube2):
@@ -211,7 +213,7 @@ def test_with_overlap_conflicts_and_no_overlap_resolver(execute_process, cube1, 
     assert ex.value.args == (
         "merge_cubes",
         "overlap_resolver",
-        "Overlapping data cubes, but no overlap resolver has been specified.",
+        "Overlapping data cubes, but no overlap resolver has been specified. (OverlapResolverMissing)",
     )
 
 
@@ -262,9 +264,57 @@ def test_with_overlap_conflicts_and_no_overlap_resolver(execute_process, cube1, 
                 },
             ),
         ),
+        (
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                    ],
+                    "band": bands(),
+                },
+            ),
+            xr.DataArray(
+                [0.26, 0.81],
+                dims=("band"),
+                coords={
+                    "band": bands(),
+                },
+            ),
+            {
+                "process_graph": {
+                    "resolver": {
+                        "process_id": "sum",
+                        "arguments": {"data": [{"from_argument": "x"}, {"from_argument": "y"}]},
+                        "result": True,
+                    }
+                }
+            },
+            xr.DataArray(
+                [[[[0.46, 1.61]]], [[[1.16, 1.11]]], [[[0.76, 1.31]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                    ],
+                    "band": bands(),
+                    "x": [0],
+                    "y": [0],
+                },
+            ),
+        ),
     ],
 )
 def test_with_different_dimensions(execute_process, cube1, cube2, overlap_resolver, expected_cube):
+    # Documentation doesn't make it clear whether cubes with different dimensions and mismatching labels on a common
+    # dimension are "compatible" or not.
+    # If cubes have different dimensions, we merge them into a higher dimensional cube which includes all, and then
+    # merge and resolve overlap in (at most one) common overlapping dimension.
     arguments = {"cube1": cube1, "cube2": cube2, "overlap_resolver": overlap_resolver}
     result = execute_process(arguments)
     xr.testing.assert_allclose(result, expected_cube)
