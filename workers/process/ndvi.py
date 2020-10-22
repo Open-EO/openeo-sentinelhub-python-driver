@@ -64,7 +64,7 @@ class ndviEOTask(ProcessEOTask):
             # specify a new band name in the parameter target_band. This adds a new dimension label with
             # the specified name to the dimension, which can be used to access the computed values."
             r2 = result.expand_dims(dim="band")
-            mi = pd.MultiIndex.from_arrays([[target_band], [None], [None]], names=(None, "_alias", "_wavelength"))
+            mi = pd.MultiIndex.from_arrays([[target_band], [None], [None]], names=("_name", "_alias", "_wavelength"))
             r3 = r2.assign_coords(band=mi)
             merged_result = xr.concat([data, r3], dim="band")
             return merged_result
