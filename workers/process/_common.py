@@ -81,7 +81,7 @@ def iterate(obj):
             yield k, v
 
 
-def _parse_rfc3339(dt, default_h=0, default_m=0, default_s=0):
+def parse_rfc3339(dt, default_h=0, default_m=0, default_s=0):
     g = re.match(r"^([0-9]{4})-([0-9]{2})-([0-9]{2})([ Tt]([0-9]{2}):([0-9]{2}):([0-9]{2})(\.([0-9]+))?[Z]?)?$", dt)
     return datetime.datetime(
         year=int(g.group(1)),
@@ -100,8 +100,8 @@ def _validate_temporal_interval(param):
     if param[0] is None and param[1] is None:
         raise ValidationError("At least one of the interval boundaries must not be null.")
     result = [
-        None if param[0] is None else _parse_rfc3339(param[0]),
-        None if param[1] is None else _parse_rfc3339(param[1]),
+        None if param[0] is None else parse_rfc3339(param[0]),
+        None if param[1] is None else parse_rfc3339(param[1]),
     ]
     return result
 
