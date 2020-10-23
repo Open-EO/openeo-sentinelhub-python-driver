@@ -9,7 +9,7 @@ from ._common import ProcessEOTask, DATA_TYPE_TEMPORAL_INTERVAL, ProcessParamete
 
 class rename_labelsEOTask(ProcessEOTask):
     """
-    https://processes.openeo.org/#rename_labels
+    https://processes.openeo.org/1.0.0/#rename_labels
     """
 
     def process(self, arguments):
@@ -55,7 +55,7 @@ class rename_labelsEOTask(ProcessEOTask):
             if t in data.coords[dimension]:
                 raise ProcessParameterInvalid("rename_labels", "target", "Target label already exists (LabelExists).")
 
-        # replace the coords using source -> target mapping:
+        # make a copy of coords, then make replacements using source -> target mapping:
         coords = list(data.coords[dimension].to_index())
         for s, t in zip(source, target):
             index = coords.index(s)
