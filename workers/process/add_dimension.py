@@ -3,17 +3,17 @@ import xarray as xr
 import pandas as pd
 from datetime import datetime
 
-from ._common import ProcessEOTask, ProcessParameterInvalid, _parse_rfc3339
+from ._common import ProcessEOTask, ProcessParameterInvalid, parse_rfc3339
 
 
 def generate_dimension_coord_values(labels, dimension_type):
     if dimension_type == "bands":
         return pd.MultiIndex.from_arrays(
-            [labels, [None for _ in range(len(labels))], [None for _ in range(len(labels))]],
+            [labels, [None] * len(labels), [None] * len(labels)],
             names=("_name", "_alias", "_wavelength"),
         )
     if dimension_type == "temporal":
-        return [_parse_rfc3339(label) for label in labels]
+        return [parse_rfc3339(label) for label in labels]
     return labels
 
 
@@ -29,6 +29,11 @@ class add_dimensionEOTask(ProcessEOTask):
         dimension_type = self.validate_parameter(
             arguments, "type", required=False, allowed_types=[str], default="other"
         )
+
+        if dimension_type not in ["spatial", "temporal", "bands", "other"]:
+            raise ProcessParameterInvalid(
+                "add_dimension", "type", "Argument must be one of ['spatial', 'temporal', 'bands', 'other']."
+            )
 
         if name in data.dims:
             raise ProcessParameterInvalid(

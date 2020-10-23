@@ -142,3 +142,33 @@ def test_dimension_exists(execute_process, data, name, label, dimension_type):
         "name",
         "A dimension with the specified name already exists. (DimensionExists)",
     )
+
+
+@pytest.mark.parametrize(
+    "data,name,label,dimension_type",
+    [
+        (
+            xr.DataArray(
+                [1],
+                dims=["t"],
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                    ]
+                },
+            ),
+            "t",
+            "2020-02-20",
+            "time",
+        ),
+    ],
+)
+def test_dimension_exists(execute_process, data, name, label, dimension_type):
+    arguments = {"data": data, "name": name, "label": label, "type": dimension_type}
+    with pytest.raises(ProcessParameterInvalid) as ex:
+        result = execute_process(arguments)
+    assert ex.value.args == (
+        "add_dimension",
+        "type",
+        "Argument must be one of ['spatial', 'temporal', 'bands', 'other'].",
+    )
