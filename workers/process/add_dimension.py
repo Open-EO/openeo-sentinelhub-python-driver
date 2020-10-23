@@ -1,6 +1,20 @@
 import xarray as xr
 
-from ._common import ProcessEOTask, ProcessParameterInvalid
+import pandas as pd
+from datetime import datetime
+
+from ._common import ProcessEOTask, ProcessParameterInvalid, _parse_rfc3339
+
+
+def generate_dimension_coord_values(labels, dimension_type):
+    if dimension_type == "bands":
+        return pd.MultiIndex.from_arrays(
+            [labels, [None for _ in range(len(labels))], [None for _ in range(len(labels))]],
+            names=("_name", "_alias", "_wavelength"),
+        )
+    if dimension_type == "temporal":
+        return [_parse_rfc3339(label) for label in labels]
+    return labels
 
 
 class add_dimensionEOTask(ProcessEOTask):
@@ -18,9 +32,9 @@ class add_dimensionEOTask(ProcessEOTask):
 
         if name in data.dims:
             raise ProcessParameterInvalid(
-                "add_dimension", "name", "A dimension with the specified name already exists."
+                "add_dimension", "name", "A dimension with the specified name already exists. (DimensionExists)"
             )
 
         result = data.expand_dims(dim=name)
-        result = result.assign_coords({name: [label]})
+        result = result.assign_coords({name: generate_dimension_coord_values([label], dimension_type)})
         return result
