@@ -14,7 +14,7 @@ def get_bands_dims(data):
 
 
 class filter_bandsEOTask(ProcessEOTask):
-    """ https://processes.openeo.org/#filter_bands """
+    """ https://processes.openeo.org/1.0.0/#filter_bands """
 
     def process(self, arguments):
         data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray])
