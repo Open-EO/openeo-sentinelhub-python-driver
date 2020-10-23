@@ -60,7 +60,7 @@ class filter_bandsEOTask(ProcessEOTask):
                         "First wavelength (min) must be lower or equal to the second one (max).",
                     )
             except (ValueError, TypeError):
-                raise ProcessParameterInvalid("filter_bands", "bands", "Wavelengths must be limited by numbers.")
+                raise ProcessParameterInvalid("filter_bands", "bands", "Wavelength limits must be numbers.")
 
         # We would use data.sel, but it drops a key from MultiIndex:
         #   >>> x

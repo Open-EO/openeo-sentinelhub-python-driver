@@ -270,7 +270,7 @@ def test_correct(filter_bandsEOTask, data, bands, wavelengths, expected_result):
             None,
             [["Aa", 3]],
             "bands",
-            "Wavelengths must be limited by numbers.",
+            "Wavelength limits must be numbers.",
         ),
         (
             None,
