@@ -123,7 +123,7 @@ class filter_bandsEOTask(ProcessEOTask):
 
         if result is None:
             # keep the original shape, dims and coords, except for bands, where you remove all of them, but keep the dimension:
-            all_bands = [x[0] for x in list(data.coords["b"].to_index())]
+            all_bands = [x[0] for x in list(data.coords[dim].to_index())]
             return data.drop_sel({dim: all_bands})
 
         return result
