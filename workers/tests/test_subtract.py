@@ -2,47 +2,17 @@ import pytest
 import sys, os
 import xarray as xr
 import numpy as np
+import pandas as pd
+from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
 
 
 @pytest.fixture
-def generate_data():
-    def _construct(
-        data=([[[[0.2, 0.8]]]], [[[[0.2, 0.8]]]]),
-        attrs={"test_keep_attrs": 42},
-        dims=("t", "y", "x", "band"),
-        as_list=False,
-        as_dataarray=False,
-    ):
-        if as_list:
-            return data
-
-        if as_dataarray:
-            return xr.DataArray(data, dims=dims, attrs=attrs)
-
-        data_list = []
-
-        for d in data:
-            xrdata = xr.DataArray(d, dims=dims, attrs=attrs)
-            data_list.append(xrdata)
-
-        return data_list
-
-    return _construct
-
-
-@pytest.fixture
-def execute_subtract_process(generate_data):
-    def wrapped(data_arguments={}, ignore_nodata=None):
-        arguments = {}
-        if data_arguments is not None:
-            arguments["data"] = generate_data(**data_arguments)
-        if ignore_nodata is not None:
-            arguments["ignore_nodata"] = ignore_nodata
-
-        return process.subtract.subtractEOTask(None, "", None, {}, "node1", {}).process(arguments)
+def execute_subtract_process():
+    def wrapped(x, y):
+        return process.subtract.subtractEOTask(None, "", None, {}, "node1", {}).process({"x": x, "y": y})
 
     return wrapped
 
@@ -52,100 +22,196 @@ def execute_subtract_process(generate_data):
 ###################################
 
 
-@pytest.mark.parametrize(
-    "data,ignore_nodata,expected_result", [([5, 10], True, -5), ([-2, 4, -2], True, -4), ([1, None], False, None)]
-)
-def test_examples(execute_subtract_process, data, expected_result, ignore_nodata):
+@pytest.mark.parametrize("x,y,expected_result", [(5, 2.5, 2.5), (-2, 4, -6), (1, None, None)])
+def test_examples(execute_subtract_process, x, y, expected_result):
     """
-    Test subtract process with examples from https://open-eo.github.io/openeo-api/processreference/#subtract
+    Test subtract process with examples from https://processes.openeo.org/1.0.0/#subtract
     """
-    data_arguments = {"data": data, "as_list": True}
-    result = execute_subtract_process(data_arguments, ignore_nodata=ignore_nodata)
+    result = execute_subtract_process(x, y)
     assert result == expected_result
 
 
 @pytest.mark.parametrize(
-    "array1,array2,expected_data",
+    "x,y,expected_result",
     [
-        ([[[[0.2, 0.8]]]], [[[[0.2, 0.8]]]], [[[[0.0, 0.0]]]]),
+        (
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                    ],
+                    "band": pd.MultiIndex.from_arrays(
+                        [["B04", "B08"], ["red", "nir"], [0.665, 0.842]], names=("_name", "_alias", "_wavelength")
+                    ),
+                },
+                attrs={"simulated_datatype": (float,)},
+            ),
+            0.2,
+            xr.DataArray(
+                [[[[0, 0.6]]], [[[0.7, 0.1]]], [[[0.3, 0.3]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                    ],
+                    "band": pd.MultiIndex.from_arrays(
+                        [["B04", "B08"], ["red", "nir"], [0.665, 0.842]], names=("_name", "_alias", "_wavelength")
+                    ),
+                },
+                attrs={"simulated_datatype": (float,)},
+            ),
+        ),
+        (
+            0.2,
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                    ],
+                    "band": pd.MultiIndex.from_arrays(
+                        [["B04", "B08"], ["red", "nir"], [0.665, 0.842]], names=("_name", "_alias", "_wavelength")
+                    ),
+                },
+                attrs={"simulated_datatype": (float,)},
+            ),
+            xr.DataArray(
+                [[[[0, -0.6]]], [[[-0.7, -0.1]]], [[[-0.3, -0.3]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                    ],
+                    "band": pd.MultiIndex.from_arrays(
+                        [["B04", "B08"], ["red", "nir"], [0.665, 0.842]], names=("_name", "_alias", "_wavelength")
+                    ),
+                },
+                attrs={"simulated_datatype": (float,)},
+            ),
+        ),
     ],
 )
-def test_with_xarray(execute_subtract_process, generate_data, array1, array2, expected_data):
+def test_with_xarray_and_number(execute_subtract_process, x, y, expected_result):
     """
     Test subtract process with xarray.DataArrays
     """
-    expected_result = generate_data(data=[expected_data])[0]
-    result = execute_subtract_process({"data": (array1, array2)})
+    result = execute_subtract_process(x, y)
     xr.testing.assert_allclose(result, expected_result)
 
 
 @pytest.mark.parametrize(
-    "array1,array2,ignore_nodata,expected_data",
-    [
-        ([[[[np.nan, np.nan]]]], [[[[0.2, np.nan]]]], True, [[[[-0.2, 0.0]]]]),
-        ([[[[np.nan, np.nan]]]], [[[[0.2, np.nan]]]], False, [[[[np.nan, np.nan]]]]),
-        ([[[[2.0, 1.0]]]], [[[[0.2, np.nan]]]], False, [[[[1.8, np.nan]]]]),
-    ],
-)
-def test_with_xarray_nulls(execute_subtract_process, generate_data, array1, array2, expected_data, ignore_nodata):
-    """
-    Test subtract process with xarray.DataArrays with null in data
-    """
-    expected_result = generate_data(data=[expected_data])[0]
-    result = execute_subtract_process({"data": (array1, array2)}, ignore_nodata=ignore_nodata)
-    xr.testing.assert_allclose(result, expected_result)
-
-
-@pytest.mark.parametrize(
-    "data,reduce_by,expected_data,expected_dims",
-    [
-        ([[[[0.2, 3.8]]], [[[1.0, 2.0]]]], "t", [[[-0.8, 1.8]]], ("y", "x", "band")),
-    ],
-)
-def test_xarray_directly(execute_subtract_process, generate_data, data, reduce_by, expected_data, expected_dims):
-    """
-    Test subtract process by passing a DataArray to be reduced directly (instead of a list)
-    """
-    expected_result = generate_data(
-        data=expected_data, dims=expected_dims, attrs={"reduce_by": reduce_by}, as_dataarray=True
-    )
-    result = execute_subtract_process({"data": data, "attrs": {"reduce_by": reduce_by}, "as_dataarray": True})
-    xr.testing.assert_allclose(result, expected_result)
-
-
-@pytest.mark.parametrize(
-    "number1,number2,arr1,arr2,expected_data,num_first",
+    "x,y,expected_result",
     [
         (
-            1000,
-            -200,
-            [[[[500.0, -800.0]]], [[[0.1, 5.0]]]],
-            [[[[700.0, 2000.0]]], [[[200.0, -5.0]]]],
-            [[[[0, 0]]], [[[999.9, 1200]]]],
-            True,
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                    ],
+                    "band": pd.MultiIndex.from_arrays(
+                        [["B04", "B08"], ["red", "nir"], [0.665, 0.842]], names=("_name", "_alias", "_wavelength")
+                    ),
+                },
+                attrs={"simulated_datatype": (float,)},
+            ),
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                    ],
+                    "band": pd.MultiIndex.from_arrays(
+                        [["B04", "B08"], ["red", "nir"], [0.665, 0.842]], names=("_name", "_alias", "_wavelength")
+                    ),
+                },
+                attrs={"simulated_datatype": (float,)},
+            ),
+            xr.DataArray(
+                [[[[0, 0]]], [[[0, 0]]], [[[0, 0]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                    ],
+                    "band": pd.MultiIndex.from_arrays(
+                        [["B04", "B08"], ["red", "nir"], [0.665, 0.842]], names=("_name", "_alias", "_wavelength")
+                    ),
+                },
+                attrs={"simulated_datatype": (float,)},
+            ),
         ),
         (
-            1000,
-            -200,
-            [[[[500.0, -800.0]]], [[[0.1, 5.0]]]],
-            [[[[700.0, 2000.0]]], [[[200.0, -5.0]]]],
-            [[[[-1000, -3600]]], [[[-999.9, -790]]]],
-            False,
+            xr.DataArray(
+                [[[[0.9, 42]]], [[[1.3, 14]]], [[[88, 0.7]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                    ],
+                    "band": pd.MultiIndex.from_arrays(
+                        [["B04", "B08"], ["red", "nir"], [0.665, 0.842]], names=("_name", "_alias", "_wavelength")
+                    ),
+                },
+                attrs={"simulated_datatype": (float,)},
+            ),
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                    ],
+                    "band": pd.MultiIndex.from_arrays(
+                        [["B04", "B08"], ["red", "nir"], [0.665, 0.842]], names=("_name", "_alias", "_wavelength")
+                    ),
+                },
+                attrs={"simulated_datatype": (float,)},
+            ),
+            xr.DataArray(
+                [[[[0.7, 41.2]]], [[[0.4, 13.7]]], [[[87.5, 0.2]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                    ],
+                    "band": pd.MultiIndex.from_arrays(
+                        [["B04", "B08"], ["red", "nir"], [0.665, 0.842]], names=("_name", "_alias", "_wavelength")
+                    ),
+                },
+                attrs={"simulated_datatype": (float,)},
+            ),
         ),
     ],
 )
-def test_with_numbers(execute_subtract_process, generate_data, number1, number2, arr1, arr2, expected_data, num_first):
+def test_with_two_xarrays(execute_subtract_process, x, y, expected_result):
     """
-    Test subtract process by a list of numbers and DataArrays
+    Test subtract process with xarray.DataArrays
     """
-    expected_result = generate_data(data=expected_data, as_dataarray=True)
-    arr1 = generate_data(data=arr1, as_dataarray=True)
-    arr2 = generate_data(data=arr2, as_dataarray=True)
-
-    if num_first:
-        data = [number1, arr1, number2, arr2]
-    else:
-        data = [arr1, number1, arr2, number2]
-
-    result = execute_subtract_process({"data": data, "as_list": True})
+    result = execute_subtract_process(x, y)
     xr.testing.assert_allclose(result, expected_result)
