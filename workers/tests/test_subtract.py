@@ -207,6 +207,39 @@ def test_with_xarray_and_number(execute_subtract_process, x, y, expected_result)
                 attrs={"simulated_datatype": (float,)},
             ),
         ),
+        (
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                    ],
+                    "band": pd.MultiIndex.from_arrays(
+                        [["B04", "B08"], ["red", "nir"], [0.665, 0.842]], names=("_name", "_alias", "_wavelength")
+                    ),
+                },
+                attrs={"simulated_datatype": (float,)},
+            ),
+            None,
+            xr.DataArray(
+                [[[[np.nan, np.nan]]], [[[np.nan, np.nan]]], [[[np.nan, np.nan]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                    ],
+                    "band": pd.MultiIndex.from_arrays(
+                        [["B04", "B08"], ["red", "nir"], [0.665, 0.842]], names=("_name", "_alias", "_wavelength")
+                    ),
+                },
+                attrs={"simulated_datatype": (float,)},
+            ),
+        ),
     ],
 )
 def test_with_two_xarrays(execute_subtract_process, x, y, expected_result):

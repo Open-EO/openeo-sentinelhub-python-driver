@@ -8,11 +8,7 @@ from ._common import ProcessEOTask, ProcessParameterInvalid
 
 class subtractEOTask(ProcessEOTask):
     """
-    This process is often used within reduce_dimension process, which could pass each of the vectors separately,
-    but this would be very inefficient. Instead, we get passed a whole xarray with an attribute reduce_by.
-    In order to know, over which dimension should a callback process be applied, reduce_dimension appends the
-    reduction dimension to the reduce_by attribute of the data. The last element of this list is the current
-    reduction dimension. This also allows multi-level reduce_dimension calls.
+    https://processes.openeo.org/1.0.0/#subtract
     """
 
     def process(self, arguments):
@@ -28,6 +24,13 @@ class subtractEOTask(ProcessEOTask):
 
         # at least one parameter is xr.DataArray
         original_attrs = x.attrs if isinstance(x, xr.DataArray) else y.attrs
+
+        # we can't subtract if one of the parameters is None:
+        if x is None:
+            # careful, dtype is mandatory or the results will be weird:
+            x = xr.full_like(y, fill_value=np.nan, dtype=np.double)
+        if y is None:
+            y = xr.full_like(x, fill_value=np.nan, dtype=np.double)
 
         try:
             result = x - y
