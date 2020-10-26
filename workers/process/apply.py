@@ -10,7 +10,7 @@ class applyEOTask(ProcessEOTask):
             for key, value in iterate(args):
                 if isinstance(value, dict) and len(value) == 1 and "from_argument" in value:
                     args[key] = parent_data
-                elif isinstance(value, dict) and len(value) == 1 and "callback" in value:
+                elif isinstance(value, dict) and len(value) == 1 and "process_graph" in value:
                     continue
                 elif isinstance(value, dict) or isinstance(value, list):
                     args[key] = set_from_arguments(value, parent_data)
@@ -57,7 +57,7 @@ class applyEOTask(ProcessEOTask):
         # mark the data - while it is still an xarray DataArray, the operations can only be applied to each element:
         data.attrs["simulated_datatype"] = (float,)
 
-        dependencies, result_task = self.generate_workflow_dependencies(process["callback"], data)
+        dependencies, result_task = self.generate_workflow_dependencies(process["process_graph"], data)
         workflow = EOWorkflow(dependencies)
         all_results = workflow.execute({})
 

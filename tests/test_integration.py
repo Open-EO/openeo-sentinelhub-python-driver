@@ -452,7 +452,7 @@ def test_reduce(app_client, get_expected_data):
                         "data": {"from_node": "loadco1"},
                         "dimension": "t",
                         "reducer": {
-                            "callback": {
+                            "process_graph": {
                                 "min": {
                                     "process_id": "min",
                                     "arguments": {"data": {"from_argument": "data"}},
@@ -522,7 +522,7 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
             "arguments": {
                 "data": {"from_node": "ndvi1"},
                 "reducer": {
-                    "callback": {
+                    "process_graph": {
                         "2": {"process_id": "mean", "arguments": {"data": {"from_argument": "data"}}, "result": True}
                     }
                 },
@@ -534,7 +534,7 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
             "arguments": {
                 "data": {"from_node": "reduce1"},
                 "process": {
-                    "callback": {
+                    "process_graph": {
                         "lsr": {
                             "process_id": "linear_scale_range",
                             "arguments": {"x": {"from_argument": "x"}, "inputMin": 0, "inputMax": 1, "outputMax": 255},
@@ -600,7 +600,7 @@ def test_assert_works(app_client, value, double_value, expected_status_code, aut
             "arguments": {
                 "data": {"from_node": "gencol1"},
                 "process": {
-                    "callback": {
+                    "process_graph": {
                         "lsr": {
                             "process_id": "linear_scale_range",
                             "arguments": {

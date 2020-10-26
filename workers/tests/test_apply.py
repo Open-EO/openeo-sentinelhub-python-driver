@@ -79,7 +79,7 @@ def test_apply_simple(execute_process):
         {
             "data": data,
             "process": {
-                "callback": process_callback,
+                "process_graph": process_callback,
             },
         }
     )
@@ -101,19 +101,19 @@ def test_recursive_callback(execute_apply_process, generate_data):
     Test apply process with a recursive callback, which applies linear_scale_range multiple times
     """
     process_callback = {
-        "callback": {
+        "process_graph": {
             "p1": {
                 "process_id": "apply",
                 "arguments": {
                     "data": {"from_argument": "data"},
                     "process": {
-                        "callback": {
+                        "process_graph": {
                             "p1": {
                                 "process_id": "apply",
                                 "arguments": {
                                     "data": {"from_argument": "data"},
                                     "process": {
-                                        "callback": {
+                                        "process_graph": {
                                             "lsr": {
                                                 "process_id": "linear_scale_range",
                                                 "arguments": {
@@ -167,7 +167,7 @@ def test_callback_lsr(execute_apply_process, generate_data):
     Test apply process with linear_scale_range
     """
     process_callback = {
-        "callback": {
+        "process_graph": {
             "lsr": {
                 "process_id": "linear_scale_range",
                 "arguments": {
@@ -193,7 +193,7 @@ def test_multiple_results_forbidden(execute_apply_process, generate_data):
     Test apply process with linear_scale_range
     """
     process_callback = {
-        "callback": {
+        "process_graph": {
             "lsr": {
                 "process_id": "linear_scale_range",
                 "arguments": {

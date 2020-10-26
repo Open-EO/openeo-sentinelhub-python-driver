@@ -28,7 +28,7 @@
           "from_node": "gencol1"
         },
         "process": {
-          "callback": {
+          "process_graph": {
             "lsr": {
               "process_id": "linear_scale_range",
               "arguments": {
