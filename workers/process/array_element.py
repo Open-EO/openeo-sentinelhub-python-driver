@@ -33,11 +33,10 @@ class array_elementEOTask(ProcessEOTask):
             raise ProcessParameterInvalid(
                 "array_element",
                 "index/label",
-                "The process 'array_element' only allows that either the 'index' or the 'labels' parameter is set. (ArrayElementParameterConflict)",
+                "The process 'array_element' only allows that either the 'index' or the 'label' parameter is set. (ArrayElementParameterConflict)",
             )
 
         if isinstance(data, xr.DataArray) and data.attrs and data.attrs.get("reduce_by"):
-            data = data.copy(deep=False)
             dim = data.attrs.get("reduce_by")[-1]
             try:
                 if index is not None:

@@ -198,7 +198,7 @@ def test_label(execute_array_element_process, data, label, expected_result):
             (
                 "array_element",
                 "index/label",
-                "The process 'array_element' only allows that either the 'index' or the 'labels' parameter is set. (ArrayElementParameterConflict)",
+                "The process 'array_element' only allows that either the 'index' or the 'label' parameter is set. (ArrayElementParameterConflict)",
             ),
         ),
         (
