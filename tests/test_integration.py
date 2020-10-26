@@ -455,11 +455,11 @@ def test_reduce(app_client, get_expected_data):
                             "process_graph": {
                                 "min": {
                                     "process_id": "min",
-                                    "arguments": {"data": {"from_argument": "data"}},
+                                    "arguments": {"data": {"from_parameter": "data"}},
                                 },
                                 "mean": {
                                     "process_id": "mean",
-                                    "arguments": {"data": {"from_argument": "data"}},
+                                    "arguments": {"data": {"from_parameter": "data"}},
                                 },
                                 "sum": {
                                     "process_id": "sum",
@@ -523,7 +523,7 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
                 "data": {"from_node": "ndvi1"},
                 "reducer": {
                     "process_graph": {
-                        "2": {"process_id": "mean", "arguments": {"data": {"from_argument": "data"}}, "result": True}
+                        "2": {"process_id": "mean", "arguments": {"data": {"from_parameter": "data"}}, "result": True}
                     }
                 },
                 "dimension": "t",
@@ -537,7 +537,7 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
                     "process_graph": {
                         "lsr": {
                             "process_id": "linear_scale_range",
-                            "arguments": {"x": {"from_argument": "x"}, "inputMin": 0, "inputMax": 1, "outputMax": 255},
+                            "arguments": {"x": {"from_parameter": "x"}, "inputMin": 0, "inputMax": 1, "outputMax": 255},
                             "result": True,
                         },
                     }
@@ -604,7 +604,7 @@ def test_assert_works(app_client, value, double_value, expected_status_code, aut
                         "lsr": {
                             "process_id": "linear_scale_range",
                             "arguments": {
-                                "x": {"from_argument": "x"},
+                                "x": {"from_parameter": "x"},
                                 "inputMin": 0.0,
                                 "inputMax": 1.0,
                                 "outputMin": 0.0,

@@ -72,7 +72,7 @@
             "process_id": "mean",
             "arguments": {
               "data": {
-                "from_argument": "data"
+                "from_parameter": "data"
               }
             },
             "result": true
@@ -117,7 +117,7 @@
               "process_id": "linear_scale_range",
               "arguments": {
                 "x": {
-                  "from_argument": "x"
+                  "from_parameter": "x"
                 },
                 "inputMin": -1.0,
                 "inputMax": 1.0,
