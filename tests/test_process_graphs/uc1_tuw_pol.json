@@ -19,7 +19,7 @@
         "y": [16.3],
         "x": [48.2, 48.3],
         "t": ["2017-03-01 11:00:12", "2017-03-03 11:00:12"],
-        "band": [["VV", "VH"], [null, null], [null, null]]
+        "band": [["VV", null, null], ["VH", null, null]]
       }
     },
     "description": "Loading (testing) Sentinel 1 data for VV and VH over Vienna in March 2017"
@@ -63,7 +63,7 @@
       "coords": {
         "y": [16.3],
         "x": [48.2, 48.3],
-        "band": [["VV", "VH"], [null, null], [null, null]]
+        "band": [["VV", null, null], ["VH", null, null]]
       }
     }
   },
@@ -106,7 +106,7 @@
       "coords": {
         "y": [16.3],
         "x": [48.2, 48.3],
-        "band": [["VV"], [null], [null]]
+        "band": [["VV", null, null]]
       }
     }
   },
@@ -149,7 +149,7 @@
       "coords": {
         "y": [16.3],
         "x": [48.2, 48.3],
-        "band": [["VH"], [null], [null]]
+        "band": [["VH", null, null]]
       }
     }
   },
@@ -166,6 +166,194 @@
   },
 
 
+
+
+  "reducedimension2": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          -0.175,
+          0.175
+        ]
+      ],
+      "dims": ["y", "x"],
+      "coords": {
+        "y": [16.3],
+        "x": [48.2, 48.3]
+      }
+    },
+    "description": "SKIP STEP FOR NOW: Calculate the difference between VH and VV resulting in one image of the difference without a bands dimension"
+  },
+
+
+
+  "renamelabels1": {
+    "process_id": "rename_labels",
+    "arguments": {
+      "data": {
+        "from_node": "filterbands1"
+      },
+      "dimension": "band",
+      "source": ["VV"],
+      "target": ["R"]
+    },
+    "description": "Rename VV band label to R"
+  },
+  "expectedrenamelabels1": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [0.5],
+          [0.325]
+        ]
+      ],
+      "dims": ["y", "x", "band"],
+      "coords": {
+        "y": [16.3],
+        "x": [48.2, 48.3],
+        "band": [["R", null, null]]
+      }
+    }
+  },
+  "assertrenamelabels1": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "a": {
+        "from_node": "renamelabels1"
+      },
+      "b": {
+        "from_node": "expectedrenamelabels1"
+      }
+    }
+  },
+
+  "renamelabels2": {
+    "process_id": "rename_labels",
+    "arguments": {
+      "data": {
+        "from_node": "filterbands2"
+      },
+      "dimension": "band",
+      "source": ["VH"],
+      "target": ["G"]
+    },
+    "description": "Rename VH band label to G"
+  },
+  "expectedrenamelabels2": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [0.325],
+          [0.5]
+        ]
+      ],
+      "dims": ["y", "x", "band"],
+      "coords": {
+        "y": [16.3],
+        "x": [48.2, 48.3],
+        "band": [["G", null, null]]
+      }
+    }
+  },
+  "assertrenamelabels2": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "a": {
+        "from_node": "renamelabels2"
+      },
+      "b": {
+        "from_node": "expectedrenamelabels2"
+      }
+    }
+  },
+
+
+  "adddimension1": {
+    "process_id": "add_dimension",
+    "arguments": {
+      "data": {
+        "from_node": "reducedimension2"
+      },
+      "label": "B",
+      "name": "band",
+      "type": "bands"
+    },
+    "description": "Add previously reduced bands dimension with the band label B"
+  },
+  "expectedadddimension1": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [[
+        [
+          -0.175,
+          0.175
+        ]
+      ]],
+      "dims": ["band", "y", "x"],
+      "coords": {
+        "y": [16.3],
+        "x": [48.2, 48.3],
+        "band": [["B", null, null]]
+      }
+    }
+  },
+  "assertadddimension1": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "a": {
+        "from_node": "adddimension1"
+      },
+      "b": {
+        "from_node": "expectedadddimension1"
+      }
+    }
+  },
+
+
+
+  "mergecubes1": {
+    "process_id": "merge_cubes",
+    "arguments": {
+      "cube1": {
+        "from_node": "renamelabels1"
+      },
+      "cube2": {
+        "from_node": "renamelabels2"
+      }
+    },
+    "description": "Merging R and G datacubes to one with both images having the band labels R and G"
+  },
+  "expectedmergecubes1": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [0.325, 0.5],
+          [0.5, 0.325]
+        ]
+      ],
+      "dims": ["y", "x", "band"],
+      "coords": {
+        "y": [16.3],
+        "x": [48.2, 48.3],
+        "band": [["G", null, null], ["R", null, null]]
+      }
+    }
+  },
+  "assertmergecubes1": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "a": {
+        "from_node": "mergecubes1"
+      },
+      "b": {
+        "from_node": "expectedmergecubes1"
+      }
+    }
+  },
 
 
   "result1": {
