@@ -162,6 +162,30 @@ def test_index(execute_array_element_process, data, index, expected_result):
                 attrs={"reduce_by": ["y"]},
             ),
         ),
+        (
+            xr.DataArray(
+                [[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                    ],
+                    "band": bands(),
+                },
+                attrs={"reduce_by": ["band"]},
+            ),
+            "red",
+            xr.DataArray(
+                [[[0.1, 0.15], [0.05, -0.9]]],
+                dims=("t", "y", "x"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                    ],
+                },
+                attrs={"reduce_by": ["band"]},
+            ),
+        ),
     ],
 )
 def test_label(execute_array_element_process, data, label, expected_result):
@@ -239,6 +263,26 @@ def test_label(execute_array_element_process, data, label, expected_result):
             ),
             15,
             None,
+            (
+                "array_element",
+                "index/label",
+                "The array has no element with the specified index or label. (ArrayElementNotAvailable)",
+            ),
+        ),
+        (
+            xr.DataArray(
+                [[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                    ],
+                    "band": bands(),
+                },
+                attrs={"reduce_by": ["band"]},
+            ),
+            None,
+            0.665,
             (
                 "array_element",
                 "index/label",

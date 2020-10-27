@@ -1,5 +1,6 @@
 import numpy as np
 import xarray as xr
+import pandas as pd
 
 xr.set_options(keep_attrs=True)
 
@@ -40,14 +41,21 @@ class array_elementEOTask(ProcessEOTask):
             dim = data.attrs.get("reduce_by")[-1]
             try:
                 if index is not None:
-                    result = data.isel({dim: index}, drop=True)
+                    return data.isel({dim: index}, drop=True)
                 else:
-                    # Suprisingly this also works for the temporal dimension, when `label` is a string
-                    result = data.sel({dim: label}, drop=True)
-
-                    if dim in result.dims:
-                        # If dimension coords use MultiIndex, drop=True is ignored and we have to remove the dimension explicitly
-                        result = result.squeeze(dim, drop=True)
+                    if isinstance(data.indexes[dim], pd.MultiIndex):
+                        # This is hardcoded to only work with bands
+                        for level in ["_name", "_alias"]:
+                            try:
+                                result = data.sel({dim: {level: label}})
+                                # If dimension coords use MultiIndex, drop=True in `sel` is ignored and we have to remove the dimension explicitly
+                                return result.squeeze(dim, drop=True)
+                            except:
+                                continue
+                        raise KeyError
+                    else:
+                        # Suprisingly this also works for the temporal dimension, when `label` is a string
+                        return data.sel({dim: label}, drop=True)
 
             except (IndexError, KeyError):
                 if return_nodata:
@@ -57,14 +65,12 @@ class array_elementEOTask(ProcessEOTask):
                     Thus, our understanding is that the array_element process should return a result of the same shape as a valid index would, but with all values set to null.
                     """
                     data_with_arbitrary_selection = data.isel({dim: 0}, drop=True)
-                    result = xr.full_like(data_with_arbitrary_selection, fill_value=np.nan, dtype=np.double)
-                else:
-                    raise ProcessParameterInvalid(
-                        "array_element",
-                        "index/label",
-                        "The array has no element with the specified index or label. (ArrayElementNotAvailable)",
-                    )
-            return result
+                    return xr.full_like(data_with_arbitrary_selection, fill_value=np.nan, dtype=np.double)
+                raise ProcessParameterInvalid(
+                    "array_element",
+                    "index/label",
+                    "The array has no element with the specified index or label. (ArrayElementNotAvailable)",
+                )
         else:
             try:
                 return data[index]
