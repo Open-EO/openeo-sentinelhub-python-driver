@@ -10,7 +10,7 @@ class reduce_dimensionEOTask(ProcessEOTask):
             for key, value in iterate(args):
                 if isinstance(value, dict) and len(value) == 1 and "from_argument" in value:
                     args[key] = parent_arguments[value["from_argument"]]
-                elif isinstance(value, dict) and len(value) == 1 and "callback" in value:
+                elif isinstance(value, dict) and len(value) == 1 and "process_graph" in value:
                     continue
                 elif isinstance(value, dict) or isinstance(value, list):
                     args[key] = set_from_arguments(value, parent_arguments)
@@ -68,7 +68,7 @@ class reduce_dimensionEOTask(ProcessEOTask):
             else:
                 arguments["data"].attrs["reduce_by"].append(dimension)
 
-            dependencies, result_task = self.generate_workflow_dependencies(reducer["callback"], arguments)
+            dependencies, result_task = self.generate_workflow_dependencies(reducer["process_graph"], arguments)
             workflow = EOWorkflow(dependencies)
             all_results = workflow.execute({})
             result = all_results[result_task]

@@ -67,7 +67,7 @@
       },
       "dimension": "t",
       "reducer": {
-        "callback": {
+        "process_graph": {
           "2": {
             "process_id": "mean",
             "arguments": {
@@ -112,7 +112,7 @@
           "from_node": "reducemean1"
         },
         "process": {
-          "callback": {
+          "process_graph": {
             "lsr": {
               "process_id": "linear_scale_range",
               "arguments": {

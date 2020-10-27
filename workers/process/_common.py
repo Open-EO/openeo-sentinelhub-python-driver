@@ -147,7 +147,7 @@ class ProcessEOTask(EOTask):
         for k, v in iterate(arguments):
             if isinstance(v, dict) and len(v) == 1 and "from_node" in v:
                 from_nodes.append(v["from_node"])
-            elif isinstance(v, dict) and len(v) == 1 and "callback" in v:
+            elif isinstance(v, dict) and len(v) == 1 and "process_graph" in v:
                 # we don't traverse callbacks, because they might have their own
                 # 'from_node' arguments, but on a deeper level:
                 continue
@@ -168,7 +168,7 @@ class ProcessEOTask(EOTask):
                 arguments[k] = values_by_node[v["from_node"]]
             elif isinstance(v, dict) and len(v) == 1 and "variable_id" in v:
                 arguments[k] = variables[v["variable_id"]]
-            elif isinstance(v, dict) and len(v) == 1 and "callback" in v:
+            elif isinstance(v, dict) and len(v) == 1 and "process_graph" in v:
                 continue  # we don't traverse callbacks
             elif isinstance(v, dict) or isinstance(v, list):
                 ProcessEOTask._apply_data_to_arguments(arguments[k], values_by_node, variables)

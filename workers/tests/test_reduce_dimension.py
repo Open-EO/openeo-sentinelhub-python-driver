@@ -70,21 +70,21 @@ def test_recursiver_reducer(execute_reduce_dimension_process, generate_data):
     Test reduce_dimension process with a recursive reducer, which applies min to all dimensions, apart from the last one
     """
     reducer = {
-        "callback": {
+        "process_graph": {
             "p1": {
                 "process_id": "reduce_dimension",
                 "arguments": {
                     "data": {"from_argument": "data"},
                     "dimension": "x",
                     "reducer": {
-                        "callback": {
+                        "process_graph": {
                             "p1": {
                                 "process_id": "reduce_dimension",
                                 "arguments": {
                                     "data": {"from_argument": "data"},
                                     "dimension": "band",
                                     "reducer": {
-                                        "callback": {
+                                        "process_graph": {
                                             "min": {
                                                 "process_id": "min",
                                                 "arguments": {"data": {"from_argument": "data"}},
@@ -113,7 +113,7 @@ def test_reducer_sum_of_min_and_mean(execute_reduce_dimension_process, generate_
     Test reduce_dimension process with a reducer, which takes min and mean of bands and sums it up
     """
     reducer = {
-        "callback": {
+        "process_graph": {
             "min": {
                 "process_id": "min",
                 "arguments": {"data": {"from_argument": "data"}},
@@ -140,7 +140,9 @@ def test_min_time_dim(execute_reduce_dimension_process, generate_data):
     Test reduce_dimension process with a reducer, which applies min to the temporal dimension
     """
     reducer = {
-        "callback": {"min": {"process_id": "min", "arguments": {"data": {"from_argument": "data"}}, "result": True}}
+        "process_graph": {
+            "min": {"process_id": "min", "arguments": {"data": {"from_argument": "data"}}, "result": True}
+        }
     }
 
     data_arguments = {
