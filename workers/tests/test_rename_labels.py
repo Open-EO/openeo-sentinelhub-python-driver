@@ -3,6 +3,7 @@ import os
 import sys
 
 import numpy as np
+import pandas as pd
 import pytest
 import xarray as xr
 
@@ -69,6 +70,52 @@ def execute_process():
             [],
             xr.DataArray([0, 1, 2], dims=("x",), coords={"x": [100, 200, 2]}),
         ),
+        (
+            xr.DataArray(
+                [1, 2],
+                dims=("band"),
+                coords={
+                    "band": pd.MultiIndex.from_arrays(
+                        [["B04", "B08"], ["red", "nir"], [0.665, 0.842]], names=("_name", "_alias", "_wavelength")
+                    ),
+                },
+            ),
+            "band",
+            ["B4", "B8"],
+            ["B04", "B08"],
+            xr.DataArray(
+                [1, 2],
+                dims=("band"),
+                coords={
+                    "band": pd.MultiIndex.from_arrays(
+                        [["B4", "B8"], [None, None], [None, None]], names=("_name", "_alias", "_wavelength")
+                    ),
+                },
+            ),
+        ),
+        (
+            xr.DataArray(
+                [42],
+                dims=("band"),
+                coords={
+                    "band": pd.MultiIndex.from_arrays(
+                        [["B04"], ["red"], [0.665]], names=("_name", "_alias", "_wavelength")
+                    ),
+                },
+            ),
+            "band",
+            ["B4"],
+            ["B04"],
+            xr.DataArray(
+                [42],
+                dims=("band"),
+                coords={
+                    "band": pd.MultiIndex.from_arrays(
+                        [["B4"], [None], [None]], names=("_name", "_alias", "_wavelength")
+                    ),
+                },
+            ),
+        ),
     ],
 )
 def test_rename_labels(execute_process, data, dimension, target, source, expected_result):
@@ -80,7 +127,7 @@ def test_rename_labels(execute_process, data, dimension, target, source, expecte
     }
     original_data = data.copy(deep=True)
     result = execute_process(arguments)
-    xr.testing.assert_allclose(result, expected_result)
+    xr.testing.assert_equal(result, expected_result)
 
     # make sure we didn't change the original input:
     xr.testing.assert_allclose(data, original_data)
