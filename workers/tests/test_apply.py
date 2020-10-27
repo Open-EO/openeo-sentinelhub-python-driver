@@ -64,7 +64,7 @@ def test_apply_simple(execute_process):
         "lsr": {
             "process_id": "linear_scale_range",
             "arguments": {
-                "x": {"from_argument": "x"},
+                "x": {"from_parameter": "x"},
                 "inputMin": 0,
                 "inputMax": 1,
                 "outputMin": 1,
@@ -105,19 +105,19 @@ def test_recursive_callback(execute_apply_process, generate_data):
             "p1": {
                 "process_id": "apply",
                 "arguments": {
-                    "data": {"from_argument": "data"},
+                    "data": {"from_parameter": "data"},
                     "process": {
                         "process_graph": {
                             "p1": {
                                 "process_id": "apply",
                                 "arguments": {
-                                    "data": {"from_argument": "data"},
+                                    "data": {"from_parameter": "data"},
                                     "process": {
                                         "process_graph": {
                                             "lsr": {
                                                 "process_id": "linear_scale_range",
                                                 "arguments": {
-                                                    "x": {"from_argument": "x"},
+                                                    "x": {"from_parameter": "x"},
                                                     "inputMin": -1,
                                                     "inputMax": 1,
                                                     "outputMax": 1000,
@@ -171,7 +171,7 @@ def test_callback_lsr(execute_apply_process, generate_data):
             "lsr": {
                 "process_id": "linear_scale_range",
                 "arguments": {
-                    "x": {"from_argument": "x"},
+                    "x": {"from_parameter": "x"},
                     "inputMin": -3,
                     "inputMax": 3,
                     "outputMin": 0,
@@ -197,7 +197,7 @@ def test_multiple_results_forbidden(execute_apply_process, generate_data):
             "lsr": {
                 "process_id": "linear_scale_range",
                 "arguments": {
-                    "x": {"from_argument": "x"},
+                    "x": {"from_parameter": "x"},
                     "inputMin": -3,
                     "inputMax": 3,
                     "outputMin": 0,
@@ -208,7 +208,7 @@ def test_multiple_results_forbidden(execute_apply_process, generate_data):
             "lsr2": {
                 "process_id": "linear_scale_range",
                 "arguments": {
-                    "x": {"from_argument": "x"},
+                    "x": {"from_parameter": "x"},
                     "inputMin": -3,
                     "inputMax": 3,
                     "outputMin": 0,

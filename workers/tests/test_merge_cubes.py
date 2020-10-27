@@ -118,7 +118,7 @@ def test_separated_cubes(execute_process, cube1, cube2, expected_cube):
                 "process_graph": {
                     "resolver": {
                         "process_id": "sum",
-                        "arguments": {"data": [{"from_argument": "x"}, {"from_argument": "y"}]},
+                        "arguments": {"data": [{"from_parameter": "x"}, {"from_parameter": "y"}]},
                         "result": True,
                     }
                 }
@@ -262,7 +262,7 @@ def test_with_overlap_conflicts_and_no_overlap_resolver(execute_process, cube1, 
                 "process_graph": {
                     "resolver": {
                         "process_id": "sum",
-                        "arguments": {"data": [{"from_argument": "x"}, {"from_argument": "y"}]},
+                        "arguments": {"data": [{"from_parameter": "x"}, {"from_parameter": "y"}]},
                         "result": True,
                     }
                 }
@@ -306,7 +306,7 @@ def test_with_overlap_conflicts_and_no_overlap_resolver(execute_process, cube1, 
                 "process_graph": {
                     "resolver": {
                         "process_id": "sum",
-                        "arguments": {"data": [{"from_argument": "x"}, {"from_argument": "y"}]},
+                        "arguments": {"data": [{"from_parameter": "x"}, {"from_parameter": "y"}]},
                         "result": True,
                     }
                 }

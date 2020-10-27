@@ -74,20 +74,20 @@ def test_recursiver_reducer(execute_reduce_dimension_process, generate_data):
             "p1": {
                 "process_id": "reduce_dimension",
                 "arguments": {
-                    "data": {"from_argument": "data"},
+                    "data": {"from_parameter": "data"},
                     "dimension": "x",
                     "reducer": {
                         "process_graph": {
                             "p1": {
                                 "process_id": "reduce_dimension",
                                 "arguments": {
-                                    "data": {"from_argument": "data"},
+                                    "data": {"from_parameter": "data"},
                                     "dimension": "band",
                                     "reducer": {
                                         "process_graph": {
                                             "min": {
                                                 "process_id": "min",
-                                                "arguments": {"data": {"from_argument": "data"}},
+                                                "arguments": {"data": {"from_parameter": "data"}},
                                                 "result": True,
                                             }
                                         }
@@ -116,11 +116,11 @@ def test_reducer_sum_of_min_and_mean(execute_reduce_dimension_process, generate_
         "process_graph": {
             "min": {
                 "process_id": "min",
-                "arguments": {"data": {"from_argument": "data"}},
+                "arguments": {"data": {"from_parameter": "data"}},
             },
             "mean": {
                 "process_id": "mean",
-                "arguments": {"data": {"from_argument": "data"}},
+                "arguments": {"data": {"from_parameter": "data"}},
             },
             "sum": {
                 "process_id": "sum",
@@ -141,7 +141,7 @@ def test_min_time_dim(execute_reduce_dimension_process, generate_data):
     """
     reducer = {
         "process_graph": {
-            "min": {"process_id": "min", "arguments": {"data": {"from_argument": "data"}}, "result": True}
+            "min": {"process_id": "min", "arguments": {"data": {"from_parameter": "data"}}, "result": True}
         }
     }
 
