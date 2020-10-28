@@ -10,7 +10,7 @@ import xarray as xr
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid, ProcessArgumentRequired
+from process._common import ProcessParameterInvalid, ProcessArgumentRequired, Band
 
 
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), "fixtures")
@@ -68,12 +68,7 @@ def generate_data():
         attrs = {"bbox": fake_bbox, **attrs}
 
         if "band" in coords:
-            bands = coords["band"]
-            aliases = [None] * len(bands)
-            wavelengths = [None] * len(bands)
-            coords["band"] = pd.MultiIndex.from_arrays(
-                [bands, aliases, wavelengths], names=("_name", "_alias", "_wavelength")
-            )
+            coords["band"] = [Band(b) for b in coords["band"]]
 
         xrdata = xr.DataArray(
             data,
