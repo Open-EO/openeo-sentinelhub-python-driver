@@ -364,4 +364,4 @@ class Band(object):
         return f"Band({repr(self.name)}, {repr(self.alias)}, {repr(self.wavelength)})"
 
     def __hash__(self):
-        return self.name.__hash()
+        return self.name.__hash__()
