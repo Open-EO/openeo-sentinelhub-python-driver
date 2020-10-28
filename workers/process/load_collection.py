@@ -20,7 +20,7 @@ from sentinelhub.constants import AwsConstants
 import sentinelhub.geo_utils
 import xarray as xr
 
-from ._common import ProcessEOTask, ProcessParameterInvalid, Internal
+from ._common import ProcessEOTask, ProcessParameterInvalid, Internal, Band
 
 
 SENTINELHUB_INSTANCE_ID = os.environ.get("SENTINELHUB_INSTANCE_ID", None)
@@ -382,21 +382,18 @@ class load_collectionEOTask(ProcessEOTask):
         # - band name
         # - (optional) alias
         # - (optional) wavelength
-        # Since some processes (filter_bands, ndvi) depend on this information, we must include it in the datacube
-        # using MultiIndex coordinates: https://xarray.pydata.org/en/stable/data-structures.html#multiindex-coordinates
+        # Since some processes (filter_bands, ndvi) depend on this information, we must include it in the datacube.
         if band_aliases is None:
             band_aliases = [None] * len(bands)
         if band_wavelengths is None:
             band_wavelengths = [None] * len(bands)
-        bands_multiindex = pd.MultiIndex.from_arrays(
-            [bands, band_aliases, band_wavelengths], names=("_name", "_alias", "_wavelength")
-        )
+        bands = [Band(n, a, w) for n, a, w in zip(bands, band_aliases, band_wavelengths)]
 
         xrdata = xr.DataArray(
             masked_data,
             dims=("t", "y", "x", "band"),
             coords={
-                "band": bands_multiindex,
+                "band": bands,
                 "t": orbit_times_middle,
             },
             attrs={
