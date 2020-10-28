@@ -2,11 +2,10 @@ from datetime import datetime
 import math
 
 import numpy as np
-import pandas as pd
 import xarray as xr
 from sentinelhub import CRS, BBox
 
-from ._common import ProcessEOTask
+from ._common import ProcessEOTask, Band
 
 
 class create_cubeEOTask(ProcessEOTask):
@@ -25,12 +24,7 @@ class create_cubeEOTask(ProcessEOTask):
             coords["t"] = [datetime.strptime(d, "%Y-%m-%d %H:%M:%S") for d in coords["t"]]
 
         if "band" in coords:
-            bands = coords["band"][0]
-            aliases = coords["band"][1]
-            wavelenghts = coords["band"][2]
-            coords["band"] = pd.MultiIndex.from_arrays(
-                [bands, aliases, wavelenghts], names=("_name", "_alias", "_wavelength")
-            )
+            coords["band"] = [Band(*b) for b in coords["band"]]
 
         try:
             data = xr.DataArray(
