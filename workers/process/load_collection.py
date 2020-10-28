@@ -11,7 +11,6 @@ from eolearn.core import FeatureType, EOPatch
 import numpy as np
 import imageio
 from osgeo import gdal
-import pandas as pd
 import requests
 from requests_futures.sessions import FuturesSession
 from sentinelhub import WmsRequest, WcsRequest, MimeType, CRS, BBox, CustomUrlParam, BBoxSplitter

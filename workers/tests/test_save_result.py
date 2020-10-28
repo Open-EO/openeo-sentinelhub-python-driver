@@ -4,7 +4,6 @@ import sys
 
 from botocore.stub import Stubber, ANY
 from io import BufferedReader
-import pandas as pd
 import pytest
 import xarray as xr
 
