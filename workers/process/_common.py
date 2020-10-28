@@ -362,3 +362,6 @@ class Band(object):
         if self.alias is None and self.wavelength is None:
             return f"Band({repr(self.name)})"
         return f"Band({repr(self.name)}, {repr(self.alias)}, {repr(self.wavelength)})"
+
+    def __hash__(self):
+        return self.name.__hash()
