@@ -1,6 +1,5 @@
 import numpy as np
 import xarray as xr
-import pandas as pd
 
 xr.set_options(keep_attrs=True)
 
@@ -43,19 +42,8 @@ class array_elementEOTask(ProcessEOTask):
                 if index is not None:
                     return data.isel({dim: index}, drop=True)
                 else:
-                    if isinstance(data.indexes[dim], pd.MultiIndex):
-                        # This is hardcoded to only work with bands
-                        for level in ["_name", "_alias"]:
-                            try:
-                                result = data.sel({dim: {level: label}})
-                                # If dimension coords use MultiIndex, drop=True in `sel` is ignored and we have to remove the dimension explicitly
-                                return result.squeeze(dim, drop=True)
-                            except:
-                                continue
-                        raise KeyError
-                    else:
-                        # Suprisingly this also works for the temporal dimension, when `label` is a string
-                        return data.sel({dim: label}, drop=True)
+                    # Suprisingly this also works for the temporal dimension, when `label` is a string
+                    return data.sel({dim: label}, drop=True)
 
             except (IndexError, KeyError):
                 if return_nodata:

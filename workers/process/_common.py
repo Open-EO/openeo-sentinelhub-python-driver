@@ -322,3 +322,26 @@ class ProcessEOTask(EOTask):
             dependencies.append((task, depends_on, "Node name: " + node_name))
 
         return dependencies, result_task
+
+
+# Class Band() allows us to treat band aliases and wavelengths as an integral part of band coordinates.
+# Example:
+#   x = xr.DataArray([[1], [2], [3]], dims=("x", "bands"), coords={"x": [11, 22, 33], "bands": [Band("B01", "myalias", 0.543)]})
+class Band(object):
+    def __init__(self, name, alias=None, wavelength=None):
+        self.name = name
+        self.alias = alias
+        self.wavelength = wavelength
+
+    def __eq__(self, other):
+        # when comparing to an object (of type Band), we would like the objects to be completely equal:
+        if isinstance(other, Band):
+            return self.name == other.name and self.alias == other.alias and self.wavelength == other.wavelength
+        # however, when comparing to a string, equality means something else - either a name or alias must match:
+        if isinstance(other, str):
+            return self.name == other or self.alias == other
+        # when comparing to a number, we compare wavelengths:
+        if isinstance(other, float):
+            # note that we must not try to convert to float - when comparing, caller must explicitly use a float if they want to compare wavelengths
+            return self.wavelength == other
+        return False
