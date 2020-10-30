@@ -343,18 +343,24 @@ class Band(object):
         # when comparing to a number, we compare wavelengths:
         if isinstance(other, float):
             # note that we must not try to convert to float - when comparing, caller must explicitly use a float if they want to compare wavelengths
+            if self.wavelength is None:
+                return False
             return self.wavelength == other
         return False
 
     def __ge__(self, other):
         # when comparing to a number, we compare wavelengths:
         if isinstance(other, float):
+            if self.wavelength is None:
+                return False
             return self.wavelength >= other
         return self.name.__ge__(other)
 
     def __le__(self, other):
         # when comparing to a number, we compare wavelengths:
         if isinstance(other, float):
+            if self.wavelength is None:
+                return True
             return self.wavelength <= other
         return self.name.__le__(other)
 
