@@ -1,9 +1,11 @@
+import datetime
+
 import numpy as np
 import xarray as xr
 
 xr.set_options(keep_attrs=True)
 
-from ._common import ProcessEOTask, ProcessParameterInvalid
+from ._common import ProcessEOTask, ProcessParameterInvalid, parse_rfc3339
 
 
 class array_elementEOTask(ProcessEOTask):
@@ -42,10 +44,18 @@ class array_elementEOTask(ProcessEOTask):
                 if index is not None:
                     return data.isel({dim: index}, drop=True)
                 else:
-                    # Suprisingly this also works for the temporal dimension, when `label` is a string
-                    return data.sel({dim: label}, drop=True)
+                    # Suprisingly this also works for the temporal dimension, when `label` is a string:
+                    #   return data.sel({dim: label}, drop=True)
+                    # Unfortunately, this approach doesn't work with Bands (when the label is an alias),
+                    # so we must manually find the correct label index - which doesn't work with datetime:
+                    all_coords = list(data.coords[dim].to_index())
+                    if all_coords and isinstance(all_coords[0], datetime.datetime):
+                        label_index = all_coords.index(parse_rfc3339(label))
+                    else:
+                        label_index = all_coords.index(label)
+                    return data.isel({dim: label_index}, drop=True)
 
-            except (IndexError, KeyError):
+            except (IndexError, KeyError, ValueError):
                 if return_nodata:
                     """
                     According to documentation (https://open-eo.github.io/openeo-api/processreference/#array_element):

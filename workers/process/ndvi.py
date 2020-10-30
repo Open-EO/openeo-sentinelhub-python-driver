@@ -18,26 +18,32 @@ class ndviEOTask(ProcessEOTask):
         if "band" not in data.dims:
             raise ProcessParameterInvalid("ndvi", "data", "Dimension 'band' is missing (DimensionAmbiguous).")
 
+        all_band_coords = list(data.coords["band"].to_index())
+
         if target_band is not None:
             # "^\w+$" - \w is "from a-z, A-Z, 0-9, including the _ (underscore) character"
             if not re.match("^[A-Za-z0-9_]+$", target_band):
                 raise ProcessParameterInvalid("ndvi", "target_band", "String does not match the required pattern.")
             # "If a band with the specified name exists, a BandExists is thrown."
             try:
-                data.sel(band=target_band)
+                target_band_index = all_band_coords.index(target_band)
                 raise ProcessParameterInvalid("ndvi", "target_band", "Band name already exists (BandExists).")
-            except KeyError:
+            except ValueError:
                 pass
 
         try:
-            nir_data = data.sel(band=nir)
-        except KeyError:
+            nir_band_index = all_band_coords.index(nir)
+        except ValueError:
             raise ProcessParameterInvalid("ndvi", "nir", "Parameter does not match any band (NirBandAmbiguous).")
 
         try:
-            red_data = data.sel(band=red)
-        except KeyError:
+            red_band_index = all_band_coords.index(red)
+        except ValueError:
             raise ProcessParameterInvalid("ndvi", "red", "Parameter does not match any band (RedBandAmbiguous).")
+
+        # we can only use `data.sel()` with either Band object of band name (not alias)
+        nir_data = data.isel(band=nir_band_index)
+        red_data = data.isel(band=red_band_index)
 
         result = (nir_data - red_data) / (nir_data + red_data)
 
