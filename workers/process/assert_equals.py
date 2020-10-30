@@ -19,18 +19,13 @@ class assert_equalsEOTask(ProcessEOTask):
             del b.attrs["simulated_datatype"]
 
         try:
-            # When comparing DataArrays with MultiIndex dimension(s) (e.g. "band"), assert_allclose
-            # fails. We still need it to make sure we don't trip over "almost equal" values:
-            assert_equal(a, b)
-        except AssertionError:
-            try:
-                assert_allclose(a, b)
-            except:
-                # since it is important for us to know what the difference is, make
-                # an effort to log both arguments nicely:
-                indented_a = "    " + str(a).replace("\n", "\n    ")
-                indented_b = "    " + str(b).replace("\n", "\n    ")
-                message = f"""
+            assert_allclose(a, b)
+        except:
+            # since it is important for us to know what the difference is, make
+            # an effort to log both arguments nicely:
+            indented_a = "    " + str(a).replace("\n", "\n    ")
+            indented_b = "    " + str(b).replace("\n", "\n    ")
+            message = f"""
 
 
 **************************

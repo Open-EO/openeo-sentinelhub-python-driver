@@ -1,17 +1,13 @@
 import xarray as xr
 
-import pandas as pd
 from datetime import datetime
 
-from ._common import ProcessEOTask, ProcessParameterInvalid, parse_rfc3339
+from ._common import ProcessEOTask, ProcessParameterInvalid, parse_rfc3339, Band
 
 
 def generate_dimension_coord_values(labels, dimension_type):
     if dimension_type == "bands":
-        return pd.MultiIndex.from_arrays(
-            [labels, [None] * len(labels), [None] * len(labels)],
-            names=("_name", "_alias", "_wavelength"),
-        )
+        return [Band(l) for l in labels]
     if dimension_type == "temporal":
         return [parse_rfc3339(label) for label in labels]
     return labels

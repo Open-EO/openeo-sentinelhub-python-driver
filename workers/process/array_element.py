@@ -1,10 +1,11 @@
+import datetime
+
 import numpy as np
 import xarray as xr
-import pandas as pd
 
 xr.set_options(keep_attrs=True)
 
-from ._common import ProcessEOTask, ProcessParameterInvalid
+from ._common import ProcessEOTask, ProcessParameterInvalid, parse_rfc3339
 
 
 class array_elementEOTask(ProcessEOTask):
@@ -43,21 +44,18 @@ class array_elementEOTask(ProcessEOTask):
                 if index is not None:
                     return data.isel({dim: index}, drop=True)
                 else:
-                    if isinstance(data.indexes[dim], pd.MultiIndex):
-                        # This is hardcoded to only work with bands
-                        for level in ["_name", "_alias"]:
-                            try:
-                                result = data.sel({dim: {level: label}})
-                                # If dimension coords use MultiIndex, drop=True in `sel` is ignored and we have to remove the dimension explicitly
-                                return result.squeeze(dim, drop=True)
-                            except:
-                                continue
-                        raise KeyError
+                    # Suprisingly this also works for the temporal dimension, when `label` is a string:
+                    #   return data.sel({dim: label}, drop=True)
+                    # Unfortunately, this approach doesn't work with Bands (when the label is an alias),
+                    # so we must manually find the correct label index - which doesn't work with datetime:
+                    all_coords = list(data.coords[dim].to_index())
+                    if all_coords and isinstance(all_coords[0], datetime.datetime):
+                        label_index = all_coords.index(parse_rfc3339(label))
                     else:
-                        # Suprisingly this also works for the temporal dimension, when `label` is a string
-                        return data.sel({dim: label}, drop=True)
+                        label_index = all_coords.index(label)
+                    return data.isel({dim: label_index}, drop=True)
 
-            except (IndexError, KeyError):
+            except (IndexError, KeyError, ValueError):
                 if return_nodata:
                     """
                     According to documentation (https://open-eo.github.io/openeo-api/processreference/#array_element):
