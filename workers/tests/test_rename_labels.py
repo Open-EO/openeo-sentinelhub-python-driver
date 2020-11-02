@@ -3,13 +3,12 @@ import os
 import sys
 
 import numpy as np
-import pandas as pd
 import pytest
 import xarray as xr
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid
+from process._common import ProcessParameterInvalid, Band
 
 
 @pytest.fixture
@@ -74,11 +73,7 @@ def execute_process():
             xr.DataArray(
                 [1, 2],
                 dims=("band"),
-                coords={
-                    "band": pd.MultiIndex.from_arrays(
-                        [["B04", "B08"], ["red", "nir"], [0.665, 0.842]], names=("_name", "_alias", "_wavelength")
-                    ),
-                },
+                coords={"band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)]},
             ),
             "band",
             ["B4", "B8"],
@@ -87,9 +82,7 @@ def execute_process():
                 [1, 2],
                 dims=("band"),
                 coords={
-                    "band": pd.MultiIndex.from_arrays(
-                        [["B4", "B8"], [None, None], [None, None]], names=("_name", "_alias", "_wavelength")
-                    ),
+                    "band": [Band("B4"), Band("B8")],
                 },
             ),
         ),
@@ -98,9 +91,7 @@ def execute_process():
                 [42],
                 dims=("band"),
                 coords={
-                    "band": pd.MultiIndex.from_arrays(
-                        [["B04"], ["red"], [0.665]], names=("_name", "_alias", "_wavelength")
-                    ),
+                    "band": [Band("B04", "red", 0.665)],
                 },
             ),
             "band",
@@ -110,9 +101,7 @@ def execute_process():
                 [42],
                 dims=("band"),
                 coords={
-                    "band": pd.MultiIndex.from_arrays(
-                        [["B4"], [None], [None]], names=("_name", "_alias", "_wavelength")
-                    ),
+                    "band": [Band("B4")],
                 },
             ),
         ),
