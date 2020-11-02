@@ -55,12 +55,12 @@ class rename_labelsEOTask(ProcessEOTask):
             if t in data.coords[dimension]:
                 raise ProcessParameterInvalid("rename_labels", "target", "Target label already exists (LabelExists).")
 
-        # make a copy of coords, then make replacements using source -> target mapping:
-        coords = list(data.coords[dimension].to_index())
+        # make replacements of coords using source -> target mapping:
+        target_coords = list(data.coords[dimension].to_index())
         for s, t in zip(source, target):
-            index = coords.index(s)
-            coords[index] = t
+            index = target_coords.index(s)
+            target_coords[index] = t
 
         result = data.copy(deep=False)
-        result.coords[dimension] = coords
+        result.coords[dimension] = target_coords
         return result

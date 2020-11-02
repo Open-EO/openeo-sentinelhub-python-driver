@@ -8,7 +8,7 @@ import xarray as xr
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid
+from process._common import ProcessParameterInvalid, Band
 
 
 @pytest.fixture
@@ -69,6 +69,42 @@ def execute_process():
             [],
             xr.DataArray([0, 1, 2], dims=("x",), coords={"x": [100, 200, 2]}),
         ),
+        (
+            xr.DataArray(
+                [1, 2],
+                dims=("band"),
+                coords={"band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)]},
+            ),
+            "band",
+            ["B4", "B8"],
+            ["B04", "B08"],
+            xr.DataArray(
+                [1, 2],
+                dims=("band"),
+                coords={
+                    "band": [Band("B4"), Band("B8")],
+                },
+            ),
+        ),
+        (
+            xr.DataArray(
+                [42],
+                dims=("band"),
+                coords={
+                    "band": [Band("B04", "red", 0.665)],
+                },
+            ),
+            "band",
+            ["B4"],
+            ["B04"],
+            xr.DataArray(
+                [42],
+                dims=("band"),
+                coords={
+                    "band": [Band("B4")],
+                },
+            ),
+        ),
     ],
 )
 def test_rename_labels(execute_process, data, dimension, target, source, expected_result):
@@ -80,7 +116,7 @@ def test_rename_labels(execute_process, data, dimension, target, source, expecte
     }
     original_data = data.copy(deep=True)
     result = execute_process(arguments)
-    xr.testing.assert_allclose(result, expected_result)
+    xr.testing.assert_equal(result, expected_result)
 
     # make sure we didn't change the original input:
     xr.testing.assert_allclose(data, original_data)
