@@ -88,12 +88,10 @@ class merge_cubesEOTask(ProcessEOTask):
         # https://github.com/pydata/xarray/issues/2891#issuecomment-482880911
         result = result.copy()
 
-        dimension_sizes = result.sizes
-
-        # Now we fill our empty array with values
-        for i in range(result.size):
-            # We get the coord values (timestamp, lat, lng ...) for each position (e.g. at result[0,0,0,0])
-            coord = tuple([i % dimension_sizes[dimension_name] for dimension_name in all_dimensions])
+        # Now we fill our empty array with values for all combinations of coords: https://stackoverflow.com/a/10098162
+        dimension_sizes = tuple(result.sizes.values())
+        for coord in np.ndindex(dimension_sizes):
+            # We get the coord values (timestamp, lat, lng ...) for each position (e.g. at result[0,0,0,0], result[0,0,0,1],...)
             coord_labels = result[coord].coords
             cube1_has_value, cube1_value_at_coord = get_value(cube1, coord_labels)
             cube2_has_value, cube2_value_at_coord = get_value(cube2, coord_labels)
