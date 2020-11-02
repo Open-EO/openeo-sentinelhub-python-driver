@@ -76,6 +76,35 @@ def bands():
                 },
             ),
         ),
+        (
+            xr.DataArray(
+                [[[0.5], [0.325]]],
+                dims=("y", "x", "band"),
+                coords={
+                    "y": [16.3],
+                    "x": [48.2, 48.3],
+                    "band": [Band("R")],
+                },
+            ),
+            xr.DataArray(
+                [[[0.325], [0.5]]],
+                dims=("y", "x", "band"),
+                coords={
+                    "y": [16.3],
+                    "x": [48.2, 48.3],
+                    "band": [Band("G")],
+                },
+            ),
+            xr.DataArray(
+                [[[0.5, 0.325], [0.325, 0.5]]],
+                dims=("y", "x", "band"),
+                coords={
+                    "y": [16.3],
+                    "x": [48.2, 48.3],
+                    "band": [Band("R"), Band("G")],
+                },
+            ),
+        ),
     ],
 )
 def test_separated_cubes(execute_process, cube1, cube2, expected_cube):
