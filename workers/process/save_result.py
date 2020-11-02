@@ -190,6 +190,7 @@ class save_resultEOTask(ProcessEOTask):
             try:
                 self._put_file_to_s3(filename, GDAL_FORMATS[output_format].mime_type)
             except Exception as ex:
+                self.logger.exception("Saving file to S3 failed")
                 raise StorageFailure("Unable to store file(s).")
 
             self.results.append(
