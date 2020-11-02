@@ -34,14 +34,11 @@ def list_as_xarray(values):
         (-2, -4, -6),  # example from: https://processes.openeo.org/#add
         # null is returned if any element is no-data:
         (1, None, None),  # example from: https://processes.openeo.org/#add
-        (None, 1, None),  
-        (None, None, None), 
-        (math.inf,1,math.inf),
-        (math.inf,None,None)
-
+        (None, 1, None),
+        (None, None, None),
+        (math.inf, 1, math.inf),
+        (math.inf, None, None),
     ],
-
-
 )
 def test_examples(execute_add_process, x, y, expected_result):
     arguments = {"x": x, "y": y}
@@ -56,7 +53,11 @@ def test_examples(execute_add_process, x, y, expected_result):
         (1, list_as_xarray([1, -2, 0, 1.5, np.nan]), list_as_xarray([2, -1, 1, 2.5, np.nan])),
         (list_as_xarray([1, -2, 0, 1.5, np.nan]), np.nan, list_as_xarray([np.nan, np.nan, np.nan, np.nan, np.nan])),
         (np.nan, list_as_xarray([1, -2, 0, 1.5, np.nan]), list_as_xarray([np.nan, np.nan, np.nan, np.nan, np.nan])),
-        (list_as_xarray([1, -2, 0, 1.5, np.nan]), list_as_xarray([1, -1.5, 0, np.nan, 1]), list_as_xarray([2, -3.5, 0, np.nan, np.nan])),
+        (
+            list_as_xarray([1, -2, 0, 1.5, np.nan]),
+            list_as_xarray([1, -1.5, 0, np.nan, 1]),
+            list_as_xarray([2, -3.5, 0, np.nan, np.nan]),
+        ),
     ],
 )
 def test_xarray(execute_add_process, x, y, expected_result):
@@ -70,10 +71,13 @@ def test_xarray(execute_add_process, x, y, expected_result):
     [
         (list_as_xarray([1, -2, 0, 1.5, np.nan]), list_as_xarray([]), list_as_xarray([2, -1, 1, 2.5, np.nan])),
         (list_as_xarray([1, -2, 0, 1.5, np.nan]), list_as_xarray([1]), list_as_xarray([2, -1, 1, 2.5, np.nan])),
-        (list_as_xarray([1, -2, 0, 1.5, np.nan]), list_as_xarray([1, -1.5, 0,3,4,5,6,7]), list_as_xarray([2, -3.5, 0, np.nan, np.nan])),
+        (
+            list_as_xarray([1, -2, 0, 1.5, np.nan]),
+            list_as_xarray([1, -1.5, 0, 3, 4, 5, 6, 7]),
+            list_as_xarray([2, -3.5, 0, np.nan, np.nan]),
+        ),
     ],
 )
-
 def test_array_different_dimensions(execute_add_process, x, y, expected_result):
     arguments = {"x": x, "y": y}
     with pytest.raises(ProcessParameterInvalid) as ex:

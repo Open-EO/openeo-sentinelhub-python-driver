@@ -1,8 +1,7 @@
-from ._common import ProcessEOTask,ProcessParameterInvalid
+from ._common import ProcessEOTask, ProcessParameterInvalid
 
 
 class addEOTask(ProcessEOTask):
-
     def process(self, arguments):
         x = self.validate_parameter(arguments, "x", required=True, allowed_types=[float, type(None)])
         y = self.validate_parameter(arguments, "y", required=True, allowed_types=[float, type(None)])
