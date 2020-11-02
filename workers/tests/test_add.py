@@ -1,13 +1,13 @@
-from process._common import ProcessParameterInvalid
-import process
+import math
+import numpy as np
+import os
 import pytest
 import sys
-import os
 import xarray as xr
-import numpy as np
-import math
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import process
+from process._common import ProcessParameterInvalid
 
 
 @pytest.fixture
