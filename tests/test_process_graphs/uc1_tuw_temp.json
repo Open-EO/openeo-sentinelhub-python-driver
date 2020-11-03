@@ -1,0 +1,623 @@
+{
+  "gencol1": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [
+            [0.5],
+            [0.5],
+            [0.6],
+            [0.4],
+            [0.3],
+            [0.1]
+          ],
+          [
+            [0.5],
+            [0.15],
+            [0.7],
+            [0.14],
+            [null],
+            [0.45]
+          ]
+        ]
+      ],
+      "dims": ["y", "x", "t", "band"],
+      "coords": {
+        "y": [16.3],
+        "x": [48.2, 48.3],
+        "t": ["2017-03-07 11:00:12", "2017-03-09 11:00:12", "2017-04-01 00:00:00", "2017-04-29 11:00:12", "2017-05-02 11:00:12", "2017-05-03 11:00:12"],
+        "band": [["VV", null, null]]
+      }
+    },
+    "description": "Loading (testing) Sentinel 1 data for VV and VH over Vienna in March 2017"
+  },
+
+
+
+  "filtertemporal1": {
+    "process_id": "filter_temporal",
+    "arguments": {
+      "data": {
+        "from_node": "gencol1"
+      },
+      "extent": [
+        "2017-03-01",
+        "2017-04-01"
+      ]
+    },
+    "description": "Selecting only data from March 2017"
+  },
+  "expectedfiltertemporal1": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [
+            [0.5],
+            [0.5]
+          ],
+          [
+            [0.5],
+            [0.15]
+          ]
+        ]
+      ],
+      "dims": ["y", "x", "t", "band"],
+      "coords": {
+        "y": [16.3],
+        "x": [48.2, 48.3],
+        "t": ["2017-03-07 11:00:12", "2017-03-09 11:00:12"],
+        "band": [["VV", null, null]]
+      }
+    }
+  },
+  "assertfiltertemporal1": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "a": {
+        "from_node": "filtertemporal1"
+      },
+      "b": {
+        "from_node": "expectedfiltertemporal1"
+      }
+    }
+  },
+
+
+
+  "filtertemporal2": {
+    "process_id": "filter_temporal",
+    "arguments": {
+      "data": {
+        "from_node": "gencol1"
+      },
+      "extent": [
+        "2017-04-01",
+        "2017-05-01"
+      ]
+    },
+    "description": "Selecting only data from March 2017"
+  },
+  "expectedfiltertemporal2": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [
+
+            [0.6],
+            [0.4]
+          ],
+          [
+            [0.7],
+            [0.14]
+          ]
+        ]
+      ],
+      "dims": ["y", "x", "t", "band"],
+      "coords": {
+        "y": [16.3],
+        "x": [48.2, 48.3],
+        "t": ["2017-04-01 00:00:00", "2017-04-29 11:00:12"],
+        "band": [["VV", null, null]]
+      }
+    }
+  },
+  "assertfiltertemporal2": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "a": {
+        "from_node": "filtertemporal2"
+      },
+      "b": {
+        "from_node": "expectedfiltertemporal2"
+      }
+    }
+  },
+
+
+
+  "filtertemporal3": {
+    "process_id": "filter_temporal",
+    "arguments": {
+      "data": {
+        "from_node": "gencol1"
+      },
+      "extent": [
+        "2017-05-01",
+        "2017-06-01"
+      ]
+    },
+    "description": "Selecting only data from March 2017"
+  },
+  "expectedfiltertemporal3": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [
+            [0.3],
+            [0.1]
+          ],
+          [
+            [null],
+            [0.45]
+          ]
+        ]
+      ],
+      "dims": ["y", "x", "t", "band"],
+      "coords": {
+        "y": [16.3],
+        "x": [48.2, 48.3],
+        "t": ["2017-05-02 11:00:12", "2017-05-03 11:00:12"],
+        "band": [["VV", null, null]]
+      }
+    }
+  },
+  "assertfiltertemporal3": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "a": {
+        "from_node": "filtertemporal3"
+      },
+      "b": {
+        "from_node": "expectedfiltertemporal3"
+      }
+    }
+  },
+
+  "reducedimension1": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filtertemporal1"
+        },
+        "dimension": "t",
+        "reducer": {
+          "process_graph": {
+            "mean1": {
+              "process_id": "mean",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      },
+      "description": "Calculate the mean over March 2017 resulting in a single image of mean values"
+    },
+  "expectedreducedimension1": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [
+            0.5
+          ],
+          [
+            0.325
+          ]
+        ]
+      ],
+      "dims": ["y", "x", "band"],
+      "coords": {
+        "y": [16.3],
+        "x": [48.2, 48.3],
+        "band": [["VV", null, null]]
+      }
+    }
+  },
+  "assertreducedimension1": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "a": {
+        "from_node": "reducedimension1"
+      },
+      "b": {
+        "from_node": "expectedreducedimension1"
+      }
+    }
+  },
+
+
+
+  "reducedimension2": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filtertemporal2"
+        },
+        "dimension": "t",
+        "reducer": {
+          "process_graph": {
+            "mean2": {
+              "process_id": "mean",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      },
+      "description": "Calculate the mean over April 2017 resulting in a single image of mean values"
+    },
+  "expectedreducedimension2": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [
+            0.5
+          ],
+          [
+            0.42
+          ]
+        ]
+      ],
+      "dims": ["y", "x", "band"],
+      "coords": {
+        "y": [16.3],
+        "x": [48.2, 48.3],
+        "band": [["VV", null, null]]
+      }
+    }
+  },
+  "assertreducedimension2": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "a": {
+        "from_node": "reducedimension2"
+      },
+      "b": {
+        "from_node": "expectedreducedimension2"
+      }
+    }
+  },
+
+
+
+  "reducedimension3": {
+      "process_id": "reduce_dimension",
+      "arguments": {
+        "data": {
+          "from_node": "filtertemporal3"
+        },
+        "dimension": "t",
+        "reducer": {
+          "process_graph": {
+            "mean3": {
+              "process_id": "mean",
+              "arguments": {
+                "data": {
+                  "from_parameter": "data"
+                }
+              },
+              "result": true
+            }
+          }
+        }
+      },
+      "description": "Calculate the mean over May 2017 resulting in a single image of mean values"
+    },
+  "expectedreducedimension3": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [
+            0.2
+          ],
+          [
+            0.45
+          ]
+        ]
+      ],
+      "dims": ["y", "x", "band"],
+      "coords": {
+        "y": [16.3],
+        "x": [48.2, 48.3],
+        "band": [["VV", null, null]]
+      }
+    }
+  },
+  "assertreducedimension3": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "a": {
+        "from_node": "reducedimension3"
+      },
+      "b": {
+        "from_node": "expectedreducedimension3"
+      }
+    }
+  },
+
+
+
+  "renamelabels1": {
+      "process_id": "rename_labels",
+      "arguments": {
+        "data": {
+          "from_node": "reducedimension1"
+        },
+        "dimension": "band",
+        "target": [
+          "R"
+        ],
+        "source": [
+          "VV"
+        ]
+      },
+      "description": "Rename the VV band label to R"
+    },
+    "expectedrenamelabels1": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [
+            0.5          
+          ],
+          [
+            0.325
+          ]
+        ]
+      ],
+      "dims": ["y", "x", "band"],
+      "coords": {
+        "y": [16.3],
+        "x": [48.2, 48.3],
+        "band": [["R", null, null]]
+      }
+    }
+  },
+  "assertrenamelabels1": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "a": {
+        "from_node": "renamelabels1"
+      },
+      "b": {
+        "from_node": "expectedrenamelabels1"
+      }
+    }
+  },
+
+
+
+  "renamelabels2": {
+      "process_id": "rename_labels",
+      "arguments": {
+        "data": {
+          "from_node": "reducedimension2"
+        },
+        "dimension": "band",
+        "target": [
+          "G"
+        ],
+        "source": [
+          "VV"
+        ]
+      },
+      "description": "Rename the VV band label to G"
+    },
+  "expectedrenamelabels2": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [
+
+            0.5
+          ],
+          [
+            0.42
+          ]
+        ]
+      ],
+      "dims": ["y", "x", "band"],
+      "coords": {
+        "y": [16.3],
+        "x": [48.2, 48.3],
+        "band": [["G", null, null]]
+      }
+    }
+  },
+  "assertrenamelabels2": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "a": {
+        "from_node": "renamelabels2"
+      },
+      "b": {
+        "from_node": "expectedrenamelabels2"
+      }
+    }
+  },
+
+
+
+  "renamelabels3": {
+      "process_id": "rename_labels",
+      "arguments": {
+        "data": {
+          "from_node": "reducedimension3"
+        },
+        "dimension": "band",
+        "target": [
+          "B"
+        ],
+        "source": [
+          "VV"
+        ]
+      },
+      "description": "Rename VV band label to B"
+    },
+  "expectedrenamelabels3": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [
+            0.2
+          ],
+          [
+            0.45
+          ]
+        ]
+      ],
+      "dims": ["y", "x", "band"],
+      "coords": {
+        "y": [16.3],
+        "x": [48.2, 48.3],
+        "band": [["B", null, null]]
+      }
+    }
+  },
+  "assertrenamelabels3": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "a": {
+        "from_node": "renamelabels3"
+      },
+      "b": {
+        "from_node": "expectedrenamelabels3"
+      }
+    }
+  },
+
+
+
+  "mergecubes1": {
+      "process_id": "merge_cubes",
+      "arguments": {
+        "cube1": {
+          "from_node": "renamelabels1"
+        },
+        "cube2": {
+          "from_node": "renamelabels2"
+        }
+      },
+      "description": "Merge R and G data cubes to one with both images in the band labels R and G"
+    },
+  "expectedmergecubes1": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [
+            0.5, 0.5         
+          ],
+          [
+            0.42, 0.325
+          ]
+        ]
+      ],
+      "dims": ["y", "x", "band"],
+      "coords": {
+        "y": [16.3],
+        "x": [48.2, 48.3],
+        "band": [["G", null, null], ["R", null, null]]
+      }
+    }
+  },
+  "assertmergecubes1": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "a": {
+        "from_node": "mergecubes1"
+      },
+      "b": {
+        "from_node": "expectedmergecubes1"
+      }
+    }
+  },
+
+
+
+  "mergecubes2": {
+      "process_id": "merge_cubes",
+      "arguments": {
+        "cube1": {
+          "from_node": "mergecubes1"
+        },
+        "cube2": {
+          "from_node": "renamelabels3"
+        }
+      },
+      "description": "Merge RG and B data cubes to one with all three images in the band labels R, G and B"
+    },
+  "expectedmergecubes2": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [
+            0.2, 0.5, 0.5         
+          ],
+          [
+            0.45, 0.42, 0.325
+          ]
+        ]
+      ],
+      "dims": ["y", "x", "band"],
+      "coords": {
+        "y": [16.3],
+        "x": [48.2, 48.3],
+        "band": [["B", null, null], ["G", null, null], ["R", null, null]]
+      }
+    }
+  },
+  "assertmergecubes2": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "a": {
+        "from_node": "mergecubes2"
+      },
+      "b": {
+        "from_node": "expectedmergecubes2"
+      }
+    }
+  },
+
+
+  "saveresult1": {
+    "process_id": "save_result",
+    "arguments": {
+      "data": {
+        "from_node": "reducedimension1"
+      },
+      "format": "gtiff",
+      "options": {}
+    },
+    "description": "Save the result in a GeoTiff file",
+    "result": true
+  }
+}
