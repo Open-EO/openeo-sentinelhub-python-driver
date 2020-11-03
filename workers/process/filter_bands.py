@@ -96,7 +96,7 @@ class filter_bandsEOTask(ProcessEOTask):
         #     - alias       (b) object 'nir' 'red'
         #     - wavelength  (b) float64 0.823 0.901
 
-        # make a copy of `data` but fill it with False values:
+        # prepare a mask that remembers which coordinates are already included in the result:
         already_included = xr.DataArray(False, dims=data[dim].dims, coords=data[dim].coords)
         result = None
 
