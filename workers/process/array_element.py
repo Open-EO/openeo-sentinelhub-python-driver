@@ -53,7 +53,10 @@ class array_elementEOTask(ProcessEOTask):
                         label_index = all_coords.index(parse_rfc3339(label))
                     else:
                         label_index = all_coords.index(label)
-                    return data.isel({dim: label_index}, drop=True)
+                    result = data.isel({dim: label_index}, drop=True)
+                    # mark the data - while it is still an xarray DataArray, the operations should now be applied to each element:
+                    result.attrs["simulated_datatype"] = (float,)
+                    return result
 
             except (IndexError, KeyError, ValueError):
                 if return_nodata:
