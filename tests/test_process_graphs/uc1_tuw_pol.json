@@ -402,7 +402,7 @@
     "process_id": "save_result",
     "arguments": {
       "data": {
-        "from_node": "reducedimension1"
+        "from_node": "mergecubes2"
       },
       "format": "gtiff",
       "options": {
