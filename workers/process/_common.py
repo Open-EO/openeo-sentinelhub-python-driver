@@ -356,6 +356,14 @@ class Band(object):
             return self.wavelength >= other
         return self.name.__ge__(other)
 
+    def __gt__(self, other):
+        # when comparing to a number, we compare wavelengths:
+        if isinstance(other, float):
+            if self.wavelength is None:
+                return False
+            return self.wavelength > other
+        return self.name.__gt__(other)
+
     def __le__(self, other):
         # when comparing to a number, we compare wavelengths:
         if isinstance(other, float):
@@ -363,6 +371,14 @@ class Band(object):
                 return True
             return self.wavelength <= other
         return self.name.__le__(other)
+
+    def __lt__(self, other):
+        # when comparing to a number, we compare wavelengths:
+        if isinstance(other, float):
+            if self.wavelength is None:
+                return True
+            return self.wavelength < other
+        return self.name.__lt__(other)
 
     def __repr__(self):
         if self.alias is None and self.wavelength is None:
