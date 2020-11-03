@@ -322,3 +322,52 @@ class ProcessEOTask(EOTask):
             dependencies.append((task, depends_on, "Node name: " + node_name))
 
         return dependencies, result_task
+
+
+# Class Band() allows us to treat band aliases and wavelengths as an integral part of band coordinates.
+# Example:
+#   x = xr.DataArray([[1], [2], [3]], dims=("x", "bands"), coords={"x": [11, 22, 33], "bands": [Band("B01", "myalias", 0.543)]})
+class Band(object):
+    def __init__(self, name, alias=None, wavelength=None):
+        self.name = name
+        self.alias = alias
+        self.wavelength = wavelength
+
+    def __eq__(self, other):
+        # when comparing to an object (of type Band), we would like the objects to be completely equal:
+        if isinstance(other, Band):
+            return self.name == other.name and self.alias == other.alias and self.wavelength == other.wavelength
+        # however, when comparing to a string, equality means something else - either a name or alias must match:
+        if isinstance(other, str):
+            return self.name == other or self.alias == other
+        # when comparing to a number, we compare wavelengths:
+        if isinstance(other, float):
+            # note that we must not try to convert to float - when comparing, caller must explicitly use a float if they want to compare wavelengths
+            if self.wavelength is None:
+                return False
+            return self.wavelength == other
+        return False
+
+    def __ge__(self, other):
+        # when comparing to a number, we compare wavelengths:
+        if isinstance(other, float):
+            if self.wavelength is None:
+                return False
+            return self.wavelength >= other
+        return self.name.__ge__(other)
+
+    def __le__(self, other):
+        # when comparing to a number, we compare wavelengths:
+        if isinstance(other, float):
+            if self.wavelength is None:
+                return True
+            return self.wavelength <= other
+        return self.name.__le__(other)
+
+    def __repr__(self):
+        if self.alias is None and self.wavelength is None:
+            return f"Band({repr(self.name)})"
+        return f"Band({repr(self.name)}, {repr(self.alias)}, {repr(self.wavelength)})"
+
+    def __hash__(self):
+        return self.name.__hash__()

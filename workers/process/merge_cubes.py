@@ -29,7 +29,7 @@ def get_value(cube, coord):
         return False, None
 
 
-def merge_bboxes(attrs1, attrs2):
+def merge_attrs(attrs1, attrs2):
     merged_attrs = {}
     bbox1 = attrs1.get("bbox")
     bbox2 = attrs2.get("bbox")
@@ -74,7 +74,7 @@ class merge_cubesEOTask(ProcessEOTask):
         all_dimensions = tuple(dict.fromkeys(cube1.dims + cube2.dims))
         overlapping_dimension_found = False
 
-        result = xr.DataArray(attrs=merge_bboxes(cube1.attrs, cube2.attrs))
+        result = xr.DataArray(attrs=merge_attrs(cube1.attrs, cube2.attrs))
         # We iterate over the union of all dimension of the two cubes
         for i, dimension_name in enumerate(all_dimensions):
             # If both cubes have the dimension, we merge the coordinates
@@ -107,12 +107,10 @@ class merge_cubesEOTask(ProcessEOTask):
         # https://github.com/pydata/xarray/issues/2891#issuecomment-482880911
         result = result.copy()
 
-        dimension_sizes = result.sizes
-
-        # Now we fill our empty array with values
-        for i in range(result.size):
-            # We get the coord values (timestamp, lat, lng ...) for each position (e.g. at result[0,0,0,0])
-            coord = tuple([i % dimension_sizes[dimension_name] for dimension_name in all_dimensions])
+        # Now we fill our empty array with values for all combinations of coords: https://stackoverflow.com/a/10098162
+        dimension_sizes = tuple(result.sizes.values())
+        for coord in np.ndindex(dimension_sizes):
+            # We get the coord values (timestamp, lat, lng ...) for each position (e.g. at result[0,0,0,0], result[0,0,0,1],...)
             coord_labels = result[coord].coords
             cube1_has_value, cube1_value_at_coord = get_value(cube1, coord_labels)
             cube2_has_value, cube2_value_at_coord = get_value(cube2, coord_labels)

@@ -10,7 +10,7 @@ from sentinelhub import CRS, BBox
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid
+from process._common import ProcessParameterInvalid, Band
 import logging
 
 
@@ -26,9 +26,7 @@ def execute_process():
 
 
 def bands():
-    return pd.MultiIndex.from_arrays(
-        [["B04", "B08"], ["red", "nir"], [0.665, 0.842]], names=("_name", "_alias", "_wavelength")
-    )
+    return [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)]
 
 
 ###################################
@@ -77,6 +75,35 @@ def bands():
                     "band": bands(),
                     "x": [0],
                     "y": [0],
+                },
+            ),
+        ),
+        (
+            xr.DataArray(
+                [[[0.5], [0.325]]],
+                dims=("y", "x", "band"),
+                coords={
+                    "y": [16.3],
+                    "x": [48.2, 48.3],
+                    "band": [Band("R")],
+                },
+            ),
+            xr.DataArray(
+                [[[0.325], [0.5]]],
+                dims=("y", "x", "band"),
+                coords={
+                    "y": [16.3],
+                    "x": [48.2, 48.3],
+                    "band": [Band("G")],
+                },
+            ),
+            xr.DataArray(
+                [[[0.5, 0.325], [0.325, 0.5]]],
+                dims=("y", "x", "band"),
+                coords={
+                    "y": [16.3],
+                    "x": [48.2, 48.3],
+                    "band": [Band("R"), Band("G")],
                 },
             ),
         ),

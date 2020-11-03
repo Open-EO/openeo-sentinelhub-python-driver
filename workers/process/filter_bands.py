@@ -1,15 +1,19 @@
 import re
 
 import numpy as np
-import pandas as pd
 import xarray as xr
 
-from ._common import ProcessEOTask, ProcessParameterInvalid
+from ._common import ProcessEOTask, ProcessParameterInvalid, Band
 
 
 def get_bands_dims(data):
-    """ Returns names of all the dimensions that represent bands (that is, are of type pd.MultiIndex) """
-    result = [dim for dim in data.dims if dim in data.coords and isinstance(data.coords[dim].to_index(), pd.MultiIndex)]
+    """ Returns names of all the dimensions that represent bands """
+    # this is not the correct way - dimension should know its type even if there are no coords in it
+    result = [
+        dim
+        for dim in data.dims
+        if dim in data.coords and len(data.coords) > 0 and isinstance(data.coords[dim].to_index()[0], Band)
+    ]
     return result
 
 
@@ -62,6 +66,9 @@ class filter_bandsEOTask(ProcessEOTask):
             except (ValueError, TypeError):
                 raise ProcessParameterInvalid("filter_bands", "bands", "Wavelength limits must be numbers.")
 
+        # Note: information below is outdated (we no longer use MultiIndex), however, we still use `.where` instead
+        # of `.sel` because it takes care of ordering the matching corrds correctly.
+        #
         # We would use data.sel, but it drops a key from MultiIndex:
         #   >>> x
         #     <xarray.DataArray (b: 3)>
@@ -95,7 +102,7 @@ class filter_bandsEOTask(ProcessEOTask):
 
         for b in bands:
             # xr.concat will duplicate existing coords, so we need to make sure in advance that we don't include duplicates:
-            mask = (data[dim]["_name"] == b) | (data[dim]["_alias"] == b) & np.logical_not(already_included)
+            mask = (data[dim] == b) & np.logical_not(already_included)
             if not mask.any():
                 continue
 
@@ -107,11 +114,7 @@ class filter_bandsEOTask(ProcessEOTask):
 
         for w in wavelengths:
             # xr.concat will duplicate existing coords, so we need to make sure in advance that we don't include duplicates:
-            mask = (
-                (data[dim]["_wavelength"] >= w[0])
-                & (data[dim]["_wavelength"] <= w[1])
-                & np.logical_not(already_included)
-            )
+            mask = (data[dim] >= float(w[0])) & (data[dim] <= float(w[1])) & np.logical_not(already_included)
             if not mask.any():
                 continue
 

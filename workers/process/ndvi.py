@@ -1,10 +1,9 @@
 import re
 
 import numpy as np
-import pandas as pd
 import xarray as xr
 
-from ._common import ProcessEOTask, ProcessParameterInvalid
+from ._common import ProcessEOTask, ProcessParameterInvalid, Band
 
 
 class ndviEOTask(ProcessEOTask):
@@ -18,10 +17,8 @@ class ndviEOTask(ProcessEOTask):
 
         if "band" not in data.dims:
             raise ProcessParameterInvalid("ndvi", "data", "Dimension 'band' is missing (DimensionAmbiguous).")
-        if not isinstance(data.coords["band"].to_index(), pd.MultiIndex):
-            raise ProcessParameterInvalid(
-                "ndvi", "data", "Dimension 'band' does not contain bands (DimensionAmbiguous)."
-            )
+
+        all_band_coords = list(data.coords["band"].to_index())
 
         if target_band is not None:
             # "^\w+$" - \w is "from a-z, A-Z, 0-9, including the _ (underscore) character"
@@ -29,33 +26,24 @@ class ndviEOTask(ProcessEOTask):
                 raise ProcessParameterInvalid("ndvi", "target_band", "String does not match the required pattern.")
             # "If a band with the specified name exists, a BandExists is thrown."
             try:
-                data.sel(band=target_band)
+                target_band_index = all_band_coords.index(target_band)
                 raise ProcessParameterInvalid("ndvi", "target_band", "Band name already exists (BandExists).")
-            except KeyError:
-                pass
-            try:
-                data.sel(band={"_alias": target_band})
-                raise ProcessParameterInvalid("ndvi", "target_band", "Band name already exists (BandExists).")
-            except KeyError:
+            except ValueError:
                 pass
 
         try:
-            nir_data = data.sel(band=nir)
-        except KeyError:
-            try:
-                nir_data = data.sel(band={"_alias": nir})
-            except KeyError:
-                raise ProcessParameterInvalid("ndvi", "nir", "Parameter does not match any band (NirBandAmbiguous).")
-        nir_data = nir_data.squeeze("band", drop=True)
+            nir_band_index = all_band_coords.index(nir)
+        except ValueError:
+            raise ProcessParameterInvalid("ndvi", "nir", "Parameter does not match any band (NirBandAmbiguous).")
 
         try:
-            red_data = data.sel(band=red)
-        except KeyError:
-            try:
-                red_data = data.sel(band={"_alias": red})
-            except KeyError:
-                raise ProcessParameterInvalid("ndvi", "red", "Parameter does not match any band (RedBandAmbiguous).")
-        red_data = red_data.squeeze("band", drop=True)
+            red_band_index = all_band_coords.index(red)
+        except ValueError:
+            raise ProcessParameterInvalid("ndvi", "red", "Parameter does not match any band (RedBandAmbiguous).")
+
+        # we can only use `data.sel()` with either Band object of band name (not alias)
+        nir_data = data.isel(band=nir_band_index)
+        red_data = data.isel(band=red_band_index)
 
         result = (nir_data - red_data) / (nir_data + red_data)
 
@@ -64,8 +52,7 @@ class ndviEOTask(ProcessEOTask):
             # specify a new band name in the parameter target_band. This adds a new dimension label with
             # the specified name to the dimension, which can be used to access the computed values."
             r2 = result.expand_dims(dim="band")
-            mi = pd.MultiIndex.from_arrays([[target_band], [None], [None]], names=("_name", "_alias", "_wavelength"))
-            r3 = r2.assign_coords(band=mi)
+            r3 = r2.assign_coords(band=[Band(target_band)])
             merged_result = xr.concat([data, r3], dim="band")
             return merged_result
 

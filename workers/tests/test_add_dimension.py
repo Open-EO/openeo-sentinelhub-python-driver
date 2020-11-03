@@ -5,11 +5,10 @@ import sys
 import numpy as np
 import pytest
 import xarray as xr
-import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid
+from process._common import ProcessParameterInvalid, Band
 
 
 @pytest.fixture
@@ -84,7 +83,7 @@ def execute_process():
                         datetime(2014, 3, 6),
                         datetime(2014, 3, 7),
                     ],
-                    "b": pd.MultiIndex.from_arrays([["B01"], [None], [None]], names=("_name", "_alias", "_wavelength")),
+                    "b": [Band("B01")],
                 },
             ),
         ),
