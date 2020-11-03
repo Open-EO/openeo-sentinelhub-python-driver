@@ -219,6 +219,7 @@ class ProcessEOTask(EOTask):
         # xr.DataArray might be simulating another data type:
         if isinstance(param_val, xr.DataArray) and param_val.attrs.get("simulated_datatype", None):
             if param_val.attrs["simulated_datatype"][0] not in allowed_types:
+                self.logger.debug(f'Got value of (simulated) invalid type: {param_val.attrs["simulated_datatype"][0]} / {repr(param_val)}')
                 raise ProcessParameterInvalid(
                     self.process_id, param, f"Argument must be of types '[{allowed_types_str}]'."
                 )
@@ -237,6 +238,7 @@ class ProcessEOTask(EOTask):
                     pass  # parameter might still match other (less restrictive) data types
 
         if not isinstance(param_val, tuple(allowed_types)):
+            self.logger.debug(f'Got value of invalid type: {repr(param_val)}')
             raise ProcessParameterInvalid(self.process_id, param, f"Argument must be of types '[{allowed_types_str}]'.")
         else:
             return param_val

@@ -169,6 +169,50 @@
 
 
   "reducedimension2": {
+    "process_id": "reduce_dimension",
+    "arguments": {
+      "data": {
+        "from_node": "reducedimension1"
+      },
+      "dimension": "band",
+      "reducer": {
+        "process_graph": {
+          "arrayelement1": {
+            "process_id": "array_element",
+            "arguments": {
+              "data": {
+                "from_parameter": "data"
+              },
+              "label": "VH"
+            }
+          },
+          "arrayelement2": {
+            "process_id": "array_element",
+            "arguments": {
+              "data": {
+                "from_parameter": "data"
+              },
+              "label": "VV"
+            }
+          },
+          "subtract1": {
+            "process_id": "subtract",
+            "arguments": {
+              "x": {
+                "from_node": "arrayelement1"
+              },
+              "y": {
+                "from_node": "arrayelement2"
+              }
+            },
+            "result": true
+          }
+        }
+      }
+    },
+    "description": "Calculate the difference between VH and VV resulting in one image of the difference without a bands dimension"
+  },
+  "expectedreducedimension2": {
     "process_id": "create_cube",
     "arguments": {
       "data": [
@@ -182,8 +226,18 @@
         "y": [16.3],
         "x": [48.2, 48.3]
       }
-    },
-    "description": "SKIP STEP FOR NOW: Calculate the difference between VH and VV resulting in one image of the difference without a bands dimension"
+    }
+  },
+  "assertreducedimension2": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "a": {
+        "from_node": "reducedimension2"
+      },
+      "b": {
+        "from_node": "expectedreducedimension2"
+      }
+    }
   },
 
 

@@ -74,6 +74,7 @@ class reduce_dimensionEOTask(ProcessEOTask):
             result = all_results[result_task]
 
             result.attrs["reduce_by"].pop()
+            result.attrs["simulated_datatype"] = None
 
             if target_dimension:
                 result = xr.concat(result, dim=target_dimension)
