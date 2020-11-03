@@ -180,6 +180,33 @@ def filter_bandsEOTask():
                 },
             ),
         ),
+        # make sure we are handling cubes dimensions correctly by using cube 1x3x2x4:
+        (
+            xr.DataArray(
+                [
+                    [[2, 3, 4, 6], [5, 6, 7, 6]],
+                    [[1, 2, 3, 6], [4, 5, 6, 6]],
+                    [[8, 9, 0, 6], [1, 2, 3, 6]],
+                ],
+                dims=("y", "x", "b"),
+                coords={
+                    "b": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842), Band("B11", None, 1.11), Band("B22")],
+                },
+            ),
+            ["B08"],
+            None,
+            xr.DataArray(
+                [
+                    [[3], [6]],
+                    [[2], [5]],
+                    [[9], [2]],
+                ],
+                dims=("y", "x", "b"),
+                coords={
+                    "b": [Band("B08", "nir", 0.842)],
+                },
+            ),
+        ),
     ],
 )
 def test_correct(filter_bandsEOTask, data, bands, wavelengths, expected_result):

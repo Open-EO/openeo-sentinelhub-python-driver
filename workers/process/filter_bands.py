@@ -97,7 +97,7 @@ class filter_bandsEOTask(ProcessEOTask):
         #     - wavelength  (b) float64 0.823 0.901
 
         # make a copy of `data` but fill it with False values:
-        already_included = xr.DataArray(False, dims=data.dims, coords=data.coords)
+        already_included = xr.DataArray(False, dims=data[dim].dims, coords=data[dim].coords)
         result = None
 
         for b in bands:
