@@ -5,27 +5,36 @@ from ._common import ProcessEOTask, ProcessParameterInvalid
 
 
 class multiplyEOTask(ProcessEOTask):
-    """
-    This process is often used within reduce_dimension process, which could pass each of the vectors separately,
-    but this would be very inefficient. Instead, we get passed a whole xarray with an attribute reduce_by.
-    In order to know, over which dimension should a callback process be applied, reduce_dimension appends the
-    reduction dimension to the reduce_by attribute of the data. The last element of this list is the current
-    reduction dimension. This also allows multi-level reduce_dimension calls.
-    """
-
     def process(self, arguments):
-        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray, list])
-        ignore_nodata = self.validate_parameter(arguments, "ignore_nodata", default=True, allowed_types=[bool])
+        x = self.validate_parameter(arguments, "x", required=True, allowed_types=[float, type(None)])
+        y = self.validate_parameter(arguments, "y", required=True, allowed_types=[float, type(None)])
 
-        if isinstance(data, xr.DataArray) and data.attrs.get("reduce_by"):
-            dim = data.attrs["reduce_by"]
-            return data.prod(dim=dim, skipna=ignore_nodata, keep_attrs=True)
+        # we might be passing the xr.DataArray and just simulating numbers, but let's take
+        # care of "normal" use-case first:
+        if not isinstance(x, xr.DataArray) and not isinstance(y, xr.DataArray):
+            if x is None or y is None:
+                return None
+            return x * y
 
-        if len(data) < 2:
-            raise ProcessParameterInvalid("multiply/product", "data", "Array must have at least 2 elements.")
+        # at least one parameter is xr.DataArray
+        original_attrs = x.attrs if isinstance(x, xr.DataArray) else y.attrs
 
-        original_type_was_number, data = self.convert_to_dataarray(data, as_list=True)
+        # we can't multiply if one of the parameters is None:
+        if x is None:
+            x = xr.full_like(y, fill_value=np.nan, dtype=np.double)
+        if y is None:
+            y = xr.full_like(x, fill_value=np.nan, dtype=np.double)
 
-        multiplication_array = xr.concat(data, dim="temporary_multiplication_dim")
-        results = multiplication_array.prod(dim="temporary_multiplication_dim", skipna=ignore_nodata, keep_attrs=True)
-        return self.results_in_appropriate_type(results, original_type_was_number)
+        try:
+            # xarray knows how to multiply DataArrays and numbers in every combination:
+            result = x * y
+        except ValueError as ex:
+            # non-matching dimensions could result in an exception:
+            #   ValueError: arguments without labels along dimension '...' cannot be aligned because they have different dimension sizes: ...
+            raise ProcessParameterInvalid("multiply", "x/y", str(ex))
+
+        result.attrs = original_attrs
+        # Once we get rid of "reduce_by", we can forget origianl attrs and be more explicit:
+        #  # the result is always a number:
+        #  result.attrs["simulated_datatype"] = (float,)
+        return result
