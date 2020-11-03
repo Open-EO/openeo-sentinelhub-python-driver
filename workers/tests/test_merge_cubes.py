@@ -5,6 +5,8 @@ import sys
 import numpy as np
 import pytest
 import xarray as xr
+import pandas as pd
+from sentinelhub import CRS, BBox
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
@@ -392,3 +394,141 @@ def test_incompatible_cubes(execute_process, cube1, cube2):
     with pytest.raises(ProcessParameterInvalid) as ex:
         result = execute_process(arguments)
     assert ex.value.args == ("merge_cubes", "cube1/cube2", "Only one of the dimensions can have different labels.")
+
+
+@pytest.mark.parametrize(
+    "cube1,cube2,expected_cube",
+    [
+        (
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                    ],
+                    "band": bands(),
+                },
+                attrs={"bbox": BBox((-7, 25, -4, 31), CRS(4326))},
+            ),
+            xr.DataArray(
+                [[[[0.26, 0.81]]], [[[0.91, 0.31]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 8),
+                        datetime(2014, 3, 9),
+                    ],
+                    "band": bands(),
+                },
+                attrs={"bbox": BBox((-7, 25, -4, 31), CRS(4326))},
+            ),
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]], [[[0.26, 0.81]]], [[[0.91, 0.31]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                        datetime(2014, 3, 8),
+                        datetime(2014, 3, 9),
+                    ],
+                    "band": bands(),
+                    "x": [0],
+                    "y": [0],
+                },
+                attrs={"bbox": BBox((-7, 25, -4, 31), CRS(4326))},
+            ),
+        ),
+        (
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                    ],
+                    "band": bands(),
+                },
+                attrs={"bbox": BBox((-7, 25, -4, 31), CRS(4326))},
+            ),
+            xr.DataArray(
+                [[[[0.26, 0.81]]], [[[0.91, 0.31]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 8),
+                        datetime(2014, 3, 9),
+                    ],
+                    "band": bands(),
+                },
+            ),
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]], [[[0.26, 0.81]]], [[[0.91, 0.31]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                        datetime(2014, 3, 8),
+                        datetime(2014, 3, 9),
+                    ],
+                    "band": bands(),
+                    "x": [0],
+                    "y": [0],
+                },
+                attrs={"bbox": BBox((-7, 25, -4, 31), CRS(4326))},
+            ),
+        ),
+    ],
+)
+def test_attrs(execute_process, cube1, cube2, expected_cube):
+    arguments = {"cube1": cube1, "cube2": cube2}
+    result = execute_process(arguments)
+    # Assert identical also tests attributes
+    xr.testing.assert_identical(result, expected_cube)
+
+
+@pytest.mark.parametrize(
+    "cube1,cube2",
+    [
+        (
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 4),
+                        datetime(2014, 3, 5),
+                        datetime(2014, 3, 6),
+                    ],
+                    "band": bands(),
+                },
+                attrs={"bbox": BBox((-7, 25, -4, 31), CRS(4326))},
+            ),
+            xr.DataArray(
+                [[[[0.26, 0.81]]], [[[0.91, 0.31]]]],
+                dims=("t", "y", "x", "band"),
+                coords={
+                    "t": [
+                        datetime(2014, 3, 8),
+                        datetime(2014, 3, 9),
+                    ],
+                    "band": bands(),
+                },
+                attrs={"bbox": BBox((-4, 30, -1, 30 - 5), CRS(4326))},
+            ),
+        )
+    ],
+)
+def test_different_bboxes(execute_process, cube1, cube2):
+    arguments = {"cube1": cube1, "cube2": cube2}
+    with pytest.raises(ProcessParameterInvalid) as ex:
+        result = execute_process(arguments)
+    assert ex.value.args == ("merge_cubes", "cube1/cube2", "Cubes must have the same bounding box.")

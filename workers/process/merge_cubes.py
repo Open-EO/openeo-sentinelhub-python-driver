@@ -4,6 +4,7 @@ import math
 import numpy as np
 import xarray as xr
 from eolearn.core import EOWorkflow
+from sentinelhub import CRS, BBox
 
 from ._common import ProcessEOTask, DATA_TYPE_TEMPORAL_INTERVAL, ProcessParameterInvalid
 
@@ -26,6 +27,24 @@ def get_value(cube, coord):
         return True, cube.sel(coord).data.tolist()
     except:
         return False, None
+
+
+def merge_attrs(attrs1, attrs2):
+    merged_attrs = {}
+    bbox1 = attrs1.get("bbox")
+    bbox2 = attrs2.get("bbox")
+
+    if bbox1 is not None and bbox2 is not None:
+        if bbox1._crs == bbox2._crs and bbox1.lower_left == bbox2.lower_left and bbox1.upper_right == bbox2.upper_right:
+            merged_attrs["bbox"] = bbox1
+        else:
+            raise ProcessParameterInvalid("merge_cubes", "cube1/cube2", "Cubes must have the same bounding box.")
+    elif bbox1 is not None:
+        merged_attrs["bbox"] = bbox1
+    elif bbox2 is not None:
+        merged_attrs["bbox"] = bbox2
+
+    return merged_attrs
 
 
 class merge_cubesEOTask(ProcessEOTask):
@@ -55,7 +74,7 @@ class merge_cubesEOTask(ProcessEOTask):
         all_dimensions = tuple(dict.fromkeys(cube1.dims + cube2.dims))
         overlapping_dimension_found = False
 
-        result = xr.DataArray()
+        result = xr.DataArray(attrs=merge_attrs(cube1.attrs, cube2.attrs))
         # We iterate over the union of all dimension of the two cubes
         for i, dimension_name in enumerate(all_dimensions):
             # If both cubes have the dimension, we merge the coordinates
