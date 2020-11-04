@@ -410,17 +410,60 @@
   },
 
 
-  "result1": {
+  "mergecubes2": {
+    "process_id": "merge_cubes",
+    "arguments": {
+      "cube1": {
+        "from_node": "mergecubes1"
+      },
+      "cube2": {
+        "from_node": "adddimension1"
+      }
+    },
+    "description": "Merging RG and B datacubes to one with all three images having the band labels R, G and B"
+  },
+  "expectedmergecubes2": {
+    "process_id": "create_cube",
+    "arguments": {
+      "data": [
+        [
+          [0.325, 0.5, -0.175],
+          [0.5, 0.325, 0.175]
+        ]
+      ],
+      "dims": ["y", "x", "band"],
+      "coords": {
+        "y": [16.3],
+        "x": [48.2, 48.3],
+        "band": [["G", null, null], ["R", null, null], ["B", null, null]]
+      }
+    }
+  },
+  "assertmergecubes2": {
+    "process_id": "assert_equals",
+    "arguments": {
+      "a": {
+        "from_node": "mergecubes2"
+      },
+      "b": {
+        "from_node": "expectedmergecubes2"
+      }
+    }
+  },
+
+
+  "saveresult1": {
     "process_id": "save_result",
     "arguments": {
       "data": {
-        "from_node": "reducedimension1"
+        "from_node": "mergecubes2"
       },
       "format": "gtiff",
       "options": {
         "datatype": "float32"
       }
     },
+    "description": "Save the resulting datacube as GeoTiff",
     "result": true
   }
 }
