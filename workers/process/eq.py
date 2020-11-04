@@ -61,9 +61,10 @@ class eqEOTask(ProcessEOTask):
                 cube = x
                 other_value = y
             if isinstance(other_value, (list, dict)):
-                other_value = False
+                return xr.where(cube.isnull(), None, False)
             other_value = xr.DataArray(other_value)
 
+        # Subtracting Nonetype is not possible, so we replace it with np.nan, which is a float
         cube = cube.fillna(np.nan)
         other_value = other_value.fillna(np.nan)
 

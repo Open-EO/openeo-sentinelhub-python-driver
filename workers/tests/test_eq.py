@@ -146,6 +146,17 @@ def test_with_two_xarrays(execute_eq_process, x, y, expected_result):
                 attrs={"simulated_datatype": (float,)},
             ),
         ),
+        (
+            xr.DataArray(
+                [[[[0, 0.8]]], [[[0.9, 0.3]]], [[[np.nan, 0.5]]]],
+                attrs={"simulated_datatype": (float,)},
+            ),
+            [],
+            xr.DataArray(
+                [[[[False, False]]], [[[False, False]]], [[[None, False]]]],
+                attrs={"simulated_datatype": (float,)},
+            ),
+        ),
     ],
 )
 def test_with_xarray_and_scalar(execute_eq_process, x, y, expected_result):
