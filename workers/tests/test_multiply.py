@@ -1,50 +1,30 @@
-import pytest
-import sys, os
-import xarray as xr
+import math
+import os
+import sys
+
 import numpy as np
+import pytest
+import xarray as xr
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
+from process._common import ProcessParameterInvalid
 
 
 @pytest.fixture
-def generate_data():
-    def _construct(
-        data=([[[[0.2, 0.8]]]], [[[[0.2, 0.8]]]]),
-        attrs={"test_keep_attrs": 42},
-        dims=("t", "y", "x", "band"),
-        as_list=False,
-        as_dataarray=False,
-    ):
-        if as_list:
-            return data
-
-        if as_dataarray:
-            return xr.DataArray(data, dims=dims, attrs=attrs)
-
-        data_list = []
-
-        for d in data:
-            xrdata = xr.DataArray(d, dims=dims, attrs=attrs)
-            data_list.append(xrdata)
-
-        return data_list
-
-    return _construct
-
-
-@pytest.fixture
-def execute_multiply_process(generate_data):
-    def wrapped(data_arguments={}, ignore_nodata=None):
-        arguments = {}
-        if data_arguments is not None:
-            arguments["data"] = generate_data(**data_arguments)
-        if ignore_nodata is not None:
-            arguments["ignore_nodata"] = ignore_nodata
-
+def execute_multiply_process():
+    def wrapped(arguments):
         return process.multiply.multiplyEOTask(None, "", None, {}, "node1", {}).process(arguments)
 
     return wrapped
+
+
+def number_as_xarray(value):
+    return xr.DataArray([np.nan if value is None else value], attrs={"simulated_datatype": (float,)})
+
+
+def list_as_xarray(values):
+    return xr.DataArray([np.nan if v is None else v for v in values], attrs={"simulated_datatype": (float,)})
 
 
 ###################################
@@ -53,115 +33,75 @@ def execute_multiply_process(generate_data):
 
 
 @pytest.mark.parametrize(
-    "data,ignore_nodata,expected_result", [([5, 0], True, 0), ([-2, 4, 2.5], True, -20), ([1, None], False, None)]
-)
-def test_examples(execute_multiply_process, data, expected_result, ignore_nodata):
-    """
-    Test multiply process with examples from https://open-eo.github.io/openeo-api/processreference/#multiply
-    """
-    data_arguments = {"data": data, "as_list": True}
-    result = execute_multiply_process(data_arguments, ignore_nodata=ignore_nodata)
-    assert result == expected_result
-
-
-@pytest.mark.parametrize(
-    "array1,array2,expected_data",
+    "x,y,expected_result",
     [
-        ([[[[0.2, 0.8]]]], [[[[0.2, 0.8]]]], [[[[0.04, 0.64]]]]),
+        (5, 2.5, 12.5),  # example from: https://processes.openeo.org/#multiply
+        (-2, -4, 8),  # example from: https://processes.openeo.org/#multiply
+        (1, None, None),  # example from: https://processes.openeo.org/#multiply
+        # null is returned if any element is no-data:
+        (None, 1, None),
+        (None, None, None),
     ],
 )
-def test_with_xarray(execute_multiply_process, generate_data, array1, array2, expected_data):
+def test_correct(execute_multiply_process, x, y, expected_result):
     """
-    Test multiply process with xarray.DataArrays
+    Test multiply process with examples from https://processes.openeo.org/#multiply
     """
-    expected_result = generate_data(data=[expected_data])[0]
-    result = execute_multiply_process({"data": (array1, array2)})
-    xr.testing.assert_allclose(result, expected_result)
-
-
-@pytest.mark.parametrize(
-    "array1,array2,ignore_nodata,expected_data",
-    [
-        ([[[[np.nan, 0.0]]]], [[[[0.2, np.nan]]]], True, [[[[0.2, 0.0]]]]),
-        ([[[[np.nan, np.nan]]]], [[[[0.2, np.nan]]]], False, [[[[np.nan, np.nan]]]]),
-        ([[[[2.0, 1.0]]]], [[[[0.2, np.nan]]]], False, [[[[0.4, np.nan]]]]),
-    ],
-)
-def test_with_xarray_nulls(execute_multiply_process, generate_data, array1, array2, expected_data, ignore_nodata):
-    """
-    Test multiply process with xarray.DataArrays with null in data
-    """
-    expected_result = generate_data(data=[expected_data])[0]
-    result = execute_multiply_process({"data": (array1, array2)}, ignore_nodata=ignore_nodata)
-    xr.testing.assert_allclose(result, expected_result)
-
-
-@pytest.mark.parametrize(
-    "array1,array2,expected_data",
-    [
-        ([[[[0.2, 0.8]]]], [[[[0.2, 0.8]]]], [[[[0.04, 0.64]]]]),
-    ],
-)
-def test_product(generate_data, array1, array2, expected_data):
-    """
-    Test product process, which is an alias of multiply
-    """
-    expected_result = generate_data(data=[expected_data])[0]
-    arguments = {"data": generate_data(data=[array1, array2])}
-    result = process.product.productEOTask(None, "", None, {}, "node1", {}).process(arguments)
-    xr.testing.assert_allclose(result, expected_result)
-
-
-@pytest.mark.parametrize(
-    "data,reduce_by,expected_data,expected_dims",
-    [
-        ([[[[0.2, 0.8]]], [[[1.0, 2.0]]]], "t", [[[0.2, 1.6]]], ("y", "x", "band")),
-    ],
-)
-def test_xarray_directly(execute_multiply_process, generate_data, data, reduce_by, expected_data, expected_dims):
-    """
-    Test multiply process by passing a DataArray to be reduced directly (instead of a list)
-    """
-    expected_result = generate_data(
-        data=expected_data, dims=expected_dims, attrs={"reduce_by": reduce_by}, as_dataarray=True
-    )
-    result = execute_multiply_process({"data": data, "attrs": {"reduce_by": reduce_by}, "as_dataarray": True})
-    xr.testing.assert_allclose(result, expected_result)
-
-
-@pytest.mark.parametrize(
-    "number1,number2,arr1,arr2,expected_data,num_first",
-    [
+    # No matter which test parameters we get (x, t, expected_result), we would like to test
+    # all of the combinations:
+    #  - (5, 2.5, 2)
+    #  - (number_as_xarray(5), 2.5, number_as_xarray(2))
+    #  - (5, number_as_xarray(2.5), number_as_xarray(2))
+    #  - (number_as_xarray(5), number_as_xarray(2.5), number_as_xarray(2))
+    parameters_forms = [
         (
-            1000,
-            0.1,
-            [[[[1.0, 2.0]]], [[[4.0, 5.0]]]],
-            [[[[20.0, 10.0]]], [[[5.0, 4.0]]]],
-            [[[[2000, 2000]]], [[[2000, 2000]]]],
-            True,
+            x,
+            y,
+            expected_result,
         ),
         (
-            1000,
-            0.1,
-            [[[[1.0, 2.0]]], [[[4.0, 5.0]]]],
-            [[[[20.0, 10.0]]], [[[5.0, 4.0]]]],
-            [[[[2000, 2000]]], [[[2000, 2000]]]],
-            False,
+            number_as_xarray(x),
+            y,
+            number_as_xarray(expected_result),
         ),
+        (
+            x,
+            number_as_xarray(y),
+            number_as_xarray(expected_result),
+        ),
+        (
+            number_as_xarray(x),
+            number_as_xarray(y),
+            number_as_xarray(expected_result),
+        ),
+    ]
+    for x, y, expected_result in parameters_forms:
+        arguments = {"x": x, "y": y}
+        result = execute_multiply_process(arguments)
+        if isinstance(expected_result, xr.DataArray):
+            xr.testing.assert_allclose(result, expected_result)
+        else:
+            assert result == expected_result
+
+
+@pytest.mark.parametrize(
+    "x,y,expected_result",
+    [
+        (list_as_xarray([1, 2, 3, 1000, np.nan]), 0.5, list_as_xarray([0.5, 1.0, 1.5, 500, np.nan])),
     ],
 )
-def test_with_numbers(execute_multiply_process, generate_data, number1, number2, arr1, arr2, expected_data, num_first):
-    """
-    Test multiply process by a list of numbers and DataArrays
-    """
-    expected_result = generate_data(data=expected_data, as_dataarray=True)
-    arr1 = generate_data(data=arr1, as_dataarray=True)
-    arr2 = generate_data(data=arr2, as_dataarray=True)
-
-    if num_first:
-        data = [number1, arr1, number2, arr2]
-    else:
-        data = [arr1, number1, arr2, number2]
-
-    result = execute_multiply_process({"data": data, "as_list": True})
+def test_xarray(execute_multiply_process, x, y, expected_result):
+    arguments = {"x": x, "y": y}
+    result = execute_multiply_process(arguments)
     xr.testing.assert_allclose(result, expected_result)
+
+
+def test_exception(execute_multiply_process):
+    arguments = {
+        "x": list_as_xarray([1, 2, 3, 1000, np.nan]),
+        "y": list_as_xarray([1]),
+    }
+    with pytest.raises(ProcessParameterInvalid) as ex:
+        result = execute_multiply_process(arguments)
+    assert ex.value.args[0] == "multiply"
+    assert ex.value.args[1] == "x/y"
