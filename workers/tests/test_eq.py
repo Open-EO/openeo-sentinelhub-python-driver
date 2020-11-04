@@ -154,3 +154,61 @@ def test_with_xarray_and_scalar(execute_eq_process, x, y, expected_result):
     """
     result = execute_eq_process(x, y)
     xr.testing.assert_allclose(result, expected_result)
+
+
+@pytest.mark.parametrize(
+    "x,y,delta,expected_result",
+    [
+        (
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.3, 0.5001]]]],
+                attrs={"simulated_datatype": (float,)},
+            ),
+            xr.DataArray(
+                [[[[0, 0.8]]], [[[0.6, 0.1]]], [[[0.3, 0.3]]]],
+                attrs={"simulated_datatype": (float,)},
+            ),
+            0.2,
+            xr.DataArray(
+                [[[[True, True]]], [[[False, True]]], [[[True, False]]]],
+                attrs={"simulated_datatype": (float,)},
+            ),
+        ),
+        (
+            xr.DataArray(
+                [[[[0.1, None]]], [[[0.9, 0.1]]], [[[None, 0.5]]]],
+                attrs={"simulated_datatype": (float,)},
+            ),
+            xr.DataArray(
+                [[[[0, None]]], [[[0.7, 0.1]]], [[[None, 0.3]]]],
+                attrs={"simulated_datatype": (float,)},
+            ),
+            0.1,
+            xr.DataArray(
+                [[[[True, None]]], [[[False, True]]], [[[None, False]]]],
+                attrs={"simulated_datatype": (float,)},
+            ),
+        ),
+        (
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[np.nan, 0.5]]]],
+                attrs={"simulated_datatype": (float,)},
+            ),
+            xr.DataArray(
+                [[[[0, np.nan]]], [[[0.7, 0.1]]], [[[0.3, 0.5]]]],
+                attrs={"simulated_datatype": (float,)},
+            ),
+            0,
+            xr.DataArray(
+                [[[[False, np.nan]]], [[[False, False]]], [[[np.nan, True]]]],
+                attrs={"simulated_datatype": (float,)},
+            ),
+        ),
+    ],
+)
+def test_with_xarrays_and_delta(execute_eq_process, x, y, delta, expected_result):
+    """
+    Test eq process with xarray.DataArrays
+    """
+    result = execute_eq_process(x, y, delta=delta)
+    xr.testing.assert_allclose(result, expected_result)

@@ -64,6 +64,9 @@ class eqEOTask(ProcessEOTask):
                 other_value = False
             other_value = xr.DataArray(other_value)
 
+        cube = cube.fillna(np.nan)
+        other_value = other_value.fillna(np.nan)
+
         if delta:
             m = np.abs(cube - other_value) <= delta
         else:
