@@ -30,7 +30,7 @@
         "band": [["VV", null, null]]
       }
     },
-    "description": "Loading (testing) Sentinel 1 data for VV and VH over Vienna in March 2017"
+    "description": "Load Sentinel 1 VV data over Vienna from March to May 2017"
   },
 
 
@@ -97,7 +97,7 @@
         "2017-05-01"
       ]
     },
-    "description": "Selecting only data from March 2017"
+    "description": "Selecting only data from April 2017"
   },
   "expectedfiltertemporal2": {
     "process_id": "create_cube",
@@ -149,7 +149,7 @@
         "2017-06-01"
       ]
     },
-    "description": "Selecting only data from March 2017"
+    "description": "Selecting only data from May 2017"
   },
   "expectedfiltertemporal3": {
     "process_id": "create_cube",
