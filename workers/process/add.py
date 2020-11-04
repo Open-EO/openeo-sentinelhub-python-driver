@@ -13,5 +13,5 @@ class addEOTask(ProcessEOTask):
             result = x + y
         except ValueError as ex:
             # non-matching dimensions could result in an exception:
-            raise ProcessParameterInvalid("add", "x+y", str(ex))
+            raise ProcessParameterInvalid("add", "x/y", str(ex))
         return result

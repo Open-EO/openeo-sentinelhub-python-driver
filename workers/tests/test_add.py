@@ -83,4 +83,4 @@ def test_array_different_dimensions(execute_add_process, x, y, expected_result):
     with pytest.raises(ProcessParameterInvalid) as ex:
         result = execute_add_process(arguments)
     assert ex.value.args[0] == "add"
-    assert ex.value.args[1] == "x+y"
+    assert ex.value.args[1] == "x/y"
