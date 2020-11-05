@@ -196,6 +196,9 @@
     "eo:constellation": [
       "sentinel-2"
     ],
+    "crs": [
+      "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+    ],
     "eo:epsg": [
       2154,
       2180,
