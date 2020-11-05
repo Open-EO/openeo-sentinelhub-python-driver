@@ -14,19 +14,23 @@ from process._common import ProcessParameterInvalid, Band
 import logging
 
 
+# sorts xr.DataArray by dims and coords so that we can compare it more easily:
+def sort_by_dims_coords(x):
+    for dim in x.dims:
+        x = x.sortby(dim)
+    x = x.transpose(*sorted(list(x.dims)))
+    return x
+
+
 @pytest.fixture
 def execute_process():
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
 
-    def wrapped(arguments, logger=logger):
+    def wrapped(arguments):
         return process.merge_cubes.merge_cubesEOTask(None, "", logger, {}, "node1", {}).process(arguments)
 
     return wrapped
-
-
-def bands():
-    return [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)]
 
 
 ###################################
@@ -35,500 +39,359 @@ def bands():
 
 
 @pytest.mark.parametrize(
-    "cube1,cube2,expected_cube",
+    "cube1,cube2,overlap_resolver,expected_result",
     [
+        # matching dims and coords:
         (
             xr.DataArray(
-                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 4),
-                        datetime(2014, 3, 5),
-                        datetime(2014, 3, 6),
-                    ],
-                    "band": bands(),
-                },
+                [[0.1, 0.3]],
+                dims=("a", "b"),
+                coords={},
+                attrs={},
             ),
             xr.DataArray(
-                [[[[0.26, 0.81]]], [[[0.91, 0.31]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 8),
-                        datetime(2014, 3, 9),
-                    ],
-                    "band": bands(),
-                },
-            ),
-            xr.DataArray(
-                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]], [[[0.26, 0.81]]], [[[0.91, 0.31]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 4),
-                        datetime(2014, 3, 5),
-                        datetime(2014, 3, 6),
-                        datetime(2014, 3, 8),
-                        datetime(2014, 3, 9),
-                    ],
-                    "band": bands(),
-                    "x": [0],
-                    "y": [0],
-                },
-            ),
-        ),
-        (
-            xr.DataArray(
-                [[[0.5], [0.325]]],
-                dims=("y", "x", "band"),
-                coords={
-                    "y": [16.3],
-                    "x": [48.2, 48.3],
-                    "band": [Band("R")],
-                },
-            ),
-            xr.DataArray(
-                [[[0.325], [0.5]]],
-                dims=("y", "x", "band"),
-                coords={
-                    "y": [16.3],
-                    "x": [48.2, 48.3],
-                    "band": [Band("G")],
-                },
-            ),
-            xr.DataArray(
-                [[[0.5, 0.325], [0.325, 0.5]]],
-                dims=("y", "x", "band"),
-                coords={
-                    "y": [16.3],
-                    "x": [48.2, 48.3],
-                    "band": [Band("R"), Band("G")],
-                },
-            ),
-        ),
-    ],
-)
-def test_separated_cubes(execute_process, cube1, cube2, expected_cube):
-    arguments = {"cube1": cube1, "cube2": cube2}
-    result = execute_process(arguments)
-    xr.testing.assert_allclose(result, expected_cube)
-
-
-@pytest.mark.parametrize(
-    "cube1,cube2,overlap_resolver,expected_cube",
-    [
-        (
-            xr.DataArray(
-                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 4),
-                        datetime(2014, 3, 5),
-                        datetime(2014, 3, 6),
-                    ],
-                    "band": bands(),
-                },
-            ),
-            xr.DataArray(
-                [[[[0.26, 0.81]]], [[[0.91, 0.31]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 5),
-                        datetime(2014, 3, 6),
-                    ],
-                    "band": bands(),
-                },
+                [[0.2, 0.8]],
+                dims=("a", "b"),
+                coords={},
+                attrs={},
             ),
             {
                 "process_graph": {
                     "resolver": {
-                        "process_id": "sum",
-                        "arguments": {"data": [{"from_parameter": "x"}, {"from_parameter": "y"}]},
+                        "process_id": "subtract",
+                        "arguments": {"x": {"from_parameter": "x"}, "y": {"from_parameter": "y"}},
                         "result": True,
                     }
                 }
             },
             xr.DataArray(
-                [[[[0.2, 0.8]]], [[[1.16, 1.11]]], [[[1.41, 0.81]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 4),
-                        datetime(2014, 3, 5),
-                        datetime(2014, 3, 6),
-                    ],
-                    "band": bands(),
-                    "x": [0],
-                    "y": [0],
-                },
+                [[-0.1, -0.5]],
+                dims=("a", "b"),
+                coords={},
+                attrs={},
             ),
         ),
-    ],
-)
-def test_with_overlap_conflicts(execute_process, cube1, cube2, overlap_resolver, expected_cube):
-    arguments = {"cube1": cube1, "cube2": cube2, "overlap_resolver": overlap_resolver}
-    result = execute_process(arguments)
-    xr.testing.assert_allclose(result, expected_cube)
-
-
-@pytest.mark.parametrize(
-    "cube1,cube2",
-    [
+        # the first cube is missing a dim:
         (
             xr.DataArray(
-                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 4),
-                        datetime(2014, 3, 5),
-                        datetime(2014, 3, 6),
-                    ],
-                    "band": bands(),
-                },
+                [1.1, 1.3],
+                dims=("b"),
+                coords={},
+                attrs={},
             ),
             xr.DataArray(
-                [[[[0.26, 0.81]]], [[[0.91, 0.31]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 5),
-                        datetime(2014, 3, 6),
-                    ],
-                    "band": bands(),
-                },
-            ),
-        ),
-        (
-            xr.DataArray(
-                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 4),
-                        datetime(2014, 3, 5),
-                        datetime(2014, 3, 6),
-                    ],
-                    "band": bands(),
-                    "x": [0],
-                    "y": [0],
-                },
-            ),
-            xr.DataArray(
-                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 4),
-                        datetime(2014, 3, 5),
-                        datetime(2014, 3, 6),
-                    ],
-                    "band": bands(),
-                    "x": [0],
-                    "y": [0],
-                },
-            ),
-        ),
-        (
-            xr.DataArray(
-                [[None]],
-                dims=("y", "x"),
-                coords={
-                    "x": [0],
-                    "y": [0],
-                },
-            ),
-            xr.DataArray(
-                [[None]],
-                dims=("y", "x"),
-                coords={
-                    "x": [0],
-                    "y": [0],
-                },
-            ),
-        ),
-    ],
-)
-def test_with_overlap_conflicts_and_no_overlap_resolver(execute_process, cube1, cube2):
-    arguments = {"cube1": cube1, "cube2": cube2}
-    with pytest.raises(ProcessParameterInvalid) as ex:
-        result = execute_process(arguments)
-    assert ex.value.args == (
-        "merge_cubes",
-        "overlap_resolver",
-        "Overlapping data cubes, but no overlap resolver has been specified. (OverlapResolverMissing)",
-    )
-
-
-@pytest.mark.parametrize(
-    "cube1,cube2,overlap_resolver,expected_cube",
-    [
-        (
-            xr.DataArray(
-                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 4),
-                        datetime(2014, 3, 5),
-                        datetime(2014, 3, 6),
-                    ],
-                    "band": bands(),
-                },
-            ),
-            xr.DataArray(
-                [[[0.26, 0.81]]],
-                dims=("y", "x", "band"),
-                coords={
-                    "band": bands(),
-                },
+                [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
+                dims=("a", "b"),
+                coords={},
+                attrs={},
             ),
             {
                 "process_graph": {
                     "resolver": {
-                        "process_id": "sum",
-                        "arguments": {"data": [{"from_parameter": "x"}, {"from_parameter": "y"}]},
+                        "process_id": "subtract",
+                        "arguments": {"x": {"from_parameter": "x"}, "y": {"from_parameter": "y"}},
                         "result": True,
                     }
                 }
             },
             xr.DataArray(
-                [[[[0.46, 1.61]]], [[[1.16, 1.11]]], [[[0.76, 1.31]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 4),
-                        datetime(2014, 3, 5),
-                        datetime(2014, 3, 6),
-                    ],
-                    "band": bands(),
-                    "x": [0],
-                    "y": [0],
-                },
+                [[0.9, 0.5], [0.4, -0.7], [-0.3, np.nan]],
+                dims=("a", "b"),
+                coords={},
+                attrs={},
             ),
         ),
+        # the second cube is missing a dim:
         (
             xr.DataArray(
-                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 4),
-                        datetime(2014, 3, 5),
-                        datetime(2014, 3, 6),
-                    ],
-                    "band": bands(),
-                },
+                [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
+                dims=("a", "b"),
+                coords={},
+                attrs={},
             ),
             xr.DataArray(
-                [0.26, 0.81],
-                dims=("band"),
-                coords={
-                    "band": bands(),
-                },
+                [0.1, 0.3],
+                dims=("b"),
+                coords={},
+                attrs={},
             ),
             {
                 "process_graph": {
                     "resolver": {
-                        "process_id": "sum",
-                        "arguments": {"data": [{"from_parameter": "x"}, {"from_parameter": "y"}]},
+                        "process_id": "subtract",
+                        "arguments": {"x": {"from_parameter": "x"}, "y": {"from_parameter": "y"}},
                         "result": True,
                     }
                 }
             },
             xr.DataArray(
-                [[[[0.46, 1.61]]], [[[1.16, 1.11]]], [[[0.76, 1.31]]]],
-                dims=("t", "y", "x", "band"),
+                [[0.1, 0.5], [0.6, 1.7], [1.3, np.nan]],
+                dims=("a", "b"),
+                coords={},
+                attrs={},
+            ),
+        ),
+        # the first cube is missing a dim - with coords:
+        (
+            xr.DataArray(
+                [1.1, 1.3],
+                dims=("b"),
+                coords={"b": ["asdf", "defg"]},
+                attrs={},
+            ),
+            xr.DataArray(
+                [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
+                dims=("a", "b"),
+                coords={"a": ["a", "b", "c"], "b": ["asdf", "defg"]},
+                attrs={},
+            ),
+            {
+                "process_graph": {
+                    "resolver": {
+                        "process_id": "subtract",
+                        "arguments": {"x": {"from_parameter": "x"}, "y": {"from_parameter": "y"}},
+                        "result": True,
+                    }
+                }
+            },
+            xr.DataArray(
+                [[0.9, 0.5], [0.4, -0.7], [-0.3, np.nan]],
+                dims=("a", "b"),
+                coords={"a": ["a", "b", "c"], "b": ["asdf", "defg"]},
+                attrs={},
+            ),
+        ),
+        # the first cube is missing a dim - with Band coords:
+        (
+            xr.DataArray(
+                [1.1, 1.3],
+                dims=("b"),
+                coords={"b": [Band("asdf"), Band("defg")]},
+                attrs={},
+            ),
+            xr.DataArray(
+                [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
+                dims=("a", "b"),
+                coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("asdf"), Band("defg")]},
+                attrs={},
+            ),
+            {
+                "process_graph": {
+                    "resolver": {
+                        "process_id": "subtract",
+                        "arguments": {"x": {"from_parameter": "x"}, "y": {"from_parameter": "y"}},
+                        "result": True,
+                    }
+                }
+            },
+            xr.DataArray(
+                [[0.9, 0.5], [0.4, -0.7], [-0.3, np.nan]],
+                dims=("a", "b"),
+                coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("asdf"), Band("defg")]},
+                attrs={},
+            ),
+        ),
+        # normal concatenation:
+        (
+            xr.DataArray(
+                [[0.1, np.nan], [0.2, 3], [np.nan, 4]],
+                dims=("a", "b"),
+                coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("B01"), Band("B02")]},
+                attrs={},
+            ),
+            xr.DataArray(
+                [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
+                dims=("a", "b"),
+                coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("B03"), Band("B04")]},
+                attrs={},
+            ),
+            None,
+            xr.DataArray(
+                [[0.1, np.nan, 0.2, 0.8], [0.2, 3, 0.7, 2], [np.nan, 4, 1.4, np.nan]],
+                dims=("a", "b"),
                 coords={
-                    "t": [
-                        datetime(2014, 3, 4),
-                        datetime(2014, 3, 5),
-                        datetime(2014, 3, 6),
-                    ],
-                    "band": bands(),
-                    "x": [0],
-                    "y": [0],
+                    "a": [Band("a"), Band("b"), Band("c")],
+                    "b": [Band("B01"), Band("B02"), Band("B03"), Band("B04")],
                 },
+                attrs={},
+            ),
+        ),
+        # merging, overlap on one coord:
+        (
+            xr.DataArray(
+                [[0.1, np.nan], [0.2, 3], [np.nan, 4]],
+                dims=("a", "b"),
+                coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("B01"), Band("B02")]},
+                attrs={},
+            ),
+            xr.DataArray(
+                [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
+                dims=("a", "b"),
+                coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("B02"), Band("B03")]},
+                attrs={},
+            ),
+            {
+                "process_graph": {
+                    "resolver": {
+                        "process_id": "subtract",
+                        "arguments": {"x": {"from_parameter": "x"}, "y": {"from_parameter": "y"}},
+                        "result": True,
+                    }
+                }
+            },
+            xr.DataArray(
+                [[0.1, np.nan, 0.8], [0.2, 2.3, 2], [np.nan, 2.6, np.nan]],
+                dims=("a", "b"),
+                coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("B01"), Band("B02"), Band("B03")]},
+                attrs={},
             ),
         ),
     ],
 )
-def test_with_different_dimensions(execute_process, cube1, cube2, overlap_resolver, expected_cube):
-    # Documentation doesn't make it clear whether cubes with different dimensions and mismatching labels on a common
-    # dimension are "compatible" or not.
-    # If cubes have different dimensions, we merge them into a higher dimensional cube which includes all, and then
-    # merge and resolve overlap in (at most one) common overlapping dimension.
-    arguments = {"cube1": cube1, "cube2": cube2, "overlap_resolver": overlap_resolver}
+def test_correct(execute_process, cube1, cube2, overlap_resolver, expected_result):
+    arguments = {"cube1": cube1, "cube2": cube2}
+    if overlap_resolver is not None:
+        arguments["overlap_resolver"] = overlap_resolver
+
     result = execute_process(arguments)
-    xr.testing.assert_allclose(result, expected_cube)
+
+    result = sort_by_dims_coords(result)
+    expected_result = sort_by_dims_coords(expected_result)
+    xr.testing.assert_allclose(result, expected_result)
 
 
 @pytest.mark.parametrize(
-    "cube1,cube2",
+    "cube1,cube2,expected_exc_param,expected_message",
     [
+        # missing dimensions:
         (
             xr.DataArray(
-                [[0.2]],
-                dims=("y", "x"),
-                coords={
-                    "x": [0],
-                    "y": [0],
-                },
+                [[0.2, 0.8]],
+                dims=("a", "b"),
+                coords={},
+                attrs={},
             ),
             xr.DataArray(
-                [[0.2]],
-                dims=("y", "x"),
-                coords={
-                    "x": [1],
-                    "y": [1],
-                },
+                [[[[0.26, 0.81]]], [[[0.91, 0.31]]]],
+                dims=("a", "b", "c", "d"),
+                coords={},
+                attrs={},
             ),
+            "cube1/cube2",
+            "Too many missing dimensions (c, d), can be at most one.",
+        ),
+        # missing dimensions in both of the cubes:
+        (
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
+                dims=("a", "b", "c", "d"),
+                coords={},
+                attrs={},
+            ),
+            xr.DataArray(
+                [[[[0.26, 0.81]]], [[[0.91, 0.31]]]],
+                dims=("a", "b", "e", "f"),
+                coords={},
+                attrs={},
+            ),
+            "cube1/cube2",
+            "Too many missing dimensions (c, d, e, f), can be at most one.",
+        ),
+        # mismatched coords in more than one dim:
+        (
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
+                dims=("a", "b", "c", "d"),
+                coords={"a": [1, 2, 3], "b": [1]},
+                attrs={},
+            ),
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
+                dims=("a", "b", "c", "d"),
+                coords={"a": [1, 2, 4], "b": [2]},
+                attrs={},
+            ),
+            "cube1/cube2",
+            "Too many mismatched dimensions (a, b), can be at most one.",
+        ),
+        # mismatched coords in more than one dim - different coords lengths:
+        (
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]]],
+                dims=("a", "b", "c", "d"),
+                coords={"a": [1, 2], "b": [1]},
+                attrs={},
+            ),
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
+                dims=("a", "b", "c", "d"),
+                coords={"a": [1, 2, 4], "b": [2]},
+                attrs={},
+            ),
+            "cube1/cube2",
+            "Too many mismatched dimensions (a, b), can be at most one.",
+        ),
+        # matching dims and coords, but no overlap_resolver:
+        (
+            xr.DataArray(
+                [[0.1, 0.3]],
+                dims=("a", "b"),
+                coords={},
+                attrs={},
+            ),
+            xr.DataArray(
+                [[0.2, 0.8]],
+                dims=("a", "b"),
+                coords={},
+                attrs={},
+            ),
+            "overlap_resolver",
+            "Overlapping data cubes, but no overlap resolver has been specified (OverlapResolverMissing).",
+        ),
+        # one cube is missing a dim, but no resolver:
+        (
+            xr.DataArray(
+                [0.1, 0.3],
+                dims=("b"),
+                coords={},
+                attrs={},
+            ),
+            xr.DataArray(
+                [[0.2, 0.8], [0.7, 2], [1.4, 3]],
+                dims=("a", "b"),
+                coords={},
+                attrs={},
+            ),
+            "overlap_resolver",
+            "Overlapping data cubes, but no overlap resolver has been specified (OverlapResolverMissing).",
+        ),
+        # normal merging on one coord, missing resolver:
+        (
+            xr.DataArray(
+                [[0.1, np.nan], [0.2, 3], [np.nan, 4]],
+                dims=("a", "b"),
+                coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("B01"), Band("B02")]},
+                attrs={},
+            ),
+            xr.DataArray(
+                [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
+                dims=("a", "b"),
+                coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("B02"), Band("B04")]},
+                attrs={},
+            ),
+            "overlap_resolver",
+            "Overlapping data cubes, but no overlap resolver has been specified (OverlapResolverMissing).",
         ),
     ],
 )
-def test_incompatible_cubes(execute_process, cube1, cube2):
+def test_exception(execute_process, cube1, cube2, expected_exc_param, expected_message):
     arguments = {"cube1": cube1, "cube2": cube2}
     with pytest.raises(ProcessParameterInvalid) as ex:
         result = execute_process(arguments)
-    assert ex.value.args == ("merge_cubes", "cube1/cube2", "Only one of the dimensions can have different labels.")
+    assert ex.value.args == ("merge_cubes", expected_exc_param, expected_message)
 
-
-@pytest.mark.parametrize(
-    "cube1,cube2,expected_cube",
-    [
-        (
-            xr.DataArray(
-                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 4),
-                        datetime(2014, 3, 5),
-                        datetime(2014, 3, 6),
-                    ],
-                    "band": bands(),
-                },
-                attrs={"bbox": BBox((-7, 25, -4, 31), CRS(4326))},
-            ),
-            xr.DataArray(
-                [[[[0.26, 0.81]]], [[[0.91, 0.31]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 8),
-                        datetime(2014, 3, 9),
-                    ],
-                    "band": bands(),
-                },
-                attrs={"bbox": BBox((-7, 25, -4, 31), CRS(4326))},
-            ),
-            xr.DataArray(
-                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]], [[[0.26, 0.81]]], [[[0.91, 0.31]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 4),
-                        datetime(2014, 3, 5),
-                        datetime(2014, 3, 6),
-                        datetime(2014, 3, 8),
-                        datetime(2014, 3, 9),
-                    ],
-                    "band": bands(),
-                    "x": [0],
-                    "y": [0],
-                },
-                attrs={"bbox": BBox((-7, 25, -4, 31), CRS(4326))},
-            ),
-        ),
-        (
-            xr.DataArray(
-                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 4),
-                        datetime(2014, 3, 5),
-                        datetime(2014, 3, 6),
-                    ],
-                    "band": bands(),
-                },
-                attrs={"bbox": BBox((-7, 25, -4, 31), CRS(4326))},
-            ),
-            xr.DataArray(
-                [[[[0.26, 0.81]]], [[[0.91, 0.31]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 8),
-                        datetime(2014, 3, 9),
-                    ],
-                    "band": bands(),
-                },
-            ),
-            xr.DataArray(
-                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]], [[[0.26, 0.81]]], [[[0.91, 0.31]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 4),
-                        datetime(2014, 3, 5),
-                        datetime(2014, 3, 6),
-                        datetime(2014, 3, 8),
-                        datetime(2014, 3, 9),
-                    ],
-                    "band": bands(),
-                    "x": [0],
-                    "y": [0],
-                },
-                attrs={"bbox": BBox((-7, 25, -4, 31), CRS(4326))},
-            ),
-        ),
-    ],
-)
-def test_attrs(execute_process, cube1, cube2, expected_cube):
-    arguments = {"cube1": cube1, "cube2": cube2}
-    result = execute_process(arguments)
-    # Assert identical also tests attributes
-    xr.testing.assert_identical(result, expected_cube)
-
-
-@pytest.mark.parametrize(
-    "cube1,cube2",
-    [
-        (
-            xr.DataArray(
-                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 4),
-                        datetime(2014, 3, 5),
-                        datetime(2014, 3, 6),
-                    ],
-                    "band": bands(),
-                },
-                attrs={"bbox": BBox((-7, 25, -4, 31), CRS(4326))},
-            ),
-            xr.DataArray(
-                [[[[0.26, 0.81]]], [[[0.91, 0.31]]]],
-                dims=("t", "y", "x", "band"),
-                coords={
-                    "t": [
-                        datetime(2014, 3, 8),
-                        datetime(2014, 3, 9),
-                    ],
-                    "band": bands(),
-                },
-                attrs={"bbox": BBox((-4, 30, -1, 30 - 5), CRS(4326))},
-            ),
-        )
-    ],
-)
-def test_different_bboxes(execute_process, cube1, cube2):
-    arguments = {"cube1": cube1, "cube2": cube2}
+    # repeat the test with switched cube1/cube2:
+    arguments = {"cube1": cube2, "cube2": cube1}
     with pytest.raises(ProcessParameterInvalid) as ex:
         result = execute_process(arguments)
-    assert ex.value.args == ("merge_cubes", "cube1/cube2", "Cubes must have the same bounding box.")
+    assert ex.value.args == ("merge_cubes", expected_exc_param, expected_message)

@@ -9,40 +9,17 @@ from sentinelhub import CRS, BBox
 from ._common import ProcessEOTask, DATA_TYPE_TEMPORAL_INTERVAL, ProcessParameterInvalid
 
 
-def merge_coords(cube1_dimension, cube2_dimension):
-    temporary_merging_dim = "temporary_merging_dim"
-    return xr.merge(
-        [{temporary_merging_dim: cube1_dimension}, {temporary_merging_dim: cube2_dimension}], compat="no_conflicts"
-    )[temporary_merging_dim]
-
-
-def add_dimension_and_coords(cube, dimension_name, dimension, axis):
-    cube = cube.expand_dims(dim={dimension_name: len(dimension)}, axis=axis)
-    cube = cube.assign_coords({dimension_name: dimension.data})
-    return cube
-
-
-def get_value(cube, coord):
-    try:
-        return True, cube.sel(coord).data.tolist()
-    except:
-        return False, None
-
-
 def merge_attrs(attrs1, attrs2):
     merged_attrs = {}
+
     bbox1 = attrs1.get("bbox")
     bbox2 = attrs2.get("bbox")
-
-    if bbox1 is not None and bbox2 is not None:
-        if bbox1._crs == bbox2._crs and bbox1.lower_left == bbox2.lower_left and bbox1.upper_right == bbox2.upper_right:
-            merged_attrs["bbox"] = bbox1
-        else:
-            raise ProcessParameterInvalid("merge_cubes", "cube1/cube2", "Cubes must have the same bounding box.")
-    elif bbox1 is not None:
+    if bbox1 != bbox2:
+        raise ProcessParameterInvalid(
+            "merge_cubes", "cube1/cube2", "Cubes are not compatible - bounding box is not the same."
+        )
+    if bbox1 is not None:
         merged_attrs["bbox"] = bbox1
-    elif bbox2 is not None:
-        merged_attrs["bbox"] = bbox2
 
     return merged_attrs
 
@@ -52,9 +29,19 @@ class merge_cubesEOTask(ProcessEOTask):
     https://processes.openeo.org/1.0.0/#merge_cubes
     """
 
-    def run_overlap_resolver(self, cube1_value, cube2_value, overlap_resolver):
+    def run_overlap_resolver(self, x, y, overlap_resolver):
+        if overlap_resolver is None:
+            raise ProcessParameterInvalid(
+                "merge_cubes",
+                "overlap_resolver",
+                "Overlapping data cubes, but no overlap resolver has been specified (OverlapResolverMissing).",
+            )
+
+        # we want to treat each number in the cube independently:
+        x.attrs["simulated_datatype"] = (float,)
+        y.attrs["simulated_datatype"] = (float,)
         dependencies, result_task = self.generate_workflow_dependencies(
-            overlap_resolver["process_graph"], {"x": cube1_value, "y": cube2_value}
+            overlap_resolver["process_graph"], {"x": x, "y": y}
         )
         workflow = EOWorkflow(dependencies)
         all_results = workflow.execute({})
@@ -68,65 +55,82 @@ class merge_cubesEOTask(ProcessEOTask):
         context = self.validate_parameter(arguments, "context", required=False, default=None)
 
         # Documentation doesn't make it clear whether cubes with different dimensions and mismatching labels on a common
-        # dimension are "compatible" or not.
-        # If cubes have different dimensions, we merge them into a higher dimensional cube which includes all, and then
-        # merge and resolve overlap in (at most one) common overlapping dimension.
-        all_dimensions = tuple(dict.fromkeys(cube1.dims + cube2.dims))
-        overlapping_dimension_found = False
+        # dimension are "compatible" or not. To keep things simple(r), we only allow a single dimension to be different.
 
-        result = xr.DataArray(attrs=merge_attrs(cube1.attrs, cube2.attrs))
-        # We iterate over the union of all dimension of the two cubes
-        for i, dimension_name in enumerate(all_dimensions):
-            # If both cubes have the dimension, we merge the coordinates
-            if dimension_name in cube1.dims and dimension_name in cube2.dims:
-                dimension = merge_coords(cube1[dimension_name], cube2[dimension_name])
-                if (
-                    cube1[dimension_name].size != dimension[dimension_name].size
-                    or cube1[dimension_name].size != cube2[dimension_name].size
-                ):
-                    if overlapping_dimension_found:
-                        raise ProcessParameterInvalid(
-                            "merge_cubes",
-                            "cube1/cube2",
-                            "Only one of the dimensions can have different labels.",
-                        )
-                    overlapping_dimension_found = True
-            # If only one of the cubes has the dimension, we add it to the other one
-            elif dimension_name in cube1.dims:
-                dimension = cube1[dimension_name]
-                cube2 = add_dimension_and_coords(cube2, dimension_name, dimension, i)
+        # This process operates in three different modes:
+        # - the cubes have the same dimensions and coords
+        # - the cubes have the same dims and all coords except on a single dim
+        # - one of the cubes is missing one dimension entirely - its values are then broadcasted (with resolver) over each coord in this dimension
+
+        # find if there is a dimension that is missing from one of the cubes entirely:
+        missing_dims = list(set(cube1.dims) - set(cube2.dims)) + list(set(cube2.dims) - set(cube1.dims))
+        if len(missing_dims) > 1:
+            raise ProcessParameterInvalid(
+                "merge_cubes",
+                "cube1/cube2",
+                f"Too many missing dimensions ({', '.join(sorted(missing_dims))}), can be at most one.",
+            )
+
+        # find if there are any other dimensions with mismatching coords:
+        common_dimensions = set(cube1.dims).intersection(cube2.dims)
+        mismatched_dims = missing_dims[:]
+        for dim in common_dimensions:
+            coords1 = set(cube1.coords[dim].to_index())
+            coords2 = set(cube2.coords[dim].to_index())
+            if coords1 == coords2:
+                continue
+            mismatched_dims.append(dim)
+        if len(mismatched_dims) > 1:
+            raise ProcessParameterInvalid(
+                "merge_cubes",
+                "cube1/cube2",
+                f"Too many mismatched dimensions ({', '.join(sorted(mismatched_dims))}), can be at most one.",
+            )
+
+        # if the cubes' dims and coords match completely, we can run overlap resolver and we are done:
+        if len(mismatched_dims) == 0:
+            result = self.run_overlap_resolver(cube1, cube2, overlap_resolver)
+            return result
+
+        # One of the cubes is missing one dimension entirely - we expand its dims to include it, then assign the coords
+        # from the other cube. Note that we can't switch the cubes because overlap_resolver might depend on the order
+        # (e.g. subtract).
+        if len(missing_dims) > 0:
+            dim = missing_dims[0]
+            if len(cube1.dims) < len(cube2.dims):
+                new_coords = cube2.coords[dim]
+                cube1 = cube1.expand_dims({dim: len(new_coords)})  # this copies data over the new dim N-times
+                # we can have a dimension without coords, in which case we do not assign them:
+                if dim in cube2.coords:
+                    cube1 = cube1.assign_coords({dim: new_coords})
             else:
-                dimension = cube2[dimension_name]
-                cube1 = add_dimension_and_coords(cube1, dimension_name, dimension, i)
+                new_coords = cube1.coords[dim]
+                cube2 = cube2.expand_dims({dim: len(new_coords)})
+                if dim in cube1.coords:
+                    cube2 = cube2.assign_coords({dim: new_coords})
 
-            # We add the dimension and (merged) coordinates to the result
-            # We should end up with an empty (filled with `nan`s) DataArray of correct dimensions and coords
-            result = add_dimension_and_coords(result, dimension_name, dimension, i)
-
-        # After expand_dims, DataArray is readonly. Workaround is to copy it
-        # https://github.com/pydata/xarray/issues/2891#issuecomment-482880911
-        result = result.copy()
-
-        # Now we fill our empty array with values for all combinations of coords: https://stackoverflow.com/a/10098162
-        dimension_sizes = tuple(result.sizes.values())
-        for coord in np.ndindex(dimension_sizes):
-            # We get the coord values (timestamp, lat, lng ...) for each position (e.g. at result[0,0,0,0], result[0,0,0,1],...)
-            coord_labels = result[coord].coords
-            cube1_has_value, cube1_value_at_coord = get_value(cube1, coord_labels)
-            cube2_has_value, cube2_value_at_coord = get_value(cube2, coord_labels)
-
-            if cube1_has_value and cube2_has_value:
-                if overlap_resolver is None:
-                    raise ProcessParameterInvalid(
-                        "merge_cubes",
-                        "overlap_resolver",
-                        "Overlapping data cubes, but no overlap resolver has been specified. (OverlapResolverMissing)",
-                    )
-                resolved_value = self.run_overlap_resolver(cube1_value_at_coord, cube2_value_at_coord, overlap_resolver)
-                result[coord] = resolved_value
-            elif cube1_has_value:
-                result[coord] = cube1_value_at_coord
+        # this is the dimension over which we:
+        # - run overlap_resolver for overlapping coords
+        # - concatenate other coords
+        dim = mismatched_dims[0]
+        all_coords = cube1.coords[dim]
+        result = None
+        # first add all coords from cube1 (check for overlap at every step)
+        for c in cube1.coords[dim].to_index():
+            cube1_part = cube1.sel({dim: c})
+            if c in cube2.coords[dim]:
+                cube2_part = cube2.sel({dim: c})
+                result_part = self.run_overlap_resolver(cube1_part, cube2_part, overlap_resolver)
             else:
-                result[coord] = cube2_value_at_coord
+                result_part = cube1_part
+            # merge the existing result:
+            result = result_part if result is None else xr.concat([result, result_part], dim=dim)
 
+        # then add all the remaining coords from cube2 (no need for overlap_resolver, there can be no overlap)
+        remaining_coords = set(cube2.coords[dim].to_index()) - set(cube1.coords[dim].to_index())
+        for c in remaining_coords:
+            result_part = cube2.sel({dim: c})
+            result = result_part if result is None else xr.concat([result, result_part], dim=dim)
+
+        result.attrs = merge_attrs(cube1.attrs, cube2.attrs)
         return result
