@@ -387,3 +387,19 @@ class Band(object):
 
     def __hash__(self):
         return self.name.__hash__()
+
+
+# sorts xr.DataArray by dims and coords so that we can compare it more easily:
+def _sort_by_dims_coords(x_original):
+    x = x_original.copy(deep=False)
+    for dim in x.dims:
+        x = x.sortby(dim)
+    x = x.transpose(*sorted(list(x.dims)))
+    return x
+
+
+def assert_allclose(x, y):
+    # comparison should not depend on the order of dims or coords:
+    x = _sort_by_dims_coords(x)
+    y = _sort_by_dims_coords(y)
+    xr.testing.assert_allclose(x, y)

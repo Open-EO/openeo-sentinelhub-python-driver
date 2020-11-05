@@ -10,16 +10,8 @@ from sentinelhub import CRS, BBox
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid, Band
+from process._common import ProcessParameterInvalid, Band, assert_allclose
 import logging
-
-
-# sorts xr.DataArray by dims and coords so that we can compare it more easily:
-def sort_by_dims_coords(x):
-    for dim in x.dims:
-        x = x.sortby(dim)
-    x = x.transpose(*sorted(list(x.dims)))
-    return x
 
 
 @pytest.fixture
@@ -254,10 +246,7 @@ def test_correct(execute_process, cube1, cube2, overlap_resolver, expected_resul
         arguments["overlap_resolver"] = overlap_resolver
 
     result = execute_process(arguments)
-
-    result = sort_by_dims_coords(result)
-    expected_result = sort_by_dims_coords(expected_result)
-    xr.testing.assert_allclose(result, expected_result)
+    assert_allclose(result, expected_result)
 
 
 @pytest.mark.parametrize(
