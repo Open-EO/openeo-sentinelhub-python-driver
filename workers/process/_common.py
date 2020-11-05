@@ -211,7 +211,7 @@ class ProcessEOTask(EOTask):
             return param_val
 
         # if parameter is int and we expect a number (float), convert automatically:
-        if isinstance(param_val, int) and float in allowed_types:
+        if isinstance(param_val, int) and not isinstance(param_val, bool) and float in allowed_types:
             param_val = float(param_val)
 
         allowed_types_str = ",".join([TYPE_MAPPING[typename] for typename in allowed_types])
