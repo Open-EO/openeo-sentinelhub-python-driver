@@ -49,8 +49,13 @@ class eqEOTask(ProcessEOTask):
 
         # If the values are DataArrays, we assume they contain numbers
         if isinstance(x, xr.DataArray) and isinstance(y, xr.DataArray):
-            if x.dims != y.dims or x.shape != y.shape:
-                raise ProcessParameterInvalid("eq", "x/y", "Cubes have different dimensions")
+            if sorted(x.dims) == sorted(y.dims):
+                y = y.transpose(*x.dims)
+                if x.shape != y.shape:
+                    raise ProcessParameterInvalid("eq", "x/y", "Cubes have different shapes.")
+            else:
+                raise ProcessParameterInvalid("eq", "x/y", "Cubes have different dimensions.")
+
             cube = x
             other_value = y
         else:

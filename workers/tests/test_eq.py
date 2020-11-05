@@ -100,6 +100,23 @@ def test_examples(execute_eq_process, x, y, delta, case_sensitive, expected_resu
                 attrs={"simulated_datatype": (float,)},
             ),
         ),
+        (
+            xr.DataArray(
+                [[1, 2], [3, 4]],
+                dims=("a", "b"),
+                attrs={"simulated_datatype": (float,)},
+            ),
+            xr.DataArray(
+                [[1, 3], [2, 4]],
+                dims=("b", "a"),
+                attrs={"simulated_datatype": (float,)},
+            ),
+            xr.DataArray(
+                [[True, True], [True, True]],
+                dims=("a", "b"),
+                attrs={"simulated_datatype": (float,)},
+            ),
+        ),
     ],
 )
 def test_with_two_xarrays(execute_eq_process, x, y, expected_result):
