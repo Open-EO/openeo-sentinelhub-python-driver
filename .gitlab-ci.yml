@@ -130,7 +130,7 @@ publish_github:
     - rm .gitlab-ci.yml
     - git add .
     - git status
-    - git commit -m "Update sources to version [TEST]"
+    - git commit -m "Update sources to version [${CI_COMMIT_TAG}]"
     - git tag ${CI_COMMIT_TAG}
     - git push --tags github master
   after_script:
