@@ -8,7 +8,7 @@ import xarray as xr
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid, Band
+from process._common import ProcessParameterInvalid, Band, DataCube
 
 
 @pytest.fixture
@@ -28,49 +28,49 @@ def execute_process():
     "data,dimension,target,source,expected_result",
     [
         (
-            xr.DataArray([0, 1, 2], dims=("x",), coords={"x": [10, 20, 30]}),
+            DataCube([0, 1, 2], dims=("x",), coords={"x": [10, 20, 30]}),
             "x",
             [100, 200, 300],
             [10, 20, 30],
-            xr.DataArray([0, 1, 2], dims=("x",), coords={"x": [100, 200, 300]}),
+            DataCube([0, 1, 2], dims=("x",), coords={"x": [100, 200, 300]}),
         ),
         (
-            xr.DataArray([0, 1, 2], dims=("x",), coords={"x": ["10", "20", "30"]}),
+            DataCube([0, 1, 2], dims=("x",), coords={"x": ["10", "20", "30"]}),
             "x",
             ["100", "200", "300"],
             ["10", "20", "30"],
-            xr.DataArray([0, 1, 2], dims=("x",), coords={"x": ["100", "200", "300"]}),
+            DataCube([0, 1, 2], dims=("x",), coords={"x": ["100", "200", "300"]}),
         ),
         (
-            xr.DataArray([0, 1, 2], dims=("x",), coords={"x": [10, 20, 30]}),
+            DataCube([0, 1, 2], dims=("x",), coords={"x": [10, 20, 30]}),
             "x",
             [100, 300, 200],
             [10, 30, 20],
-            xr.DataArray([0, 1, 2], dims=("x",), coords={"x": [100, 200, 300]}),
+            DataCube([0, 1, 2], dims=("x",), coords={"x": [100, 200, 300]}),
         ),
         (
-            xr.DataArray([0, 1, 2], dims=("x",), coords={"x": [10, 20, 30]}),
+            DataCube([0, 1, 2], dims=("x",), coords={"x": [10, 20, 30]}),
             "x",
             [100, 300],
             [10, 30],
-            xr.DataArray([0, 1, 2], dims=("x",), coords={"x": [100, 20, 300]}),
+            DataCube([0, 1, 2], dims=("x",), coords={"x": [100, 20, 300]}),
         ),
         (
-            xr.DataArray([0, 1, 2], dims=("x",), coords={"x": [0, 1, 2]}),
+            DataCube([0, 1, 2], dims=("x",), coords={"x": [0, 1, 2]}),
             "x",
             [100, 200, 300],
             [],
-            xr.DataArray([0, 1, 2], dims=("x",), coords={"x": [100, 200, 300]}),
+            DataCube([0, 1, 2], dims=("x",), coords={"x": [100, 200, 300]}),
         ),
         (
-            xr.DataArray([0, 1, 2], dims=("x",), coords={"x": [0, 1, 2]}),
+            DataCube([0, 1, 2], dims=("x",), coords={"x": [0, 1, 2]}),
             "x",
             [100, 200],
             [],
-            xr.DataArray([0, 1, 2], dims=("x",), coords={"x": [100, 200, 2]}),
+            DataCube([0, 1, 2], dims=("x",), coords={"x": [100, 200, 2]}),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [1, 2],
                 dims=("band"),
                 coords={"band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)]},
@@ -78,7 +78,7 @@ def execute_process():
             "band",
             ["B4", "B8"],
             ["B04", "B08"],
-            xr.DataArray(
+            DataCube(
                 [1, 2],
                 dims=("band"),
                 coords={
@@ -87,7 +87,7 @@ def execute_process():
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [42],
                 dims=("band"),
                 coords={
@@ -97,7 +97,7 @@ def execute_process():
             "band",
             ["B4"],
             ["B04"],
-            xr.DataArray(
+            DataCube(
                 [42],
                 dims=("band"),
                 coords={
@@ -126,7 +126,7 @@ def test_rename_labels(execute_process, data, dimension, target, source, expecte
     "data,dimension,target,source,expected_exc_param,expected_exc_msg",
     [
         (
-            xr.DataArray([0, 1, 2], dims=("x",), coords={"x": [2, 3, 4]}),
+            DataCube([0, 1, 2], dims=("x",), coords={"x": [2, 3, 4]}),
             "x",
             [100, 200, 300],
             [],
@@ -134,7 +134,7 @@ def test_rename_labels(execute_process, data, dimension, target, source, expecte
             "With source not supplied, data labels must be enumerated (LabelsNotEnumerated).",
         ),
         (
-            xr.DataArray([0, 1, 2], dims=("x",), coords={"x": [2, 3, 4]}),
+            DataCube([0, 1, 2], dims=("x",), coords={"x": [2, 3, 4]}),
             "x",
             [100, 200, 300],
             [10, 20],
@@ -142,7 +142,7 @@ def test_rename_labels(execute_process, data, dimension, target, source, expecte
             "Size of source and target does not match (LabelMismatch).",
         ),
         (
-            xr.DataArray([0, 1, 2], dims=("x",), coords={"x": [10, 20, 30]}),
+            DataCube([0, 1, 2], dims=("x",), coords={"x": [10, 20, 30]}),
             "x",
             [3, 4, 2],
             [10, 20, 40],

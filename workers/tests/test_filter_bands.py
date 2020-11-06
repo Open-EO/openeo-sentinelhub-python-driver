@@ -6,7 +6,7 @@ import numpy as np
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import process
-from process._common import ProcessArgumentRequired, ProcessParameterInvalid, Band
+from process._common import ProcessArgumentRequired, ProcessParameterInvalid, Band, DataCube
 
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -34,7 +34,7 @@ def filter_bandsEOTask():
         #
         # # if no bands are found (using band names), return an empty cube:
         # (
-        #     xr.DataArray(
+        #     DataCube(
         #         [[[2, 3]]],
         #         dims=("y", "x", "b"),
         #         coords={
@@ -43,7 +43,7 @@ def filter_bandsEOTask():
         #     ),
         #     ["does_not_exist"],
         #     None,
-        #     xr.DataArray(
+        #     DataCube(
         #         [[[]]],
         #         dims=("y", "x", "b"),
         #         coords={"b": []},
@@ -51,7 +51,7 @@ def filter_bandsEOTask():
         # ),
         # # if no bands are found (using wavelengths), return an empty cube:
         # (
-        #     xr.DataArray(
+        #     DataCube(
         #         [[[2, 3]]],
         #         dims=("y", "x", "b"),
         #         coords={
@@ -60,7 +60,7 @@ def filter_bandsEOTask():
         #     ),
         #     None,
         #     [[0.0001, 0.0002]],
-        #     xr.DataArray(
+        #     DataCube(
         #         [[[]]],
         #         dims=("y", "x", "b"),
         #         coords={"b": []},
@@ -68,7 +68,7 @@ def filter_bandsEOTask():
         # ),
         # find one band:
         (
-            xr.DataArray(
+            DataCube(
                 [[[2, 3, 4]]],
                 dims=("y", "x", "b"),
                 coords={
@@ -77,7 +77,7 @@ def filter_bandsEOTask():
             ),
             ["B08"],
             None,
-            xr.DataArray(
+            DataCube(
                 [[[3]]],
                 dims=("y", "x", "b"),
                 coords={
@@ -87,7 +87,7 @@ def filter_bandsEOTask():
         ),
         # find one band by alias:
         (
-            xr.DataArray(
+            DataCube(
                 [[[2, 3, 4]]],
                 dims=("y", "x", "b"),
                 coords={
@@ -96,7 +96,7 @@ def filter_bandsEOTask():
             ),
             ["nir"],
             None,
-            xr.DataArray(
+            DataCube(
                 [[[3]]],
                 dims=("y", "x", "b"),
                 coords={
@@ -106,7 +106,7 @@ def filter_bandsEOTask():
         ),
         # find one band by wavelengths:
         (
-            xr.DataArray(
+            DataCube(
                 [[[2, 3, 4]]],
                 dims=("y", "x", "b"),
                 coords={
@@ -115,7 +115,7 @@ def filter_bandsEOTask():
             ),
             None,
             [[0.7, 0.9]],
-            xr.DataArray(
+            DataCube(
                 [[[3]]],
                 dims=("y", "x", "b"),
                 coords={
@@ -125,7 +125,7 @@ def filter_bandsEOTask():
         ),
         # multiple filters match, use their ordering:
         (
-            xr.DataArray(
+            DataCube(
                 [[[2, 3, 4]]],
                 dims=("y", "x", "b"),
                 coords={
@@ -134,7 +134,7 @@ def filter_bandsEOTask():
             ),
             ["B11", "B08", "B04"],
             None,
-            xr.DataArray(
+            DataCube(
                 [[[4, 3, 2]]],
                 dims=("y", "x", "b"),
                 coords={
@@ -144,7 +144,7 @@ def filter_bandsEOTask():
         ),
         # keep original ordering when a filter matches multiple bands:
         (
-            xr.DataArray(
+            DataCube(
                 [[[2, 3, 4]]],
                 dims=("y", "x", "b"),
                 coords={
@@ -153,7 +153,7 @@ def filter_bandsEOTask():
             ),
             None,
             [[1.0, 1.2], [0.0, 0.9]],
-            xr.DataArray(
+            DataCube(
                 [[[4, 2, 3]]],
                 dims=("y", "x", "b"),
                 coords={
@@ -163,7 +163,7 @@ def filter_bandsEOTask():
         ),
         # overlapping filters must not duplicate bands:
         (
-            xr.DataArray(
+            DataCube(
                 [[[2, 3, 4]]],
                 dims=("y", "x", "band"),
                 coords={
@@ -172,7 +172,7 @@ def filter_bandsEOTask():
             ),
             ["B04", "B08", "red"],
             [[0.6, 0.7]],
-            xr.DataArray(
+            DataCube(
                 [[[2, 3]]],
                 dims=("y", "x", "band"),
                 coords={
@@ -182,7 +182,7 @@ def filter_bandsEOTask():
         ),
         # make sure we are handling cubes dimensions correctly by using cube 1x3x2x4:
         (
-            xr.DataArray(
+            DataCube(
                 [
                     [[2, 3, 4, 6], [5, 6, 7, 6]],
                     [[1, 2, 3, 6], [4, 5, 6, 6]],
@@ -195,7 +195,7 @@ def filter_bandsEOTask():
             ),
             ["B08"],
             None,
-            xr.DataArray(
+            DataCube(
                 [
                     [[3], [6]],
                     [[2], [5]],
@@ -272,7 +272,7 @@ def test_correct(filter_bandsEOTask, data, bands, wavelengths, expected_result):
     ],
 )
 def test_exceptions(filter_bandsEOTask, bands, wavelengths, expected_exc_param, expected_exc_msg):
-    data = xr.DataArray(
+    data = DataCube(
         [[[2, 3]]],
         dims=("y", "x", "b"),
         coords={"b": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)]},
@@ -297,7 +297,7 @@ def test_exceptions(filter_bandsEOTask, bands, wavelengths, expected_exc_param, 
         # Currently we can't have a datacube which has two dims of type "bands", because of the
         # conflicting names (we should fix this). This is the closest we can get at this time:
         (
-            xr.DataArray(
+            DataCube(
                 [[[[2, 3]]]],
                 dims=("y", "x", "b2", "b"),
                 coords={
@@ -309,7 +309,7 @@ def test_exceptions(filter_bandsEOTask, bands, wavelengths, expected_exc_param, 
             "Multiple dimensions of type 'bands' found.",
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[2, 3]],
                 dims=("y", "x"),
             ),

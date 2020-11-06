@@ -3,7 +3,7 @@ import re
 import numpy as np
 import xarray as xr
 
-from ._common import ProcessEOTask, ProcessParameterInvalid, Band
+from ._common import ProcessEOTask, ProcessParameterInvalid, Band, DataCube, dataarray_to_datacube
 
 
 def get_bands_dims(data):
@@ -97,7 +97,7 @@ class filter_bandsEOTask(ProcessEOTask):
         #     - wavelength  (b) float64 0.823 0.901
 
         # prepare a mask that remembers which coordinates are already included in the result:
-        already_included = xr.DataArray(False, dims=data[dim].dims, coords=data[dim].coords)
+        already_included = DataCube(False, dims=data[dim].dims, coords=data[dim].coords)
         result = None
 
         for b in bands:
@@ -129,4 +129,4 @@ class filter_bandsEOTask(ProcessEOTask):
             all_bands = [x[0] for x in list(data.coords[dim].to_index())]
             return data.drop_sel({dim: all_bands})
 
-        return result
+        return dataarray_to_datacube(result)

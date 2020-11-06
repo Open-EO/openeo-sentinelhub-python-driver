@@ -8,7 +8,7 @@ import xarray as xr
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid
+from process._common import ProcessParameterInvalid, DataCube, DimensionType
 
 
 @pytest.fixture
@@ -48,7 +48,7 @@ def execute_process():
 )
 def test_date_interval(execute_process, extent, expected_dates):
     dimension = "t"
-    data = xr.DataArray(
+    data = DataCube(
         [1, 2, 3, 4],
         dims=["t"],
         coords={
@@ -59,6 +59,7 @@ def test_date_interval(execute_process, extent, expected_dates):
                 datetime(2014, 3, 7),
             ]
         },
+        dim_types={"t": DimensionType.TEMPORAL},
     )
     arguments = {
         "data": data,
@@ -79,7 +80,7 @@ def test_date_interval(execute_process, extent, expected_dates):
 )
 def test_dimension(execute_process, dimension):
     dimension = "t"
-    data = xr.DataArray(
+    data = DataCube(
         [[1, 2, 3, 4], [5, 6, 7, 8]],
         dims=["x", "t"],
         coords={
@@ -91,6 +92,7 @@ def test_dimension(execute_process, dimension):
                 datetime(2014, 3, 7),
             ],
         },
+        dim_types={"t": DimensionType.TEMPORAL, "x": DimensionType.SPATIAL},
     )
     extent = [None, "2014-03-06"]
     arguments = {

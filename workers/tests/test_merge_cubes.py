@@ -10,7 +10,7 @@ from sentinelhub import CRS, BBox
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid, Band, assert_allclose
+from process._common import ProcessParameterInvalid, Band, assert_allclose, DataCube
 import logging
 
 
@@ -35,13 +35,13 @@ def execute_process():
     [
         # matching dims and coords:
         (
-            xr.DataArray(
+            DataCube(
                 [[0.1, 0.3]],
                 dims=("a", "b"),
                 coords={},
                 attrs={},
             ),
-            xr.DataArray(
+            DataCube(
                 [[0.2, 0.8]],
                 dims=("a", "b"),
                 coords={},
@@ -56,7 +56,7 @@ def execute_process():
                     }
                 }
             },
-            xr.DataArray(
+            DataCube(
                 [[-0.1, -0.5]],
                 dims=("a", "b"),
                 coords={},
@@ -65,13 +65,13 @@ def execute_process():
         ),
         # the first cube is missing a dim:
         (
-            xr.DataArray(
+            DataCube(
                 [1.1, 1.3],
                 dims=("b"),
                 coords={},
                 attrs={},
             ),
-            xr.DataArray(
+            DataCube(
                 [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
                 dims=("a", "b"),
                 coords={},
@@ -86,7 +86,7 @@ def execute_process():
                     }
                 }
             },
-            xr.DataArray(
+            DataCube(
                 [[0.9, 0.5], [0.4, -0.7], [-0.3, np.nan]],
                 dims=("a", "b"),
                 coords={},
@@ -95,13 +95,13 @@ def execute_process():
         ),
         # the second cube is missing a dim:
         (
-            xr.DataArray(
+            DataCube(
                 [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
                 dims=("a", "b"),
                 coords={},
                 attrs={},
             ),
-            xr.DataArray(
+            DataCube(
                 [0.1, 0.3],
                 dims=("b"),
                 coords={},
@@ -116,7 +116,7 @@ def execute_process():
                     }
                 }
             },
-            xr.DataArray(
+            DataCube(
                 [[0.1, 0.5], [0.6, 1.7], [1.3, np.nan]],
                 dims=("a", "b"),
                 coords={},
@@ -125,13 +125,13 @@ def execute_process():
         ),
         # the first cube is missing a dim - with coords:
         (
-            xr.DataArray(
+            DataCube(
                 [1.1, 1.3],
                 dims=("b"),
                 coords={"b": ["asdf", "defg"]},
                 attrs={},
             ),
-            xr.DataArray(
+            DataCube(
                 [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
                 dims=("a", "b"),
                 coords={"a": ["a", "b", "c"], "b": ["asdf", "defg"]},
@@ -146,7 +146,7 @@ def execute_process():
                     }
                 }
             },
-            xr.DataArray(
+            DataCube(
                 [[0.9, 0.5], [0.4, -0.7], [-0.3, np.nan]],
                 dims=("a", "b"),
                 coords={"a": ["a", "b", "c"], "b": ["asdf", "defg"]},
@@ -155,13 +155,13 @@ def execute_process():
         ),
         # the first cube is missing a dim - with Band coords:
         (
-            xr.DataArray(
+            DataCube(
                 [1.1, 1.3],
                 dims=("b"),
                 coords={"b": [Band("asdf"), Band("defg")]},
                 attrs={},
             ),
-            xr.DataArray(
+            DataCube(
                 [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
                 dims=("a", "b"),
                 coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("asdf"), Band("defg")]},
@@ -176,7 +176,7 @@ def execute_process():
                     }
                 }
             },
-            xr.DataArray(
+            DataCube(
                 [[0.9, 0.5], [0.4, -0.7], [-0.3, np.nan]],
                 dims=("a", "b"),
                 coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("asdf"), Band("defg")]},
@@ -185,20 +185,20 @@ def execute_process():
         ),
         # normal concatenation:
         (
-            xr.DataArray(
+            DataCube(
                 [[0.1, np.nan], [0.2, 3], [np.nan, 4]],
                 dims=("a", "b"),
                 coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("B01"), Band("B02")]},
                 attrs={},
             ),
-            xr.DataArray(
+            DataCube(
                 [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
                 dims=("a", "b"),
                 coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("B03"), Band("B04")]},
                 attrs={},
             ),
             None,
-            xr.DataArray(
+            DataCube(
                 [[0.1, np.nan, 0.2, 0.8], [0.2, 3, 0.7, 2], [np.nan, 4, 1.4, np.nan]],
                 dims=("a", "b"),
                 coords={
@@ -210,13 +210,13 @@ def execute_process():
         ),
         # merging, overlap on one coord:
         (
-            xr.DataArray(
+            DataCube(
                 [[0.1, np.nan], [0.2, 3], [np.nan, 4]],
                 dims=("a", "b"),
                 coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("B01"), Band("B02")]},
                 attrs={},
             ),
-            xr.DataArray(
+            DataCube(
                 [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
                 dims=("a", "b"),
                 coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("B02"), Band("B03")]},
@@ -231,7 +231,7 @@ def execute_process():
                     }
                 }
             },
-            xr.DataArray(
+            DataCube(
                 [[0.1, np.nan, 0.8], [0.2, 2.3, 2], [np.nan, 2.6, np.nan]],
                 dims=("a", "b"),
                 coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("B01"), Band("B02"), Band("B03")]},
@@ -254,13 +254,13 @@ def test_correct(execute_process, cube1, cube2, overlap_resolver, expected_resul
     [
         # missing dimensions:
         (
-            xr.DataArray(
+            DataCube(
                 [[0.2, 0.8]],
                 dims=("a", "b"),
                 coords={},
                 attrs={},
             ),
-            xr.DataArray(
+            DataCube(
                 [[[[0.26, 0.81]]], [[[0.91, 0.31]]]],
                 dims=("a", "b", "c", "d"),
                 coords={},
@@ -271,13 +271,13 @@ def test_correct(execute_process, cube1, cube2, overlap_resolver, expected_resul
         ),
         # missing dimensions in both of the cubes:
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
                 dims=("a", "b", "c", "d"),
                 coords={},
                 attrs={},
             ),
-            xr.DataArray(
+            DataCube(
                 [[[[0.26, 0.81]]], [[[0.91, 0.31]]]],
                 dims=("a", "b", "e", "f"),
                 coords={},
@@ -288,13 +288,13 @@ def test_correct(execute_process, cube1, cube2, overlap_resolver, expected_resul
         ),
         # mismatched coords in more than one dim:
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
                 dims=("a", "b", "c", "d"),
                 coords={"a": [1, 2, 3], "b": [1]},
                 attrs={},
             ),
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
                 dims=("a", "b", "c", "d"),
                 coords={"a": [1, 2, 4], "b": [2]},
@@ -305,13 +305,13 @@ def test_correct(execute_process, cube1, cube2, overlap_resolver, expected_resul
         ),
         # mismatched coords in more than one dim - different coords lengths:
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, 0.8]]], [[[0.9, 0.3]]]],
                 dims=("a", "b", "c", "d"),
                 coords={"a": [1, 2], "b": [1]},
                 attrs={},
             ),
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
                 dims=("a", "b", "c", "d"),
                 coords={"a": [1, 2, 4], "b": [2]},
@@ -322,13 +322,13 @@ def test_correct(execute_process, cube1, cube2, overlap_resolver, expected_resul
         ),
         # matching dims and coords, but no overlap_resolver:
         (
-            xr.DataArray(
+            DataCube(
                 [[0.1, 0.3]],
                 dims=("a", "b"),
                 coords={},
                 attrs={},
             ),
-            xr.DataArray(
+            DataCube(
                 [[0.2, 0.8]],
                 dims=("a", "b"),
                 coords={},
@@ -339,13 +339,13 @@ def test_correct(execute_process, cube1, cube2, overlap_resolver, expected_resul
         ),
         # one cube is missing a dim, but no resolver:
         (
-            xr.DataArray(
+            DataCube(
                 [0.1, 0.3],
                 dims=("b"),
                 coords={},
                 attrs={},
             ),
-            xr.DataArray(
+            DataCube(
                 [[0.2, 0.8], [0.7, 2], [1.4, 3]],
                 dims=("a", "b"),
                 coords={},
@@ -356,13 +356,13 @@ def test_correct(execute_process, cube1, cube2, overlap_resolver, expected_resul
         ),
         # normal merging on one coord, missing resolver:
         (
-            xr.DataArray(
+            DataCube(
                 [[0.1, np.nan], [0.2, 3], [np.nan, 4]],
                 dims=("a", "b"),
                 coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("B01"), Band("B02")]},
                 attrs={},
             ),
-            xr.DataArray(
+            DataCube(
                 [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
                 dims=("a", "b"),
                 coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("B02"), Band("B04")]},

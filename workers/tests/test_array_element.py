@@ -7,7 +7,7 @@ import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid, Band
+from process._common import ProcessParameterInvalid, Band, DataCube
 
 
 @pytest.fixture
@@ -50,7 +50,7 @@ def test_examples(execute_array_element_process, data, return_nodata, index, exp
     "data,index,expected_result",
     [
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -62,7 +62,7 @@ def test_examples(execute_array_element_process, data, return_nodata, index, exp
                 attrs={"reduce_by": ["band"]},
             ),
             0,
-            xr.DataArray(
+            DataCube(
                 [[[0.1, 0.15], [0.05, -0.9]]],
                 dims=("t", "y", "x"),
                 coords={
@@ -74,7 +74,7 @@ def test_examples(execute_array_element_process, data, return_nodata, index, exp
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -86,7 +86,7 @@ def test_examples(execute_array_element_process, data, return_nodata, index, exp
                 attrs={"reduce_by": ["y"]},
             ),
             1,
-            xr.DataArray(
+            DataCube(
                 [[[0.05, 0.1], [-0.9, 0.05]]],
                 dims=("t", "x", "band"),
                 coords={
@@ -112,7 +112,7 @@ def test_index(execute_array_element_process, data, index, expected_result):
     "data,label,expected_result",
     [
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -124,7 +124,7 @@ def test_index(execute_array_element_process, data, index, expected_result):
                 attrs={"reduce_by": ["band"]},
             ),
             "B04",
-            xr.DataArray(
+            DataCube(
                 [[[0.1, 0.15], [0.05, -0.9]]],
                 dims=("t", "y", "x"),
                 coords={
@@ -136,7 +136,7 @@ def test_index(execute_array_element_process, data, index, expected_result):
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.1, 0.15], [0.15, 0.2]]], [[[0.05, 0.1], [-0.9, 0.05]]], [[[-0.05, 3.1], [0.99, 0.02]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -150,7 +150,7 @@ def test_index(execute_array_element_process, data, index, expected_result):
                 attrs={"reduce_by": ["t"]},
             ),
             "2014-03-05",
-            xr.DataArray(
+            DataCube(
                 [[[0.05, 0.1], [-0.9, 0.05]]],
                 dims=("y", "x", "band"),
                 coords={
@@ -160,7 +160,7 @@ def test_index(execute_array_element_process, data, index, expected_result):
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -172,7 +172,7 @@ def test_index(execute_array_element_process, data, index, expected_result):
                 attrs={"reduce_by": ["band"]},
             ),
             "red",
-            xr.DataArray(
+            DataCube(
                 [[[0.1, 0.15], [0.05, -0.9]]],
                 dims=("t", "y", "x"),
                 coords={
@@ -197,7 +197,7 @@ def test_label(execute_array_element_process, data, label, expected_result):
     "data,index,label,expected_error",
     [
         (
-            xr.DataArray(
+            DataCube(
                 [2],
                 dims=("t"),
             ),
@@ -210,7 +210,7 @@ def test_label(execute_array_element_process, data, label, expected_result):
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [2],
                 dims=("t"),
             ),
@@ -223,7 +223,7 @@ def test_label(execute_array_element_process, data, label, expected_result):
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.1, 0.15], [0.15, 0.2]]], [[[0.05, 0.1], [-0.9, 0.05]]], [[[-0.05, 3.1], [0.99, 0.02]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -245,7 +245,7 @@ def test_label(execute_array_element_process, data, label, expected_result):
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.1, 0.15], [0.15, 0.2]]], [[[0.05, 0.1], [-0.9, 0.05]]], [[[-0.05, 3.1], [0.99, 0.02]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -267,7 +267,7 @@ def test_label(execute_array_element_process, data, label, expected_result):
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -301,7 +301,7 @@ def test_errors(execute_array_element_process, data, label, index, expected_erro
     "data,index,label,expected_result",
     [
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.1, 0.15], [0.15, 0.2]]], [[[0.05, 0.1], [-0.9, 0.05]]], [[[-0.05, 3.1], [0.99, 0.02]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -316,7 +316,7 @@ def test_errors(execute_array_element_process, data, label, index, expected_erro
             ),
             4,
             None,
-            xr.DataArray(
+            DataCube(
                 [[[np.nan, np.nan], [np.nan, np.nan]]],
                 dims=("y", "x", "band"),
                 coords={
@@ -326,7 +326,7 @@ def test_errors(execute_array_element_process, data, label, index, expected_erro
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.1, 0.15], [0.15, 0.2]]], [[[0.05, 0.1], [-0.9, 0.05]]], [[[-0.05, 3.1], [0.99, 0.02]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -341,7 +341,7 @@ def test_errors(execute_array_element_process, data, label, index, expected_erro
             ),
             None,
             "2014-03-07",
-            xr.DataArray(
+            DataCube(
                 [[[np.nan, np.nan], [np.nan, np.nan]]],
                 dims=("y", "x", "band"),
                 coords={
@@ -351,7 +351,7 @@ def test_errors(execute_array_element_process, data, label, index, expected_erro
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.1, 0.15], [0.15, 0.2]]], [[[0.05, 0.1], [-0.9, 0.05]]], [[[-0.05, 3.1], [0.99, 0.02]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -366,7 +366,7 @@ def test_errors(execute_array_element_process, data, label, index, expected_erro
             ),
             None,
             "B01",
-            xr.DataArray(
+            DataCube(
                 [[[np.nan, np.nan]], [[np.nan, np.nan]], [[np.nan, np.nan]]],
                 dims=("t", "y", "x"),
                 coords={

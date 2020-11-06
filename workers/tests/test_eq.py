@@ -6,7 +6,7 @@ from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import Band
+from process._common import Band, DataCube
 
 
 @pytest.fixture
@@ -59,59 +59,59 @@ def test_examples(execute_eq_process, x, y, delta, case_sensitive, expected_resu
     "x,y,expected_result",
     [
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.3, 0.5]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
-            xr.DataArray(
+            DataCube(
                 [[[[0, 0.8]]], [[[0.7, 0.1]]], [[[0.3, 0.3]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
-            xr.DataArray(
+            DataCube(
                 [[[[False, True]]], [[[False, False]]], [[[True, False]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, None]]], [[[0.9, 0.1]]], [[[None, 0.5]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
-            xr.DataArray(
+            DataCube(
                 [[[[0, None]]], [[[0.7, 0.1]]], [[[None, 0.3]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
-            xr.DataArray(
+            DataCube(
                 [[[[False, None]]], [[[False, True]]], [[[None, False]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[np.nan, 0.5]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
-            xr.DataArray(
+            DataCube(
                 [[[[0, np.nan]]], [[[0.7, 0.1]]], [[[0.3, 0.5]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
-            xr.DataArray(
+            DataCube(
                 [[[[False, np.nan]]], [[[False, False]]], [[[np.nan, True]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[1, 2], [3, 4]],
                 dims=("a", "b"),
                 attrs={"simulated_datatype": (float,)},
             ),
-            xr.DataArray(
+            DataCube(
                 [[1, 3], [2, 4]],
                 dims=("b", "a"),
                 attrs={"simulated_datatype": (float,)},
             ),
-            xr.DataArray(
+            DataCube(
                 [[True, True], [True, True]],
                 dims=("a", "b"),
                 attrs={"simulated_datatype": (float,)},
@@ -131,45 +131,45 @@ def test_with_two_xarrays(execute_eq_process, x, y, expected_result):
     "x,y,expected_result",
     [
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.3, 0.5]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
             0.3,
-            xr.DataArray(
+            DataCube(
                 [[[[False, False]]], [[[False, True]]], [[[True, False]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, None]]], [[[0.9, 0.1]]], [[[None, 0.5]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
             None,
-            xr.DataArray(
+            DataCube(
                 [[[[None, None]]], [[[None, None]]], [[[None, None]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[np.nan, 0.5]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
             [],
-            xr.DataArray(
+            DataCube(
                 [[[[False, False]]], [[[False, False]]], [[[None, False]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0, 0.8]]], [[[0.9, 0.3]]], [[[np.nan, 0.5]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
             [],
-            xr.DataArray(
+            DataCube(
                 [[[[False, False]]], [[[False, False]]], [[[None, False]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
@@ -188,46 +188,46 @@ def test_with_xarray_and_scalar(execute_eq_process, x, y, expected_result):
     "x,y,delta,expected_result",
     [
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.3, 0.5001]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
-            xr.DataArray(
+            DataCube(
                 [[[[0, 0.8]]], [[[0.6, 0.1]]], [[[0.3, 0.3]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
             0.2,
-            xr.DataArray(
+            DataCube(
                 [[[[True, True]]], [[[False, True]]], [[[True, False]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.1, None]]], [[[0.9, 0.1]]], [[[None, 0.5]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
-            xr.DataArray(
+            DataCube(
                 [[[[0, None]]], [[[0.7, 0.1]]], [[[None, 0.3]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
             0.1,
-            xr.DataArray(
+            DataCube(
                 [[[[True, None]]], [[[False, True]]], [[[None, False]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[np.nan, 0.5]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
-            xr.DataArray(
+            DataCube(
                 [[[[0, np.nan]]], [[[0.7, 0.1]]], [[[0.3, 0.5]]]],
                 attrs={"simulated_datatype": (float,)},
             ),
             0,
-            xr.DataArray(
+            DataCube(
                 [[[[False, np.nan]]], [[[False, False]]], [[[np.nan, True]]]],
                 attrs={"simulated_datatype": (float,)},
             ),

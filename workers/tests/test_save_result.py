@@ -9,7 +9,7 @@ import xarray as xr
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid, ProcessArgumentRequired, Band
+from process._common import ProcessParameterInvalid, ProcessArgumentRequired, Band, DataCube
 
 
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), "fixtures")
@@ -69,7 +69,7 @@ def generate_data():
         if "band" in coords:
             coords["band"] = [Band(b) for b in coords["band"]]
 
-        xrdata = xr.DataArray(
+        xrdata = DataCube(
             data,
             dims=dims,
             coords=coords,

@@ -19,7 +19,7 @@ from sentinelhub.constants import AwsConstants
 import sentinelhub.geo_utils
 import xarray as xr
 
-from ._common import ProcessEOTask, ProcessParameterInvalid, Internal, Band
+from ._common import ProcessEOTask, ProcessParameterInvalid, Internal, Band, DataCube, DimensionType
 
 
 SENTINELHUB_INSTANCE_ID = os.environ.get("SENTINELHUB_INSTANCE_ID", None)
@@ -388,12 +388,18 @@ class load_collectionEOTask(ProcessEOTask):
             band_wavelengths = [None] * len(bands)
         bands = [Band(n, a, w) for n, a, w in zip(bands, band_aliases, band_wavelengths)]
 
-        xrdata = xr.DataArray(
+        xrdata = DataCube(
             masked_data,
             dims=("t", "y", "x", "band"),
             coords={
                 "band": bands,
                 "t": orbit_times_middle,
+            },
+            dim_types={
+                "t": DimensionType.TEMPORAL,
+                "y": DimensionType.SPATIAL,
+                "x": DimensionType.SPATIAL,
+                "band": DimensionType.BANDS,
             },
             attrs={
                 "bbox": bbox,

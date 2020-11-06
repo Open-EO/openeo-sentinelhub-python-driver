@@ -7,7 +7,7 @@ import xarray as xr
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid
+from process._common import ProcessParameterInvalid, DataCube
 
 
 ###################################
@@ -52,17 +52,17 @@ from process._common import ProcessParameterInvalid
             ("Process", "x", "Argument must be of types '[raster-cube]'."),
         ),
         (
-            {"x": xr.DataArray([[1, 2]], dims=("x", "y"))},
+            {"x": DataCube([[1, 2]], dims=("x", "y"))},
             "x",
             False,
             [xr.DataArray],
             11,
-            xr.DataArray([[1, 2]], dims=("x", "y")),
+            DataCube([[1, 2]], dims=("x", "y")),
             None,
             None,
         ),
         (
-            {"x": xr.DataArray([[1, 2]], dims=("x", "y"), attrs={"simulated_datatype": (float,)})},
+            {"x": DataCube([[1, 2]], dims=("x", "y"), attrs={"simulated_datatype": (float,)})},
             "x",
             False,
             [xr.DataArray],

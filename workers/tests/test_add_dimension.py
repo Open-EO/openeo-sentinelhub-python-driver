@@ -8,7 +8,7 @@ import xarray as xr
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid, Band
+from process._common import ProcessParameterInvalid, Band, DataCube
 
 
 @pytest.fixture
@@ -28,7 +28,7 @@ def execute_process():
     "data,name,label,dimension_type,expected_result",
     [
         (
-            xr.DataArray(
+            DataCube(
                 [1, 2, 3, 4],
                 dims=["t"],
                 coords={
@@ -43,7 +43,7 @@ def execute_process():
             "x",
             42,
             "spatial",
-            xr.DataArray(
+            DataCube(
                 [[1, 2, 3, 4]],
                 dims=["x", "t"],
                 coords={
@@ -58,7 +58,7 @@ def execute_process():
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [1, 2, 3, 4],
                 dims=["t"],
                 coords={
@@ -73,7 +73,7 @@ def execute_process():
             "b",
             "B01",
             "bands",
-            xr.DataArray(
+            DataCube(
                 [[1, 2, 3, 4]],
                 dims=["b", "t"],
                 coords={
@@ -88,14 +88,14 @@ def execute_process():
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [1, 2, 3, 4],
                 dims=["x"],
             ),
             "t",
             "2020-02-20",
             "temporal",
-            xr.DataArray(
+            DataCube(
                 [[1, 2, 3, 4]],
                 dims=["t", "x"],
                 coords={
@@ -117,7 +117,7 @@ def test_correct(execute_process, data, name, label, dimension_type, expected_re
     "data,name,label,dimension_type",
     [
         (
-            xr.DataArray(
+            DataCube(
                 [1],
                 dims=["t"],
                 coords={
@@ -147,7 +147,7 @@ def test_dimension_exists(execute_process, data, name, label, dimension_type):
     "data,name,label,dimension_type",
     [
         (
-            xr.DataArray(
+            DataCube(
                 [1],
                 dims=["t"],
                 coords={

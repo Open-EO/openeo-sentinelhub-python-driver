@@ -7,13 +7,13 @@ import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid
+from process._common import ProcessParameterInvalid, DataCube
 
 
 @pytest.fixture
 def generate_data():
     def _construct(data=[[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]], dims=("t", "y", "x", "band")):
-        xrdata = xr.DataArray(data, dims=dims)
+        xrdata = DataCube(data, dims=dims)
         return xrdata
 
     return _construct
@@ -56,7 +56,7 @@ def test_apply_simple(execute_process):
     Test apply process with linear_scale_range
     """
     # prepare data:
-    data = xr.DataArray(
+    data = DataCube(
         [[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]],
         dims=("t", "y", "x", "band"),
     )
@@ -85,7 +85,7 @@ def test_apply_simple(execute_process):
     )
 
     # check results:
-    expected_result = xr.DataArray(
+    expected_result = DataCube(
         [[[[1.1, 1.15], [1.15, 1.2]], [[1.05, 1.1], [0.1, 1.05]]]],
         dims=("t", "y", "x", "band"),
     )

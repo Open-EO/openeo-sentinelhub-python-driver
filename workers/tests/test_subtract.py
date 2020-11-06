@@ -6,7 +6,7 @@ from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import Band
+from process._common import Band, DataCube
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def test_examples(execute_subtract_process, x, y, expected_result):
     "x,y,expected_result",
     [
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -49,7 +49,7 @@ def test_examples(execute_subtract_process, x, y, expected_result):
                 attrs={"simulated_datatype": (float,)},
             ),
             0.2,
-            xr.DataArray(
+            DataCube(
                 [[[[0, 0.6]]], [[[0.7, 0.1]]], [[[0.3, 0.3]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -65,7 +65,7 @@ def test_examples(execute_subtract_process, x, y, expected_result):
         ),
         (
             0.2,
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -78,7 +78,7 @@ def test_examples(execute_subtract_process, x, y, expected_result):
                 },
                 attrs={"simulated_datatype": (float,)},
             ),
-            xr.DataArray(
+            DataCube(
                 [[[[0, -0.6]]], [[[-0.7, -0.1]]], [[[-0.3, -0.3]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -93,7 +93,7 @@ def test_examples(execute_subtract_process, x, y, expected_result):
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -107,7 +107,7 @@ def test_examples(execute_subtract_process, x, y, expected_result):
                 attrs={"simulated_datatype": (float,)},
             ),
             None,
-            xr.DataArray(
+            DataCube(
                 [[[[np.nan, np.nan]]], [[[np.nan, np.nan]]], [[[np.nan, np.nan]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -123,7 +123,7 @@ def test_examples(execute_subtract_process, x, y, expected_result):
         ),
         (
             None,
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -136,7 +136,7 @@ def test_examples(execute_subtract_process, x, y, expected_result):
                 },
                 attrs={"simulated_datatype": (float,)},
             ),
-            xr.DataArray(
+            DataCube(
                 [[[[np.nan, np.nan]]], [[[np.nan, np.nan]]], [[[np.nan, np.nan]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -164,7 +164,7 @@ def test_with_xarray_and_number(execute_subtract_process, x, y, expected_result)
     "x,y,expected_result",
     [
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -177,7 +177,7 @@ def test_with_xarray_and_number(execute_subtract_process, x, y, expected_result)
                 },
                 attrs={"simulated_datatype": (float,)},
             ),
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -190,7 +190,7 @@ def test_with_xarray_and_number(execute_subtract_process, x, y, expected_result)
                 },
                 attrs={"simulated_datatype": (float,)},
             ),
-            xr.DataArray(
+            DataCube(
                 [[[[0, 0]]], [[[0, 0]]], [[[0, 0]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -205,7 +205,7 @@ def test_with_xarray_and_number(execute_subtract_process, x, y, expected_result)
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[[0.9, 42]]], [[[1.3, 14]]], [[[88, 0.7]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -218,7 +218,7 @@ def test_with_xarray_and_number(execute_subtract_process, x, y, expected_result)
                 },
                 attrs={"simulated_datatype": (float,)},
             ),
-            xr.DataArray(
+            DataCube(
                 [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.5, 0.5]]]],
                 dims=("t", "y", "x", "band"),
                 coords={
@@ -231,7 +231,7 @@ def test_with_xarray_and_number(execute_subtract_process, x, y, expected_result)
                 },
                 attrs={"simulated_datatype": (float,)},
             ),
-            xr.DataArray(
+            DataCube(
                 [[[[0.7, 41.2]]], [[[0.4, 13.7]]], [[[87.5, 0.2]]]],
                 dims=("t", "y", "x", "band"),
                 coords={

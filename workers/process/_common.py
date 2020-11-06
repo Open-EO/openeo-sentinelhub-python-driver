@@ -1,6 +1,7 @@
 from copy import deepcopy
 import datetime
 import re
+from enum import Enum
 
 import dask.array as da
 from eolearn.core import EOTask
@@ -403,3 +404,75 @@ def assert_allclose(x, y):
     x = _sort_by_dims_coords(x)
     y = _sort_by_dims_coords(y)
     xr.testing.assert_allclose(x, y)
+
+
+class DimensionType(str, Enum):
+    SPATIAL = "spatial"
+    TEMPORAL = "temporal"
+    BANDS = "bands"
+    OTHER = "other"
+
+
+class DimensionTypes:
+    def __init__(self, cube, types=None):
+        self.dim_types = {}
+        self.cube = cube
+        if types is None:
+            types = {}
+        for dim in self.cube.dims:
+            self.dim_types[dim] = types.get(dim, DimensionType.OTHER)
+
+    def __repr__(self):
+        repr_str = "Coordinate types:"
+        for dim in self.dim_types.keys():
+            dim_type = self.dim_types.get(dim, DimensionType.OTHER)
+            repr_str += f"\n  * {dim}: {dim_type}"
+        return repr_str
+
+    def __eq__(self, other):
+        self.dim_types == other.dim_types
+
+    def _check_if_dim_exists(self, dim):
+        if dim not in self.cube.dims:
+            raise Exception(f"Dimension ${dim} not in the datacube")
+
+    def get_dim_type(self, dim):
+        self._check_if_dim_exists(dim)
+        return self.dim_types.get(dim, DimensionType.OTHER)
+
+    def set_dim_type(self, dim, dimension_type):
+        self._check_if_dim_exists(dim)
+        self.dim_types[dim] = dimension_type
+
+    def get_dims_of_type(self, dimension_type):
+        dims_of_type = []
+        for dim in self.cube.dims:
+            if self.dim_types[dim] == dimension_type:
+                dims_of_type.append(dim)
+        return tuple(dims_of_type)
+
+
+class DataCube(xr.DataArray):
+    __slots__ = "dim_types"
+
+    def __init__(self, *args, dim_types=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dim_types = DimensionTypes(self, dim_types)
+
+    def __repr__(self):
+        repr_str = super().__repr__()
+        repr_str = repr_str + "\n" + self.dim_types.__repr__()
+        return repr_str
+
+    def get_dim_type(self, dim):
+        return self.dim_types.get_dim_type(dim)
+
+    def set_dim_type(self, dim, dimension_type):
+        return self.dim_types.set_dim_type(dim, dimension_type)
+
+    def get_dims_of_type(self, dimension_type):
+        return self.dim_types.get_dims_of_type(dimension_type)
+
+
+def dataarray_to_datacube(dataarray):
+    return DataCube(dataarray.data, dims=dataarray.dims, coords=dataarray.coords, attrs=dataarray.attrs)

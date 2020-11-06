@@ -1,7 +1,7 @@
 import numpy as np
 import xarray as xr
 
-from ._common import ProcessEOTask, ProcessParameterInvalid
+from ._common import ProcessEOTask, ProcessParameterInvalid, dataarray_to_datacube
 
 
 class multiplyEOTask(ProcessEOTask):
@@ -21,9 +21,9 @@ class multiplyEOTask(ProcessEOTask):
 
         # we can't multiply if one of the parameters is None:
         if x is None:
-            x = xr.full_like(y, fill_value=np.nan, dtype=np.double)
+            x = dataarray_to_datacube(xr.full_like(y, fill_value=np.nan, dtype=np.double))
         if y is None:
-            y = xr.full_like(x, fill_value=np.nan, dtype=np.double)
+            y = dataarray_to_datacube(xr.full_like(x, fill_value=np.nan, dtype=np.double))
 
         try:
             # xarray knows how to multiply DataArrays and numbers in every combination:

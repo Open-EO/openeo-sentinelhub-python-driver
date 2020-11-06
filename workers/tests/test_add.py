@@ -7,7 +7,7 @@ import xarray as xr
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid
+from process._common import ProcessParameterInvalid, DataCube
 
 
 @pytest.fixture
@@ -24,7 +24,7 @@ def execute_add_process():
 
 
 def list_as_xarray(values):
-    return xr.DataArray([np.nan if v is None else v for v in values], attrs={"simulated_datatype": (float,)})
+    return DataCube([np.nan if v is None else v for v in values], attrs={"simulated_datatype": (float,)})
 
 
 @pytest.mark.parametrize(
