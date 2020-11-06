@@ -1,7 +1,6 @@
 import xarray as xr
-from xarray.testing import assert_allclose, assert_equal
 
-from ._common import ProcessEOTask, ProcessParameterInvalid
+from ._common import ProcessEOTask, ProcessParameterInvalid, assert_allclose
 
 
 class assert_equalsEOTask(ProcessEOTask):
