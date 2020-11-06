@@ -17,7 +17,7 @@ boto3 = "*"
 eo-learn-core = "*"
 psutil = "*"
 honeycomb-beeline = "*"
-sentinelhub = "*"
+sentinelhub = "==3.1.0"
 requests-futures = "*"
 dask = {extras = ["complete"],version = "*"}
 imageio = "*"
