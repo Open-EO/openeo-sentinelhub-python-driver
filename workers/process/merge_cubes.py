@@ -113,7 +113,6 @@ class merge_cubesEOTask(ProcessEOTask):
         # - run overlap_resolver for overlapping coords
         # - concatenate other coords
         dim = mismatched_dims[0]
-        all_coords = cube1.coords[dim]
         result = None
         # first add all coords from cube1 (check for overlap at every step)
         for c in cube1.coords[dim].to_index():
