@@ -354,6 +354,8 @@ class Band(object):
             if self.wavelength is None:
                 return False
             return self.wavelength >= other
+        if isinstance(other, str):
+            return self.name >= other
         return self.name >= other.name
 
     def __gt__(self, other):
@@ -362,6 +364,8 @@ class Band(object):
             if self.wavelength is None:
                 return False
             return self.wavelength > other
+        if isinstance(other, str):
+            return self.name > other
         return self.name > other.name
 
     def __le__(self, other):
@@ -370,6 +374,8 @@ class Band(object):
             if self.wavelength is None:
                 return True
             return self.wavelength <= other
+        if isinstance(other, str):
+            return self.name <= other
         return self.name <= other.name
 
     def __lt__(self, other):
@@ -378,6 +384,8 @@ class Band(object):
             if self.wavelength is None:
                 return True
             return self.wavelength < other
+        if isinstance(other, str):
+            return self.name < other
         return self.name < other.name
 
     def __repr__(self):
