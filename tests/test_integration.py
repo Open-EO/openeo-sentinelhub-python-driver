@@ -2,6 +2,7 @@ import base64
 import json
 import pytest
 import glob
+import time
 
 import sys, os
 
@@ -287,9 +288,14 @@ def test_process_batch_job(app_client, example_process_graph, authorization_head
     assert r.status_code == 400
     assert actual["code"] == "JobLocked"
 
-    r = app_client.get(f"/jobs/{job_id}")
-    actual = json.loads(r.data.decode("utf-8"))
-    assert r.status_code == 200
+    # it might take some time before the job is accepted - keep trying for 5s:
+    for _ in range(10):
+        r = app_client.get(f"/jobs/{job_id}")
+        actual = json.loads(r.data.decode("utf-8"))
+        assert r.status_code == 200
+        if actual["status"] != "created":
+            break
+        time.sleep(0.5)
     assert actual["status"] in ["queued", "running", "error", "finished"]
 
     r = app_client.get(f"/jobs/{job_id}/results")
