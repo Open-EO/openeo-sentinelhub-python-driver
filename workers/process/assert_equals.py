@@ -1,6 +1,6 @@
 import xarray as xr
 
-from ._common import ProcessEOTask, ProcessParameterInvalid, assert_allclose
+from ._common import ProcessEOTask, ProcessParameterInvalid, sort_by_dims_coords
 
 
 class assert_equalsEOTask(ProcessEOTask):
@@ -18,7 +18,9 @@ class assert_equalsEOTask(ProcessEOTask):
             del b.attrs["simulated_datatype"]
 
         try:
-            assert_allclose(a, b)
+            a = sort_by_dims_coords(a)
+            b = sort_by_dims_coords(b)
+            xr.testing.assert_allclose(a, b)
         except:
             # since it is important for us to know what the difference is, make
             # an effort to log both arguments nicely:

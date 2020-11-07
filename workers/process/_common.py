@@ -398,7 +398,7 @@ class Band(object):
 
 
 # sorts xr.DataArray by dims and coords so that we can compare it more easily:
-def _sort_by_dims_coords(x_original):
+def sort_by_dims_coords(x_original):
     x = x_original.copy(deep=False)
     for dim in x.dims:
         x = x.sortby(dim)
@@ -408,6 +408,6 @@ def _sort_by_dims_coords(x_original):
 
 def assert_allclose(x, y):
     # comparison should not depend on the order of dims or coords:
-    x = _sort_by_dims_coords(x)
-    y = _sort_by_dims_coords(y)
+    x = sort_by_dims_coords(x)
+    y = sort_by_dims_coords(y)
     xr.testing.assert_allclose(x, y)
