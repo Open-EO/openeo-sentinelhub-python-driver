@@ -661,23 +661,22 @@ def test_assert_works(app_client, value, double_value, expected_status_code, aut
     assert r.status_code == expected_status_code, r.data
 
 
-def _get_test_process_graphs():
+def _get_test_process_graphs_filenames():
     for f in glob.glob(os.path.join(os.path.dirname(__file__), "test_process_graphs/*.json")):
         if not os.path.isfile(f) or os.path.basename(f).startswith("_"):
             print("Skipping: {}".format(os.path.basename(f)))
             continue
-        with open(f, "rt") as f:
-            c = f.read()
-            print(c)
-            yield c
+        yield f
 
 
-@pytest.mark.parametrize("process_graph_json", _get_test_process_graphs())
-def test_run_test_process_graphs(app_client, process_graph_json, authorization_header):
+@pytest.mark.parametrize("process_graph_filename", _get_test_process_graphs_filenames())
+def test_run_test_process_graphs(app_client, process_graph_filename, authorization_header):
     """
     Load process graph definitions from test_process_graph/*.json and execute them
     via POST /result/, expecting status 200 on each of them.
     """
+    with open(process_graph_filename, "rt") as f:
+        process_graph_json = f.read()
     process_graph = json.loads(process_graph_json)
     data = {
         "process": {
