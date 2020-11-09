@@ -20,7 +20,12 @@ class maskEOTask(ProcessEOTask):
         common_dims = set(data.dims).intersection(set(mask.dims))
         if not (common_dims == set(mask.dims)):
             raise ProcessParameterInvalid("mask", "data/mask", "Some dimensions in mask are not available in data.")
-        try:
-            return data.where(mask, other=replacement)
-        except:
-            raise ProcessParameterInvalid("mask", "data/mask", "Data and mask have different labels")
+
+        for dim in common_dims:
+            if not data[dim].coords.to_index().equals(mask[dim].coords.to_index()):
+                raise ProcessParameterInvalid("mask", "data/mask", "Data and mask have different labels.")
+
+        if replacement is None:
+            replacement = np.nan
+
+        return data.where(mask, other=replacement)

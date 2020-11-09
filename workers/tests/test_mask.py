@@ -100,7 +100,7 @@ def test_with_two_xarrays(execute_mask_process, data, mask, replacement, expecte
         (
             xr.DataArray([[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.3, 0.5]]]], dims=("x", "y", "t", "b")),
             xr.DataArray([[[[True]]], [[[False]]], [[[False]]]], dims=("x", "y", "t", "b")),
-            ("mask", "data/mask", "Data and mask have different labels"),
+            ("mask", "data/mask", "Data and mask have different labels."),
         ),
         (
             xr.DataArray(
@@ -109,7 +109,7 @@ def test_with_two_xarrays(execute_mask_process, data, mask, replacement, expecte
                 coords={"b": [Band("B01"), Band("B02")]},
             ),
             xr.DataArray([True, False], dims=("b"), coords={"b": [Band("B02"), Band("B03")]}),
-            ("mask", "data/mask", "Data and mask have different labels"),
+            ("mask", "data/mask", "Data and mask have different labels."),
         ),
         (
             xr.DataArray(
@@ -122,7 +122,7 @@ def test_with_two_xarrays(execute_mask_process, data, mask, replacement, expecte
                 dims=("x", "b"),
                 coords={"b": [Band("B01"), Band("B02")], "x": [0, 1, 3]},
             ),
-            ("mask", "data/mask", "Data and mask have different labels"),
+            ("mask", "data/mask", "Data and mask have different labels."),
         ),
         (
             xr.DataArray([[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.3, 0.5]]]], dims=("x", "y", "t", "b")),
@@ -130,7 +130,20 @@ def test_with_two_xarrays(execute_mask_process, data, mask, replacement, expecte
                 [[[[True, True, True]]], [[[False, False, False]]], [[[False, False, False]]]],
                 dims=("x", "y", "t", "b"),
             ),
-            ("mask", "data/mask", "Data and mask have different labels"),
+            ("mask", "data/mask", "Data and mask have different labels."),
+        ),
+        (
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.3, 0.5]]]],
+                dims=("x", "y", "t", "b"),
+                coords={"b": [Band("B01"), Band("B02")], "x": [0, 1, 2]},
+            ),
+            xr.DataArray(
+                [[True, False], [True, False]],
+                dims=("x", "b"),
+                coords={"b": [Band("B01"), Band("B02")], "x": [0, 1]},
+            ),
+            ("mask", "data/mask", "Data and mask have different labels."),
         ),
     ],
 )
