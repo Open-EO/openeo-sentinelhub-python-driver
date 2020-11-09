@@ -24,6 +24,7 @@ from ._common import ProcessEOTask, ProcessParameterInvalid, Internal, Band
 
 SENTINELHUB_INSTANCE_ID = os.environ.get("SENTINELHUB_INSTANCE_ID", None)
 SENTINELHUB_LAYER_ID_S2L1C = os.environ.get("SENTINELHUB_LAYER_ID_S2L1C", None)
+SENTINELHUB_LAYER_ID_S2L2A = os.environ.get("SENTINELHUB_LAYER_ID_S2L2A", None)
 SENTINELHUB_LAYER_ID_S1GRD = os.environ.get("SENTINELHUB_LAYER_ID_S1GRD", None)
 
 
@@ -40,6 +41,77 @@ S2_L1C_ALIASES = dict(
     )
 )
 
+# https://docs.sentinel-hub.com/api/latest/data/sentinel-2-l2a/
+S2_L2A_BANDS = [
+    "B01",
+    "B02",
+    "B03",
+    "B04",
+    "B05",
+    "B06",
+    "B07",
+    "B08",
+    "B8A",
+    "B09",
+    "B11",
+    "B12",
+    "AOT",
+    "SCL",
+    "SNW",
+    "CLD",
+    "CLP",
+    "CLM",
+]
+S2_L2A_WAVELENGTHS = dict(
+    zip(
+        S2_L2A_BANDS,
+        [
+            0.443,
+            0.49,
+            0.56,
+            0.665,
+            0.705,
+            0.74,
+            0.783,
+            0.842,
+            0.865,
+            0.945,
+            1.61,
+            2.19,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+    )
+)
+S2_L2A_ALIASES = dict(
+    zip(
+        S2_L2A_BANDS,
+        [
+            "aerosol",
+            "blue",
+            "green",
+            "red",
+            "red-edge",
+            None,
+            None,
+            "nir",
+            None,
+            None,
+            "swir1",
+            "swir2",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+    )
+)
 
 # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=available-bands-and-data
 S1_GRD_IW_BANDS = ["VV", "VH"]
@@ -322,6 +394,20 @@ class load_collectionEOTask(ProcessEOTask):
             }
             band_aliases = S2_L1C_ALIASES
             band_wavelengths = S2_L1C_WAVELENGTHS
+
+        elif collection_id == "S2L2A":
+            dataset = "S2L2A"
+            bands = validate_bands(bands, S2_L2A_BANDS, collection_id)
+            kwargs = dict(
+                data_collection=DataCollection.SENTINEL2_L2A,
+                layer=SENTINELHUB_LAYER_ID_S2L2A,
+                maxcc=1.0,  # maximum allowed cloud cover of original ESA tiles
+            )
+            dataFilter_params = {
+                "previewMode": "EXTENDED_PREVIEW",
+            }
+            band_aliases = S2_L2A_ALIASES
+            band_wavelengths = S2_L2A_WAVELENGTHS
 
         elif collection_id == "S1GRDIW":
             dataset = "S1GRD"
