@@ -27,10 +27,19 @@ SENTINELHUB_LAYER_ID_S2L1C = os.environ.get("SENTINELHUB_LAYER_ID_S2L1C", None)
 SENTINELHUB_LAYER_ID_S1GRD = os.environ.get("SENTINELHUB_LAYER_ID_S1GRD", None)
 
 
+# https://docs.sentinel-hub.com/api/latest/data/sentinel-2-l1c/
 S2_L1C_BANDS = ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B09", "B10", "B11", "B12"]
 # https://custom-scripts.sentinel-hub.com/custom-scripts/sentinel-2/bands/
-S2_L1C_WAVELENGTHS = [0.443, 0.49, 0.56, 0.665, 0.705, 0.74, 0.783, 0.842, 0.865, 0.945, 1.375, 1.61, 2.19]
-S2_L1C_ALIASES = ["aerosol", "blue", "green", "red", "red-edge", None, None, "nir", None, None, None, "swir1", "swir2"]
+S2_L1C_WAVELENGTHS = dict(
+    zip(S2_L1C_BANDS, [0.443, 0.49, 0.56, 0.665, 0.705, 0.74, 0.783, 0.842, 0.865, 0.945, 1.375, 1.61, 2.19])
+)
+S2_L1C_ALIASES = dict(
+    zip(
+        S2_L1C_BANDS,
+        ["aerosol", "blue", "green", "red", "red-edge", None, None, "nir", None, None, None, "swir1", "swir2"],
+    )
+)
+
 
 # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=available-bands-and-data
 S1_GRD_IW_BANDS = ["VV", "VH"]
@@ -297,13 +306,12 @@ class load_collectionEOTask(ProcessEOTask):
         else:
             width, height = sentinelhub.geo_utils.bbox_to_dimensions(bbox, 10.0)
 
-        band_aliases = None
-        band_wavelengths = None
+        band_aliases = {}
+        band_wavelengths = {}
 
         if collection_id == "S2L1C":
             dataset = "S2L1C"
             bands = validate_bands(bands, S2_L1C_BANDS, collection_id)
-            DEFAULT_RES = "10m"
             kwargs = dict(
                 data_collection=DataCollection.SENTINEL2_L1C,
                 layer=SENTINELHUB_LAYER_ID_S2L1C,
@@ -329,7 +337,6 @@ class load_collectionEOTask(ProcessEOTask):
             #     - High
             #   Similarly to polarization, not all beam mode/polarization combinations will have data
             #   at the chosen resolution. IW is typically sensed in High resolution, EW in Medium.
-            DEFAULT_RES = "10m"
             kwargs = dict(
                 data_collection=DataCollection.SENTINEL1_IW,
                 layer=SENTINELHUB_LAYER_ID_S1GRD,
@@ -384,17 +391,13 @@ class load_collectionEOTask(ProcessEOTask):
         # - (optional) alias
         # - (optional) wavelength
         # Since some processes (filter_bands, ndvi) depend on this information, we must include it in the datacube.
-        if band_aliases is None:
-            band_aliases = [None] * len(bands)
-        if band_wavelengths is None:
-            band_wavelengths = [None] * len(bands)
-        bands = [Band(n, a, w) for n, a, w in zip(bands, band_aliases, band_wavelengths)]
+        bands_dim = [Band(b, band_aliases.get(b), band_wavelengths.get(b)) for b in bands]
 
         xrdata = xr.DataArray(
             masked_data,
             dims=("t", "y", "x", "band"),
             coords={
-                "band": bands,
+                "band": bands_dim,
                 "t": orbit_times_middle,
             },
             attrs={
