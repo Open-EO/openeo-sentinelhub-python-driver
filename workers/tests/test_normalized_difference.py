@@ -46,9 +46,6 @@ def list_as_xarray(values):
     ],
 )
 def test_correct(execute_normalized_difference_process, x, y, expected_result):
-    """
-    Test normalized_difference process with examples from https://processes.openeo.org/#normalized_difference
-    """
     # No matter which test parameters we get (x, t, expected_result), we would like to test
     # all of the combinations:
     #  - (5, 2.5, 2)
