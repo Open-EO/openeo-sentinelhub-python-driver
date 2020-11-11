@@ -442,15 +442,11 @@ class DimensionTypes:
 
     def _check_if_dim_exists(self, dim):
         if dim not in self.cube.dims:
-            raise Exception(f"Dimension ${dim} not in the datacube")
+            raise Exception(f"Dimension '{dim}' not in the datacube")
 
     def get_dim_type(self, dim):
         self._check_if_dim_exists(dim)
         return self.dim_types.get(dim, DimensionType.OTHER)
-
-    def set_dim_type(self, dim, dimension_type):
-        self._check_if_dim_exists(dim)
-        self.dim_types[dim] = dimension_type
 
     def get_dims_of_type(self, dimension_type):
         dims_of_type = []
@@ -475,12 +471,14 @@ class DataCube(xr.DataArray):
     def get_dim_type(self, dim):
         return self.dim_types.get_dim_type(dim)
 
-    def set_dim_type(self, dim, dimension_type):
-        return self.dim_types.set_dim_type(dim, dimension_type)
-
     def get_dims_of_type(self, dimension_type):
         return self.dim_types.get_dims_of_type(dimension_type)
 
+    @staticmethod
+    def from_dataarray(dataarray):
+        return DataCube(dataarray.data, dims=dataarray.dims, coords=dataarray.coords, attrs=dataarray.attrs)
 
-def dataarray_to_datacube(dataarray):
-    return DataCube(dataarray.data, dims=dataarray.dims, coords=dataarray.coords, attrs=dataarray.attrs)
+    def copy(self, *args, **kwargs):
+        c = super().copy(*args, **kwargs)
+        c.dim_types = self.dim_types
+        return c

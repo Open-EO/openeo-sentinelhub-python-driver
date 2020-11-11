@@ -5,7 +5,7 @@ import xarray as xr
 
 xr.set_options(keep_attrs=True)
 
-from ._common import ProcessEOTask, ProcessParameterInvalid, dataarray_to_datacube
+from ._common import ProcessEOTask, ProcessParameterInvalid, DataCube
 
 
 class divideEOTask(ProcessEOTask):
@@ -36,9 +36,9 @@ class divideEOTask(ProcessEOTask):
         # we can't divide if one of the parameters is None:
         if x is None:
             # careful, dtype is mandatory or the results will be weird:
-            x = dataarray_to_datacube(xr.full_like(y, fill_value=np.nan, dtype=np.double))
+            x = DataCube.from_dataarray(xr.full_like(y, fill_value=np.nan, dtype=np.double))
         if y is None:
-            y = dataarray_to_datacube(xr.full_like(x, fill_value=np.nan, dtype=np.double))
+            y = DataCube.from_dataarray(xr.full_like(x, fill_value=np.nan, dtype=np.double))
 
         try:
             # xarray knows how to divide DataArrays and numbers in every combination:

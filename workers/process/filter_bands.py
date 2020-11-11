@@ -3,7 +3,7 @@ import re
 import numpy as np
 import xarray as xr
 
-from ._common import ProcessEOTask, ProcessParameterInvalid, Band, DataCube, dataarray_to_datacube
+from ._common import ProcessEOTask, ProcessParameterInvalid, Band, DataCube
 
 
 def get_bands_dims(data):
@@ -129,4 +129,4 @@ class filter_bandsEOTask(ProcessEOTask):
             all_bands = [x[0] for x in list(data.coords[dim].to_index())]
             return data.drop_sel({dim: all_bands})
 
-        return dataarray_to_datacube(result)
+        return DataCube.from_dataarray(result)
