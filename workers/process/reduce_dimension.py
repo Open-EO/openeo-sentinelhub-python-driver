@@ -37,7 +37,8 @@ class reduce_dimensionEOTask(ProcessEOTask):
         all_results = workflow.execute({})
         result = all_results[result_task]
 
-        result.attrs["reduce_by"].pop()
+        if "reduce_by" in result.attrs:
+            result.attrs["reduce_by"].pop()
         result.attrs["simulated_datatype"] = None
 
         if target_dimension:

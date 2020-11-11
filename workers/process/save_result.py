@@ -44,11 +44,12 @@ def serialize_data(data):
         for band in data.coords[dim].values:
             new_band_labels.append(band.__dict__)
         data = data.assign_coords({dim: new_band_labels})
-    bbox = data.attrs["bbox"]
-    xmin, ymin = bbox.lower_left
-    xmax, ymax = bbox.upper_right
-    crs = str(bbox._crs)
-    data.attrs["bbox"] = {"xmin": xmin, "ymin": ymin, "xmax": xmax, "ymax": ymax, "crs": crs}
+    if "bbox" in data.attrs:
+        bbox = data.attrs["bbox"]
+        xmin, ymin = bbox.lower_left
+        xmax, ymax = bbox.upper_right
+        crs = str(bbox._crs)
+        data.attrs["bbox"] = {"xmin": xmin, "ymin": ymin, "xmax": xmax, "ymax": ymax, "crs": crs}
     return data.to_dict()
 
 
@@ -128,6 +129,12 @@ class save_resultEOTask(ProcessEOTask):
             serialized_data = serialize_data(data)
             json_string = json.dumps(serialized_data)
             self._put_file_to_s3("result.json", "application/json", body=json_string)
+            self.results.append(
+                {
+                    "filename": "result.json",
+                    "type": "application/json",
+                }
+            )
         else:
             default_datatype = OUTPUT_FORMATS[output_format].default_datatype
             datatype_string = output_options.get("datatype", default_datatype).lower()
