@@ -47,6 +47,7 @@ class eqEOTask(ProcessEOTask):
                 return x == y
             return False
 
+        original_attrs = x.attrs if isinstance(x, xr.DataArray) else y.attrs
         # If the values are DataArrays, we assume they contain numbers
         if isinstance(x, xr.DataArray) and isinstance(y, xr.DataArray):
             if sorted(x.dims) == sorted(y.dims):
@@ -66,7 +67,9 @@ class eqEOTask(ProcessEOTask):
                 cube = x
                 other_value = y
             if isinstance(other_value, (list, dict)):
-                return xr.where(cube.isnull(), None, False)
+                result = xr.where(cube.isnull(), None, False)
+                result.attrs = original_attrs
+                return result
             other_value = xr.DataArray(other_value)
 
         # Subtracting Nonetype is not possible, so we replace it with np.nan, which is a float
@@ -77,4 +80,7 @@ class eqEOTask(ProcessEOTask):
             m = np.abs(cube - other_value) <= delta
         else:
             m = cube == other_value
-        return xr.where(cube.isnull() + other_value.isnull(), None, m)
+
+        result = xr.where(cube.isnull() + other_value.isnull(), None, m)
+        result.attrs = original_attrs
+        return result
