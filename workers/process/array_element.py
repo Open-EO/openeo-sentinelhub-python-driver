@@ -42,7 +42,10 @@ class array_elementEOTask(ProcessEOTask):
             dim = data.attrs.get("reduce_by")[-1]
             try:
                 if index is not None:
-                    return data.isel({dim: index}, drop=True)
+                    result = data.isel({dim: index}, drop=True)
+                    # mark the data - while it is still an xarray DataArray, the operations should now be applied to each element:
+                    result.attrs["simulated_datatype"] = (float,)
+                    return result
                 else:
                     # Suprisingly this also works for the temporal dimension, when `label` is a string:
                     #   return data.sel({dim: label}, drop=True)

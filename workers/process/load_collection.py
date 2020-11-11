@@ -13,7 +13,7 @@ import imageio
 from osgeo import gdal
 import requests
 from requests_futures.sessions import FuturesSession
-from sentinelhub import WmsRequest, WcsRequest, MimeType, CRS, BBox, CustomUrlParam, BBoxSplitter
+from sentinelhub import WmsRequest, WcsRequest, MimeType, CRS, BBox, CustomUrlParam, BBoxSplitter, DataCollection
 from sentinelhub.config import SHConfig
 from sentinelhub.constants import AwsConstants
 import sentinelhub.geo_utils
@@ -305,6 +305,7 @@ class load_collectionEOTask(ProcessEOTask):
             bands = validate_bands(bands, S2_L1C_BANDS, collection_id)
             DEFAULT_RES = "10m"
             kwargs = dict(
+                data_collection=DataCollection.SENTINEL2_L1C,
                 layer=SENTINELHUB_LAYER_ID_S2L1C,
                 maxcc=1.0,  # maximum allowed cloud cover of original ESA tiles
             )
@@ -330,6 +331,7 @@ class load_collectionEOTask(ProcessEOTask):
             #   at the chosen resolution. IW is typically sensed in High resolution, EW in Medium.
             DEFAULT_RES = "10m"
             kwargs = dict(
+                data_collection=DataCollection.SENTINEL1_IW,
                 layer=SENTINELHUB_LAYER_ID_S1GRD,
             )
             dataFilter_params = {}
