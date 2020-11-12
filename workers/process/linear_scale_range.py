@@ -27,7 +27,7 @@ class linear_scale_rangeEOTask(ProcessEOTask):
                 "linear_scale_range", "inputMin", "Argument must differ from argument 'inputMax'."
             )
 
-        original_type_was_number, data = self.convert_to_dataarray(data)
+        original_type_was_number, data = self.convert_to_datacube(data)
 
         if data.size == 0:
             return None

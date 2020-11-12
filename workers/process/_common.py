@@ -242,7 +242,7 @@ class ProcessEOTask(EOTask):
         else:
             return param_val
 
-    def convert_to_dataarray(self, data, as_list=False):
+    def convert_to_datacube(self, data, as_list=False):
         original_type_was_number = True
 
         if isinstance(data, xr.DataArray):
@@ -267,7 +267,7 @@ class ProcessEOTask(EOTask):
                         data[i] = number_array
                     ######################################################################
                     else:
-                        data[i] = xr.DataArray(np.array(element, dtype=np.float))
+                        data[i] = DataCube(np.array(element, dtype=np.float))
                 elif not isinstance(element, xr.DataArray):
                     raise ProcessParameterInvalid(
                         self.process_id,
@@ -276,7 +276,7 @@ class ProcessEOTask(EOTask):
                     )
 
         else:
-            data = xr.DataArray(np.array(data, dtype=np.float))
+            data = DataCube(np.array(data, dtype=np.float))
 
         return original_type_was_number, data
 
