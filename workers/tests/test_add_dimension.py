@@ -8,7 +8,7 @@ import xarray as xr
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid, Band, DataCube
+from process._common import ProcessParameterInvalid, Band, DataCube, assert_equal, DimensionType
 
 
 @pytest.fixture
@@ -39,6 +39,7 @@ def execute_process():
                         datetime(2014, 3, 7),
                     ]
                 },
+                dim_types={"t": DimensionType.TEMPORAL},
             ),
             "x",
             42,
@@ -55,6 +56,7 @@ def execute_process():
                     ],
                     "x": [42],
                 },
+                dim_types={"t": DimensionType.TEMPORAL, "x": DimensionType.SPATIAL},
             ),
         ),
         (
@@ -69,6 +71,7 @@ def execute_process():
                         datetime(2014, 3, 7),
                     ]
                 },
+                dim_types={"t": DimensionType.TEMPORAL},
             ),
             "b",
             "B01",
@@ -85,13 +88,11 @@ def execute_process():
                     ],
                     "b": [Band("B01")],
                 },
+                dim_types={"t": DimensionType.TEMPORAL, "b": DimensionType.BANDS},
             ),
         ),
         (
-            DataCube(
-                [1, 2, 3, 4],
-                dims=["x"],
-            ),
+            DataCube([1, 2, 3, 4], dims=["x"], dim_types={"x": DimensionType.SPATIAL}),
             "t",
             "2020-02-20",
             "temporal",
@@ -103,6 +104,7 @@ def execute_process():
                         datetime(2020, 2, 20),
                     ],
                 },
+                dim_types={"t": DimensionType.TEMPORAL, "x": DimensionType.SPATIAL},
             ),
         ),
     ],
@@ -110,7 +112,7 @@ def execute_process():
 def test_correct(execute_process, data, name, label, dimension_type, expected_result):
     arguments = {"data": data, "name": name, "label": label, "type": dimension_type}
     result = execute_process(arguments)
-    xr.testing.assert_equal(result, expected_result)
+    assert_equal(result, expected_result)
 
 
 @pytest.mark.parametrize(

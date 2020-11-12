@@ -414,6 +414,13 @@ def assert_allclose(x, y):
     xr.testing.assert_allclose(x, y)
 
 
+def assert_equal(x, y):
+    # same as `assert_allclose`, but also checks dim_types
+    assert_allclose(x, y)
+    if not x.dim_types == y.dim_types:
+        raise ValidationError(f"Dimension types do not match: \nL:\n{str(x.dim_types)}\nR:\n{str(y.dim_types)}\n")
+
+
 class DimensionType(str, Enum):
     SPATIAL = "spatial"
     TEMPORAL = "temporal"
@@ -438,7 +445,7 @@ class DimensionTypes:
         return repr_str
 
     def __eq__(self, other):
-        self.dim_types == other.dim_types
+        return self.dim_types == other.dim_types
 
     def _check_if_dim_exists(self, dim):
         if dim not in self.cube.dims:
@@ -447,6 +454,13 @@ class DimensionTypes:
     def get_dim_type(self, dim):
         self._check_if_dim_exists(dim)
         return self.dim_types.get(dim, DimensionType.OTHER)
+
+    def set_dim_type(self, dim, dimension_type):
+        self._check_if_dim_exists(dim)
+        self.dim_types[dim] = dimension_type
+
+    def copy(self, new_cube):
+        return DimensionTypes(new_cube, types=self.dim_types)
 
     def get_dims_of_type(self, dimension_type):
         dims_of_type = []
@@ -471,6 +485,9 @@ class DataCube(xr.DataArray):
     def get_dim_type(self, dim):
         return self.dim_types.get_dim_type(dim)
 
+    def set_dim_type(self, dim, dimension_type):
+        return self.dim_types.set_dim_type(dim, dimension_type)
+
     def get_dims_of_type(self, dimension_type):
         return self.dim_types.get_dims_of_type(dimension_type)
 
@@ -480,5 +497,16 @@ class DataCube(xr.DataArray):
 
     def copy(self, *args, **kwargs):
         c = super().copy(*args, **kwargs)
-        c.dim_types = self.dim_types
+        c.dim_types = self.dim_types.copy(c)
+        return c
+
+    def expand_dims(self, dim=None, dim_type=DimensionType.OTHER, **kwargs):
+        c = super().expand_dims(dim=dim, **kwargs)
+        c.dim_types = self.dim_types.copy(c)
+        if isinstance(dim, dict):
+            dims = list(dim.keys())
+            if len(dims) != 1:
+                raise Exception("Only one dimension can be added at the time")
+            dim = dims[0]
+        c.set_dim_type(dim, dim_type)
         return c
