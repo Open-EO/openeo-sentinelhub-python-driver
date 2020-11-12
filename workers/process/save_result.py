@@ -129,6 +129,12 @@ class save_resultEOTask(ProcessEOTask):
             serialized_data = serialize_data(data)
             json_string = json.dumps(serialized_data)
             self._put_file_to_s3("result.json", "application/json", body=json_string)
+            self.results.append(
+                {
+                    "filename": "result.json",
+                    "type": "application/json",
+                }
+            )
         else:
             default_datatype = OUTPUT_FORMATS[output_format].default_datatype
             datatype_string = output_options.get("datatype", default_datatype).lower()
