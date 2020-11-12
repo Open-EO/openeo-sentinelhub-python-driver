@@ -3,18 +3,7 @@ import re
 import numpy as np
 import xarray as xr
 
-from ._common import ProcessEOTask, ProcessParameterInvalid, Band, DataCube
-
-
-def get_bands_dims(data):
-    """ Returns names of all the dimensions that represent bands """
-    # this is not the correct way - dimension should know its type even if there are no coords in it
-    result = [
-        dim
-        for dim in data.dims
-        if dim in data.coords and len(data.coords) > 0 and isinstance(data.coords[dim].to_index()[0], Band)
-    ]
-    return result
+from ._common import ProcessEOTask, ProcessParameterInvalid, Band, DataCube, DimensionType
 
 
 class filter_bandsEOTask(ProcessEOTask):
@@ -27,7 +16,7 @@ class filter_bandsEOTask(ProcessEOTask):
             arguments, "wavelengths", required=False, allowed_types=[list], default=[]
         )
 
-        bands_dims = get_bands_dims(data)
+        bands_dims = data.get_dims_of_type(DimensionType.BANDS)
         # "The data cube is expected to have only one dimension of type bands."
         if len(bands_dims) > 1:
             raise ProcessParameterInvalid("filter_bands", "data", "Multiple dimensions of type 'bands' found.")
@@ -126,7 +115,7 @@ class filter_bandsEOTask(ProcessEOTask):
 
         if result is None:
             # keep the original shape, dims and coords, except for bands, where you remove all of them, but keep the dimension:
-            all_bands = [x[0] for x in list(data.coords[dim].to_index())]
-            return data.drop_sel({dim: all_bands})
+            all_bands = [x.name for x in list(data.coords[dim].to_index())]
+            return DataCube.from_dataarray(data.drop_sel({dim: all_bands}), data.get_dim_types())
 
-        return DataCube.from_dataarray(result)
+        return DataCube.from_dataarray(result, data.get_dim_types())
