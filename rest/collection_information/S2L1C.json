@@ -64,7 +64,13 @@
         "B09",
         "B10",
         "B11",
-        "B12"
+        "B12",
+        "CLP",
+        "CLM",
+        "sunAzimuthAngles",
+        "sunZenithAngles",
+        "viewAzimuthMean",
+        "viewZenithMean"
       ]
     },
     "t": {

@@ -64,7 +64,18 @@
         "B09",
         "B10",
         "B11",
-        "B12"
+        "B12",
+        "AOT",
+        "SCL",
+        "SNW",
+        "CLD",
+        "CLP",
+        "CLM",
+        "sunAzimuthAngles",
+        "sunZenithAngles",
+        "viewAzimuthMean",
+        "viewZenithMean",
+        "dataMask"
       ]
     },
     "t": {
