@@ -32,6 +32,7 @@ class divideEOTask(ProcessEOTask):
 
         # at least one parameter is xr.DataArray
         original_attrs = x.attrs if isinstance(x, xr.DataArray) else y.attrs
+        original_dim_types = x.get_dim_types() if isinstance(x, xr.DataArray) else y.get_dim_types()
 
         # we can't divide if one of the parameters is None:
         if x is None:
@@ -48,4 +49,4 @@ class divideEOTask(ProcessEOTask):
             #   ValueError: arguments without labels along dimension '...' cannot be aligned because they have different dimension sizes: ...
             raise ProcessParameterInvalid("divide", "x/y", str(ex))
         result.attrs = original_attrs
-        return result
+        return DataCube.from_dataarray(result, original_dim_types)
