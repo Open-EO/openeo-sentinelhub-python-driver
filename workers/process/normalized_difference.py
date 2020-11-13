@@ -3,7 +3,7 @@ import re
 import numpy as np
 import xarray as xr
 
-from ._common import ProcessEOTask, ProcessParameterInvalid, Band
+from ._common import ProcessEOTask, ProcessParameterInvalid, Band, DataCube
 
 
 class normalized_differenceEOTask(ProcessEOTask):
@@ -23,6 +23,7 @@ class normalized_differenceEOTask(ProcessEOTask):
 
         # at least one parameter is xr.DataArray
         original_attrs = x.attrs if isinstance(x, xr.DataArray) else y.attrs
+        original_dim_types = x.get_dim_types() if isinstance(x, xr.DataArray) else y.get_dim_types()
 
         # we can't normalized_difference if one of the parameters is None:
         if x is None:
@@ -42,4 +43,4 @@ class normalized_differenceEOTask(ProcessEOTask):
         # Once we get rid of "reduce_by", we can forget origianl attrs and be more explicit:
         #  # the result is always a number:
         #  result.attrs["simulated_datatype"] = (float,)
-        return result
+        return DataCube.from_dataarray(result, original_dim_types)

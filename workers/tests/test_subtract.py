@@ -6,7 +6,7 @@ from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import Band, DataCube, DimensionType
+from process._common import Band, DataCube, DimensionType, assert_equal
 
 
 @pytest.fixture
@@ -165,7 +165,7 @@ def test_with_xarray_and_number(execute_subtract_process, x, y, expected_result)
     Test subtract process with xarray.DataArrays
     """
     result = execute_subtract_process(x, y)
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
 
 
 @pytest.mark.parametrize(
@@ -266,4 +266,4 @@ def test_with_two_xarrays(execute_subtract_process, x, y, expected_result):
     Test subtract process with xarray.DataArrays
     """
     result = execute_subtract_process(x, y)
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
