@@ -6,7 +6,7 @@ from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import Band, DataCube
+from process._common import Band, DataCube, DimensionType
 
 
 @pytest.fixture
@@ -46,6 +46,7 @@ def test_examples(execute_subtract_process, x, y, expected_result):
                     ],
                     "band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
                 },
+                dim_types={"t": DimensionType.TEMPORAL, "y": DimensionType.SPATIAL, "band": DimensionType.BANDS},
                 attrs={"simulated_datatype": (float,)},
             ),
             0.2,
@@ -60,6 +61,7 @@ def test_examples(execute_subtract_process, x, y, expected_result):
                     ],
                     "band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
                 },
+                dim_types={"t": DimensionType.TEMPORAL, "y": DimensionType.SPATIAL, "band": DimensionType.BANDS},
                 attrs={"simulated_datatype": (float,)},
             ),
         ),
@@ -76,6 +78,7 @@ def test_examples(execute_subtract_process, x, y, expected_result):
                     ],
                     "band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
                 },
+                dim_types={"t": DimensionType.TEMPORAL, "y": DimensionType.SPATIAL, "band": DimensionType.BANDS},
                 attrs={"simulated_datatype": (float,)},
             ),
             DataCube(
@@ -89,6 +92,7 @@ def test_examples(execute_subtract_process, x, y, expected_result):
                     ],
                     "band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
                 },
+                dim_types={"t": DimensionType.TEMPORAL, "y": DimensionType.SPATIAL, "band": DimensionType.BANDS},
                 attrs={"simulated_datatype": (float,)},
             ),
         ),
@@ -104,6 +108,7 @@ def test_examples(execute_subtract_process, x, y, expected_result):
                     ],
                     "band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
                 },
+                dim_types={"t": DimensionType.TEMPORAL, "y": DimensionType.SPATIAL, "band": DimensionType.BANDS},
                 attrs={"simulated_datatype": (float,)},
             ),
             None,
@@ -118,6 +123,7 @@ def test_examples(execute_subtract_process, x, y, expected_result):
                     ],
                     "band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
                 },
+                dim_types={"t": DimensionType.TEMPORAL, "y": DimensionType.SPATIAL, "band": DimensionType.BANDS},
                 attrs={"simulated_datatype": (float,)},
             ),
         ),
@@ -134,6 +140,7 @@ def test_examples(execute_subtract_process, x, y, expected_result):
                     ],
                     "band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
                 },
+                dim_types={"t": DimensionType.TEMPORAL, "y": DimensionType.SPATIAL, "band": DimensionType.BANDS},
                 attrs={"simulated_datatype": (float,)},
             ),
             DataCube(
@@ -147,6 +154,7 @@ def test_examples(execute_subtract_process, x, y, expected_result):
                     ],
                     "band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
                 },
+                dim_types={"t": DimensionType.TEMPORAL, "y": DimensionType.SPATIAL, "band": DimensionType.BANDS},
                 attrs={"simulated_datatype": (float,)},
             ),
         ),
@@ -175,6 +183,7 @@ def test_with_xarray_and_number(execute_subtract_process, x, y, expected_result)
                     ],
                     "band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
                 },
+                dim_types={"t": DimensionType.TEMPORAL, "y": DimensionType.SPATIAL, "band": DimensionType.BANDS},
                 attrs={"simulated_datatype": (float,)},
             ),
             DataCube(
@@ -188,6 +197,7 @@ def test_with_xarray_and_number(execute_subtract_process, x, y, expected_result)
                     ],
                     "band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
                 },
+                dim_types={"t": DimensionType.TEMPORAL, "y": DimensionType.SPATIAL, "band": DimensionType.BANDS},
                 attrs={"simulated_datatype": (float,)},
             ),
             DataCube(
@@ -201,6 +211,7 @@ def test_with_xarray_and_number(execute_subtract_process, x, y, expected_result)
                     ],
                     "band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
                 },
+                dim_types={"t": DimensionType.TEMPORAL, "y": DimensionType.SPATIAL, "band": DimensionType.BANDS},
                 attrs={"simulated_datatype": (float,)},
             ),
         ),
@@ -216,6 +227,7 @@ def test_with_xarray_and_number(execute_subtract_process, x, y, expected_result)
                     ],
                     "band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
                 },
+                dim_types={"t": DimensionType.TEMPORAL, "y": DimensionType.SPATIAL, "band": DimensionType.BANDS},
                 attrs={"simulated_datatype": (float,)},
             ),
             DataCube(
@@ -229,6 +241,7 @@ def test_with_xarray_and_number(execute_subtract_process, x, y, expected_result)
                     ],
                     "band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
                 },
+                dim_types={"t": DimensionType.TEMPORAL, "y": DimensionType.SPATIAL, "band": DimensionType.BANDS},
                 attrs={"simulated_datatype": (float,)},
             ),
             DataCube(
@@ -242,6 +255,7 @@ def test_with_xarray_and_number(execute_subtract_process, x, y, expected_result)
                     ],
                     "band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
                 },
+                dim_types={"t": DimensionType.TEMPORAL, "y": DimensionType.SPATIAL, "band": DimensionType.BANDS},
                 attrs={"simulated_datatype": (float,)},
             ),
         ),
