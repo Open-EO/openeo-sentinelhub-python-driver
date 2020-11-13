@@ -18,6 +18,7 @@ class multiplyEOTask(ProcessEOTask):
 
         # at least one parameter is xr.DataArray
         original_attrs = x.attrs if isinstance(x, xr.DataArray) else y.attrs
+        original_dim_types = x.get_dim_types() if isinstance(x, xr.DataArray) else y.get_dim_types()
 
         # we can't multiply if one of the parameters is None:
         if x is None:
@@ -37,4 +38,4 @@ class multiplyEOTask(ProcessEOTask):
         # Once we get rid of "reduce_by", we can forget origianl attrs and be more explicit:
         #  # the result is always a number:
         #  result.attrs["simulated_datatype"] = (float,)
-        return result
+        return DataCube.from_dataarray(result, original_dim_types)
