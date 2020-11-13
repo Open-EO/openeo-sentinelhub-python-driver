@@ -7,7 +7,7 @@ import xarray as xr
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid, DataCube
+from process._common import ProcessParameterInvalid, DataCube, DimensionType, assert_equal
 
 
 @pytest.fixture
@@ -24,7 +24,12 @@ def execute_add_process():
 
 
 def list_as_xarray(values):
-    return DataCube([np.nan if v is None else v for v in values], attrs={"simulated_datatype": (float,)})
+    return DataCube(
+        [np.nan if v is None else v for v in values],
+        dims=("x"),
+        dim_types={"x": DimensionType.SPATIAL},
+        attrs={"simulated_datatype": (float,)},
+    )
 
 
 @pytest.mark.parametrize(
@@ -63,7 +68,7 @@ def test_examples(execute_add_process, x, y, expected_result):
 def test_xarray(execute_add_process, x, y, expected_result):
     arguments = {"x": x, "y": y}
     result = execute_add_process(arguments)
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
 
 
 @pytest.mark.parametrize(

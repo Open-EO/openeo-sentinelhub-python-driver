@@ -414,6 +414,13 @@ def assert_allclose(x, y):
     xr.testing.assert_allclose(x, y)
 
 
+def assert_equal(x, y):
+    # same as `assert_allclose`, but also checks dim_types
+    assert_allclose(x, y)
+    if not x.dim_types == y.dim_types:
+        raise ValidationError(f"Dimension types do not match: \nL:\n{str(x.dim_types)}\nR:\n{str(y.dim_types)}\n")
+
+
 class DimensionType(str, Enum):
     SPATIAL = "spatial"
     TEMPORAL = "temporal"
@@ -438,7 +445,7 @@ class DimensionTypes:
         return repr_str
 
     def __eq__(self, other):
-        self.dim_types == other.dim_types
+        return self.dim_types == other.dim_types
 
     def _check_if_dim_exists(self, dim):
         if dim not in self.cube.dims:
@@ -474,9 +481,14 @@ class DataCube(xr.DataArray):
     def get_dims_of_type(self, dimension_type):
         return self.dim_types.get_dims_of_type(dimension_type)
 
+    def get_dim_types(self):
+        return self.dim_types.dim_types
+
     @staticmethod
-    def from_dataarray(dataarray):
-        return DataCube(dataarray.data, dims=dataarray.dims, coords=dataarray.coords, attrs=dataarray.attrs)
+    def from_dataarray(dataarray, dim_types=None):
+        return DataCube(
+            dataarray.data, dims=dataarray.dims, coords=dataarray.coords, attrs=dataarray.attrs, dim_types=dim_types
+        )
 
     def copy(self, *args, **kwargs):
         c = super().copy(*args, **kwargs)

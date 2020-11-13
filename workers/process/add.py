@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 
 xr.set_options(keep_attrs=True)
-from ._common import ProcessEOTask, ProcessParameterInvalid
+from ._common import ProcessEOTask, ProcessParameterInvalid, DataCube
 
 
 class addEOTask(ProcessEOTask):
@@ -17,6 +17,7 @@ class addEOTask(ProcessEOTask):
 
         # at least one parameter is xr.DataArray
         original_attrs = x.attrs if isinstance(x, xr.DataArray) else y.attrs
+        original_dim_types = x.get_dim_types() if isinstance(x, xr.DataArray) else y.get_dim_types()
 
         # we can't subtract if one of the parameters is None:
         if x is None:
@@ -32,4 +33,4 @@ class addEOTask(ProcessEOTask):
             #   ValueError: arguments without labels along dimension '...' cannot be aligned because they have different dimension sizes: ...
             raise ProcessParameterInvalid("add", "x/y", str(ex))
         result.attrs = original_attrs
-        return result
+        return DataCube.from_dataarray(result, original_dim_types)
