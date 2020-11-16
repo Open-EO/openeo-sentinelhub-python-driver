@@ -211,7 +211,7 @@ class ProcessEOTask(EOTask):
             return param_val
 
         # if parameter is int and we expect a number (float), convert automatically:
-        if isinstance(param_val, int) and float in allowed_types:
+        if isinstance(param_val, int) and not isinstance(param_val, bool) and float in allowed_types:
             param_val = float(param_val)
 
         allowed_types_str = ",".join([TYPE_MAPPING[typename] for typename in allowed_types])
@@ -354,7 +354,9 @@ class Band(object):
             if self.wavelength is None:
                 return False
             return self.wavelength >= other
-        return self.name.__ge__(other)
+        if isinstance(other, str):
+            return self.name >= other
+        return self.name >= other.name
 
     def __gt__(self, other):
         # when comparing to a number, we compare wavelengths:
@@ -362,7 +364,9 @@ class Band(object):
             if self.wavelength is None:
                 return False
             return self.wavelength > other
-        return self.name.__gt__(other)
+        if isinstance(other, str):
+            return self.name > other
+        return self.name > other.name
 
     def __le__(self, other):
         # when comparing to a number, we compare wavelengths:
@@ -370,7 +374,9 @@ class Band(object):
             if self.wavelength is None:
                 return True
             return self.wavelength <= other
-        return self.name.__le__(other)
+        if isinstance(other, str):
+            return self.name <= other
+        return self.name <= other.name
 
     def __lt__(self, other):
         # when comparing to a number, we compare wavelengths:
@@ -378,7 +384,9 @@ class Band(object):
             if self.wavelength is None:
                 return True
             return self.wavelength < other
-        return self.name.__lt__(other)
+        if isinstance(other, str):
+            return self.name < other
+        return self.name < other.name
 
     def __repr__(self):
         if self.alias is None and self.wavelength is None:
@@ -387,3 +395,19 @@ class Band(object):
 
     def __hash__(self):
         return self.name.__hash__()
+
+
+# sorts xr.DataArray by dims and coords so that we can compare it more easily:
+def sort_by_dims_coords(x_original):
+    x = x_original.copy(deep=False)
+    for dim in x.dims:
+        x = x.sortby(dim)
+    x = x.transpose(*sorted(list(x.dims)))
+    return x
+
+
+def assert_allclose(x, y):
+    # comparison should not depend on the order of dims or coords:
+    x = sort_by_dims_coords(x)
+    y = sort_by_dims_coords(y)
+    xr.testing.assert_allclose(x, y)
