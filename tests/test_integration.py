@@ -2,6 +2,7 @@ import base64
 import json
 import pytest
 import glob
+import time
 
 import sys, os
 
@@ -287,9 +288,14 @@ def test_process_batch_job(app_client, example_process_graph, authorization_head
     assert r.status_code == 400
     assert actual["code"] == "JobLocked"
 
-    r = app_client.get(f"/jobs/{job_id}")
-    actual = json.loads(r.data.decode("utf-8"))
-    assert r.status_code == 200
+    # it might take some time before the job is accepted - keep trying for 5s:
+    for _ in range(10):
+        r = app_client.get(f"/jobs/{job_id}")
+        actual = json.loads(r.data.decode("utf-8"))
+        assert r.status_code == 200
+        if actual["status"] != "created":
+            break
+        time.sleep(0.5)
     assert actual["status"] in ["queued", "running", "error", "finished"]
 
     r = app_client.get(f"/jobs/{job_id}/results")
@@ -661,23 +667,22 @@ def test_assert_works(app_client, value, double_value, expected_status_code, aut
     assert r.status_code == expected_status_code, r.data
 
 
-def _get_test_process_graphs():
+def _get_test_process_graphs_filenames():
     for f in glob.glob(os.path.join(os.path.dirname(__file__), "test_process_graphs/*.json")):
         if not os.path.isfile(f) or os.path.basename(f).startswith("_"):
             print("Skipping: {}".format(os.path.basename(f)))
             continue
-        with open(f, "rt") as f:
-            c = f.read()
-            print(c)
-            yield c
+        yield f
 
 
-@pytest.mark.parametrize("process_graph_json", _get_test_process_graphs())
-def test_run_test_process_graphs(app_client, process_graph_json, authorization_header):
+@pytest.mark.parametrize("process_graph_filename", _get_test_process_graphs_filenames())
+def test_run_test_process_graphs(app_client, process_graph_filename, authorization_header):
     """
     Load process graph definitions from test_process_graph/*.json and execute them
     via POST /result/, expecting status 200 on each of them.
     """
+    with open(process_graph_filename, "rt") as f:
+        process_graph_json = f.read()
     process_graph = json.loads(process_graph_json)
     data = {
         "process": {
