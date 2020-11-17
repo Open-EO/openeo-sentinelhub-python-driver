@@ -1,6 +1,16 @@
 ## Running locally
 
-Mandatory: whichever method you select, first copy `.env.example` to `.env` and enter the variables there.
+
+### Prerequisites
+Mandatory: 
+- `.env` files in root directory and in `./rest` directory
+  - In both root directory of this project and in `./rest` directory, copy the respective `.env.example` to `.env` and enter the variables in `.env` file.
+- `docker-compose`
+  - Check [README-docker.md](README-docker.md) for help about installing Docker and `docker-compose`.
+- Python 3.6
+  - Check [README-python.md](README-python.md) for help about installing Python 3.6 and managing multiple Python versions.
+
+### Running services and REST API
 
 First, start up all services:
 ```
