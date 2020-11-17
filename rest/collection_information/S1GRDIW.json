@@ -73,15 +73,6 @@
       ],
       "sar:frequency_band": "C",
       "sar:center_frequency": 5.405,
-      "timeliness": [
-         "NRT10",
-         "NRT1h",
-         "NRT3h",
-         "Fast24",
-         "Offline",
-         "Reprocessing",
-         "ArchNormal"
-      ],
       "sar:product_type": "GRD",
       "sat:orbit_state": [
          "ascending",
