@@ -29,15 +29,16 @@ SENTINELHUB_LAYER_ID_S1GRD = os.environ.get("SENTINELHUB_LAYER_ID_S1GRD", None)
 
 
 # https://docs.sentinel-hub.com/api/latest/data/sentinel-2-l1c/
-S2_L1C_BANDS = ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B09", "B10", "B11", "B12"]
-# https://custom-scripts.sentinel-hub.com/custom-scripts/sentinel-2/bands/
+S2_L1C_BANDS = ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B09", "B10", "B11", "B12", "CLP", "CLM", "sunAzimuthAngles", "sunZenithAngles", "viewAzimuthMean", "viewZenithMean",]
+# https://docs.sentinel-hub.com/api/latest/data/sentinel-2-l1c/#available-bands-and-data
 S2_L1C_WAVELENGTHS = dict(
-    zip(S2_L1C_BANDS, [0.443, 0.49, 0.56, 0.665, 0.705, 0.74, 0.783, 0.842, 0.865, 0.945, 1.375, 1.61, 2.19])
+    zip(S2_L1C_BANDS, [0.4427, 0.4924, 0.5598, 0.6646, 0.7041, 0.7405, 0.7828, 0.8328, 0.8647, 0.9451, 1.3735 1.6137, 2.2024, None, None, None, None, None, None,])
 )
+# https://github.com/radiantearth/stac-spec/blob/v0.9.0/extensions/eo/README.md#common-band-names
 S2_L1C_ALIASES = dict(
     zip(
         S2_L1C_BANDS,
-        ["aerosol", "blue", "green", "red", "red-edge", None, None, "nir", None, None, None, "swir1", "swir2"],
+        ["coastal", "blue", "green", "red", None, None, None, "nir", "nir08", "nir09", "cirrus", "swir16", "swir22", None, None, None, None, None, None,],
     )
 )
 
@@ -61,23 +62,31 @@ S2_L2A_BANDS = [
     "CLD",
     "CLP",
     "CLM",
+    "sunAzimuthAngles",
+    "sunZenithAngles",
+    "viewAzimuthMean",
+    "viewZenithMean",
+    "dataMask"
 ]
 S2_L2A_WAVELENGTHS = dict(
     zip(
         S2_L2A_BANDS,
-        [
-            0.443,
-            0.49,
-            0.56,
-            0.665,
-            0.705,
-            0.74,
-            0.783,
-            0.842,
-            0.865,
-            0.945,
-            1.61,
-            2.19,
+        [   0.4427,
+            0.4924,
+            0.5598,
+            0.6646, 
+            0.7041, 
+            0.7405, 
+            0.7828, 
+            0.8328, 
+            0.8647, 
+            0.9451, 
+            1.6137, 
+            2.2024,
+            None,
+            None,
+            None,
+            None,
             None,
             None,
             None,
@@ -91,18 +100,23 @@ S2_L2A_ALIASES = dict(
     zip(
         S2_L2A_BANDS,
         [
-            "aerosol",
+            "coastal",
             "blue",
             "green",
             "red",
-            "red-edge",
+            None,
             None,
             None,
             "nir",
+            "nir08",
+            "nir09",
+            "swir16",
+            "swir22",
             None,
             None,
-            "swir1",
-            "swir2",
+            None,
+            None,
+            None,
             None,
             None,
             None,
