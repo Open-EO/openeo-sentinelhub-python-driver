@@ -287,14 +287,14 @@ class ProcessEOTask(EOTask):
         return results
 
     def generate_workflow_dependencies(self, graph, parent_arguments):
-        def set_from_parameters(args, parent_arguments):
+        def set_from_parameters(args):
             for key, value in iterate(args):
                 if isinstance(value, dict) and len(value) == 1 and "from_parameter" in value:
                     args[key] = parent_arguments[value["from_parameter"]]
                 elif isinstance(value, dict) and len(value) == 1 and "process_graph" in value:
                     continue
                 elif isinstance(value, dict) or isinstance(value, list):
-                    args[key] = set_from_parameters(value, parent_arguments)
+                    args[key] = set_from_parameters(value)
 
             return args
 
@@ -304,7 +304,7 @@ class ProcessEOTask(EOTask):
 
         for node_name, node_definition in graph.items():
             node_arguments = node_definition["arguments"]
-            node_arguments = set_from_parameters(node_arguments, parent_arguments)
+            node_arguments = set_from_parameters(node_arguments)
 
             class_name = node_definition["process_id"] + "EOTask"
             class_obj = getattr(getattr(process, node_definition["process_id"]), class_name)

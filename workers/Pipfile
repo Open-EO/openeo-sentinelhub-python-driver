@@ -21,6 +21,7 @@ sentinelhub = "==3.1.0"
 requests-futures = "*"
 dask = {extras = ["complete"],version = "*"}
 imageio = "*"
+rasterio = "*"
 
 [requires]
 python_version = "3.6"
