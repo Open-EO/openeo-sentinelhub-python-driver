@@ -422,7 +422,7 @@ class DimensionType(str, Enum):
 
 
 class DataCube(xr.DataArray):
-    __slots__ = "dim_types"
+    __slots__ = ("dim_types",)
 
     def __init__(self, *args, dim_types=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -468,3 +468,9 @@ class DataCube(xr.DataArray):
         c = super().copy(*args, **kwargs)
         c.dim_types = {**self.dim_types}
         return c
+
+    @staticmethod
+    def full_like(other, *args, **kwargs):
+        x = DataCube.from_dataarray(xr.full_like(other, *args, **kwargs))
+        x.dim_types = {**other.dim_types}
+        return x
