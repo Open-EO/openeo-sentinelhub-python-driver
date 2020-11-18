@@ -49,6 +49,7 @@ S2_L1C_BANDS = [
     "sunZenithAngles",
     "viewAzimuthMean",
     "viewZenithMean",
+    "dataMask",
 ]
 # https://docs.sentinel-hub.com/api/latest/data/sentinel-2-l1c/#available-bands-and-data
 S2_L1C_WAVELENGTHS = dict(
@@ -68,6 +69,7 @@ S2_L1C_WAVELENGTHS = dict(
             1.3735,
             1.6137,
             2.2024,
+            None,
             None,
             None,
             None,
@@ -95,6 +97,7 @@ S2_L1C_ALIASES = dict(
             "cirrus",
             "swir16",
             "swir22",
+            None,
             None,
             None,
             None,

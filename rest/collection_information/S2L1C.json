@@ -70,7 +70,8 @@
         "sunAzimuthAngles",
         "sunZenithAngles",
         "viewAzimuthMean",
-        "viewZenithMean"
+        "viewZenithMean",
+        "dataMask"
       ]
     },
     "t": {
