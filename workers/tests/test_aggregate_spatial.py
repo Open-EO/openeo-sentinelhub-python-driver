@@ -110,6 +110,69 @@ def execute_process():
                 attrs={},
             ),
         ),
+        # simple test, single geometry:
+        (
+            xr.DataArray(
+                [
+                    [
+                        [0.1, 0.3],
+                        [0.2, 0.3],
+                        [0.2, 0.3],
+                        [0.2, 0.3],
+                        [0.1, 0.3],
+                    ],
+                    [
+                        [0.1, 0.3],
+                        [22.9, 33.9],
+                        [22.9, 33.9],
+                        [22.9, 33.9],
+                        [0.1, 0.3],
+                    ],
+                    [
+                        [0.1, 0.3],
+                        [0.1, 0.3],
+                        [0.1, 0.3],
+                        [0.1, 0.3],
+                        [0.1, 0.3],
+                    ],
+                ],
+                dims=("x", "y", "t"),  # x: 3, y: 5, t: 2
+                coords={"t": ["2019-08-16", "2019-08-18"]},
+                attrs={"bbox": BBox((5.0, 46.0, 6.0, 47.0), CRS(4326))},
+            ),
+            [
+                {
+                    "type": "MultiPolygon",
+                    "coordinates": [[[[5.4, 46.21], [5.6, 46.21], [5.6, 46.89], [5.4, 46.89], [5.4, 46.21]]]],
+                },
+            ],
+            {
+                "process_graph": {
+                    "resolver": {
+                        "process_id": "sum",
+                        "arguments": {"data": {"from_parameter": "data"}},
+                        "result": True,
+                    }
+                }
+            },
+            None,
+            xr.DataArray(
+                [
+                    [
+                        [3 * 22.9, 3 * 33.9],
+                    ],
+                    [
+                        [15, 15],
+                    ],
+                    [
+                        [3, 3],
+                    ],
+                ],
+                dims=("result_meta", "result", "t"),  #
+                coords={"t": ["2019-08-16", "2019-08-18"], "result_meta": ["value", "total_count", "valid_count"]},
+                attrs={},
+            ),
+        ),
     ],
 )
 def test_correct(execute_process, data, geometries, reducer, target_dimension, expected_result):

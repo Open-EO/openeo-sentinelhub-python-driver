@@ -61,7 +61,9 @@ class aggregate_spatialEOTask(ProcessEOTask):
             masked_data = np.ma.masked_array(data2.values, mask=mask)
             masked_data_xr = xr.DataArray(masked_data, dims=data.dims)
             data_per_geom = (
-                masked_data_xr if data_per_geom is None else xr.concat([data_per_geom, masked_data_xr], dim="result")
+                masked_data_xr.expand_dims(dim="result")
+                if data_per_geom is None
+                else xr.concat([data_per_geom, masked_data_xr], dim="result")
             )
 
         # merge "x" and "y" dimension into one, so that we can reduce along it:
