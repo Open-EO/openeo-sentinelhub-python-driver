@@ -29,16 +29,16 @@ SENTINELHUB_LAYER_ID_S1GRD = os.environ.get("SENTINELHUB_LAYER_ID_S1GRD", None)
 
 
 # https://docs.sentinel-hub.com/api/latest/data/sentinel-2-l1c/
-S2_L1C_BANDS = ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B09", "B10", "B11", "B12", "CLP", "CLM", "sunAzimuthAngles", "sunZenithAngles", "viewAzimuthMean", "viewZenithMean",]
+S2_L1C_BANDS = ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B09", "B10", "B11", "B12", "CLP", "CLM", "sunAzimuthAngles", "sunZenithAngles", "viewAzimuthMean", "viewZenithMean"]
 # https://docs.sentinel-hub.com/api/latest/data/sentinel-2-l1c/#available-bands-and-data
 S2_L1C_WAVELENGTHS = dict(
-    zip(S2_L1C_BANDS, [0.4427, 0.4924, 0.5598, 0.6646, 0.7041, 0.7405, 0.7828, 0.8328, 0.8647, 0.9451, 1.3735 1.6137, 2.2024, None, None, None, None, None, None,])
+    zip(S2_L1C_BANDS, [0.4427, 0.4924, 0.5598, 0.6646, 0.7041, 0.7405, 0.7828, 0.8328, 0.8647, 0.9451, 1.3735 1.6137, 2.2024, None, None, None, None, None, None])
 )
 # https://github.com/radiantearth/stac-spec/blob/v0.9.0/extensions/eo/README.md#common-band-names
 S2_L1C_ALIASES = dict(
     zip(
         S2_L1C_BANDS,
-        ["coastal", "blue", "green", "red", None, None, None, "nir", "nir08", "nir09", "cirrus", "swir16", "swir22", None, None, None, None, None, None,],
+        ["coastal", "blue", "green", "red", None, None, None, "nir", "nir08", "nir09", "cirrus", "swir16", "swir22", None, None, None, None, None, None],
     )
 )
 
@@ -92,7 +92,7 @@ S2_L2A_WAVELENGTHS = dict(
             None,
             None,
             None,
-            None,
+            None
         ],
     )
 )
@@ -122,7 +122,7 @@ S2_L2A_ALIASES = dict(
             None,
             None,
             None,
-            None,
+            None
         ],
     )
 )
