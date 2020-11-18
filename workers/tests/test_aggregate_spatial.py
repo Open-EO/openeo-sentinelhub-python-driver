@@ -173,69 +173,6 @@ def execute_process():
                 attrs={},
             ),
         ),
-        # test with a Point:
-        (
-            xr.DataArray(
-                [
-                    [
-                        [0.1, 0.3],
-                        [0.2, 0.3],
-                        [0.2, 0.3],
-                        [0.2, 0.3],
-                        [0.1, 0.3],
-                    ],
-                    [
-                        [0.1, 0.3],
-                        [22.9, 33.9],
-                        [99.9, 88.8],
-                        [22.9, 33.9],
-                        [0.1, 0.3],
-                    ],
-                    [
-                        [0.1, 0.3],
-                        [0.1, 0.3],
-                        [0.1, 0.3],
-                        [0.1, 0.3],
-                        [0.1, 0.3],
-                    ],
-                ],
-                dims=("x", "y", "t"),  # x: 3, y: 5, t: 2
-                coords={"t": ["2019-08-16", "2019-08-18"]},
-                attrs={"bbox": BBox((5.0, 46.0, 6.0, 47.0), CRS(4326))},
-            ),
-            [
-                {
-                    "type": "Point",
-                    "coordinates": [5.5, 46.5],
-                },
-            ],
-            {
-                "process_graph": {
-                    "resolver": {
-                        "process_id": "sum",
-                        "arguments": {"data": {"from_parameter": "data"}},
-                        "result": True,
-                    }
-                }
-            },
-            None,
-            xr.DataArray(
-                [
-                    [
-                        [99.9, 88.8],
-                    ],
-                    [
-                        [15, 15],  # number of input pixels
-                    ],
-                    [
-                        [1, 1],  # pixels used (as per geometry)
-                    ],
-                ],
-                dims=("result_meta", "result", "t"),  #
-                coords={"t": ["2019-08-16", "2019-08-18"], "result_meta": ["value", "total_count", "valid_count"]},
-                attrs={},
-            ),
-        ),
     ],
 )
 def test_correct(execute_process, data, geometries, reducer, target_dimension, expected_result):
