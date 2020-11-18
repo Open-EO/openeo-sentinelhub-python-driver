@@ -4,7 +4,6 @@ import math
 import numpy as np
 import xarray as xr
 from eolearn.core import EOWorkflow
-from sentinelhub import CRS, BBox
 
 from ._common import ProcessEOTask, DATA_TYPE_TEMPORAL_INTERVAL, ProcessParameterInvalid
 
