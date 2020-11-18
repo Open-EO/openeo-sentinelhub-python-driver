@@ -62,7 +62,6 @@
         "B08",
         "B8A",
         "B09",
-        "B10",
         "B11",
         "B12",
         "AOT",
@@ -184,12 +183,6 @@
         "common_name": "nir09",
         "center_wavelength": 0.9451,
         "full_width_half_max": 0.02
-      },
-      {
-        "name": "B10",
-        "common_name": "cirrus",
-        "center_wavelength": 1.3735,
-        "full_width_half_max": 0.031
       },
       {
         "name": "B11",
