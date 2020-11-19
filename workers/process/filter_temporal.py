@@ -4,7 +4,7 @@ import math
 import numpy as np
 import xarray as xr
 
-from ._common import ProcessEOTask, DATA_TYPE_TEMPORAL_INTERVAL, ProcessParameterInvalid
+from ._common import ProcessEOTask, DATA_TYPE_TEMPORAL_INTERVAL, ProcessParameterInvalid, DimensionType, DataCube
 
 
 class filter_temporalEOTask(ProcessEOTask):
@@ -25,7 +25,7 @@ class filter_temporalEOTask(ProcessEOTask):
             # "If the dimension is set to null (it's the default value), the data cube is expected to only have one temporal dimension."
             # "If the dimension is not set or is set to null, the filter applies to all temporal dimensions."
             # "Fails with a DimensionNotAvailable error if the specified dimension does not exist."
-            temporal_dims = [d for d in data.dims if data.coords[d].dtype.type == np.datetime64]
+            temporal_dims = data.get_dims_of_type(DimensionType.TEMPORAL)
             # There should be exactly one temporal dimension:
             if len(temporal_dims) > 1:
                 raise ProcessParameterInvalid(
@@ -41,7 +41,7 @@ class filter_temporalEOTask(ProcessEOTask):
                 raise ProcessParameterInvalid(
                     "filter_temporal", "dimension", "A dimension with the specified name does not exist."
                 )
-            if data.coords[dimension].dtype.type != np.datetime64:
+            if data.get_dim_type(dimension) != DimensionType.TEMPORAL:
                 raise ProcessParameterInvalid(
                     "filter_temporal", "dimension", "A dimension with the specified name is not temporal."
                 )

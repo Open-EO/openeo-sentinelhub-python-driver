@@ -19,7 +19,7 @@ from sentinelhub.constants import AwsConstants
 import sentinelhub.geo_utils
 import xarray as xr
 
-from ._common import ProcessEOTask, ProcessParameterInvalid, Internal, Band
+from ._common import ProcessEOTask, ProcessParameterInvalid, Internal, Band, DataCube, DimensionType
 
 
 SENTINELHUB_INSTANCE_ID = os.environ.get("SENTINELHUB_INSTANCE_ID", None)
@@ -479,12 +479,18 @@ class load_collectionEOTask(ProcessEOTask):
         # Since some processes (filter_bands, ndvi) depend on this information, we must include it in the datacube.
         bands_dim = [Band(b, band_aliases.get(b), band_wavelengths.get(b)) for b in bands]
 
-        xrdata = xr.DataArray(
+        xrdata = DataCube(
             masked_data,
             dims=("t", "y", "x", "band"),
             coords={
                 "band": bands_dim,
                 "t": orbit_times_middle,
+            },
+            dim_types={
+                "t": DimensionType.TEMPORAL,
+                "y": DimensionType.SPATIAL,
+                "x": DimensionType.SPATIAL,
+                "band": DimensionType.BANDS,
             },
             attrs={
                 "bbox": bbox,

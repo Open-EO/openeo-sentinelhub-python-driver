@@ -6,13 +6,13 @@ import logging
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid
+from process._common import ProcessParameterInvalid, DataCube
 
 
 @pytest.fixture
 def generate_data():
     def _construct(data=[[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]], dims=("t", "y", "x", "band")):
-        xrdata = xr.DataArray(data, dims=dims)
+        xrdata = DataCube(data, dims=dims)
         return xrdata
 
     return _construct

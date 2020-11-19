@@ -6,7 +6,7 @@ import numpy as np
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import process
-from process._common import ProcessArgumentRequired, ProcessParameterInvalid, Band
+from process._common import ProcessArgumentRequired, ProcessParameterInvalid, Band, DataCube
 
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -30,7 +30,7 @@ def ndviEOTask():
     "data,nir,red,target_band,expected_result",
     [
         (
-            xr.DataArray(
+            DataCube(
                 [[[2, 3]]],
                 dims=("y", "x", "band"),
                 coords={
@@ -40,10 +40,10 @@ def ndviEOTask():
             None,
             None,
             None,
-            xr.DataArray([[0.2]], dims=("y", "x")),
+            DataCube([[0.2]], dims=("y", "x")),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[2, 3]]],
                 dims=("y", "x", "band"),
                 coords={
@@ -53,7 +53,7 @@ def ndviEOTask():
             None,
             None,
             "my_ndvi",
-            xr.DataArray(
+            DataCube(
                 [[[2, 3, 0.2]]],
                 dims=("y", "x", "band"),
                 coords={
@@ -62,7 +62,7 @@ def ndviEOTask():
             ),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[2, 3]]],
                 dims=("y", "x", "band"),
                 coords={
@@ -72,10 +72,10 @@ def ndviEOTask():
             "nir",
             "red",
             None,
-            xr.DataArray([[0.2]], dims=("y", "x")),
+            DataCube([[0.2]], dims=("y", "x")),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[2, 3]]],
                 dims=("y", "x", "band"),
                 coords={
@@ -85,10 +85,10 @@ def ndviEOTask():
             "red",  # switch
             "nir",
             None,
-            xr.DataArray([[-0.2]], dims=("y", "x")),
+            DataCube([[-0.2]], dims=("y", "x")),
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[2, 3]]],
                 dims=("y", "x", "band"),
                 coords={
@@ -98,7 +98,7 @@ def ndviEOTask():
             "B01",  # band names instead of aliases (switched)
             "B02",
             None,
-            xr.DataArray([[-0.2]], dims=("y", "x")),
+            DataCube([[-0.2]], dims=("y", "x")),
         ),
     ],
 )
@@ -122,7 +122,7 @@ def test_correct(ndviEOTask, data, nir, red, target_band, expected_result):
     "data,nir,red,target_band,expected_exc_param,expected_exc_msg",
     [
         (
-            xr.DataArray([[2, 3]], dims=("y", "x")),
+            DataCube([[2, 3]], dims=("y", "x")),
             None,
             None,
             None,
@@ -131,7 +131,7 @@ def test_correct(ndviEOTask, data, nir, red, target_band, expected_result):
         ),
         # Temporarily disabled because we can't really check the dimension type at the moment:
         # (
-        #     xr.DataArray([[[2, 3]]], dims=("y", "x", "band")),
+        #     DataCube([[[2, 3]]], dims=("y", "x", "band")),
         #     None,
         #     None,
         #     None,
@@ -139,7 +139,7 @@ def test_correct(ndviEOTask, data, nir, red, target_band, expected_result):
         #     "Dimension 'band' does not contain bands (DimensionAmbiguous).",
         # ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[2, 3]]],
                 dims=("y", "x", "band"),
                 coords={
@@ -153,7 +153,7 @@ def test_correct(ndviEOTask, data, nir, red, target_band, expected_result):
             "Parameter does not match any band (NirBandAmbiguous).",
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[2, 3]]],
                 dims=("y", "x", "band"),
                 coords={
@@ -167,7 +167,7 @@ def test_correct(ndviEOTask, data, nir, red, target_band, expected_result):
             "Parameter does not match any band (RedBandAmbiguous).",
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[2, 3, 11]]],
                 dims=("y", "x", "band"),
                 coords={
@@ -181,7 +181,7 @@ def test_correct(ndviEOTask, data, nir, red, target_band, expected_result):
             "Band name already exists (BandExists).",
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[2, 3, 11]]],
                 dims=("y", "x", "band"),
                 coords={
@@ -195,7 +195,7 @@ def test_correct(ndviEOTask, data, nir, red, target_band, expected_result):
             "Band name already exists (BandExists).",
         ),
         (
-            xr.DataArray(
+            DataCube(
                 [[[2, 3]]],
                 dims=("y", "x", "band"),
                 coords={

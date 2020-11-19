@@ -3,7 +3,7 @@ import xarray as xr
 
 xr.set_options(keep_attrs=True)
 
-from ._common import ProcessEOTask, ProcessParameterInvalid, parse_rfc3339
+from ._common import ProcessEOTask, ProcessParameterInvalid, parse_rfc3339, DataCube
 
 
 class eqEOTask(ProcessEOTask):
@@ -69,8 +69,8 @@ class eqEOTask(ProcessEOTask):
             if isinstance(other_value, (list, dict)):
                 result = xr.where(cube.isnull(), None, False)
                 result.attrs = original_attrs
-                return result
-            other_value = xr.DataArray(other_value)
+                return DataCube.from_dataarray(xr.where(cube.isnull(), None, False))
+            other_value = DataCube(other_value)
 
         # Subtracting Nonetype is not possible, so we replace it with np.nan, which is a float
         cube = cube.fillna(np.nan)
@@ -81,6 +81,6 @@ class eqEOTask(ProcessEOTask):
         else:
             m = cube == other_value
 
-        result = xr.where(cube.isnull() + other_value.isnull(), None, m)
+        result = DataCube.from_dataarray(xr.where(cube.isnull() + other_value.isnull(), None, m))
         result.attrs = original_attrs
         return result

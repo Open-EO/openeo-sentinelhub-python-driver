@@ -5,6 +5,7 @@ import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
+from process._common import DataCube
 
 
 @pytest.fixture
@@ -20,12 +21,12 @@ def generate_data():
             return data
 
         if as_dataarray:
-            return xr.DataArray(data, dims=dims, attrs=attrs)
+            return DataCube(data, dims=dims, attrs=attrs)
 
         data_list = []
 
         for d in data:
-            xrdata = xr.DataArray(d, dims=dims, attrs=attrs)
+            xrdata = DataCube(d, dims=dims, attrs=attrs)
             data_list.append(xrdata)
 
         return data_list
