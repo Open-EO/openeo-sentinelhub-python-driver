@@ -1,6 +1,7 @@
 from copy import deepcopy
 import datetime
 import re
+from enum import Enum
 
 import dask.array as da
 from eolearn.core import EOTask
@@ -411,3 +412,65 @@ def assert_allclose(x, y):
     x = sort_by_dims_coords(x)
     y = sort_by_dims_coords(y)
     xr.testing.assert_allclose(x, y)
+
+
+class DimensionType(str, Enum):
+    SPATIAL = "spatial"
+    TEMPORAL = "temporal"
+    BANDS = "bands"
+    OTHER = "other"
+
+
+class DataCube(xr.DataArray):
+    __slots__ = ("dim_types",)
+
+    def __init__(self, *args, dim_types=None, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.dim_types = {}
+        if dim_types is None:
+            dim_types = {}
+        for dim in self.dims:
+            self.dim_types[dim] = dim_types.get(dim, DimensionType.OTHER)
+
+    def __repr__(self):
+        repr_str = super().__repr__()
+        repr_str = repr_str + "\n" + self.dim_types_repr()
+        return repr_str
+
+    def dim_types_repr(self):
+        repr_str = "Coordinate types:"
+        for dim in self.dim_types.keys():
+            dim_type = self.dim_types.get(dim, DimensionType.OTHER)
+            repr_str += f"\n  * {dim}: {dim_type}"
+        return repr_str
+
+    def _check_if_dim_exists(self, dim):
+        if dim not in self.dims:
+            raise Exception(f"Dimension '{dim}' not in the datacube")
+
+    def get_dim_type(self, dim):
+        self._check_if_dim_exists(dim)
+        return self.dim_types.get(dim, DimensionType.OTHER)
+
+    def get_dims_of_type(self, dimension_type):
+        dims_of_type = []
+        for dim in self.dims:
+            if self.dim_types[dim] == dimension_type:
+                dims_of_type.append(dim)
+        return tuple(dims_of_type)
+
+    @staticmethod
+    def from_dataarray(dataarray):
+        return DataCube(dataarray.data, dims=dataarray.dims, coords=dataarray.coords, attrs=dataarray.attrs)
+
+    def copy(self, *args, **kwargs):
+        c = super().copy(*args, **kwargs)
+        c.dim_types = {**self.dim_types}
+        return c
+
+    @staticmethod
+    def full_like(other, *args, **kwargs):
+        x = DataCube.from_dataarray(xr.full_like(other, *args, **kwargs))
+        x.dim_types = {**other.dim_types}
+        return x

@@ -5,7 +5,7 @@ import numpy as np
 import xarray as xr
 from sentinelhub import CRS, BBox
 
-from ._common import ProcessEOTask, Band
+from ._common import ProcessEOTask, Band, DataCube, DimensionType
 
 
 class create_cubeEOTask(ProcessEOTask):
@@ -19,18 +19,22 @@ class create_cubeEOTask(ProcessEOTask):
         data_as_list = self.validate_parameter(arguments, "data", required=True, allowed_types=[list])
         dims = self.validate_parameter(arguments, "dims", required=True, allowed_types=[list])
         coords = self.validate_parameter(arguments, "coords", allowed_types=[dict], default={})
+        dim_types = {}
 
         if "t" in coords:
             coords["t"] = [datetime.strptime(d, "%Y-%m-%d %H:%M:%S") for d in coords["t"]]
+            dim_types["t"] = DimensionType.TEMPORAL
 
         if "band" in coords:
             coords["band"] = [Band(*b) for b in coords["band"]]
+            dim_types["band"] = DimensionType.BANDS
 
         try:
-            data = xr.DataArray(
+            data = DataCube(
                 np.array(data_as_list, dtype=np.float),
                 coords=coords,
                 dims=dims,
+                dim_types=dim_types,
                 attrs={
                     "bbox": BBox(
                         (
