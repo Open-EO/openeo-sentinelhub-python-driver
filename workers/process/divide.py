@@ -36,9 +36,9 @@ class divideEOTask(ProcessEOTask):
         # we can't divide if one of the parameters is None:
         if x is None:
             # careful, dtype is mandatory or the results will be weird:
-            x = DataCube.from_dataarray(xr.full_like(y, fill_value=np.nan, dtype=np.double))
+            x = DataCube.full_like(y, fill_value=np.nan, dtype=np.double)
         if y is None:
-            y = DataCube.from_dataarray(xr.full_like(x, fill_value=np.nan, dtype=np.double))
+            y = DataCube.full_like(x, fill_value=np.nan, dtype=np.double)
 
         try:
             # xarray knows how to divide DataArrays and numbers in every combination:

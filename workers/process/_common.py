@@ -288,14 +288,14 @@ class ProcessEOTask(EOTask):
         return results
 
     def generate_workflow_dependencies(self, graph, parent_arguments):
-        def set_from_parameters(args, parent_arguments):
+        def set_from_parameters(args):
             for key, value in iterate(args):
                 if isinstance(value, dict) and len(value) == 1 and "from_parameter" in value:
                     args[key] = parent_arguments[value["from_parameter"]]
                 elif isinstance(value, dict) and len(value) == 1 and "process_graph" in value:
                     continue
                 elif isinstance(value, dict) or isinstance(value, list):
-                    args[key] = set_from_parameters(value, parent_arguments)
+                    args[key] = set_from_parameters(value)
 
             return args
 
@@ -305,7 +305,7 @@ class ProcessEOTask(EOTask):
 
         for node_name, node_definition in graph.items():
             node_arguments = node_definition["arguments"]
-            node_arguments = set_from_parameters(node_arguments, parent_arguments)
+            node_arguments = set_from_parameters(node_arguments)
 
             class_name = node_definition["process_id"] + "EOTask"
             class_obj = getattr(getattr(process, node_definition["process_id"]), class_name)
@@ -429,27 +429,32 @@ class DimensionType(str, Enum):
     OTHER = "other"
 
 
-class DimensionTypes:
-    def __init__(self, cube, types=None):
+class DataCube(xr.DataArray):
+    __slots__ = ("dim_types",)
+
+    def __init__(self, *args, dim_types=None, **kwargs):
+        super().__init__(*args, **kwargs)
+
         self.dim_types = {}
-        self.cube = cube
-        if types is None:
-            types = {}
-        for dim in self.cube.dims:
-            self.dim_types[dim] = types.get(dim, DimensionType.OTHER)
+        if dim_types is None:
+            dim_types = {}
+        for dim in self.dims:
+            self.dim_types[dim] = dim_types.get(dim, DimensionType.OTHER)
 
     def __repr__(self):
+        repr_str = super().__repr__()
+        repr_str = repr_str + "\n" + self.dim_types_repr()
+        return repr_str
+
+    def dim_types_repr(self):
         repr_str = "Coordinate types:"
         for dim in self.dim_types.keys():
             dim_type = self.dim_types.get(dim, DimensionType.OTHER)
             repr_str += f"\n  * {dim}: {dim_type}"
         return repr_str
 
-    def __eq__(self, other):
-        return self.dim_types == other.dim_types
-
     def _check_if_dim_exists(self, dim):
-        if dim not in self.cube.dims:
+        if dim not in self.dims:
             raise Exception(f"Dimension '{dim}' not in the datacube")
 
     def get_dim_type(self, dim):
@@ -458,34 +463,14 @@ class DimensionTypes:
 
     def get_dims_of_type(self, dimension_type):
         dims_of_type = []
-        for dim in self.cube.dims:
+        for dim in self.dims:
             if self.dim_types[dim] == dimension_type:
                 dims_of_type.append(dim)
         return tuple(dims_of_type)
 
-
-class DataCube(xr.DataArray):
-    __slots__ = "dim_types"
-
-    def __init__(self, *args, dim_types=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.dim_types = DimensionTypes(self, dim_types)
-
-    def __repr__(self):
-        repr_str = super().__repr__()
-        repr_str = repr_str + "\n" + self.dim_types.__repr__()
-        return repr_str
-
-    def get_dim_type(self, dim):
-        return self.dim_types.get_dim_type(dim)
-
-    def get_dims_of_type(self, dimension_type):
-        return self.dim_types.get_dims_of_type(dimension_type)
-
     def get_dim_types(self):
-        return self.dim_types.dim_types
+        return self.dim_types
 
-    @staticmethod
     def from_dataarray(dataarray, dim_types=None):
         return DataCube(
             dataarray.data, dims=dataarray.dims, coords=dataarray.coords, attrs=dataarray.attrs, dim_types=dim_types
@@ -493,5 +478,11 @@ class DataCube(xr.DataArray):
 
     def copy(self, *args, **kwargs):
         c = super().copy(*args, **kwargs)
-        c.dim_types = self.dim_types
+        c.dim_types = {**self.dim_types}
         return c
+
+    @staticmethod
+    def full_like(other, *args, **kwargs):
+        x = DataCube.from_dataarray(xr.full_like(other, *args, **kwargs))
+        x.dim_types = {**other.dim_types}
+        return x
