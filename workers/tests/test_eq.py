@@ -124,7 +124,7 @@ def test_with_two_xarrays(execute_eq_process, x, y, expected_result):
     Test eq process with xarray.DataArrays
     """
     result = execute_eq_process(x, y)
-    xr.testing.assert_allclose(result, expected_result)
+    xr.testing.assert_identical(result, expected_result)
 
 
 @pytest.mark.parametrize(
