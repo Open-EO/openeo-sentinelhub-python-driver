@@ -26,7 +26,7 @@ class reduce_dimensionEOTask(ProcessEOTask):
                     "dimension",
                     f"Dimension '{dimension}' has more than one value, but reducer is not specified.",
                 )
-            return DataCube.from_dataarray(data.squeeze(dimension, drop=True))
+            return data.squeeze(dimension, drop=True)
 
         if not data.attrs.get("reduce_by"):
             arguments["data"].attrs["reduce_by"] = [dimension]

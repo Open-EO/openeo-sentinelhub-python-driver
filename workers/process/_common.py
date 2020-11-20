@@ -471,6 +471,7 @@ class DataCube(xr.DataArray):
     def get_dim_types(self):
         return self.dim_types
 
+    @staticmethod
     def from_dataarray(dataarray, dim_types=None):
         return DataCube(
             dataarray.data, dims=dataarray.dims, coords=dataarray.coords, attrs=dataarray.attrs, dim_types=dim_types
@@ -486,3 +487,7 @@ class DataCube(xr.DataArray):
         x = DataCube.from_dataarray(xr.full_like(other, *args, **kwargs))
         x.dim_types = {**other.dim_types}
         return x
+
+    def squeeze(self, *args, **kwargs):
+        x = super().squeeze(*args, **kwargs)
+        return DataCube.from_dataarray(x, dim_types={**self.dim_types})
