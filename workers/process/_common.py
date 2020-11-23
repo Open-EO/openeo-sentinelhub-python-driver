@@ -242,7 +242,7 @@ class ProcessEOTask(EOTask):
         else:
             return param_val
 
-    def convert_to_dataarray(self, data, as_list=False):
+    def convert_to_datacube(self, data, as_list=False):
         original_type_was_number = True
 
         if isinstance(data, xr.DataArray):
@@ -267,7 +267,7 @@ class ProcessEOTask(EOTask):
                         data[i] = number_array
                     ######################################################################
                     else:
-                        data[i] = xr.DataArray(np.array(element, dtype=np.float))
+                        data[i] = DataCube(np.array(element, dtype=np.float))
                 elif not isinstance(element, xr.DataArray):
                     raise ProcessParameterInvalid(
                         self.process_id,
@@ -276,7 +276,7 @@ class ProcessEOTask(EOTask):
                     )
 
         else:
-            data = xr.DataArray(np.array(data, dtype=np.float))
+            data = DataCube(np.array(data, dtype=np.float))
 
         return original_type_was_number, data
 
@@ -414,6 +414,14 @@ def assert_allclose(x, y):
     xr.testing.assert_allclose(x, y)
 
 
+def assert_equal(x, y):
+    # same as `assert_allclose`, but also checks dim_types
+    assert_allclose(x, y)
+
+    if not x.dim_types == y.dim_types:
+        raise ValidationError(f"Dimension types do not match: \nL:\n{str(x.dim_types)}\nR:\n{str(y.dim_types)}\n")
+
+
 class DimensionType(str, Enum):
     SPATIAL = "spatial"
     TEMPORAL = "temporal"
@@ -460,9 +468,14 @@ class DataCube(xr.DataArray):
                 dims_of_type.append(dim)
         return tuple(dims_of_type)
 
+    def get_dim_types(self):
+        return self.dim_types
+
     @staticmethod
-    def from_dataarray(dataarray):
-        return DataCube(dataarray.data, dims=dataarray.dims, coords=dataarray.coords, attrs=dataarray.attrs)
+    def from_dataarray(dataarray, dim_types=None):
+        return DataCube(
+            dataarray.data, dims=dataarray.dims, coords=dataarray.coords, attrs=dataarray.attrs, dim_types=dim_types
+        )
 
     def copy(self, *args, **kwargs):
         c = super().copy(*args, **kwargs)
@@ -474,3 +487,7 @@ class DataCube(xr.DataArray):
         x = DataCube.from_dataarray(xr.full_like(other, *args, **kwargs))
         x.dim_types = {**other.dim_types}
         return x
+
+    def squeeze(self, *args, **kwargs):
+        x = super().squeeze(*args, **kwargs)
+        return DataCube.from_dataarray(x, dim_types={**self.dim_types})

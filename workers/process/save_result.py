@@ -8,9 +8,8 @@ import numpy as np
 import json
 
 
-from ._common import ProcessEOTask, StorageFailure, ProcessParameterInvalid
+from ._common import ProcessEOTask, StorageFailure, ProcessParameterInvalid, DimensionType
 import process
-from process.filter_bands import get_bands_dims
 
 
 S3_BUCKET_NAME = "com.sinergise.openeo.results"
@@ -38,7 +37,7 @@ def serialize_data(data):
     temporal_dims = [d for d in data.dims if data.coords[d].dtype.type == np.datetime64]
     for dim in temporal_dims:
         data = data.assign_coords({dim: data[dim].coords.to_index().strftime("%Y-%m-%dT%H-%M-%S").tolist()})
-    band_dims = get_bands_dims(data)
+    band_dims = data.get_dims_of_type(DimensionType.BANDS)
     for dim in band_dims:
         new_band_labels = []
         for band in data.coords[dim].values:

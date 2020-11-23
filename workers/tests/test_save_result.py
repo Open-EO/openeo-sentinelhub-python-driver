@@ -11,7 +11,7 @@ from sentinelhub import BBox, CRS
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid, ProcessArgumentRequired, Band, DataCube
+from process._common import ProcessParameterInvalid, ProcessArgumentRequired, Band, DataCube, DimensionType
 
 
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), "fixtures")
@@ -55,6 +55,7 @@ def generate_data():
         dims=("t", "y", "x", "band"),
         coords={"band": ["ndvi"], "t": [datetime.datetime.now()]},
         attrs={},
+        dim_types={"band": DimensionType.BANDS},
     ):
         fake_bbox = BBox([xmin, ymin, xmax, ymax], CRS("4326"))
         attrs = {"bbox": fake_bbox, **attrs}
@@ -62,12 +63,7 @@ def generate_data():
         if "band" in coords:
             coords["band"] = [Band(b) for b in coords["band"]]
 
-        xrdata = DataCube(
-            data,
-            dims=dims,
-            coords=coords,
-            attrs=attrs,
-        )
+        xrdata = DataCube(data, dims=dims, coords=coords, attrs=attrs, dim_types=dim_types)
 
         return xrdata
 

@@ -16,7 +16,7 @@ class productEOTask(ProcessEOTask):
         if len(data) < 2:
             raise ProcessParameterInvalid("product", "data", "Array must have at least 2 elements.")
 
-        original_type_was_number, data = self.convert_to_dataarray(data, as_list=True)
+        original_type_was_number, data = self.convert_to_datacube(data, as_list=True)
 
         multiplication_array = xr.concat(data, dim="temporary_multiplication_dim")
         results = multiplication_array.prod(dim="temporary_multiplication_dim", skipna=ignore_nodata, keep_attrs=True)
