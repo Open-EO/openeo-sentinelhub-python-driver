@@ -49,6 +49,8 @@ def serialize_data(data):
         xmax, ymax = bbox.upper_right
         crs = str(bbox._crs)
         data.attrs["bbox"] = {"xmin": xmin, "ymin": ymin, "xmax": xmax, "ymax": ymax, "crs": crs}
+    # replace nan, inf and -inf with None:
+    data = data.where(np.isfinite(data.data), None)
     return data.to_dict()
 
 
