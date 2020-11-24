@@ -28,4 +28,4 @@ class maskEOTask(ProcessEOTask):
         if replacement is None:
             replacement = np.nan
 
-        return data.where(mask, other=replacement)
+        return data.where(np.logical_not(mask), other=replacement)

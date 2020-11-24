@@ -22,9 +22,9 @@ class addEOTask(ProcessEOTask):
         # we can't subtract if one of the parameters is None:
         if x is None:
             # careful, dtype is mandatory or the results will be weird:
-            x = xr.full_like(y, fill_value=np.nan, dtype=np.double)
+            x = DataCube.full_like(y, fill_value=np.nan, dtype=np.double)
         if y is None:
-            y = xr.full_like(x, fill_value=np.nan, dtype=np.double)
+            y = DataCube.full_like(x, fill_value=np.nan, dtype=np.double)
 
         try:
             result = x + y

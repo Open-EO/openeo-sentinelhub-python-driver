@@ -69,9 +69,7 @@ class array_elementEOTask(ProcessEOTask):
                     Thus, our understanding is that the array_element process should return a result of the same shape as a valid index would, but with all values set to null.
                     """
                     data_with_arbitrary_selection = data.isel({dim: 0}, drop=True)
-                    return DataCube.from_dataarray(
-                        xr.full_like(data_with_arbitrary_selection, fill_value=np.nan, dtype=np.double)
-                    )
+                    return DataCube.full_like(data_with_arbitrary_selection, fill_value=np.nan, dtype=np.double)
                 raise ProcessParameterInvalid(
                     "array_element",
                     "index/label",

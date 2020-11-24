@@ -31,31 +31,31 @@ def execute_mask_process():
             xr.DataArray([[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.3, 0.5]]]], dims=("x", "y", "t", "b")),
             xr.DataArray([[[[True, False]]], [[[False, True]]], [[[False, False]]]], dims=("x", "y", "t", "b")),
             None,
-            xr.DataArray([[[[0.2, np.nan]]], [[[np.nan, 0.3]]], [[[np.nan, np.nan]]]], dims=("x", "y", "t", "b")),
+            xr.DataArray([[[[np.nan, 0.8]]], [[[0.9, np.nan]]], [[[0.3, 0.5]]]], dims=("x", "y", "t", "b")),
         ),
         (
             xr.DataArray([[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.3, 0.5]]]], dims=("x", "y", "t", "b")),
             xr.DataArray([[[[True, False]]], [[[False, True]]], [[[False, False]]]], dims=("x", "y", "t", "b")),
             False,
-            xr.DataArray([[[[0.2, False]]], [[[False, 0.3]]], [[[False, False]]]], dims=("x", "y", "t", "b")),
+            xr.DataArray([[[[False, 0.8]]], [[[0.9, False]]], [[[0.3, 0.5]]]], dims=("x", "y", "t", "b")),
         ),
         (
             xr.DataArray([[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.3, 0.5]]]], dims=("x", "y", "t", "b")),
             xr.DataArray([True, False], dims=("b")),
             False,
-            xr.DataArray([[[[0.2, False]]], [[[0.9, False]]], [[[0.3, False]]]], dims=("x", "y", "t", "b")),
+            xr.DataArray([[[[False, 0.8]]], [[[False, 0.3]]], [[[False, 0.5]]]], dims=("x", "y", "t", "b")),
         ),
         (
             xr.DataArray([[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.3, 0.5]]]], dims=("x", "y", "t", "b")),
             xr.DataArray([[True, False], [False, False], [True, True]], dims=("x", "b")),
             -999,
-            xr.DataArray([[[[0.2, -999]]], [[[-999, -999]]], [[[0.3, 0.5]]]], dims=("x", "y", "t", "b")),
+            xr.DataArray([[[[-999, 0.8]]], [[[0.9, 0.3]]], [[[-999, -999]]]], dims=("x", "y", "t", "b")),
         ),
         (
             xr.DataArray([[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.3, 0.5]]]], dims=("x", "y", "t", "b")),
             xr.DataArray([[True, False, True], [False, False, True]], dims=("b", "x")),
             -999,
-            xr.DataArray([[[[0.2, -999]]], [[[-999, -999]]], [[[0.3, 0.5]]]], dims=("x", "y", "t", "b")),
+            xr.DataArray([[[[-999, 0.8]]], [[[0.9, 0.3]]], [[[-999, -999]]]], dims=("x", "y", "t", "b")),
         ),
         (
             xr.DataArray(
@@ -70,7 +70,25 @@ def execute_mask_process():
             ),
             np.inf,
             xr.DataArray(
-                [[[[0.2, np.inf]]], [[[np.inf, np.inf]]], [[[0.3, 0.5]]]],
+                [[[[np.inf, 0.8]]], [[[0.9, 0.3]]], [[[np.inf, np.inf]]]],
+                dims=("x", "y", "t", "b"),
+                coords={"b": [Band("B01"), Band("B02")], "x": [5, 6, 7], "y": [11]},
+            ),
+        ),
+        (
+            xr.DataArray(
+                [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[0.3, 0.5]]]],
+                dims=("x", "y", "t", "b"),
+                coords={"b": [Band("B01"), Band("B02")], "x": [5, 6, 7], "y": [11]},
+            ),
+            xr.DataArray(
+                [[2.1, 0, -0.2], [0, 0, 0.01]],
+                dims=("b", "x"),
+                coords={"b": [Band("B01"), Band("B02")], "x": [5, 6, 7]},
+            ),
+            np.inf,
+            xr.DataArray(
+                [[[[np.inf, 0.8]]], [[[0.9, 0.3]]], [[[np.inf, np.inf]]]],
                 dims=("x", "y", "t", "b"),
                 coords={"b": [Band("B01"), Band("B02")], "x": [5, 6, 7], "y": [11]},
             ),

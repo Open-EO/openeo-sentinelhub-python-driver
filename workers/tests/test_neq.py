@@ -202,16 +202,16 @@ def test_with_xarray_and_scalar(execute_neq_process, x, y, expected_result):
         (
             xr.DataArray(
                 [[[[0.2, 0.8]]], [[[0.9, 0.3]]], [[[np.nan, 0.5]]]],
-                attrs={"simulated_datatype": (float,)},
+                attrs={"simulated_datatype": (float,), "reduce_by": []},
             ),
             xr.DataArray(
                 [[[[0, np.nan]]], [[[0.7, 0.1]]], [[[0.3, 0.5]]]],
-                attrs={"simulated_datatype": (float,)},
+                attrs={"simulated_datatype": (float,), "reduce_by": []},
             ),
             0,
             xr.DataArray(
                 [[[[True, np.nan]]], [[[True, True]]], [[[np.nan, False]]]],
-                attrs={"simulated_datatype": (float,)},
+                attrs={"simulated_datatype": (float,), "reduce_by": []},
             ),
         ),
     ],
@@ -221,4 +221,5 @@ def test_with_xarrays_and_delta(execute_neq_process, x, y, delta, expected_resul
     Test neq process with xarray.DataArrays
     """
     result = execute_neq_process(x, y, delta=delta)
-    xr.testing.assert_allclose(result, expected_result)
+    # assert_identical also matches attrs
+    xr.testing.assert_identical(result, expected_result)
