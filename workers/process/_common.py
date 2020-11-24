@@ -460,6 +460,13 @@ class DataCube(xr.DataArray):
         self._check_if_dim_exists(dim)
         return self.dim_types.get(dim, DimensionType.OTHER)
 
+    def set_dim_type(self, dim, dimension_type):
+        self._check_if_dim_exists(dim)
+        self.dim_types[dim] = dimension_type
+
+    def copy(self, new_cube):
+        return DimensionTypes(new_cube, types=self.dim_types)
+
     def get_dims_of_type(self, dimension_type):
         dims_of_type = []
         for dim in self.dims:
@@ -479,6 +486,19 @@ class DataCube(xr.DataArray):
     def copy(self, *args, **kwargs):
         c = super().copy(*args, **kwargs)
         c.dim_types = {**self.dim_types}
+        return c
+
+    def expand_dims(self, dim=None, dim_types={}, **kwargs):
+        c = super().expand_dims(dim=dim, **kwargs)
+        c.dim_types = {**self.dim_types}
+        if isinstance(dim, dict):
+            for dimension in dim.keys():
+                c.set_dim_type(dimension, dim_types.get(dimension, DimensionType.OTHER))
+        elif isinstance(dim, list):
+            for dimension in dim:
+                c.set_dim_type(dimension, dim_types.get(dimension, DimensionType.OTHER))
+        else:
+            c.set_dim_type(dim, dim_types.get(dim, DimensionType.OTHER))
         return c
 
     @staticmethod

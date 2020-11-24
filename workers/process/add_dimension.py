@@ -2,7 +2,7 @@ import xarray as xr
 
 from datetime import datetime
 
-from ._common import ProcessEOTask, ProcessParameterInvalid, parse_rfc3339, Band
+from ._common import ProcessEOTask, ProcessParameterInvalid, parse_rfc3339, Band, DataCube
 
 
 def generate_dimension_coord_values(labels, dimension_type):
@@ -36,6 +36,6 @@ class add_dimensionEOTask(ProcessEOTask):
                 "add_dimension", "name", "A dimension with the specified name already exists. (DimensionExists)"
             )
 
-        result = data.expand_dims(dim=name)
+        result = data.expand_dims(dim=name, dim_types={name: dimension_type})
         result = result.assign_coords({name: generate_dimension_coord_values([label], dimension_type)})
         return result
