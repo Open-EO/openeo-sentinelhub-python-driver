@@ -3,7 +3,7 @@ import xarray as xr
 
 xr.set_options(keep_attrs=True)
 
-from ._common import ProcessEOTask, ProcessParameterInvalid
+from ._common import ProcessEOTask, ProcessParameterInvalid, DataCube
 
 
 class sumEOTask(ProcessEOTask):
@@ -28,7 +28,7 @@ class sumEOTask(ProcessEOTask):
 
         original_type_was_number, data = self.convert_to_datacube(data, as_list=True)
 
-        summation_array = xr.concat(data, dim="temporary_summation_dim")
+        summation_array = DataCube.concat(data, dim="temporary_summation_dim")
         results = summation_array.sum(dim="temporary_summation_dim", skipna=ignore_nodata, keep_attrs=True)
 
         return self.results_in_appropriate_type(results, original_type_was_number)

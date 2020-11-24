@@ -490,3 +490,24 @@ class DataCube(xr.DataArray):
     def squeeze(self, *args, **kwargs):
         x = super().squeeze(*args, **kwargs)
         return DataCube.from_dataarray(x, dim_types={**self.dim_types})
+
+    def sum(self, dim=None, *args, **kwargs):
+        original_dim_types = {**self.dim_types}
+        x = super().sum(dim=dim, *args, **kwargs)
+
+        if isinstance(dim, list):
+            for dimension in dim:
+                del original_dim_types[dimension]
+        else:
+            del original_dim_types[dim]
+
+        x.dim_types = original_dim_types
+        return x
+
+    @staticmethod
+    def concat(objs, *args, **kwargs):
+        original_dim_types = {}
+        for obj in objs:
+            original_dim_types.update(obj.dim_types)
+        x = xr.concat(objs, *args, **kwargs)
+        return DataCube.from_dataarray(x, dim_types=original_dim_types)
