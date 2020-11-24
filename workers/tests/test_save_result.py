@@ -1,15 +1,17 @@
 import datetime
 import os
 import sys
+import json
 
 from botocore.stub import Stubber, ANY
 from io import BufferedReader
 import pytest
 import xarray as xr
+from sentinelhub import BBox, CRS
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid, ProcessArgumentRequired, Band, DataCube
+from process._common import ProcessParameterInvalid, ProcessArgumentRequired, Band, DataCube, DimensionType
 
 
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), "fixtures")
@@ -45,36 +47,23 @@ def create_result_object():
 @pytest.fixture
 def generate_data():
     def _construct(
-        ymin=12.32271,
-        ymax=12.33572,
-        xmin=42.06347,
-        xmax=42.07112,
+        xmin=12.32271,
+        xmax=12.33572,
+        ymin=42.06347,
+        ymax=42.07112,
         data=[[[[0.2]]]],
         dims=("t", "y", "x", "band"),
         coords={"band": ["ndvi"], "t": [datetime.datetime.now()]},
         attrs={},
+        dim_types={"band": DimensionType.BANDS},
     ):
-        class BBox:
-            @property
-            def lower_left(self):
-                return (ymin, xmin)
-
-            @property
-            def upper_right(self):
-                return (ymax, xmax)
-
-        fake_bbox = BBox()
+        fake_bbox = BBox([xmin, ymin, xmax, ymax], CRS("4326"))
         attrs = {"bbox": fake_bbox, **attrs}
 
         if "band" in coords:
             coords["band"] = [Band(b) for b in coords["band"]]
 
-        xrdata = DataCube(
-            data,
-            dims=dims,
-            coords=coords,
-            attrs=attrs,
-        )
+        xrdata = DataCube(data, dims=dims, coords=coords, attrs=attrs, dim_types=dim_types)
 
         return xrdata
 
@@ -182,6 +171,33 @@ def test_correct(
 
 
 @pytest.mark.parametrize(
+    "parameters,filename",
+    [
+        (
+            {
+                "file_format": "json",
+                "data_arguments": {
+                    "data": [[[[255, 127, 0]]]],
+                    "coords": {"band": ["r", "g", "b"], "t": [datetime.datetime(2020, 11, 10, 13, 46, 15)]},
+                },
+            },
+            "save_result_s3_file.json",
+        ),
+    ],
+)
+def test_json(execute_save_result_process, s3_stub_generator, parameters, filename):
+    """
+    Test save_result process with correct parameters
+    """
+    with open(os.path.join(FIXTURES_FOLDER, filename)) as f:
+        expected_json = f.read()
+    s3_stub = s3_stub_generator(expected_json)
+    result = execute_save_result_process(**parameters)
+    s3_stub.assert_no_pending_responses()
+    assert result is True
+
+
+@pytest.mark.parametrize(
     "missing_required_parameter,failure_reason",
     [
         ({"data_arguments": None}, "data"),
@@ -201,7 +217,7 @@ def test_required_params(execute_save_result_process, missing_required_parameter
 @pytest.mark.parametrize(
     "invalid_parameter,failure_param,failure_reason",
     [
-        ({"file_format": "xcf"}, "format", "Supported formats are: gtiff, png, jpeg."),
+        ({"file_format": "xcf"}, "format", "Supported formats are: gtiff, png, jpeg, json."),
         (
             {"options": {"option_name": "option_value"}},
             "options",

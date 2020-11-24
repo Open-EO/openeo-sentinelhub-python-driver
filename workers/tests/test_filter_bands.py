@@ -6,7 +6,14 @@ import numpy as np
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import process
-from process._common import ProcessArgumentRequired, ProcessParameterInvalid, Band, DataCube
+from process._common import (
+    ProcessArgumentRequired,
+    ProcessParameterInvalid,
+    Band,
+    DataCube,
+    DimensionType,
+    assert_equal,
+)
 
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -29,43 +36,44 @@ def filter_bandsEOTask():
 @pytest.mark.parametrize(
     "data,bands,wavelengths,expected_result",
     [
-        # We must temporarily disable these two tests, because we don't know the dimension type unless
-        # we have at least one coord in it. This should be fixed.
-        #
-        # # if no bands are found (using band names), return an empty cube:
-        # (
-        #     DataCube(
-        #         [[[2, 3]]],
-        #         dims=("y", "x", "b"),
-        #         coords={
-        #             "b": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
-        #         },
-        #     ),
-        #     ["does_not_exist"],
-        #     None,
-        #     DataCube(
-        #         [[[]]],
-        #         dims=("y", "x", "b"),
-        #         coords={"b": []},
-        #     ),
-        # ),
+        # if no bands are found (using band names), return an empty cube:
+        (
+            DataCube(
+                [[[2, 3]]],
+                dims=("y", "x", "b"),
+                coords={
+                    "b": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
+                },
+                dim_types={"b": DimensionType.BANDS},
+            ),
+            ["does_not_exist"],
+            None,
+            DataCube(
+                [[[]]],
+                dims=("y", "x", "b"),
+                coords={"b": []},
+                dim_types={"b": DimensionType.BANDS},
+            ),
+        ),
         # # if no bands are found (using wavelengths), return an empty cube:
-        # (
-        #     DataCube(
-        #         [[[2, 3]]],
-        #         dims=("y", "x", "b"),
-        #         coords={
-        #             "b": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
-        #         },
-        #     ),
-        #     None,
-        #     [[0.0001, 0.0002]],
-        #     DataCube(
-        #         [[[]]],
-        #         dims=("y", "x", "b"),
-        #         coords={"b": []},
-        #     ),
-        # ),
+        (
+            DataCube(
+                [[[2, 3]]],
+                dims=("y", "x", "b"),
+                coords={
+                    "b": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
+                },
+                dim_types={"b": DimensionType.BANDS},
+            ),
+            None,
+            [[0.0001, 0.0002]],
+            DataCube(
+                [[[]]],
+                dims=("y", "x", "b"),
+                coords={"b": []},
+                dim_types={"b": DimensionType.BANDS},
+            ),
+        ),
         # find one band:
         (
             DataCube(
@@ -74,6 +82,7 @@ def filter_bandsEOTask():
                 coords={
                     "b": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842), Band("B11", None, 1.11)],
                 },
+                dim_types={"b": DimensionType.BANDS},
             ),
             ["B08"],
             None,
@@ -83,6 +92,7 @@ def filter_bandsEOTask():
                 coords={
                     "b": [Band("B08", "nir", 0.842)],
                 },
+                dim_types={"b": DimensionType.BANDS},
             ),
         ),
         # find one band by alias:
@@ -93,6 +103,7 @@ def filter_bandsEOTask():
                 coords={
                     "b": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842), Band("B11", None, 1.11)],
                 },
+                dim_types={"b": DimensionType.BANDS},
             ),
             ["nir"],
             None,
@@ -102,6 +113,7 @@ def filter_bandsEOTask():
                 coords={
                     "b": [Band("B08", "nir", 0.842)],
                 },
+                dim_types={"b": DimensionType.BANDS},
             ),
         ),
         # find one band by wavelengths:
@@ -112,6 +124,7 @@ def filter_bandsEOTask():
                 coords={
                     "b": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842), Band("B11", None, 1.11)],
                 },
+                dim_types={"b": DimensionType.BANDS},
             ),
             None,
             [[0.7, 0.9]],
@@ -121,6 +134,7 @@ def filter_bandsEOTask():
                 coords={
                     "b": [Band("B08", "nir", 0.842)],
                 },
+                dim_types={"b": DimensionType.BANDS},
             ),
         ),
         # multiple filters match, use their ordering:
@@ -131,6 +145,7 @@ def filter_bandsEOTask():
                 coords={
                     "b": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842), Band("B11", None, 1.11)],
                 },
+                dim_types={"b": DimensionType.BANDS},
             ),
             ["B11", "B08", "B04"],
             None,
@@ -140,6 +155,7 @@ def filter_bandsEOTask():
                 coords={
                     "b": [Band("B11", None, 1.11), Band("B08", "nir", 0.842), Band("B04", "red", 0.665)],
                 },
+                dim_types={"b": DimensionType.BANDS},
             ),
         ),
         # keep original ordering when a filter matches multiple bands:
@@ -150,6 +166,7 @@ def filter_bandsEOTask():
                 coords={
                     "b": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842), Band("B11", None, 1.11)],
                 },
+                dim_types={"b": DimensionType.BANDS},
             ),
             None,
             [[1.0, 1.2], [0.0, 0.9]],
@@ -159,6 +176,7 @@ def filter_bandsEOTask():
                 coords={
                     "b": [Band("B11", None, 1.11), Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
                 },
+                dim_types={"b": DimensionType.BANDS},
             ),
         ),
         # overlapping filters must not duplicate bands:
@@ -169,6 +187,7 @@ def filter_bandsEOTask():
                 coords={
                     "band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842), Band("B11", None, 1.11)],
                 },
+                dim_types={"band": DimensionType.BANDS},
             ),
             ["B04", "B08", "red"],
             [[0.6, 0.7]],
@@ -178,6 +197,7 @@ def filter_bandsEOTask():
                 coords={
                     "band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
                 },
+                dim_types={"band": DimensionType.BANDS},
             ),
         ),
         # make sure we are handling cubes dimensions correctly by using cube 1x3x2x4:
@@ -192,6 +212,7 @@ def filter_bandsEOTask():
                 coords={
                     "b": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842), Band("B11", None, 1.11), Band("B22")],
                 },
+                dim_types={"b": DimensionType.BANDS},
             ),
             ["B08"],
             None,
@@ -205,6 +226,7 @@ def filter_bandsEOTask():
                 coords={
                     "b": [Band("B08", "nir", 0.842)],
                 },
+                dim_types={"b": DimensionType.BANDS},
             ),
         ),
     ],
@@ -221,7 +243,7 @@ def test_correct(filter_bandsEOTask, data, bands, wavelengths, expected_result):
     if wavelengths is not None:
         arguments["wavelengths"] = wavelengths
     result = filter_bandsEOTask.process(arguments)
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
 
 
 @pytest.mark.parametrize(
@@ -276,6 +298,7 @@ def test_exceptions(filter_bandsEOTask, bands, wavelengths, expected_exc_param, 
         [[[2, 3]]],
         dims=("y", "x", "b"),
         coords={"b": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)]},
+        dim_types={"b": DimensionType.BANDS},
     )
     arguments = {
         "data": data,
@@ -294,8 +317,6 @@ def test_exceptions(filter_bandsEOTask, bands, wavelengths, expected_exc_param, 
 @pytest.mark.parametrize(
     "data,expected_exc_param,expected_exc_msg",
     [
-        # Currently we can't have a datacube which has two dims of type "bands", because of the
-        # conflicting names (we should fix this). This is the closest we can get at this time:
         (
             DataCube(
                 [[[[2, 3]]]],
@@ -304,6 +325,7 @@ def test_exceptions(filter_bandsEOTask, bands, wavelengths, expected_exc_param, 
                     "b": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)],
                     "b2": [Band("B22")],
                 },
+                dim_types={"b": DimensionType.BANDS, "b2": DimensionType.BANDS},
             ),
             "data",
             "Multiple dimensions of type 'bands' found.",

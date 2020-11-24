@@ -26,7 +26,7 @@ class sumEOTask(ProcessEOTask):
         if len(data) < 2:
             raise ProcessParameterInvalid("sum", "data", "Array must have at least 2 elements.")
 
-        original_type_was_number, data = self.convert_to_dataarray(data, as_list=True)
+        original_type_was_number, data = self.convert_to_datacube(data, as_list=True)
 
         summation_array = xr.concat(data, dim="temporary_summation_dim")
         results = summation_array.sum(dim="temporary_summation_dim", skipna=ignore_nodata, keep_attrs=True)
