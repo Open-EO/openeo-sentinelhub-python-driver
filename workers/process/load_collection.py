@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import math
 import os
 import re
+import shutil
 import time
 
 from concurrent.futures import ThreadPoolExecutor
@@ -233,7 +234,7 @@ def download_data(
 
     tmp_folder = f"/tmp-{self.job_id}"
     if os.path.exists(tmp_folder):
-        os.rmdir(tmp_folder)
+        shutil.rmtree(tmp_folder)
     os.mkdir(tmp_folder)
 
     for i, date in enumerate(orbit_dates):
