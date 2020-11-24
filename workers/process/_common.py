@@ -531,3 +531,26 @@ class DataCube(xr.DataArray):
             original_dim_types.update(obj.dim_types)
         x = xr.concat(objs, *args, **kwargs)
         return DataCube.from_dataarray(x, dim_types=original_dim_types)
+
+    def _add_appropriate_dim_types(self, other, x):
+        if isinstance(other, DataCube):
+            x.dim_types = {**other.dim_types, **self.dim_types}
+        else:
+            x.dim_types = {**self.dim_types}
+        return x
+
+    def __add__(self, other):
+        x = super().__add__(other)
+        return self._add_appropriate_dim_types(other, x)
+
+    def __sub__(self, other):
+        x = super().__sub__(other)
+        return self._add_appropriate_dim_types(other, x)
+
+    def __truediv__(self, other):
+        x = super().__truediv__(other)
+        return self._add_appropriate_dim_types(other, x)
+
+    def __mul__(self, other):
+        x = super().__mul__(other)
+        return self._add_appropriate_dim_types(other, x)
