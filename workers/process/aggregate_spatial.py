@@ -4,7 +4,7 @@ import xarray as xr
 import rasterio.features
 import rasterio.transform
 
-from ._common import ProcessEOTask, ProcessParameterInvalid
+from ._common import ProcessEOTask, ProcessParameterInvalid, DataCube, DimensionType
 
 
 class aggregate_spatialEOTask(ProcessEOTask):
@@ -46,7 +46,7 @@ class aggregate_spatialEOTask(ProcessEOTask):
             )
             geometry_masks.append(geometry_mask)
 
-            mask = xr.DataArray(
+            mask = DataCube(
                 geometry_mask,
                 dims=(
                     "y",
@@ -59,7 +59,7 @@ class aggregate_spatialEOTask(ProcessEOTask):
 
             data2 = data.copy(deep=True)  # we need this, otherwise the mask will be applied to the original data
             masked_data = np.ma.masked_array(data2.values, mask=mask)
-            masked_data_xr = xr.DataArray(masked_data, dims=data.dims)
+            masked_data_xr = DataCube(masked_data, dims=data.dims)
             data_per_geom = (
                 masked_data_xr.expand_dims(dim="result")
                 if data_per_geom is None
@@ -90,4 +90,5 @@ class aggregate_spatialEOTask(ProcessEOTask):
         result.loc[dict(result_meta="total_count")] = total_count
         for i, geometry_mask in enumerate(geometry_masks):
             result.loc[dict(result_meta="valid_count", result=i)] = geometry_mask.sum()
+        result.set_dim_type("t", data.get_dim_type("t"))
         return result

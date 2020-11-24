@@ -10,7 +10,7 @@ from sentinelhub import CRS, BBox
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid, Band, assert_allclose
+from process._common import ProcessParameterInvalid, Band, assert_equal, DataCube, DimensionType
 import logging
 
 
@@ -35,7 +35,7 @@ def execute_process():
     [
         # simple test:
         (
-            xr.DataArray(
+            DataCube(
                 [
                     [
                         [0.1, 0.3],
@@ -62,6 +62,7 @@ def execute_process():
                 dims=("x", "y", "t"),  # x: 3, y: 5, t: 2
                 coords={"t": ["2019-08-16", "2019-08-18"]},
                 attrs={"bbox": BBox((5.0, 46.0, 6.0, 47.0), CRS(4326))},
+                dim_types={"x": DimensionType.SPATIAL, "y": DimensionType.SPATIAL, "t": DimensionType.TEMPORAL},
             ),
             [
                 {
@@ -87,7 +88,7 @@ def execute_process():
                 }
             },
             None,
-            xr.DataArray(
+            DataCube(
                 [
                     [
                         [3 * 22.9, 3 * 33.9],
@@ -108,11 +109,16 @@ def execute_process():
                 dims=("result_meta", "result", "t"),  #
                 coords={"t": ["2019-08-16", "2019-08-18"], "result_meta": ["value", "total_count", "valid_count"]},
                 attrs={},
+                dim_types={
+                    "result_meta": DimensionType.OTHER,
+                    "result": DimensionType.OTHER,
+                    "t": DimensionType.TEMPORAL,
+                },
             ),
         ),
         # simple test, single geometry:
         (
-            xr.DataArray(
+            DataCube(
                 [
                     [
                         [0.1, 0.3],
@@ -139,6 +145,7 @@ def execute_process():
                 dims=("x", "y", "t"),  # x: 3, y: 5, t: 2
                 coords={"t": ["2019-08-16", "2019-08-18"]},
                 attrs={"bbox": BBox((5.0, 46.0, 6.0, 47.0), CRS(4326))},
+                dim_types={"x": DimensionType.SPATIAL, "y": DimensionType.SPATIAL, "t": DimensionType.TEMPORAL},
             ),
             [
                 {
@@ -156,7 +163,7 @@ def execute_process():
                 }
             },
             None,
-            xr.DataArray(
+            DataCube(
                 [
                     [
                         [3 * 22.9, 3 * 33.9],
@@ -171,6 +178,7 @@ def execute_process():
                 dims=("result_meta", "result", "t"),  #
                 coords={"t": ["2019-08-16", "2019-08-18"], "result_meta": ["value", "total_count", "valid_count"]},
                 attrs={},
+                dim_types={"x": DimensionType.SPATIAL, "y": DimensionType.SPATIAL, "t": DimensionType.TEMPORAL},
             ),
         ),
     ],
@@ -185,4 +193,4 @@ def test_correct(execute_process, data, geometries, reducer, target_dimension, e
         arguments["target_dimension"] = target_dimension
 
     result = execute_process(arguments)
-    assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
