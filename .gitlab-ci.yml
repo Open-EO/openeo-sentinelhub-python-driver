@@ -124,14 +124,7 @@ publish_github:
     - git remote add github git@github.com:Open-EO/openeo-sentinelhub-python-driver.git
     - git config --global user.email "info@sinergise.com"
     - git config --global user.name "sentinel-hub"
-    # pull changes from github repo (it will fail in case of merge conflicts):
-    - git pull github master
-    # remove this file - users on GitHub don't need it:
-    - rm .gitlab-ci.yml
-    - git add .
-    - git status
-    - git commit -m "Update sources to version [${CI_COMMIT_TAG}]"
-    - git tag ${CI_COMMIT_TAG}
+    - git push github master
     - git push --tags github master
   after_script:
     # clean the git remotes even if job fails
