@@ -8,7 +8,7 @@ import xarray as xr
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid, Band, DataCube
+from process._common import ProcessParameterInvalid, Band, DataCube, DimensionType, assert_equal
 
 
 @pytest.fixture
@@ -74,6 +74,9 @@ def execute_process():
                 [1, 2],
                 dims=("band"),
                 coords={"band": [Band("B04", "red", 0.665), Band("B08", "nir", 0.842)]},
+                dim_types={
+                    "band": DimensionType.BANDS,
+                },
             ),
             "band",
             ["B4", "B8"],
@@ -84,6 +87,9 @@ def execute_process():
                 coords={
                     "band": [Band("B4"), Band("B8")],
                 },
+                dim_types={
+                    "band": DimensionType.BANDS,
+                },
             ),
         ),
         (
@@ -92,6 +98,9 @@ def execute_process():
                 dims=("band"),
                 coords={
                     "band": [Band("B04", "red", 0.665)],
+                },
+                dim_types={
+                    "band": DimensionType.BANDS,
                 },
             ),
             "band",
@@ -102,6 +111,9 @@ def execute_process():
                 dims=("band"),
                 coords={
                     "band": [Band("B4")],
+                },
+                dim_types={
+                    "band": DimensionType.BANDS,
                 },
             ),
         ),
@@ -116,7 +128,7 @@ def test_rename_labels(execute_process, data, dimension, target, source, expecte
     }
     original_data = data.copy(deep=True)
     result = execute_process(arguments)
-    xr.testing.assert_equal(result, expected_result)
+    assert_equal(result, expected_result)
 
     # make sure we didn't change the original input:
     xr.testing.assert_allclose(data, original_data)
