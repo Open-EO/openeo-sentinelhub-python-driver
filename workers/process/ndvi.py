@@ -3,7 +3,7 @@ import re
 import numpy as np
 import xarray as xr
 
-from ._common import ProcessEOTask, ProcessParameterInvalid, Band
+from ._common import ProcessEOTask, ProcessParameterInvalid, Band, DataCube, DimensionType
 
 
 class ndviEOTask(ProcessEOTask):
@@ -51,9 +51,9 @@ class ndviEOTask(ProcessEOTask):
             # "By default, the dimension of type bands is dropped by this process. To keep the dimension
             # specify a new band name in the parameter target_band. This adds a new dimension label with
             # the specified name to the dimension, which can be used to access the computed values."
-            r2 = result.expand_dims(dim="band")
+            r2 = result.expand_dims(dim="band", dim_types={"band": DimensionType.BANDS})
             r3 = r2.assign_coords(band=[Band(target_band)])
-            merged_result = xr.concat([data, r3], dim="band")
+            merged_result = DataCube.concat([data, r3], dim="band")
             return merged_result
 
         return result
