@@ -586,3 +586,12 @@ class DataCube(xr.DataArray):
                 del original_dim_types[dim]
         x.dim_types = original_dim_types
         return x
+
+    def isel(self, *args, **kwargs):
+        x = super().isel(*args, **kwargs)
+        original_dim_types = {**self.dim_types}
+        for dim in self.dims:
+            if dim not in x.dims:
+                del original_dim_types[dim]
+        x.dim_types = original_dim_types
+        return x

@@ -7,7 +7,7 @@ import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid, Band, DataCube
+from process._common import ProcessParameterInvalid, Band, DataCube, DimensionType, assert_equal
 
 
 @pytest.fixture
@@ -59,6 +59,12 @@ def test_examples(execute_array_element_process, data, return_nodata, index, exp
                     ],
                     "band": bands(),
                 },
+                dim_types={
+                    "x": DimensionType.SPATIAL,
+                    "y": DimensionType.SPATIAL,
+                    "t": DimensionType.TEMPORAL,
+                    "band": DimensionType.BANDS,
+                },
                 attrs={"reduce_by": ["band"]},
             ),
             0,
@@ -69,6 +75,11 @@ def test_examples(execute_array_element_process, data, return_nodata, index, exp
                     "t": [
                         datetime(2014, 3, 4),
                     ],
+                },
+                dim_types={
+                    "x": DimensionType.SPATIAL,
+                    "y": DimensionType.SPATIAL,
+                    "t": DimensionType.TEMPORAL,
                 },
                 attrs={"reduce_by": ["band"]},
             ),
@@ -83,6 +94,12 @@ def test_examples(execute_array_element_process, data, return_nodata, index, exp
                     ],
                     "band": bands(),
                 },
+                dim_types={
+                    "x": DimensionType.SPATIAL,
+                    "y": DimensionType.SPATIAL,
+                    "t": DimensionType.TEMPORAL,
+                    "band": DimensionType.BANDS,
+                },
                 attrs={"reduce_by": ["y"]},
             ),
             1,
@@ -95,6 +112,11 @@ def test_examples(execute_array_element_process, data, return_nodata, index, exp
                     ],
                     "band": bands(),
                 },
+                dim_types={
+                    "x": DimensionType.SPATIAL,
+                    "t": DimensionType.TEMPORAL,
+                    "band": DimensionType.BANDS,
+                },
                 attrs={"reduce_by": ["y"]},
             ),
         ),
@@ -105,7 +127,7 @@ def test_index(execute_array_element_process, data, index, expected_result):
     Test array_element process with index parameter
     """
     result = execute_array_element_process(data, index=index)
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
 
 
 @pytest.mark.parametrize(
@@ -121,6 +143,12 @@ def test_index(execute_array_element_process, data, index, expected_result):
                     ],
                     "band": bands(),
                 },
+                dim_types={
+                    "x": DimensionType.SPATIAL,
+                    "y": DimensionType.SPATIAL,
+                    "t": DimensionType.TEMPORAL,
+                    "band": DimensionType.BANDS,
+                },
                 attrs={"reduce_by": ["band"]},
             ),
             "B04",
@@ -131,6 +159,11 @@ def test_index(execute_array_element_process, data, index, expected_result):
                     "t": [
                         datetime(2014, 3, 4),
                     ],
+                },
+                dim_types={
+                    "x": DimensionType.SPATIAL,
+                    "y": DimensionType.SPATIAL,
+                    "t": DimensionType.TEMPORAL,
                 },
                 attrs={"reduce_by": ["band"]},
             ),
@@ -147,6 +180,12 @@ def test_index(execute_array_element_process, data, index, expected_result):
                     ],
                     "band": bands(),
                 },
+                dim_types={
+                    "x": DimensionType.SPATIAL,
+                    "y": DimensionType.SPATIAL,
+                    "t": DimensionType.TEMPORAL,
+                    "band": DimensionType.BANDS,
+                },
                 attrs={"reduce_by": ["t"]},
             ),
             "2014-03-05",
@@ -155,6 +194,11 @@ def test_index(execute_array_element_process, data, index, expected_result):
                 dims=("y", "x", "band"),
                 coords={
                     "band": bands(),
+                },
+                dim_types={
+                    "x": DimensionType.SPATIAL,
+                    "y": DimensionType.SPATIAL,
+                    "band": DimensionType.BANDS,
                 },
                 attrs={"reduce_by": ["y"]},
             ),
@@ -169,6 +213,12 @@ def test_index(execute_array_element_process, data, index, expected_result):
                     ],
                     "band": bands(),
                 },
+                dim_types={
+                    "x": DimensionType.SPATIAL,
+                    "y": DimensionType.SPATIAL,
+                    "t": DimensionType.TEMPORAL,
+                    "band": DimensionType.BANDS,
+                },
                 attrs={"reduce_by": ["band"]},
             ),
             "red",
@@ -180,6 +230,11 @@ def test_index(execute_array_element_process, data, index, expected_result):
                         datetime(2014, 3, 4),
                     ],
                 },
+                dim_types={
+                    "x": DimensionType.SPATIAL,
+                    "y": DimensionType.SPATIAL,
+                    "t": DimensionType.TEMPORAL,
+                },
                 attrs={"reduce_by": ["band"]},
             ),
         ),
@@ -190,7 +245,7 @@ def test_label(execute_array_element_process, data, label, expected_result):
     Test array_element process with label parameter
     """
     result = execute_array_element_process(data, label=label)
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
 
 
 @pytest.mark.parametrize(
@@ -312,6 +367,12 @@ def test_errors(execute_array_element_process, data, label, index, expected_erro
                     ],
                     "band": bands(),
                 },
+                dim_types={
+                    "x": DimensionType.SPATIAL,
+                    "y": DimensionType.SPATIAL,
+                    "t": DimensionType.TEMPORAL,
+                    "band": DimensionType.BANDS,
+                },
                 attrs={"reduce_by": ["t"]},
             ),
             4,
@@ -321,6 +382,11 @@ def test_errors(execute_array_element_process, data, label, index, expected_erro
                 dims=("y", "x", "band"),
                 coords={
                     "band": bands(),
+                },
+                dim_types={
+                    "x": DimensionType.SPATIAL,
+                    "y": DimensionType.SPATIAL,
+                    "band": DimensionType.BANDS,
                 },
                 attrs={"reduce_by": ["t"]},
             ),
@@ -336,6 +402,12 @@ def test_errors(execute_array_element_process, data, label, index, expected_erro
                         datetime(2014, 3, 6),
                     ],
                     "band": bands(),
+                },
+                dim_types={
+                    "x": DimensionType.SPATIAL,
+                    "y": DimensionType.SPATIAL,
+                    "t": DimensionType.TEMPORAL,
+                    "band": DimensionType.BANDS,
                 },
                 attrs={"reduce_by": ["t"]},
             ),
@@ -347,6 +419,11 @@ def test_errors(execute_array_element_process, data, label, index, expected_erro
                 coords={
                     "band": bands(),
                 },
+                dim_types={
+                    "x": DimensionType.SPATIAL,
+                    "y": DimensionType.SPATIAL,
+                    "band": DimensionType.BANDS,
+                },
                 attrs={"reduce_by": ["t"]},
             ),
         ),
@@ -361,6 +438,12 @@ def test_errors(execute_array_element_process, data, label, index, expected_erro
                         datetime(2014, 3, 6),
                     ],
                     "band": bands(),
+                },
+                dim_types={
+                    "x": DimensionType.SPATIAL,
+                    "y": DimensionType.SPATIAL,
+                    "t": DimensionType.TEMPORAL,
+                    "band": DimensionType.BANDS,
                 },
                 attrs={"reduce_by": ["band"]},
             ),
@@ -376,6 +459,11 @@ def test_errors(execute_array_element_process, data, label, index, expected_erro
                         datetime(2014, 3, 6),
                     ],
                 },
+                dim_types={
+                    "x": DimensionType.SPATIAL,
+                    "y": DimensionType.SPATIAL,
+                    "t": DimensionType.TEMPORAL,
+                },
                 attrs={"reduce_by": ["band"]},
             ),
         ),
@@ -386,4 +474,4 @@ def test_return_nodata(execute_array_element_process, data, label, index, expect
     Test array_element with return_nodata parameter
     """
     result = execute_array_element_process(data, index=index, label=label, return_nodata=True)
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
