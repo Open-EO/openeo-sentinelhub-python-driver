@@ -511,17 +511,25 @@ class DataCube(xr.DataArray):
         x = super().squeeze(*args, **kwargs)
         return DataCube.from_dataarray(x, dim_types={**self.dim_types})
 
-    def sum(self, dim=None, *args, **kwargs):
+    def _filter_dim_types(self, dim):
         original_dim_types = {**self.dim_types}
-        x = super().sum(dim=dim, *args, **kwargs)
-
+        if dim is None:
+            return original_dim_types
         if isinstance(dim, list):
             for dimension in dim:
                 del original_dim_types[dimension]
         else:
             del original_dim_types[dim]
+        return original_dim_types
 
-        x.dim_types = original_dim_types
+    def sum(self, dim=None, *args, **kwargs):
+        x = super().sum(dim=dim, *args, **kwargs)
+        x.dim_types = self._filter_dim_types(dim)
+        return x
+
+    def max(self, dim=None, *args, **kwargs):
+        x = super().max(dim=dim, *args, **kwargs)
+        x.dim_types = self._filter_dim_types(dim)
         return x
 
     @staticmethod
