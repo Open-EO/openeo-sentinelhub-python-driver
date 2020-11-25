@@ -6,13 +6,22 @@ import logging
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid, DataCube
+from process._common import ProcessParameterInvalid, DataCube, DimensionType, assert_equal
 
 
 @pytest.fixture
 def generate_data():
-    def _construct(data=[[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]], dims=("t", "y", "x", "band")):
-        xrdata = DataCube(data, dims=dims)
+    def _construct(
+        data=[[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]]],
+        dims=("t", "y", "x", "band"),
+        dim_types={
+            "x": DimensionType.SPATIAL,
+            "y": DimensionType.SPATIAL,
+            "t": DimensionType.TEMPORAL,
+            "band": DimensionType.BANDS,
+        },
+    ):
+        xrdata = DataCube(data, dims=dims, dim_types=dim_types)
         return xrdata
 
     return _construct
@@ -59,10 +68,16 @@ def test_no_reducer(execute_reduce_dimension_process, generate_data):
     )
 
     expected_result = generate_data = generate_data(
-        data=[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]], dims=("y", "x", "band")
+        data=[[[0.1, 0.15], [0.15, 0.2]], [[0.05, 0.1], [-0.9, 0.05]]],
+        dims=("y", "x", "band"),
+        dim_types={
+            "x": DimensionType.SPATIAL,
+            "y": DimensionType.SPATIAL,
+            "band": DimensionType.BANDS,
+        },
     )
     result = execute_reduce_dimension_process(dimension="t")
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
 
 
 def test_recursiver_reducer(execute_reduce_dimension_process, generate_data):
@@ -104,8 +119,14 @@ def test_recursiver_reducer(execute_reduce_dimension_process, generate_data):
     }
 
     result = execute_reduce_dimension_process(reducer=reducer, dimension="y")
-    expected_result = generate_data(data=[-0.9], dims=("t"))
-    xr.testing.assert_allclose(result, expected_result)
+    expected_result = generate_data(
+        data=[-0.9],
+        dims=("t"),
+        dim_types={
+            "t": DimensionType.TEMPORAL,
+        },
+    )
+    assert_equal(result, expected_result)
 
 
 def test_reducer_sum_of_min_and_mean(execute_reduce_dimension_process, generate_data):
@@ -131,8 +152,16 @@ def test_reducer_sum_of_min_and_mean(execute_reduce_dimension_process, generate_
     }
 
     result = execute_reduce_dimension_process(reducer=reducer, dimension="band")
-    expected_result = generate_data(data=[[[0.225, 0.325], [0.125, -1.325]]], dims=("t", "y", "x"))
-    xr.testing.assert_allclose(result, expected_result)
+    expected_result = generate_data(
+        data=[[[0.225, 0.325], [0.125, -1.325]]],
+        dims=("t", "y", "x"),
+        dim_types={
+            "x": DimensionType.SPATIAL,
+            "y": DimensionType.SPATIAL,
+            "t": DimensionType.TEMPORAL,
+        },
+    )
+    assert_equal(result, expected_result)
 
 
 def test_min_time_dim(execute_reduce_dimension_process, generate_data):
@@ -153,6 +182,12 @@ def test_min_time_dim(execute_reduce_dimension_process, generate_data):
     }
     result = execute_reduce_dimension_process(reducer=reducer, dimension="t", data_arguments=data_arguments)
     expected_result = generate_data(
-        data=[[[0.1, 0.05], [-0.009, -0.2]], [[0.05, 0.1], [-0.9, 0.05]]], dims=("y", "x", "band")
+        data=[[[0.1, 0.05], [-0.009, -0.2]], [[0.05, 0.1], [-0.9, 0.05]]],
+        dims=("y", "x", "band"),
+        dim_types={
+            "x": DimensionType.SPATIAL,
+            "y": DimensionType.SPATIAL,
+            "band": DimensionType.BANDS,
+        },
     )
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
