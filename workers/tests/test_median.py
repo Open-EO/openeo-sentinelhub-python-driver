@@ -25,11 +25,7 @@ def generate_data():
         if as_list:
             return data
 
-        xrdata = DataCube(
-            data,
-            dims=dims,
-            attrs=attrs,
-        )
+        xrdata = DataCube(data, dims=dims, attrs=attrs, dim_types=dim_types)
         return xrdata
 
     return _construct

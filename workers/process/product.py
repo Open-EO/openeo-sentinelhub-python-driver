@@ -1,7 +1,7 @@
 import numpy as np
 import xarray as xr
 
-from ._common import ProcessEOTask, ProcessParameterInvalid
+from ._common import ProcessEOTask, ProcessParameterInvalid, DataCube
 
 
 class productEOTask(ProcessEOTask):
@@ -18,6 +18,6 @@ class productEOTask(ProcessEOTask):
 
         original_type_was_number, data = self.convert_to_datacube(data, as_list=True)
 
-        multiplication_array = xr.concat(data, dim="temporary_multiplication_dim")
+        multiplication_array = DataCube.concat(data, dim="temporary_multiplication_dim")
         results = multiplication_array.prod(dim="temporary_multiplication_dim", skipna=ignore_nodata, keep_attrs=True)
         return self.results_in_appropriate_type(results, original_type_was_number)
