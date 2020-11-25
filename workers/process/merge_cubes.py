@@ -5,7 +5,7 @@ import numpy as np
 import xarray as xr
 from eolearn.core import EOWorkflow
 
-from ._common import ProcessEOTask, DATA_TYPE_TEMPORAL_INTERVAL, ProcessParameterInvalid
+from ._common import ProcessEOTask, DATA_TYPE_TEMPORAL_INTERVAL, ProcessParameterInvalid, DataCube
 
 
 def merge_attrs(attrs1, attrs2):
@@ -98,13 +98,15 @@ class merge_cubesEOTask(ProcessEOTask):
             dim = missing_dims[0]
             if len(cube1.dims) < len(cube2.dims):
                 new_coords = cube2.coords[dim]
-                cube1 = cube1.expand_dims({dim: len(new_coords)})  # this copies data over the new dim N-times
+                cube1 = cube1.expand_dims(
+                    {dim: len(new_coords)}, dim_types={dim: cube2.get_dim_type(dim)}
+                )  # this copies data over the new dim N-times
                 # we can have a dimension without coords, in which case we do not assign them:
                 if dim in cube2.coords:
                     cube1 = cube1.assign_coords({dim: new_coords})
             else:
                 new_coords = cube1.coords[dim]
-                cube2 = cube2.expand_dims({dim: len(new_coords)})
+                cube2 = cube2.expand_dims({dim: len(new_coords)}, dim_types={dim: cube1.get_dim_type(dim)})
                 if dim in cube1.coords:
                     cube2 = cube2.assign_coords({dim: new_coords})
 
@@ -112,23 +114,26 @@ class merge_cubesEOTask(ProcessEOTask):
         # - run overlap_resolver for overlapping coords
         # - concatenate other coords
         dim = mismatched_dims[0]
+        dim_type = cube1.get_dim_type(dim)
         result = None
         # first add all coords from cube1 (check for overlap at every step)
         for c in cube1.coords[dim].to_index():
             cube1_part = cube1.sel({dim: c})
+
             if c in cube2.coords[dim]:
                 cube2_part = cube2.sel({dim: c})
                 result_part = self.run_overlap_resolver(cube1_part, cube2_part, overlap_resolver)
             else:
                 result_part = cube1_part
             # merge the existing result:
-            result = result_part if result is None else xr.concat([result, result_part], dim=dim)
+            result = result_part if result is None else DataCube.concat([result, result_part], dim=dim)
 
         # then add all the remaining coords from cube2 (no need for overlap_resolver, there can be no overlap)
         remaining_coords = set(cube2.coords[dim].to_index()) - set(cube1.coords[dim].to_index())
         for c in remaining_coords:
             result_part = cube2.sel({dim: c})
-            result = result_part if result is None else xr.concat([result, result_part], dim=dim)
+            result = result_part if result is None else DataCube.concat([result, result_part], dim=dim)
 
+        result.set_dim_type(dim, dim_type)
         result.attrs = merge_attrs(cube1.attrs, cube2.attrs)
         return result

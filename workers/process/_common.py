@@ -577,3 +577,12 @@ class DataCube(xr.DataArray):
     def __mul__(self, other):
         x = super().__mul__(other)
         return self._add_appropriate_dim_types(other, x)
+
+    def sel(self, *args, **kwargs):
+        x = super().sel(*args, **kwargs)
+        original_dim_types = {**self.dim_types}
+        for dim in self.dims:
+            if dim not in x.dims:
+                del original_dim_types[dim]
+        x.dim_types = original_dim_types
+        return x
