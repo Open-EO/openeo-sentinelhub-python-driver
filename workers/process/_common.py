@@ -539,6 +539,10 @@ class DataCube(xr.DataArray):
         x = super().mean(dim=dim, *args, **kwargs)
         return self._add_filtered_dim_types(x, dim)
 
+    def median(self, dim=None, *args, **kwargs):
+        x = super().median(dim=dim, *args, **kwargs)
+        return self._add_filtered_dim_types(x, dim)
+
     @staticmethod
     def concat(objs, *args, **kwargs):
         original_dim_types = {}
