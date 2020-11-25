@@ -511,26 +511,29 @@ class DataCube(xr.DataArray):
         x = super().squeeze(*args, **kwargs)
         return DataCube.from_dataarray(x, dim_types={**self.dim_types})
 
-    def _filter_dim_types(self, dim):
+    def _add_filtered_dim_types(self, x, dim):
         original_dim_types = {**self.dim_types}
-        if dim is None:
-            return original_dim_types
-        if isinstance(dim, list):
-            for dimension in dim:
-                del original_dim_types[dimension]
-        else:
-            del original_dim_types[dim]
-        return original_dim_types
+
+        if dim is not None:
+            if isinstance(dim, list):
+                for dimension in dim:
+                    del original_dim_types[dimension]
+            else:
+                del original_dim_types[dim]
+        x.dim_types = original_dim_types
+        return x
 
     def sum(self, dim=None, *args, **kwargs):
         x = super().sum(dim=dim, *args, **kwargs)
-        x.dim_types = self._filter_dim_types(dim)
-        return x
+        return self._add_filtered_dim_types(x, dim)
 
     def max(self, dim=None, *args, **kwargs):
         x = super().max(dim=dim, *args, **kwargs)
-        x.dim_types = self._filter_dim_types(dim)
-        return x
+        return self._add_filtered_dim_types(x, dim)
+
+    def min(self, dim=None, *args, **kwargs):
+        x = super().min(dim=dim, *args, **kwargs)
+        return self._add_filtered_dim_types(x, dim)
 
     @staticmethod
     def concat(objs, *args, **kwargs):
