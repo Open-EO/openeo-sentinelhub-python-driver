@@ -1,10 +1,13 @@
 import base64
-import json
-import pytest
 import glob
+import json
+import os
+import sys
 import time
 
-import sys, os
+import pytest
+import requests
+import numpy as np
 
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rest"))
 from app import app
@@ -786,3 +789,79 @@ def test_process_graph_api(app_client, example_process_graph):
     expected = []
     actual = json.loads(r.data.decode("utf-8")).get("processes")
     assert actual == expected
+
+
+def test_batch_job_json_output(app_client, authorization_header):
+    """
+    - test /jobs/job_id/results endpoints
+    """
+    data = {
+        "process": {
+            "process_graph": {
+                "gencol1": {
+                    "process_id": "create_cube",
+                    "arguments": {
+                        "data": [[[[0.25, 0.15], [0.15, 0.25]], [[-np.inf, np.inf], [None, None]]]],
+                        "dims": ["y", "x", "t", "band"],
+                        "coords": {
+                            "y": [12.3],
+                            "x": [45.1, 45.2],
+                            "t": ["2019-08-01 11:00:12", "2019-08-02 13:00:12"],
+                            "band": [["nir", None, 0.85], ["red", None, 0.66]],
+                        },
+                    },
+                },
+                "result1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "gencol1"}, "format": "json"},
+                    "result": True,
+                },
+            },
+        }
+    }
+    r = app_client.post("/jobs", data=json.dumps(data), content_type="application/json")
+    assert r.status_code == 201
+    job_id = r.headers["OpenEO-Identifier"]
+
+    r = app_client.post(f"/jobs/{job_id}/results", headers={"Authorization": authorization_header})
+    assert r.status_code == 202
+
+    # it might take some time before the job is accepted and done - keep trying for 5s:
+    for _ in range(10):
+        r = app_client.get(f"/jobs/{job_id}")
+        actual = json.loads(r.data.decode("utf-8"))
+        assert r.status_code == 200
+        if actual["status"] not in ["created", "queued", "running"]:
+            break
+        time.sleep(0.5)
+    assert actual["status"] == "finished"
+
+    r = app_client.get(f"/jobs/{job_id}/results")
+    actual = json.loads(r.data.decode("utf-8"))
+    assert r.status_code == 200
+
+    asset_url = actual["assets"]["result.json"]["href"]
+    r = requests.get(asset_url)
+    r.raise_for_status()
+    result = r.json()
+
+    expected_result = {
+        "dims": ["y", "x", "t", "band"],
+        "attrs": {"bbox": {"xmin": 12.0, "ymin": 45.0, "xmax": 13.0, "ymax": 46.0, "crs": "EPSG:4326"}},
+        "data": [[[[0.25, 0.15], [0.15, 0.25]], [[None, None], [None, None]]]],
+        "coords": {
+            "y": {"dims": ["y"], "attrs": {}, "data": [12.3]},
+            "x": {"dims": ["x"], "attrs": {}, "data": [45.1, 45.2]},
+            "t": {"dims": ["t"], "attrs": {}, "data": ["2019-08-01T11-00-12", "2019-08-02T13-00-12"]},
+            "band": {
+                "dims": ["band"],
+                "attrs": {},
+                "data": [
+                    {"name": "nir", "alias": None, "wavelength": 0.85},
+                    {"name": "red", "alias": None, "wavelength": 0.66},
+                ],
+            },
+        },
+        "name": None,
+    }
+    assert result == expected_result
