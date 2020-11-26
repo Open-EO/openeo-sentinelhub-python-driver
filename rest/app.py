@@ -513,7 +513,7 @@ def add_job_to_queue(job_id):
             aws_access_key_id=AWS_ACCESS_KEY_ID,
             aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
         )
-        links = []
+        assets = {}
         results = json.loads(job["results"])
         for result in results:
             # create signed url:
@@ -527,13 +527,10 @@ def add_job_to_queue(job_id):
                 },
             )
             mime_type = result["type"]
-            links.append(
-                {
-                    "rel": "related",
-                    "href": url,
-                    "type": mime_type,
-                }
-            )
+            assets[filename] = {
+                "href": url,
+                "type": mime_type,
+            }
 
         return flask.make_response(
             jsonify(
@@ -542,8 +539,8 @@ def add_job_to_queue(job_id):
                 type="Feature",
                 geometry=None,
                 properties={"datetime": None},
-                assets={},
-                links=links,
+                assets=assets,
+                links=[],
             ),
             200,
         )
