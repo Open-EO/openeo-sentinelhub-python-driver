@@ -511,7 +511,6 @@ def add_job_to_queue(job_id):
             aws_access_key_id=AWS_ACCESS_KEY_ID,
             aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
         )
-        links = []
         assets = {}
         results = json.loads(job["results"])
         for result in results:
@@ -526,13 +525,6 @@ def add_job_to_queue(job_id):
                 },
             )
             mime_type = result["type"]
-            links.append(
-                {
-                    "rel": "related",
-                    "href": url,
-                    "type": mime_type,
-                }
-            )
             assets[filename] = {
                 "href": url,
                 "type": mime_type,
@@ -546,7 +538,7 @@ def add_job_to_queue(job_id):
                 geometry=None,
                 properties={"datetime": None},
                 assets=assets,
-                links=links,
+                links=[],
             ),
             200,
         )
