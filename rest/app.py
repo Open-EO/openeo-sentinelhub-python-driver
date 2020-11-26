@@ -457,8 +457,10 @@ def api_batch_job(job_id):
                 if job["current_status"] not in ["queued", "running"]:
                     break
                 time.sleep(period)
-            if job["current_status"] in ["queued", "running"]:
-                return flask.make_response("Could not stop the job properly.", 500)
+            # this would be more correct - however, if we have a job which is stuck in "running", even though
+            # there is no worker actually working on it, we will not be able to delete it.
+            # if job["current_status"] in ["queued", "running"]:
+            #     return flask.make_response("Could not stop the job properly.", 500)
 
         JobsPersistence.delete(job_id)
         return flask.make_response("The job has been successfully deleted.", 204)
