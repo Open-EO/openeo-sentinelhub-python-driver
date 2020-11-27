@@ -3,11 +3,10 @@ import os
 import sys
 
 import pytest
-import xarray as xr
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid, DataCube
+from process._common import ProcessParameterInvalid, DataCube, assert_equal
 
 
 ###################################
@@ -45,7 +44,7 @@ from process._common import ProcessParameterInvalid, DataCube
             {"x": "whatever"},
             "x",
             False,
-            [xr.DataArray],
+            [DataCube],
             11,
             None,
             ProcessParameterInvalid,
@@ -55,7 +54,7 @@ from process._common import ProcessParameterInvalid, DataCube
             {"x": DataCube([[1, 2]], dims=("x", "y"))},
             "x",
             False,
-            [xr.DataArray],
+            [DataCube],
             11,
             DataCube([[1, 2]], dims=("x", "y")),
             None,
@@ -65,7 +64,7 @@ from process._common import ProcessParameterInvalid, DataCube
             {"x": DataCube([[1, 2]], dims=("x", "y"), attrs={"simulated_datatype": (float,)})},
             "x",
             False,
-            [xr.DataArray],
+            [DataCube],
             11,
             None,
             ProcessParameterInvalid,
@@ -89,7 +88,7 @@ def test_validate_parameter(
     else:
         result = node.validate_parameter(arguments, param, required, allowed_types, default_value)
         # checking the result depends on the result data type:
-        if isinstance(result, xr.DataArray):
-            xr.testing.assert_allclose(result, expected_result)
+        if isinstance(result, DataCube):
+            assert_equal(result, expected_result)
         else:
             assert result == expected_result

@@ -201,8 +201,8 @@ class ProcessEOTask(EOTask):
 
         allowed_types_str = ",".join([TYPE_MAPPING[typename] for typename in allowed_types])
 
-        # xr.DataArray might be simulating another data type:
-        if isinstance(param_val, xr.DataArray) and param_val.attrs.get("simulated_datatype", None):
+        # DataCube might be simulating another data type:
+        if isinstance(param_val, DataCube) and param_val.attrs.get("simulated_datatype", None):
             if param_val.attrs["simulated_datatype"][0] not in allowed_types:
                 raise ProcessParameterInvalid(
                     self.process_id, param, f"Argument must be of types '[{allowed_types_str}]'."
@@ -229,13 +229,13 @@ class ProcessEOTask(EOTask):
     def convert_to_datacube(self, data, as_list=False):
         original_type_was_number = True
 
-        if isinstance(data, xr.DataArray):
+        if isinstance(data, DataCube):
             return False, data
 
         if as_list:
             model = None
             for element in data:
-                if isinstance(element, xr.DataArray):
+                if isinstance(element, DataCube):
                     model = element
                     original_type_was_number = False
                     break
@@ -252,7 +252,7 @@ class ProcessEOTask(EOTask):
                     ######################################################################
                     else:
                         data[i] = DataCube(np.array(element, dtype=np.float))
-                elif not isinstance(element, xr.DataArray):
+                elif not isinstance(element, DataCube):
                     raise ProcessParameterInvalid(
                         self.process_id,
                         "data",
@@ -597,7 +597,6 @@ TYPE_MAPPING = {
     float: "number",
     bool: "boolean",
     type(None): "null",
-    xr.DataArray: "raster-cube",
     DataCube: "raster-cube",
     dict: "object",
     str: "string",
