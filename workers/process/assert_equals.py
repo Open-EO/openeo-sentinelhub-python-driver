@@ -1,6 +1,4 @@
-import xarray as xr
-
-from ._common import ProcessEOTask, ProcessParameterInvalid, sort_by_dims_coords
+from ._common import ProcessEOTask, ProcessParameterInvalid, DataCube, assert_equal
 
 
 class assert_equalsEOTask(ProcessEOTask):
@@ -9,8 +7,8 @@ class assert_equalsEOTask(ProcessEOTask):
     """
 
     def process(self, arguments):
-        a = self.validate_parameter(arguments, "a", required=True, allowed_types=[xr.DataArray])
-        b = self.validate_parameter(arguments, "b", required=True, allowed_types=[xr.DataArray])
+        a = self.validate_parameter(arguments, "a", required=True, allowed_types=[DataCube])
+        b = self.validate_parameter(arguments, "b", required=True, allowed_types=[DataCube])
 
         if "simulated_datatype" in a.attrs and a.attrs["simulated_datatype"] is None:
             del a.attrs["simulated_datatype"]
@@ -18,9 +16,7 @@ class assert_equalsEOTask(ProcessEOTask):
             del b.attrs["simulated_datatype"]
 
         try:
-            a = sort_by_dims_coords(a)
-            b = sort_by_dims_coords(b)
-            xr.testing.assert_allclose(a, b)
+            assert_equal(a, b)
         except:
             # since it is important for us to know what the difference is, make
             # an effort to log both arguments nicely:
