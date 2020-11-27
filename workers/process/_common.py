@@ -562,8 +562,7 @@ class DataCube(xr.DataArray):
         x = super().__mul__(other)
         return self._add_appropriate_dim_types(other, x)
 
-    def sel(self, *args, **kwargs):
-        x = super().sel(*args, **kwargs)
+    def _get_and_set_existing_dim_types(self, x):
         original_dim_types = {**self.dim_types}
         for dim in self.dims:
             if dim not in x.dims:
@@ -571,14 +570,17 @@ class DataCube(xr.DataArray):
         x.dim_types = original_dim_types
         return x
 
+    def sel(self, *args, **kwargs):
+        x = super().sel(*args, **kwargs)
+        return self._get_and_set_existing_dim_types(x)
+
     def isel(self, *args, **kwargs):
         x = super().isel(*args, **kwargs)
-        original_dim_types = {**self.dim_types}
-        for dim in self.dims:
-            if dim not in x.dims:
-                del original_dim_types[dim]
-        x.dim_types = original_dim_types
-        return x
+        return self._get_and_set_existing_dim_types(x)
+
+    def where(self, *args, **kwargs):
+        x = DataCube.from_dataarray(super().where(*args, **kwargs))
+        return self._get_and_set_existing_dim_types(x)
 
 
 # additional datatypes which do not have corresponding pairs in python:
