@@ -1,7 +1,8 @@
 import numpy as np
-import xarray as xr
+from xarray import set_options
 
-xr.set_options(keep_attrs=True)
+set_options(keep_attrs=True)
+
 from ._common import ProcessEOTask, ProcessParameterInvalid, DataCube
 
 
@@ -10,14 +11,14 @@ class addEOTask(ProcessEOTask):
         x = self.validate_parameter(arguments, "x", required=True, allowed_types=[float, type(None)])
         y = self.validate_parameter(arguments, "y", required=True, allowed_types=[float, type(None)])
         # null is returned if any element is such a value:
-        if not isinstance(x, xr.DataArray) and not isinstance(y, xr.DataArray):
+        if not isinstance(x, DataCube) and not isinstance(y, DataCube):
             if x is None or y is None:
                 return None
             return x + y
 
-        # at least one parameter is xr.DataArray
-        original_attrs = x.attrs if isinstance(x, xr.DataArray) else y.attrs
-        original_dim_types = x.get_dim_types() if isinstance(x, xr.DataArray) else y.get_dim_types()
+        # at least one parameter is DataCube
+        original_attrs = x.attrs if isinstance(x, DataCube) else y.attrs
+        original_dim_types = x.get_dim_types() if isinstance(x, DataCube) else y.get_dim_types()
 
         # we can't subtract if one of the parameters is None:
         if x is None:

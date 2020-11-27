@@ -1,15 +1,14 @@
 import numpy as np
-import xarray as xr
 
 from ._common import ProcessEOTask, ProcessParameterInvalid, DataCube
 
 
 class productEOTask(ProcessEOTask):
     def process(self, arguments):
-        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray, list])
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[DataCube, list])
         ignore_nodata = self.validate_parameter(arguments, "ignore_nodata", default=True, allowed_types=[bool])
 
-        if isinstance(data, xr.DataArray) and data.attrs.get("reduce_by"):
+        if isinstance(data, DataCube) and data.attrs.get("reduce_by"):
             dim = data.attrs["reduce_by"]
             return data.prod(dim=dim, skipna=ignore_nodata, keep_attrs=True)
 

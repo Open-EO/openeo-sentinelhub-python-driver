@@ -1,5 +1,3 @@
-import xarray as xr
-
 from datetime import datetime
 
 from ._common import ProcessEOTask, ProcessParameterInvalid, parse_rfc3339, Band, DataCube
@@ -19,7 +17,7 @@ class add_dimensionEOTask(ProcessEOTask):
     """
 
     def process(self, arguments):
-        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray])
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[DataCube])
         name = self.validate_parameter(arguments, "name", required=True, allowed_types=[str])
         label = self.validate_parameter(arguments, "label", required=True, allowed_types=[str, float])
         dimension_type = self.validate_parameter(

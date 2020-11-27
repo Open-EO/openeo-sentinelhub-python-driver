@@ -3,12 +3,11 @@ from datetime import datetime, timedelta
 from collections import namedtuple
 from osgeo import gdal, osr
 import boto3
-import xarray as xr
 import numpy as np
 import json
 
 
-from ._common import ProcessEOTask, StorageFailure, ProcessParameterInvalid, DimensionType
+from ._common import ProcessEOTask, StorageFailure, ProcessParameterInvalid, DimensionType, DataCube
 import process
 
 
@@ -108,7 +107,7 @@ class save_resultEOTask(ProcessEOTask):
     def process(self, arguments):
         self.results = []
 
-        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray])
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[DataCube])
         output_format = self.validate_parameter(arguments, "format", required=True, allowed_types=[str])
         output_format = output_format.lower()
         output_options = self.validate_parameter(arguments, "options", default={}, allowed_types=[dict])

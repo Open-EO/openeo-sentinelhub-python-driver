@@ -1,14 +1,13 @@
 import re
 
 import numpy as np
-import xarray as xr
 
 from ._common import ProcessEOTask, ProcessParameterInvalid, Band, DataCube, DimensionType
 
 
 class ndviEOTask(ProcessEOTask):
     def process(self, arguments):
-        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray])
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[DataCube])
         nir = self.validate_parameter(arguments, "nir", required=False, allowed_types=[str], default="nir")
         red = self.validate_parameter(arguments, "red", required=False, allowed_types=[str], default="red")
         target_band = self.validate_parameter(

@@ -1,9 +1,9 @@
 import datetime
 
 import numpy as np
-import xarray as xr
+from xarray import set_options
 
-xr.set_options(keep_attrs=True)
+set_options(keep_attrs=True)
 
 from ._common import ProcessEOTask, ProcessParameterInvalid, parse_rfc3339, DataCube
 
@@ -20,7 +20,7 @@ class array_elementEOTask(ProcessEOTask):
     """
 
     def process(self, arguments):
-        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray, list])
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[DataCube, list])
         index = self.validate_parameter(arguments, "index", required=False, allowed_types=[int], default=None)
         label = self.validate_parameter(arguments, "label", required=False, allowed_types=[float, str], default=None)
         return_nodata = self.validate_parameter(arguments, "return_nodata", default=False, allowed_types=[bool])
@@ -38,7 +38,7 @@ class array_elementEOTask(ProcessEOTask):
                 "The process 'array_element' only allows that either the 'index' or the 'label' parameter is set. (ArrayElementParameterConflict)",
             )
 
-        if isinstance(data, xr.DataArray) and data.attrs and data.attrs.get("reduce_by"):
+        if isinstance(data, DataCube) and data.attrs and data.attrs.get("reduce_by"):
             dim = data.attrs.get("reduce_by")[-1]
             try:
                 if index is not None:

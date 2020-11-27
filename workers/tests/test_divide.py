@@ -4,7 +4,6 @@ import sys
 
 import numpy as np
 import pytest
-import xarray as xr
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
@@ -98,7 +97,7 @@ def test_examples(execute_divide_process, x, y, expected_result):
     for x, y, expected_result in parameters_forms:
         arguments = {"x": x, "y": y}
         result = execute_divide_process(arguments)
-        if isinstance(expected_result, xr.DataArray):
+        if isinstance(expected_result, DataCube):
             assert_equal(result, expected_result)
         else:
             assert result == expected_result

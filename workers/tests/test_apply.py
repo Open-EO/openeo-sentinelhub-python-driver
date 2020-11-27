@@ -1,13 +1,12 @@
 import pytest
 import sys, os
-import xarray as xr
 import datetime
 import logging
 import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid, DataCube
+from process._common import ProcessParameterInvalid, DataCube, assert_equal
 
 
 @pytest.fixture
@@ -89,7 +88,7 @@ def test_apply_simple(execute_process):
         [[[[1.1, 1.15], [1.15, 1.2]], [[1.05, 1.1], [0.1, 1.05]]]],
         dims=("t", "y", "x", "band"),
     )
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
     assert result.attrs.get("simulated_datatype", None) is None
 
 
@@ -159,7 +158,7 @@ def test_recursive_callback(execute_apply_process, generate_data):
     result = execute_apply_process(process_callback=process_callback)
     expected_data = [[[[140.25, 146.625], [146.625, 153]], [[133.875, 140.25], [12.75, 133.875]]]]
     expected_result = generate_data(data=expected_data)
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
 
 
 def test_callback_lsr(execute_apply_process, generate_data):
@@ -185,7 +184,7 @@ def test_callback_lsr(execute_apply_process, generate_data):
     data_arguments = {"data": [np.nan, -3, 3, 0, np.nan], "dims": ("t")}
     result = execute_apply_process(data_arguments=data_arguments, process_callback=process_callback)
     expected_result = generate_data(data=[np.nan, 0, 1, 0.5, np.nan], dims=("t"))
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
 
 
 def test_multiple_results_forbidden(execute_apply_process, generate_data):

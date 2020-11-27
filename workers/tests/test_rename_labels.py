@@ -4,7 +4,7 @@ import sys
 
 import numpy as np
 import pytest
-import xarray as xr
+import xarray
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
@@ -131,7 +131,7 @@ def test_rename_labels(execute_process, data, dimension, target, source, expecte
     assert_equal(result, expected_result)
 
     # make sure we didn't change the original input:
-    xr.testing.assert_allclose(data, original_data)
+    xarray.testing.assert_allclose(data, original_data)
 
 
 @pytest.mark.parametrize(

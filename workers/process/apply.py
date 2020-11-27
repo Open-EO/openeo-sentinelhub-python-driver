@@ -1,6 +1,5 @@
-from ._common import ProcessEOTask, ProcessParameterInvalid, iterate
+from ._common import ProcessEOTask, ProcessParameterInvalid, iterate, DataCube
 from eolearn.core import EOWorkflow
-import xarray as xr
 import process
 
 
@@ -48,7 +47,7 @@ class applyEOTask(ProcessEOTask):
         return dependencies, result_task
 
     def process(self, arguments):
-        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray])
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[DataCube])
         process = self.validate_parameter(arguments, "process", required=True)
 
         # marking the data will change the `data` attributes, so we need to do shallow copy (we don't change the

@@ -2,9 +2,8 @@ import datetime
 import math
 
 import numpy as np
-import xarray as xr
 
-from ._common import ProcessEOTask, DATA_TYPE_TEMPORAL_INTERVAL, ProcessParameterInvalid
+from ._common import ProcessEOTask, DATA_TYPE_TEMPORAL_INTERVAL, ProcessParameterInvalid, DataCube
 
 
 class rename_labelsEOTask(ProcessEOTask):
@@ -13,7 +12,7 @@ class rename_labelsEOTask(ProcessEOTask):
     """
 
     def process(self, arguments):
-        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray])
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[DataCube])
         dimension = self.validate_parameter(arguments, "dimension", required=True, allowed_types=[str])
         target = self.validate_parameter(arguments, "target", required=True, allowed_types=[list])
         source = self.validate_parameter(arguments, "source", required=False, allowed_types=[list], default=[])

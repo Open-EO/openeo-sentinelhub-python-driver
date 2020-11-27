@@ -4,7 +4,6 @@ import sys
 
 import numpy as np
 import pytest
-import xarray as xr
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process

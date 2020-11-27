@@ -1,13 +1,12 @@
 from ._common import ProcessEOTask, ProcessParameterInvalid, iterate
 from eolearn.core import EOWorkflow
-import xarray as xr
 import process
-from ._common import DataCube, DimensionType
+from ._common import DataCube, DimensionType, DataCube
 
 
 class reduce_dimensionEOTask(ProcessEOTask):
     def process(self, arguments):
-        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray])
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[DataCube])
         dimension = self.validate_parameter(arguments, "dimension", required=True, allowed_types=[str])
         reducer = self.validate_parameter(arguments, "reducer", default=None)
         target_dimension = self.validate_parameter(
@@ -42,6 +41,6 @@ class reduce_dimensionEOTask(ProcessEOTask):
         result.attrs["simulated_datatype"] = None
 
         if target_dimension:
-            result = DataCube.from_dataarray(xr.concat(result, dim=target_dimension), data.get_dim_types())
+            result = DataCube.concat(result, dim=target_dimension), data.get_dim_types()
 
         return result

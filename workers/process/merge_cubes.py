@@ -2,7 +2,6 @@ import datetime
 import math
 
 import numpy as np
-import xarray as xr
 from eolearn.core import EOWorkflow
 
 from ._common import ProcessEOTask, DATA_TYPE_TEMPORAL_INTERVAL, ProcessParameterInvalid, DataCube
@@ -48,8 +47,8 @@ class merge_cubesEOTask(ProcessEOTask):
         return result
 
     def process(self, arguments):
-        cube1 = self.validate_parameter(arguments, "cube1", required=True, allowed_types=[xr.DataArray])
-        cube2 = self.validate_parameter(arguments, "cube2", required=True, allowed_types=[xr.DataArray])
+        cube1 = self.validate_parameter(arguments, "cube1", required=True, allowed_types=[DataCube])
+        cube2 = self.validate_parameter(arguments, "cube2", required=True, allowed_types=[DataCube])
         overlap_resolver = self.validate_parameter(arguments, "overlap_resolver", required=False, default=None)
         context = self.validate_parameter(arguments, "context", required=False, default=None)
 

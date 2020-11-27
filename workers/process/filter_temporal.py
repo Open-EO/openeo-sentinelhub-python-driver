@@ -2,7 +2,6 @@ import datetime
 import math
 
 import numpy as np
-import xarray as xr
 
 from ._common import ProcessEOTask, DATA_TYPE_TEMPORAL_INTERVAL, ProcessParameterInvalid, DimensionType, DataCube
 
@@ -13,7 +12,7 @@ class filter_temporalEOTask(ProcessEOTask):
     """
 
     def process(self, arguments):
-        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray])
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[DataCube])
         extent_from, extent_to = self.validate_parameter(
             arguments, "extent", required=True, allowed_types=[DATA_TYPE_TEMPORAL_INTERVAL]
         )

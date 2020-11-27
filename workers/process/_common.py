@@ -9,22 +9,6 @@ import numpy as np
 import xarray as xr
 import process
 
-# additional datatypes which do not have corresponding pairs in python:
-DATA_TYPE_TEMPORAL_INTERVAL = "temporal-interval"
-
-
-TYPE_MAPPING = {
-    int: "integer",
-    float: "number",
-    bool: "boolean",
-    type(None): "null",
-    xr.DataArray: "raster-cube",
-    dict: "object",
-    str: "string",
-    list: "array",
-    DATA_TYPE_TEMPORAL_INTERVAL: "temporal-interval",
-}
-
 
 # These exceptions should translate to the list of OpenEO error codes:
 #   https://api.openeo.org/1.0.0/errors.json
@@ -595,3 +579,21 @@ class DataCube(xr.DataArray):
                 del original_dim_types[dim]
         x.dim_types = original_dim_types
         return x
+
+
+# additional datatypes which do not have corresponding pairs in python:
+DATA_TYPE_TEMPORAL_INTERVAL = "temporal-interval"
+
+
+TYPE_MAPPING = {
+    int: "integer",
+    float: "number",
+    bool: "boolean",
+    type(None): "null",
+    xr.DataArray: "raster-cube",
+    DataCube: "raster-cube",
+    dict: "object",
+    str: "string",
+    list: "array",
+    DATA_TYPE_TEMPORAL_INTERVAL: "temporal-interval",
+}

@@ -4,7 +4,6 @@ import sys
 
 import numpy as np
 import pytest
-import xarray as xr
 import pandas as pd
 from sentinelhub import CRS, BBox
 

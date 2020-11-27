@@ -1,6 +1,5 @@
 from eolearn.core import EOWorkflow
 import numpy as np
-import xarray as xr
 import rasterio.features
 import rasterio.transform
 
@@ -13,7 +12,7 @@ class aggregate_spatialEOTask(ProcessEOTask):
     """
 
     def process(self, arguments):
-        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray])
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[DataCube])
         geometries = self.validate_parameter(arguments, "geometries", required=True, allowed_types=[list])
         reducer = self.validate_parameter(arguments, "reducer", required=True)
         target_dimension = self.validate_parameter(
@@ -63,7 +62,7 @@ class aggregate_spatialEOTask(ProcessEOTask):
             data_per_geom = (
                 masked_data_xr.expand_dims(dim="result")
                 if data_per_geom is None
-                else xr.concat([data_per_geom, masked_data_xr], dim="result")
+                else DataCube.concat([data_per_geom, masked_data_xr], dim="result")
             )
 
         # merge "x" and "y" dimension into one, so that we can reduce along it:

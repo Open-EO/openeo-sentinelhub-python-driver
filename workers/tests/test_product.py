@@ -1,6 +1,5 @@
 import pytest
 import sys, os
-import xarray as xr
 import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -116,7 +115,7 @@ def test_product(generate_data, array1, array2, expected_data):
     expected_result = generate_data(data=[expected_data])[0]
     arguments = {"data": generate_data(data=[array1, array2])}
     result = process.product.productEOTask(None, "", None, {}, "node1", {}).process(arguments)
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
 
 
 @pytest.mark.parametrize(

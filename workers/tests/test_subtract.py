@@ -1,6 +1,5 @@
 import pytest
 import sys, os
-import xarray as xr
 import numpy as np
 from datetime import datetime
 
