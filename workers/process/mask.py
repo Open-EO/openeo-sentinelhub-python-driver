@@ -1,9 +1,9 @@
 import numpy as np
-import xarray as xr
+from xarray import set_options
 
-xr.set_options(keep_attrs=True)
+set_options(keep_attrs=True)
 
-from ._common import ProcessEOTask, ProcessParameterInvalid
+from ._common import ProcessEOTask, ProcessParameterInvalid, DataCube
 
 
 class maskEOTask(ProcessEOTask):
@@ -12,8 +12,8 @@ class maskEOTask(ProcessEOTask):
     """
 
     def process(self, arguments):
-        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray])
-        mask = self.validate_parameter(arguments, "mask", required=True, allowed_types=[xr.DataArray])
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[DataCube])
+        mask = self.validate_parameter(arguments, "mask", required=True, allowed_types=[DataCube])
         replacement = self.validate_parameter(
             arguments, "replacement", required=False, default=np.nan, allowed_types=[float, bool, str, type(None)]
         )

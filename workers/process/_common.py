@@ -582,6 +582,11 @@ class DataCube(xr.DataArray):
         x = DataCube.from_dataarray(super().where(*args, **kwargs))
         return self._get_and_set_existing_dim_types(x)
 
+    @staticmethod
+    def get_where(*args, **kwargs):
+        x = xr.where(*args, **kwargs)
+        return DataCube.from_dataarray(x)
+
 
 # additional datatypes which do not have corresponding pairs in python:
 DATA_TYPE_TEMPORAL_INTERVAL = "temporal-interval"
