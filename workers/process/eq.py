@@ -1,7 +1,7 @@
 import numpy as np
-import xarray as xr
+from xarray import set_options
 
-xr.set_options(keep_attrs=True)
+set_options(keep_attrs=True)
 
 from ._common import ProcessEOTask, ProcessParameterInvalid, parse_rfc3339, DataCube
 
@@ -25,7 +25,7 @@ class eqEOTask(ProcessEOTask):
             arguments, "case_sensitive", required=False, default=True, allowed_types=[bool]
         )
 
-        if not isinstance(x, xr.DataArray) and not isinstance(y, xr.DataArray):
+        if not isinstance(x, DataCube) and not isinstance(y, DataCube):
             if x is None or y is None:
                 return None
             if isinstance(x, (list, dict)) or isinstance(y, (list, dict)):
@@ -47,9 +47,9 @@ class eqEOTask(ProcessEOTask):
                 return x == y
             return False
 
-        original_attrs = x.attrs if isinstance(x, xr.DataArray) else y.attrs
+        original_attrs = x.attrs if isinstance(x, DataCube) else y.attrs
         # If the values are DataArrays, we assume they contain numbers
-        if isinstance(x, xr.DataArray) and isinstance(y, xr.DataArray):
+        if isinstance(x, DataCube) and isinstance(y, DataCube):
             if sorted(x.dims) == sorted(y.dims):
                 y = y.transpose(*x.dims)
                 if x.shape != y.shape:
@@ -60,14 +60,14 @@ class eqEOTask(ProcessEOTask):
             cube = x
             other_value = y
         else:
-            if not isinstance(x, xr.DataArray):
+            if not isinstance(x, DataCube):
                 cube = y
                 other_value = x
             else:
                 cube = x
                 other_value = y
             if isinstance(other_value, (list, dict)):
-                result = DataCube.from_dataarray(xr.where(cube.isnull(), None, False))
+                result = DataCube.get_where(cube.isnull(), None, False)
                 result.attrs = original_attrs
                 return result
             other_value = DataCube(other_value)
@@ -81,6 +81,6 @@ class eqEOTask(ProcessEOTask):
         else:
             m = cube == other_value
 
-        result = DataCube.from_dataarray(xr.where(cube.isnull() + other_value.isnull(), None, m))
+        result = DataCube.get_where(cube.isnull() + other_value.isnull(), None, m)
         result.attrs = original_attrs
         return result

@@ -18,7 +18,6 @@ from sentinelhub import WmsRequest, WcsRequest, MimeType, CRS, BBox, CustomUrlPa
 from sentinelhub.config import SHConfig
 from sentinelhub.constants import AwsConstants
 import sentinelhub.geo_utils
-import xarray as xr
 
 from ._common import ProcessEOTask, ProcessParameterInvalid, Internal, Band, DataCube, DimensionType
 

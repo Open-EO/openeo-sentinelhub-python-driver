@@ -1,5 +1,4 @@
 import numpy as np
-import xarray as xr
 
 from ._common import ProcessEOTask, DataCube
 
@@ -14,7 +13,7 @@ class meanEOTask(ProcessEOTask):
     """
 
     def process(self, arguments):
-        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray, list])
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[DataCube, list])
         ignore_nodata = self.validate_parameter(arguments, "ignore_nodata", default=True, allowed_types=[bool])
 
         original_type_was_number, data = self.convert_to_datacube(data)
@@ -26,7 +25,5 @@ class meanEOTask(ProcessEOTask):
         if data.attrs and data.attrs.get("reduce_by"):
             dim = data.attrs.get("reduce_by")[-1]
 
-        results = DataCube.from_dataarray(
-            data.mean(dim=dim, skipna=ignore_nodata, keep_attrs=True), data.get_dim_types()
-        )
+        results = data.mean(dim=dim, skipna=ignore_nodata, keep_attrs=True)
         return self.results_in_appropriate_type(results, original_type_was_number)

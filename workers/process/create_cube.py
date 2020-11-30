@@ -2,7 +2,6 @@ from datetime import datetime
 import math
 
 import numpy as np
-import xarray as xr
 from sentinelhub import CRS, BBox
 
 from ._common import ProcessEOTask, Band, DataCube, DimensionType

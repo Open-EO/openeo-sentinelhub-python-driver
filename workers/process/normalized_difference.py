@@ -1,9 +1,8 @@
 import re
 
 import numpy as np
-import xarray as xr
 
-from ._common import ProcessEOTask, ProcessParameterInvalid, Band
+from ._common import ProcessEOTask, ProcessParameterInvalid, Band, DataCube
 
 
 class normalized_differenceEOTask(ProcessEOTask):
@@ -11,9 +10,9 @@ class normalized_differenceEOTask(ProcessEOTask):
         x = self.validate_parameter(arguments, "x", required=True, allowed_types=[float, type(None)])
         y = self.validate_parameter(arguments, "y", required=True, allowed_types=[float, type(None)])
 
-        # we might be passing the xr.DataArray and just simulating numbers, but let's take
+        # we might be passing the DataCube and just simulating numbers, but let's take
         # care of "normal" use-case first:
-        if not isinstance(x, xr.DataArray) and not isinstance(y, xr.DataArray):
+        if not isinstance(x, DataCube) and not isinstance(y, DataCube):
             if x is None or y is None:
                 return None
             try:
@@ -21,14 +20,15 @@ class normalized_differenceEOTask(ProcessEOTask):
             except ZeroDivisionError:
                 return None
 
-        # at least one parameter is xr.DataArray
-        original_attrs = x.attrs if isinstance(x, xr.DataArray) else y.attrs
+        # at least one parameter is DataCube
+        original_attrs = x.attrs if isinstance(x, DataCube) else y.attrs
+        original_dim_types = x.get_dim_types() if isinstance(x, DataCube) else y.get_dim_types()
 
         # we can't normalized_difference if one of the parameters is None:
         if x is None:
-            x = xr.full_like(y, fill_value=np.nan, dtype=np.double)
+            x = DataCube.full_like(y, fill_value=np.nan, dtype=np.double)
         if y is None:
-            y = xr.full_like(x, fill_value=np.nan, dtype=np.double)
+            y = DataCube.full_like(x, fill_value=np.nan, dtype=np.double)
 
         try:
             # xarray knows how to normalized_difference DataArrays and numbers in every combination:
@@ -42,4 +42,4 @@ class normalized_differenceEOTask(ProcessEOTask):
         # Once we get rid of "reduce_by", we can forget origianl attrs and be more explicit:
         #  # the result is always a number:
         #  result.attrs["simulated_datatype"] = (float,)
-        return result
+        return DataCube.from_dataarray(result, original_dim_types)

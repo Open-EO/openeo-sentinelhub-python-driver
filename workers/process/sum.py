@@ -1,9 +1,9 @@
 import numpy as np
-import xarray as xr
+from xarray import set_options
 
-xr.set_options(keep_attrs=True)
+set_options(keep_attrs=True)
 
-from ._common import ProcessEOTask, ProcessParameterInvalid
+from ._common import ProcessEOTask, ProcessParameterInvalid, DataCube
 
 
 class sumEOTask(ProcessEOTask):
@@ -16,10 +16,10 @@ class sumEOTask(ProcessEOTask):
     """
 
     def process(self, arguments):
-        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray, list])
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[DataCube, list])
         ignore_nodata = self.validate_parameter(arguments, "ignore_nodata", default=True, allowed_types=[bool])
 
-        if isinstance(data, xr.DataArray) and data.attrs.get("reduce_by"):
+        if isinstance(data, DataCube) and data.attrs.get("reduce_by"):
             dim = data.attrs["reduce_by"]
             return data.sum(dim=dim, skipna=ignore_nodata, keep_attrs=True)
 
@@ -28,7 +28,7 @@ class sumEOTask(ProcessEOTask):
 
         original_type_was_number, data = self.convert_to_datacube(data, as_list=True)
 
-        summation_array = xr.concat(data, dim="temporary_summation_dim")
+        summation_array = DataCube.concat(data, dim="temporary_summation_dim")
         results = summation_array.sum(dim="temporary_summation_dim", skipna=ignore_nodata, keep_attrs=True)
 
         return self.results_in_appropriate_type(results, original_type_was_number)

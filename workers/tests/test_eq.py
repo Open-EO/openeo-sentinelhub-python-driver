@@ -1,12 +1,12 @@
 import pytest
 import sys, os
-import xarray as xr
+from xarray.testing import assert_identical
 import numpy as np
 from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import Band, DataCube
+from process._common import Band, DataCube, assert_equal
 
 
 @pytest.fixture
@@ -124,7 +124,7 @@ def test_with_two_xarrays(execute_eq_process, x, y, expected_result):
     Test eq process with xarray.DataArrays
     """
     result = execute_eq_process(x, y)
-    xr.testing.assert_identical(result, expected_result)
+    assert_identical(result, expected_result)
 
 
 @pytest.mark.parametrize(
@@ -181,7 +181,7 @@ def test_with_xarray_and_scalar(execute_eq_process, x, y, expected_result):
     Test eq process with xarray.DataArrays
     """
     result = execute_eq_process(x, y)
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
 
 
 @pytest.mark.parametrize(
@@ -240,4 +240,4 @@ def test_with_xarrays_and_delta(execute_eq_process, x, y, delta, expected_result
     """
     result = execute_eq_process(x, y, delta=delta)
     # assert_identical also matches attrs
-    xr.testing.assert_identical(result, expected_result)
+    assert_identical(result, expected_result)

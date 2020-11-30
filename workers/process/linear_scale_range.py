@@ -1,15 +1,14 @@
 import numpy as np
-import xarray as xr
 import math
 
-from ._common import ProcessEOTask, ProcessParameterInvalid
+from ._common import ProcessEOTask, ProcessParameterInvalid, DataCube
 
 
 class linear_scale_rangeEOTask(ProcessEOTask):
     """
     This process is often used within apply process. Apply could pass each of the values separately,
     but this would be very inefficient. Instead, we get passed a whole xarray, which is the reason
-    why we allow `xr.DataArray` as "data" parameter type.
+    why we allow `DataCube` as "data" parameter type.
     """
 
     def process(self, arguments):
@@ -37,7 +36,7 @@ class linear_scale_rangeEOTask(ProcessEOTask):
         if original_type_was_number:
             return float(results)
 
-        if isinstance(results, xr.DataArray):
+        if isinstance(results, DataCube):
             results.attrs["simulated_datatype"] = (float,)
 
         return results

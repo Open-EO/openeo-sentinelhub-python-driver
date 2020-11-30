@@ -4,11 +4,10 @@ import sys
 
 import numpy as np
 import pytest
-import xarray as xr
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid
+from process._common import ProcessParameterInvalid, DataCube, DimensionType, assert_equal
 
 
 @pytest.fixture
@@ -22,11 +21,21 @@ def execute_normalized_difference_process():
 
 
 def number_as_xarray(value):
-    return xr.DataArray([np.nan if value is None else value], attrs={"simulated_datatype": (float,)})
+    return DataCube(
+        [np.nan if value is None else value],
+        dims=("x"),
+        dim_types={"x": DimensionType.SPATIAL},
+        attrs={"simulated_datatype": (float,)},
+    )
 
 
 def list_as_xarray(values):
-    return xr.DataArray([np.nan if v is None else v for v in values], attrs={"simulated_datatype": (float,)})
+    return DataCube(
+        [np.nan if v is None else v for v in values],
+        dims=("x"),
+        dim_types={"x": DimensionType.SPATIAL},
+        attrs={"simulated_datatype": (float,)},
+    )
 
 
 ###################################
@@ -77,8 +86,8 @@ def test_correct(execute_normalized_difference_process, x, y, expected_result):
     for x, y, expected_result in parameters_forms:
         arguments = {"x": x, "y": y}
         result = execute_normalized_difference_process(arguments)
-        if isinstance(expected_result, xr.DataArray):
-            xr.testing.assert_allclose(result, expected_result)
+        if isinstance(expected_result, DataCube):
+            assert_equal(result, expected_result)
         else:
             assert result == expected_result
 
@@ -96,7 +105,7 @@ def test_correct(execute_normalized_difference_process, x, y, expected_result):
 def test_xarray(execute_normalized_difference_process, x, y, expected_result):
     arguments = {"x": x, "y": y}
     result = execute_normalized_difference_process(arguments)
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
 
 
 def test_exception(execute_normalized_difference_process):

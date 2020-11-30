@@ -1,11 +1,10 @@
 import pytest
 import sys, os
-import xarray as xr
 import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import DataCube
+from process._common import DataCube, DimensionType, assert_equal
 
 
 @pytest.fixture
@@ -14,16 +13,18 @@ def generate_data():
         data=[[[[0.2, 0.8]]]],
         dims=("t", "y", "x", "band"),
         attrs={"reduce_by": ["band"], "simulated_datatype": (float,)},
+        dim_types={
+            "x": DimensionType.SPATIAL,
+            "y": DimensionType.SPATIAL,
+            "t": DimensionType.TEMPORAL,
+            "band": DimensionType.BANDS,
+        },
         as_number=False,
     ):
         if as_number:
             return data
 
-        xrdata = DataCube(
-            data,
-            dims=dims,
-            attrs=attrs,
-        )
+        xrdata = DataCube(data, dims=dims, attrs=attrs, dim_types=dim_types)
         return xrdata
 
     return _construct
@@ -89,7 +90,7 @@ def test_with_xarray(execute_linear_scale_range_process, generate_data, x, scale
     """
     expected_result = generate_data(data=expected_data)
     result = execute_linear_scale_range_process({"data": x}, **scale_arguments)
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
 
 
 @pytest.mark.parametrize(
@@ -110,4 +111,4 @@ def test_with_xarray_nulls(execute_linear_scale_range_process, generate_data, x,
     """
     expected_result = generate_data(data=expected_data)
     result = execute_linear_scale_range_process({"data": x}, **scale_arguments)
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)

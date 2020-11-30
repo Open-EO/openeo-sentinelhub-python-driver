@@ -1,24 +1,30 @@
 import pytest
 import sys, os
-import xarray as xr
 import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import DataCube
+from process._common import DataCube, DimensionType, assert_equal
 
 
 @pytest.fixture
 def generate_data():
-    def _construct(data=[[[[0.2, 0.8]]]], dims=("t", "y", "x", "band"), attrs={"reduce_by": ["band"]}, as_list=False):
+    def _construct(
+        data=[[[[0.2, 0.8]]]],
+        dims=("t", "y", "x", "band"),
+        attrs={"reduce_by": ["band"]},
+        dim_types={
+            "x": DimensionType.SPATIAL,
+            "y": DimensionType.SPATIAL,
+            "t": DimensionType.TEMPORAL,
+            "band": DimensionType.BANDS,
+        },
+        as_list=False,
+    ):
         if as_list:
             return data
 
-        xrdata = DataCube(
-            data,
-            dims=dims,
-            attrs=attrs,
-        )
+        xrdata = DataCube(data, dims=dims, attrs=attrs, dim_types=dim_types)
         return xrdata
 
     return _construct
@@ -86,7 +92,7 @@ def test_with_xarray(execute_median_process, generate_data, data, expected_data,
     """
     expected_result = generate_data(data=expected_data, dims=expected_dims, attrs=attrs)
     result = execute_median_process({"data": data, "attrs": attrs})
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
 
 
 @pytest.mark.parametrize(
@@ -116,4 +122,4 @@ def test_with_xarray_nulls(
     """
     expected_result = generate_data(data=expected_data, dims=expected_dims, attrs=attrs)
     result = execute_median_process({"data": data, "attrs": attrs}, ignore_nodata=ignore_nodata)
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)

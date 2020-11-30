@@ -1,7 +1,6 @@
 import re
 
 import numpy as np
-import xarray as xr
 
 from ._common import ProcessEOTask, ProcessParameterInvalid, Band, DataCube, DimensionType
 
@@ -10,7 +9,7 @@ class filter_bandsEOTask(ProcessEOTask):
     """ https://processes.openeo.org/1.0.0/#filter_bands """
 
     def process(self, arguments):
-        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[xr.DataArray])
+        data = self.validate_parameter(arguments, "data", required=True, allowed_types=[DataCube])
         bands = self.validate_parameter(arguments, "bands", required=False, allowed_types=[list], default=[])
         wavelengths = self.validate_parameter(
             arguments, "wavelengths", required=False, allowed_types=[list], default=[]
@@ -90,7 +89,7 @@ class filter_bandsEOTask(ProcessEOTask):
         result = None
 
         for b in bands:
-            # xr.concat will duplicate existing coords, so we need to make sure in advance that we don't include duplicates:
+            # DataCube.concat will duplicate existing coords, so we need to make sure in advance that we don't include duplicates:
             mask = (data[dim] == b) & np.logical_not(already_included)
             if not mask.any():
                 continue
@@ -98,11 +97,11 @@ class filter_bandsEOTask(ProcessEOTask):
             # slice out the parts that conform to our mask:
             result_part = data.where(mask, drop=True)
             # merge them to the existing result:
-            result = result_part if result is None else xr.concat([result, result_part], dim=dim)
+            result = result_part if result is None else DataCube.concat([result, result_part], dim=dim)
             already_included = already_included | mask
 
         for w in wavelengths:
-            # xr.concat will duplicate existing coords, so we need to make sure in advance that we don't include duplicates:
+            # DataCube.concat will duplicate existing coords, so we need to make sure in advance that we don't include duplicates:
             mask = (data[dim] >= float(w[0])) & (data[dim] <= float(w[1])) & np.logical_not(already_included)
             if not mask.any():
                 continue
@@ -110,7 +109,7 @@ class filter_bandsEOTask(ProcessEOTask):
             # slice out the parts that conform to our mask:
             result_part = data.where(mask, drop=True)
             # merge them to the existing result:
-            result = result_part if result is None else xr.concat([result, result_part], dim=dim)
+            result = result_part if result is None else DataCube.concat([result, result_part], dim=dim)
             already_included = already_included | mask
 
         if result is None:

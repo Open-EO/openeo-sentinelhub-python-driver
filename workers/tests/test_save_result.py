@@ -6,7 +6,6 @@ import json
 from botocore.stub import Stubber, ANY
 from io import BufferedReader
 import pytest
-import xarray as xr
 from sentinelhub import BBox, CRS
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

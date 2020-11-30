@@ -1,11 +1,10 @@
 import pytest
 import sys, os
-import xarray as xr
 import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import DataCube
+from process._common import DataCube, DimensionType, assert_equal
 
 
 @pytest.fixture
@@ -14,6 +13,12 @@ def generate_data():
         data=([[[[0.2, 0.8]]]], [[[[0.2, 0.8]]]]),
         attrs={"test_keep_attrs": 42},
         dims=("t", "y", "x", "band"),
+        dim_types={
+            "x": DimensionType.SPATIAL,
+            "y": DimensionType.SPATIAL,
+            "t": DimensionType.TEMPORAL,
+            "band": DimensionType.BANDS,
+        },
         as_list=False,
         as_dataarray=False,
     ):
@@ -21,12 +26,12 @@ def generate_data():
             return data
 
         if as_dataarray:
-            return DataCube(data, dims=dims, attrs=attrs)
+            return DataCube(data, dims=dims, attrs=attrs, dim_types=dim_types)
 
         data_list = []
 
         for d in data:
-            xrdata = DataCube(d, dims=dims, attrs=attrs)
+            xrdata = DataCube(d, dims=dims, attrs=attrs, dim_types=dim_types)
             data_list.append(xrdata)
 
         return data_list
@@ -77,7 +82,7 @@ def test_with_xarray(execute_product_process, generate_data, array1, array2, exp
     """
     expected_result = generate_data(data=[expected_data])[0]
     result = execute_product_process({"data": (array1, array2)})
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
 
 
 @pytest.mark.parametrize(
@@ -94,7 +99,7 @@ def test_with_xarray_nulls(execute_product_process, generate_data, array1, array
     """
     expected_result = generate_data(data=[expected_data])[0]
     result = execute_product_process({"data": (array1, array2)}, ignore_nodata=ignore_nodata)
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
 
 
 @pytest.mark.parametrize(
@@ -110,7 +115,7 @@ def test_product(generate_data, array1, array2, expected_data):
     expected_result = generate_data(data=[expected_data])[0]
     arguments = {"data": generate_data(data=[array1, array2])}
     result = process.product.productEOTask(None, "", None, {}, "node1", {}).process(arguments)
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
 
 
 @pytest.mark.parametrize(
@@ -127,7 +132,7 @@ def test_xarray_directly(execute_product_process, generate_data, data, reduce_by
         data=expected_data, dims=expected_dims, attrs={"reduce_by": reduce_by}, as_dataarray=True
     )
     result = execute_product_process({"data": data, "attrs": {"reduce_by": reduce_by}, "as_dataarray": True})
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
 
 
 @pytest.mark.parametrize(
@@ -165,4 +170,4 @@ def test_with_numbers(execute_product_process, generate_data, number1, number2, 
         data = [arr1, number1, arr2, number2]
 
     result = execute_product_process({"data": data, "as_list": True})
-    xr.testing.assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)

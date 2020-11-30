@@ -4,12 +4,11 @@ import sys
 
 import numpy as np
 import pytest
-import xarray as xr
 import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import process
-from process._common import ProcessParameterInvalid, Band, assert_allclose, DataCube
+from process._common import ProcessParameterInvalid, Band, assert_equal, DataCube, DimensionType
 import logging
 
 
@@ -38,12 +37,20 @@ def execute_process():
                 [[0.1, 0.3]],
                 dims=("a", "b"),
                 coords={},
+                dim_types={
+                    "a": DimensionType.SPATIAL,
+                    "b": DimensionType.TEMPORAL,
+                },
                 attrs={},
             ),
             DataCube(
                 [[0.2, 0.8]],
                 dims=("a", "b"),
                 coords={},
+                dim_types={
+                    "a": DimensionType.SPATIAL,
+                    "b": DimensionType.TEMPORAL,
+                },
                 attrs={},
             ),
             {
@@ -59,6 +66,10 @@ def execute_process():
                 [[-0.1, -0.5]],
                 dims=("a", "b"),
                 coords={},
+                dim_types={
+                    "a": DimensionType.SPATIAL,
+                    "b": DimensionType.TEMPORAL,
+                },
                 attrs={},
             ),
         ),
@@ -68,12 +79,19 @@ def execute_process():
                 [1.1, 1.3],
                 dims=("b"),
                 coords={},
+                dim_types={
+                    "b": DimensionType.TEMPORAL,
+                },
                 attrs={},
             ),
             DataCube(
                 [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
                 dims=("a", "b"),
                 coords={},
+                dim_types={
+                    "a": DimensionType.SPATIAL,
+                    "b": DimensionType.TEMPORAL,
+                },
                 attrs={},
             ),
             {
@@ -89,6 +107,10 @@ def execute_process():
                 [[0.9, 0.5], [0.4, -0.7], [-0.3, np.nan]],
                 dims=("a", "b"),
                 coords={},
+                dim_types={
+                    "a": DimensionType.SPATIAL,
+                    "b": DimensionType.TEMPORAL,
+                },
                 attrs={},
             ),
         ),
@@ -98,12 +120,19 @@ def execute_process():
                 [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
                 dims=("a", "b"),
                 coords={},
+                dim_types={
+                    "a": DimensionType.SPATIAL,
+                    "b": DimensionType.TEMPORAL,
+                },
                 attrs={},
             ),
             DataCube(
                 [0.1, 0.3],
                 dims=("b"),
                 coords={},
+                dim_types={
+                    "b": DimensionType.TEMPORAL,
+                },
                 attrs={},
             ),
             {
@@ -119,6 +148,10 @@ def execute_process():
                 [[0.1, 0.5], [0.6, 1.7], [1.3, np.nan]],
                 dims=("a", "b"),
                 coords={},
+                dim_types={
+                    "a": DimensionType.SPATIAL,
+                    "b": DimensionType.TEMPORAL,
+                },
                 attrs={},
             ),
         ),
@@ -128,12 +161,19 @@ def execute_process():
                 [1.1, 1.3],
                 dims=("b"),
                 coords={"b": ["asdf", "defg"]},
+                dim_types={
+                    "b": DimensionType.TEMPORAL,
+                },
                 attrs={},
             ),
             DataCube(
                 [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
                 dims=("a", "b"),
                 coords={"a": ["a", "b", "c"], "b": ["asdf", "defg"]},
+                dim_types={
+                    "a": DimensionType.SPATIAL,
+                    "b": DimensionType.TEMPORAL,
+                },
                 attrs={},
             ),
             {
@@ -149,6 +189,10 @@ def execute_process():
                 [[0.9, 0.5], [0.4, -0.7], [-0.3, np.nan]],
                 dims=("a", "b"),
                 coords={"a": ["a", "b", "c"], "b": ["asdf", "defg"]},
+                dim_types={
+                    "a": DimensionType.SPATIAL,
+                    "b": DimensionType.TEMPORAL,
+                },
                 attrs={},
             ),
         ),
@@ -158,12 +202,19 @@ def execute_process():
                 [1.1, 1.3],
                 dims=("b"),
                 coords={"b": [Band("asdf"), Band("defg")]},
+                dim_types={
+                    "b": DimensionType.BANDS,
+                },
                 attrs={},
             ),
             DataCube(
                 [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
                 dims=("a", "b"),
                 coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("asdf"), Band("defg")]},
+                dim_types={
+                    "a": DimensionType.BANDS,
+                    "b": DimensionType.BANDS,
+                },
                 attrs={},
             ),
             {
@@ -179,6 +230,10 @@ def execute_process():
                 [[0.9, 0.5], [0.4, -0.7], [-0.3, np.nan]],
                 dims=("a", "b"),
                 coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("asdf"), Band("defg")]},
+                dim_types={
+                    "a": DimensionType.BANDS,
+                    "b": DimensionType.BANDS,
+                },
                 attrs={},
             ),
         ),
@@ -188,12 +243,20 @@ def execute_process():
                 [[0.1, np.nan], [0.2, 3], [np.nan, 4]],
                 dims=("a", "b"),
                 coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("B01"), Band("B02")]},
+                dim_types={
+                    "a": DimensionType.BANDS,
+                    "b": DimensionType.BANDS,
+                },
                 attrs={},
             ),
             DataCube(
                 [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
                 dims=("a", "b"),
                 coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("B03"), Band("B04")]},
+                dim_types={
+                    "a": DimensionType.BANDS,
+                    "b": DimensionType.BANDS,
+                },
                 attrs={},
             ),
             None,
@@ -204,6 +267,10 @@ def execute_process():
                     "a": [Band("a"), Band("b"), Band("c")],
                     "b": [Band("B01"), Band("B02"), Band("B03"), Band("B04")],
                 },
+                dim_types={
+                    "a": DimensionType.BANDS,
+                    "b": DimensionType.BANDS,
+                },
                 attrs={},
             ),
         ),
@@ -213,12 +280,20 @@ def execute_process():
                 [[0.1, np.nan], [0.2, 3], [np.nan, 4]],
                 dims=("a", "b"),
                 coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("B01"), Band("B02")]},
+                dim_types={
+                    "a": DimensionType.BANDS,
+                    "b": DimensionType.BANDS,
+                },
                 attrs={},
             ),
             DataCube(
                 [[0.2, 0.8], [0.7, 2], [1.4, np.nan]],
                 dims=("a", "b"),
                 coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("B02"), Band("B03")]},
+                dim_types={
+                    "a": DimensionType.BANDS,
+                    "b": DimensionType.BANDS,
+                },
                 attrs={},
             ),
             {
@@ -234,6 +309,10 @@ def execute_process():
                 [[0.1, np.nan, 0.8], [0.2, 2.3, 2], [np.nan, 2.6, np.nan]],
                 dims=("a", "b"),
                 coords={"a": [Band("a"), Band("b"), Band("c")], "b": [Band("B01"), Band("B02"), Band("B03")]},
+                dim_types={
+                    "a": DimensionType.BANDS,
+                    "b": DimensionType.BANDS,
+                },
                 attrs={},
             ),
         ),
@@ -245,7 +324,7 @@ def test_correct(execute_process, cube1, cube2, overlap_resolver, expected_resul
         arguments["overlap_resolver"] = overlap_resolver
 
     result = execute_process(arguments)
-    assert_allclose(result, expected_result)
+    assert_equal(result, expected_result)
 
 
 @pytest.mark.parametrize(
