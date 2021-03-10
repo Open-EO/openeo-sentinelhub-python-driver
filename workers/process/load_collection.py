@@ -4,7 +4,6 @@ import os
 import re
 import shutil
 import time
-import json
 
 from concurrent.futures import ThreadPoolExecutor
 from dask import delayed
@@ -21,7 +20,6 @@ from sentinelhub.constants import AwsConstants
 import sentinelhub.geo_utils
 
 from ._common import ProcessEOTask, ProcessParameterInvalid, Internal, Band, DataCube, DimensionType
-from email.mime import base
 
 
 SENTINELHUB_INSTANCE_ID = os.environ.get("SENTINELHUB_INSTANCE_ID", None)
