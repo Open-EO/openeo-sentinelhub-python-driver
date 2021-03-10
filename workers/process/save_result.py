@@ -28,7 +28,7 @@ OUTPUT_FORMATS = {
     "gtiff": OutputFormat("tiff", "image/tiff; application=geotiff", "uint16"),
     "png": OutputFormat("png", "image/png", "uint16"),
     "jpeg": OutputFormat("jpeg", "image/jpeg", "byte"),
-    "json": OutputFormat("jpeg", "application/json", None),
+    "json": OutputFormat("json", "application/json", None),
 }
 
 
@@ -136,6 +136,13 @@ class save_resultEOTask(ProcessEOTask):
                 }
             )
         else:
+            if "x" not in data.dims or "y" not in data.dims:
+                raise ProcessParameterInvalid(
+                    "save_result",
+                    "options",
+                    f"Only spatial datacube can be saved as a raster image file.",
+                )
+                
             default_datatype = OUTPUT_FORMATS[output_format].default_datatype
             datatype_string = output_options.get("datatype", default_datatype).lower()
             datatype = self.GDAL_DATATYPES.get(datatype_string)
