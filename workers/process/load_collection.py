@@ -344,52 +344,48 @@ def get_collection_times(self, sh_collection_id, bbox, temporal_extent):
 
 def get_sen4cap_markers_cube(self, bbox, temporal_extent, base_url, site, year, product_type, bands, parcel_ids):
     url = base_url
-    if not url.endswith('/'):
-        url += '/'
-        
-    url += 'markers'
-    params = {"site": site, "year": year, "productType": product_type, "markers": ','.join(bands)}
-    
+    if not url.endswith("/"):
+        url += "/"
+
+    url += "markers"
+    params = {"site": site, "year": year, "productType": product_type, "markers": ",".join(bands)}
+
     if parcel_ids is not None:
-        params['parcels'] = ','.join([str(id) for id in parcel_ids])
+        params["parcels"] = ",".join([str(id) for id in parcel_ids])
         
+    if bbox is not None:
+        params["roi"] = bbox.wkt;
+        self.logger.info("BBOX = " + bbox.wkt)
+
     if temporal_extent is not None and isinstance(temporal_extent, list) and len(temporal_extent) > 0:
         if temporal_extent[0] is not None:
-            params["from"] = str(temporal_extent[0])[:10] # only use the date part of the ISO datetime string
+            params["from"] = str(temporal_extent[0])[:10]  # only use the date part of the ISO datetime string
         if len(temporal_extent) >= 2 and temporal_extent[1] is not None:
-            params["to"] = str(temporal_extent[1])[:10] # only use the date part of the ISO datetime string
-    
+            params["to"] = str(temporal_extent[1])[:10]  # only use the date part of the ISO datetime string
+
     # Make the "markers" request to the Sen4CAP server
     r = requests.get(url, params=params)
     if r.status_code != 200:
         raise Internal("Error requesting Sen4CAP markers server, HTTP status " + r.status_code)
     
-    markers_data = r.json()
-    
-    data = [list(parcel["markers"].values()) for parcel in markers_data["data"]["parcels"]]
-    parcels = [pair['id'] for pair in markers_data["data"]["parcels"]]
-    dates = markers_data["data"]["dates"]
-    
+    response_data = r.json()
+    data = response_data.get("data")
+
+    values = [list(parcel["markers"].values()) for parcel in data["parcels"]] if data is not None else None
+    parcels = [pair["id"] for pair in data["parcels"]] if data is not None else []
+    dates = data["dates"] if data is not None else []
     bands_dim = [Band(b) for b in bands]
-    
+
     cube = DataCube(
-        data,
+        values,
         dims=("parcel", "band", "t"),
-        coords={
-            "parcel": parcels,
-            "band": bands_dim,
-            "t": dates
-        },
-        dim_types={
-            "parcel": DimensionType.OTHER,
-            "band": DimensionType.BANDS,
-            "t": DimensionType.TEMPORAL
-        },
+        coords={"parcel": parcels, "band": bands_dim, "t": dates},
+        dim_types={"parcel": DimensionType.OTHER, "band": DimensionType.BANDS, "t": DimensionType.TEMPORAL},
         attrs={
             "bbox": bbox,
         },
     )
-    
+
     return cube
 
 
@@ -420,24 +416,27 @@ class load_collectionEOTask(ProcessEOTask):
             raise ProcessParameterInvalid("load_collection", "bands", "At least one band must be specified.")
 
         bbox = load_collectionEOTask._convert_bbox(spatial_extent)
-        
+
         # Sen4CAP requests must be handled in a completely different way
-        if collection_id == 'Sen4CAP_markers':
+        if collection_id == "Sen4CAP_markers":
             if properties is None:
                 raise ProcessParameterInvalid(
                     "load_collection", "properties", 'No parameters provided in "properties".'
                 )
-            
+
             base_url = self.validate_parameter(properties, "base_url", required=True, allowed_types=[str])
             site = self.validate_parameter(properties, "site", required=True, allowed_types=[str])
             year = self.validate_parameter(properties, "year", required=True, allowed_types=[int])
             product_type = self.validate_parameter(properties, "product_type", required=True, allowed_types=[str])
-            parcel_ids = self.validate_parameter(properties, "parcel_ids", required=False, allowed_types=[int, str, list])
+            parcel_ids = self.validate_parameter(
+                properties, "parcel_ids", required=False, allowed_types=[int, str, list]
+            )
             if parcel_ids is not None and not isinstance(parcel_ids, list):
                 parcel_ids = [parcel_ids]
-                
-            return get_sen4cap_markers_cube(self, bbox, temporal_extent, base_url, site, year, product_type, bands, parcel_ids)
-        
+
+            return get_sen4cap_markers_cube(
+                self, bbox, temporal_extent, base_url, site, year, product_type, bands, parcel_ids
+            )
 
         # check if the bbox is within the allowed limits:
         options = arguments.get("options", {})

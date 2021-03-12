@@ -48,8 +48,9 @@ def serialize_data(data):
         xmax, ymax = bbox.upper_right
         crs = str(bbox._crs)
         data.attrs["bbox"] = {"xmin": xmin, "ymin": ymin, "xmax": xmax, "ymax": ymax, "crs": crs}
-    # replace nan, inf and -inf with None:
-    data = data.where(np.isfinite(data.data), None)
+    if not data.is_empty:
+        # replace nan, inf and -inf with None:
+        data = data.where(np.isfinite(data.data), None)
     return data.to_dict()
 
 
@@ -142,7 +143,7 @@ class save_resultEOTask(ProcessEOTask):
                     "options",
                     f"Only spatial datacube can be saved as a raster image file.",
                 )
-                
+
             default_datatype = OUTPUT_FORMATS[output_format].default_datatype
             datatype_string = output_options.get("datatype", default_datatype).lower()
             datatype = self.GDAL_DATATYPES.get(datatype_string)
