@@ -352,10 +352,9 @@ def get_sen4cap_markers_cube(self, bbox, temporal_extent, base_url, site, year, 
 
     if parcel_ids is not None:
         params["parcels"] = ",".join([str(id) for id in parcel_ids])
-        
+
     if bbox is not None:
-        params["roi"] = bbox.wkt;
-        self.logger.info("BBOX = " + bbox.wkt)
+        params["roi"] = bbox.wkt
 
     if temporal_extent is not None and isinstance(temporal_extent, list) and len(temporal_extent) > 0:
         if temporal_extent[0] is not None:
@@ -367,7 +366,7 @@ def get_sen4cap_markers_cube(self, bbox, temporal_extent, base_url, site, year, 
     r = requests.get(url, params=params)
     if r.status_code != 200:
         raise Internal("Error requesting Sen4CAP markers server, HTTP status " + r.status_code)
-    
+
     response_data = r.json()
     data = response_data.get("data")
 

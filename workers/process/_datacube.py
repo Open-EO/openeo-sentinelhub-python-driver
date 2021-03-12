@@ -26,11 +26,11 @@ class DataCube(xr.DataArray):
         repr_str = super().__repr__()
         repr_str = repr_str + "\n" + self.dim_types_repr()
         return repr_str
-    
+
     @property
     def is_empty(self):
-        for dim in self.shape:
-            if self.shape[dim] == 0:
+        for size in self.shape:
+            if size == 0:
                 return True
         return False
 
