@@ -27,6 +27,13 @@ class DataCube(xr.DataArray):
         repr_str = repr_str + "\n" + self.dim_types_repr()
         return repr_str
 
+    @property
+    def is_empty(self):
+        for size in self.shape:
+            if size == 0:
+                return True
+        return False
+
     def dim_types_repr(self):
         repr_str = "Coordinate types:"
         for dim in self.dim_types.keys():

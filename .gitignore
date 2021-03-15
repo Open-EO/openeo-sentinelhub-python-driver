@@ -5,3 +5,6 @@ __pycache__
 .pytest_cache
 .pyc
 .python-version
+/node_modules/
+/.pydevproject
+/.project
