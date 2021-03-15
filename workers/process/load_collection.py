@@ -116,6 +116,8 @@ S2_L2A_ALIASES = dict(
 # https://docs.sentinel-hub.com/api/latest/#/data/Sentinel-1-GRD?id=available-bands-and-data
 S1_GRD_IW_BANDS = ["VV", "VH"]
 
+default_base_sh_server_url = "https://services.sentinel-hub.com"
+
 
 def _clean_temporal_extent(temporal_extent):
     """
@@ -199,6 +201,7 @@ def construct_image(data, n_width, n_height):
 
 def download_data(
     self,
+    base_url,
     dataset,
     orbit_dates,
     total_width,
@@ -210,7 +213,11 @@ def download_data(
     max_chunk_size=1000,
 ):
     auth_token = self.job_metadata.get("auth_token")
-    url = "https://services.sentinel-hub.com/api/v1/process"
+    url = base_url if base_url is not None else default_base_sh_server_url
+    if not url.endswith("/"):
+        url += "/"
+    url += "api/v1/process"
+
     headers = {"Accept": "image/tiff", "Authorization": f"Bearer {auth_token}"}
 
     n_width = math.ceil(total_width / max_chunk_size)
@@ -319,9 +326,13 @@ def download_data(
     return response_data, orbit_times_middle
 
 
-def get_collection_times(self, sh_collection_id, bbox, temporal_extent):
+def get_collection_times(self, base_url, sh_collection_id, bbox, temporal_extent):
     auth_token = self.job_metadata.get("auth_token")
-    url = "https://services.sentinel-hub.com/api/v1/catalog/search"
+    url = base_url if base_url is not None else default_base_sh_server_url
+    if not url.endswith("/"):
+        url += "/"
+    url += "api/v1/catalog/search"
+
     headers = {"Authorization": f"Bearer {auth_token}", "Content-Type": "application/json"}
 
     request_payload = {
@@ -425,6 +436,7 @@ class load_collectionEOTask(ProcessEOTask):
         temporal_extent = _clean_temporal_extent(temporal_extent)
         bands = self.validate_parameter(arguments, "bands", default=None, allowed_types=[type(None), list])
         properties = self.validate_parameter(arguments, "properties", required=False, allowed_types=[type(None), dict])
+        base_url = None
 
         if bands is not None and not len(bands):
             raise ProcessParameterInvalid("load_collection", "bands", "At least one band must be specified.")
@@ -495,18 +507,21 @@ class load_collectionEOTask(ProcessEOTask):
             dataFilter_params = {}
 
         elif collection_id == "BYOC":
-            if properties is None or properties.get("byoc_collection_id") is None:
+            if properties is None:
                 raise ProcessParameterInvalid(
-                    "load_collection", "properties", 'Parameter "byoc_collection_id" not provided in "properties".'
+                    "load_collection", "properties", 'No parameters provided in "properties".'
                 )
 
-            byoc_collection_id = properties["byoc_collection_id"]
+            base_url = self.validate_parameter(properties, "base_url", required=False, allowed_types=[str])
+            byoc_collection_id = self.validate_parameter(
+                properties, "byoc_collection_id", required=True, allowed_types=[str]
+            )
             dataset = "byoc-" + byoc_collection_id
             kwargs = {}
             dataFilter_params = {}
 
             self.logger.debug(f"Requesting dates between: {temporal_extent}")
-            dates = get_collection_times(self, byoc_collection_id, bbox, temporal_extent)
+            dates = get_collection_times(self, base_url, byoc_collection_id, bbox, temporal_extent)
             orbit_dates = [{"from": d, "to": d} for d in dates]
 
         else:
@@ -527,7 +542,7 @@ class load_collectionEOTask(ProcessEOTask):
             orbit_dates = get_orbit_dates(dates)
 
         response_data, orbit_times_middle = download_data(
-            self, dataset, orbit_dates, width, height, bbox, temporal_extent, bands, dataFilter_params
+            self, base_url, dataset, orbit_dates, width, height, bbox, temporal_extent, bands, dataFilter_params
         )
 
         # The last dimension in the returned data is dataMask (https://docs.sentinel-hub.com/api/latest/user-guides/datamask/).
