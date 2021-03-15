@@ -342,7 +342,7 @@ def get_collection_times(self, sh_collection_id, bbox, temporal_extent):
     return sorted(list(set(datetimes)))
 
 
-def get_sen4cap_markers_cube(self, bbox, temporal_extent, base_url, site, year, product_type, bands, parcel_ids):
+def get_sen4cap_markers_cube(self, bbox, temporal_extent, bands, base_url, site, year, product_type, parcel_ids):
     url = base_url
     if not url.endswith("/"):
         url += "/"
@@ -388,6 +388,21 @@ def get_sen4cap_markers_cube(self, bbox, temporal_extent, base_url, site, year, 
     return cube
 
 
+def get_sen4cap_markers_cube_by_properties(self, bbox, temporal_extent, bands, properties):
+    if properties is None:
+        raise ProcessParameterInvalid("load_collection", "properties", 'No parameters provided in "properties".')
+
+    base_url = self.validate_parameter(properties, "base_url", required=True, allowed_types=[str])
+    site = self.validate_parameter(properties, "site", required=True, allowed_types=[str])
+    year = self.validate_parameter(properties, "year", required=True, allowed_types=[int])
+    product_type = self.validate_parameter(properties, "product_type", required=True, allowed_types=[str])
+    parcel_ids = self.validate_parameter(properties, "parcel_ids", required=False, allowed_types=[int, str, list])
+    if parcel_ids is not None and not isinstance(parcel_ids, list):
+        parcel_ids = [parcel_ids]
+
+    return get_sen4cap_markers_cube(self, bbox, temporal_extent, bands, base_url, site, year, product_type, parcel_ids)
+
+
 class load_collectionEOTask(ProcessEOTask):
     @staticmethod
     def _convert_bbox(spatial_extent):
@@ -418,24 +433,7 @@ class load_collectionEOTask(ProcessEOTask):
 
         # Sen4CAP requests must be handled in a completely different way
         if collection_id == "Sen4CAP_markers":
-            if properties is None:
-                raise ProcessParameterInvalid(
-                    "load_collection", "properties", 'No parameters provided in "properties".'
-                )
-
-            base_url = self.validate_parameter(properties, "base_url", required=True, allowed_types=[str])
-            site = self.validate_parameter(properties, "site", required=True, allowed_types=[str])
-            year = self.validate_parameter(properties, "year", required=True, allowed_types=[int])
-            product_type = self.validate_parameter(properties, "product_type", required=True, allowed_types=[str])
-            parcel_ids = self.validate_parameter(
-                properties, "parcel_ids", required=False, allowed_types=[int, str, list]
-            )
-            if parcel_ids is not None and not isinstance(parcel_ids, list):
-                parcel_ids = [parcel_ids]
-
-            return get_sen4cap_markers_cube(
-                self, bbox, temporal_extent, base_url, site, year, product_type, bands, parcel_ids
-            )
+            return get_sen4cap_markers_cube_by_properties(self, bbox, temporal_extent, bands, properties)
 
         # check if the bbox is within the allowed limits:
         options = arguments.get("options", {})
