@@ -45,10 +45,12 @@
    "extent": {
       "spatial": {
          "bbox": [
+           [
             -180,
             -85,
             180,
             85
+           ]
          ]
          
       },
@@ -62,17 +64,17 @@
       }
    },
    "summaries": {
-      "constellation": "sentinel-1",
-      "instruments": "c-sar",
+      "constellation": ["sentinel-1"],
+      "instruments": ["c-sar"],
       "sar:instrument_mode": [
          "SM",
          "IW",
          "EW",
          "WV"
       ],
-      "sar:frequency_band": "C",
-      "sar:center_frequency": 5.405,
-      "sar:product_type": "GRD",
+      "sar:frequency_band": ["C"],
+      "sar:center_frequency": [5.405],
+      "sar:product_type": ["GRD"],
       "sat:orbit_state": [
          "ascending",
          "descending"
@@ -81,7 +83,7 @@
          10,
          40
       ],
-      "platform": "Sentinel-1",
+      "platform": ["Sentinel-1"],
       "sar:polarization": [
          "SH",
          "SV",

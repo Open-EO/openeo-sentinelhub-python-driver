@@ -47,19 +47,27 @@
    "summaries": {
       "base_url": {
          "title": "Base URL",
-         "type": "string"
+         "type": "string",
+         "min": "",
+         "max": "Z"
       },
       "site": {
          "title": "Site (short name)",
-         "type": "string"
+         "type": "string",
+         "min": "",
+         "max": "XXXXXXXXXXXXXXXX"
       },
       "year": {
          "title": "Year",
-         "type": "integer"
+         "type": "integer",
+         "min": 0,
+         "max": 9999
       },
       "product_type": {
          "title": "Product type",
-         "type": "string"
+         "type": "string",
+         "min": "",
+         "max": "ZZZZZZZZZZZZZZZZ"
       },
       "parcel_ids": {
          "title": "Parcel IDs",
@@ -67,7 +75,9 @@
          "type": "array",
          "items": {
            "type": "integer"
-         }
+         },
+         "min": 0,
+         "max": 999999999999999
       }
    },
    "cube:dimensions":{
