@@ -28,3 +28,11 @@ class CredentialsInvalid(OpenEOError):
     error_code = "CredentialsInvalid"
     http_code = 403
     message = "Credentials are not correct."
+
+
+class ProcessUnsupported(OpenEOError):
+    def __init__(self, unsupported_process):
+        self.message = f"Process '{process}' is not supported."    
+
+    error_code = "ProcessUnsupported"
+    http_code = 400

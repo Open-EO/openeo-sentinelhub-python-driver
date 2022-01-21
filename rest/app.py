@@ -29,7 +29,9 @@ from schemas import (
     PatchServicesSchema,
 )
 from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
-from openeoerrors import OpenEOError, AuthenticationRequired, AuthenticationSchemeInvalid, TokenInvalid
+from processing.pg_conversion import check_process_graph_conversion_validity
+from processing.processing import process_data_synchronously
+from openeoerrors import OpenEOError, AuthenticationRequired, AuthenticationSchemeInvalid, TokenInvalid, ProcessUnsupported
 
 
 app = Flask(__name__)
@@ -330,7 +332,6 @@ def api_process_graph(process_graph_id):
 def api_result():
     if flask.request.method == "POST":
         job_data = flask.request.get_json()
-        auth_token = _extract_auth_token(flask.request.headers)
 
         schema = PostResultSchema()
         errors = schema.validate(job_data)
@@ -339,10 +340,19 @@ def api_result():
             log(WARN, "Invalid request: {}".format(errors))
             return flask.make_response(jsonify(id=None, code=400, message=errors, links=[]), 400)
 
-        job_data["current_status"] = "queued"
-        job_data["should_be_cancelled"] = False
-        job_data["auth_token"] = auth_token
-        return _execute_and_wait_for_job(job_data)
+        invalid_node_id = check_process_graph_conversion_validity(job_data['process']['process_graph'])
+
+        if invalid_node_id is not None:
+            error = ProcessUnsupported(invalid_node_id)
+            return flask.make_response(jsonify(id=None, code=error.error_code, message=error_code.message, links=[]), error.http_code)
+
+        data, mime_type = process_data_synchronously(process)
+
+        response = flask.make_response(data, 200)
+        response.headers["Content-Type"] = mime_type
+        response.headers["OpenEO-Costs"] = None
+        
+        return response
 
 
 @app.route("/jobs", methods=["GET", "POST"])
