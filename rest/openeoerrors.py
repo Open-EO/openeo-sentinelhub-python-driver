@@ -1,5 +1,5 @@
 # These exceptions should translate to the list of OpenEO error codes:
-#   https://api.openeo.org/1.0.0/errors.json
+# https://openeo.org/documentation/1.0/developers/api/errors.html
 
 
 class OpenEOError(Exception):
@@ -32,7 +32,15 @@ class CredentialsInvalid(OpenEOError):
 
 class ProcessUnsupported(OpenEOError):
     def __init__(self, unsupported_process):
-        self.message = f"Process '{process}' is not supported."    
+        self.message = f"Process with identifier '{process}' is not available in namespace 'Sentinel Hub'."  # Not sure what the namespace is supposed to be
+
+    error_code = "ProcessUnsupported"
+    http_code = 400
+
+
+class ProcessUnsupported(OpenEOError):
+    def __init__(self, unsupported_process):
+        self.message = f"Process with identifier '{process}' is not available in namespace 'Sentinel Hub'."  # Not sure what the namespace is supposed to be
 
     error_code = "ProcessUnsupported"
     http_code = 400

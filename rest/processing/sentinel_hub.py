@@ -1,27 +1,29 @@
-from sentinelhub import DownloadRequest, SentinelHubDownloadClient, MimeType, CRS
+from sentinelhub import DownloadRequest, SentinelHubDownloadClient
 
 
-def create_processing_request(collection=None, evalscript=None, bbox=None, geometry=None):
+def create_processing_request(
+    bbox=None,
+    geometry=None,
+    collection=None,
+    evalscript=None,
+    from_date=None,
+    to_date=None,
+    width=None,
+    height=None,
+    mimetype=None,
+):
     request_raw_dict = {
         "input": {
-            "bounds": {
-                "properties": {"crs": bbox.crs.opengis_string},
-                "bbox": list(bbox),
-            },
+            "bounds": construct_input_bounds(bbox, geometry),
             "data": [
                 {
-                    "type": data_collection.api_id,
+                    "type": collection.api_id,
                     "dataFilter": {
                         "timeRange": {
                             "from": from_date.isoformat() + "Z",
                             "to": to_date.isoformat() + "Z",
                         },
-                        "mosaickingOrder": "mostRecent",
-                        # "orbitDirection": "DESCENDING",
-                        "previewMode": "EXTENDED_PREVIEW",
-                        "maxCloudCoverage": 100,
                     },
-                    "processing": {"view": "NADIR", **processing_options},
                 }
             ],
         },
@@ -46,3 +48,13 @@ def create_processing_request(collection=None, evalscript=None, bbox=None, geome
 
     client = SentinelHubDownloadClient(config=config)
     return client.download(download_request)
+
+
+def construct_input_bounds(bbox, geometry):
+    bounds = dict()
+    if bbox:
+        bounds["bbox"] = bbox
+        bounds["properties"] = bbox.crs.opengis_string
+    if geometry:
+        bounds["geometry"] = geometry
+    return bounds
