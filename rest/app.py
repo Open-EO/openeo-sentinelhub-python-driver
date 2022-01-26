@@ -31,6 +31,7 @@ from schemas import (
 from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
 from processing.pg_conversion import check_process_graph_conversion_validity
 from processing.processing import process_data_synchronously
+from processing.openeo_process_errors import OpenEOProcessError
 from openeoerrors import (
     OpenEOError,
     AuthenticationRequired,
@@ -351,10 +352,15 @@ def api_result():
         if invalid_node_id is not None:
             error = ProcessUnsupported(invalid_node_id)
             return flask.make_response(
-                jsonify(id=None, code=error.error_code, message=error_code.message, links=[]), error.http_code
+                jsonify(id=None, code=error.error_code, message=error.message, links=[]), error.http_code
             )
 
-        data, mime_type = process_data_synchronously(process)
+        try:
+            data, mime_type = process_data_synchronously(job_data["process"])
+        except OpenEOProcessError as error:
+            return flask.make_response(
+                jsonify(id=None, code=error.error_code, message=error.message, links=[]), error.http_code
+            )
 
         response = flask.make_response(data, 200)
         response.headers["Content-Type"] = mime_type
