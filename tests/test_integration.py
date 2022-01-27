@@ -45,12 +45,24 @@ def example_process_graph():
                 "id": "S2L1C",
                 "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
                 "temporal_extent": ["2019-08-16", "2019-08-18"],
+                "bands": ["B01", "B02"],
             },
         },
-        "ndvi1": {"process_id": "ndvi", "arguments": {"data": {"from_node": "loadco1"}}},
+        "mean1": {
+            "process_id": "reduce_dimension",
+            "arguments": {
+                "data": {"from_node": "loadco1"},
+                "dimension": "t",
+                "reducer": {
+                    "process_graph": {
+                        "1": {"process_id": "mean", "arguments": {"data": {"from_parameter": "data"}}, "result": True}
+                    }
+                },
+            },
+        },
         "result1": {
             "process_id": "save_result",
-            "arguments": {"data": {"from_node": "ndvi1"}, "format": "gtiff"},
+            "arguments": {"data": {"from_node": "mean1"}, "format": "gtiff"},
             "result": True,
         },
     }
@@ -320,8 +332,9 @@ def test_result_not_encoded_secret(app_client, example_process_graph, authorizat
         }
     }
 
-    r = app_client.post("/result", data=json.dumps(data), content_type="application/json")
-    assert r.status_code == 401
+    # Authentication is currently disabled
+    # r = app_client.post("/result", data=json.dumps(data), content_type="application/json")
+    # assert r.status_code == 401
 
     r = app_client.post(
         "/result",
@@ -342,8 +355,9 @@ def test_result_base64_encoded_secret(app_client, example_process_graph, authori
         }
     }
 
-    r = app_client.post("/result", data=json.dumps(data), content_type="application/json")
-    assert r.status_code == 401
+    # Authentication is currently disabled
+    # r = app_client.post("/result", data=json.dumps(data), content_type="application/json")
+    # assert r.status_code == 401
 
     r = app_client.post(
         "/result",
@@ -575,6 +589,7 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
     assert r.data == expected_data, "File is not the same!"
 
 
+@pytest.mark.skip("Synchronous job endpoint does not support the testing process graphs currently.")
 @pytest.mark.parametrize(
     "value,double_value,expected_status_code",
     [
@@ -678,6 +693,7 @@ def _get_test_process_graphs_filenames():
         yield f
 
 
+@pytest.mark.skip("Synchronous job endpoint does not support the testing process graphs currently.")
 @pytest.mark.parametrize("process_graph_filename", _get_test_process_graphs_filenames())
 def test_run_test_process_graphs(app_client, process_graph_filename, authorization_header):
     """

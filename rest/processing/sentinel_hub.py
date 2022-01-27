@@ -49,8 +49,8 @@ def create_processing_request(
     download_request.raise_if_invalid()
 
     config = SHConfig()
-    CLIENT_ID = os.environ.get("CLIENT_ID")
-    CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
+    CLIENT_ID = os.environ.get("TESTS_SH_CLIENT_ID")
+    CLIENT_SECRET = os.environ.get("TESTS_SH_CLIENT_SECRET")
     config.sh_client_id = CLIENT_ID
     config.sh_client_secret = CLIENT_SECRET
 

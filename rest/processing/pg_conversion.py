@@ -1,5 +1,5 @@
 import warnings
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 
 from sentinelhub import DataCollection, MimeType
 from sentinelhub.time_utils import parse_time
@@ -90,6 +90,11 @@ def get_temporal_extent_from_process_graph(process_graph, collection):
         from_time = datetime(from_time.year, from_time.month, from_time.day)
     if type(to_time) is date:
         to_time = datetime(to_time.year, to_time.month, to_time.day) + timedelta(days=1)
+
+    if from_time.tzinfo is None:
+        from_time = from_time.replace(tzinfo=timezone.utc)
+    if to_time.tzinfo is None:
+        to_time = to_time.replace(tzinfo=timezone.utc)
 
     to_time = to_time - timedelta(milliseconds=1)  # End of the interval is not inclusive
     return from_time, to_time
