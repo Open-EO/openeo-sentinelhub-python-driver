@@ -29,8 +29,7 @@ from schemas import (
     PatchServicesSchema,
 )
 from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
-from processing.pg_conversion import check_process_graph_conversion_validity
-from processing.processing import process_data_synchronously
+from processing.processing import check_process_graph_conversion_validity, process_data_synchronously
 from processing.openeo_process_errors import OpenEOProcessError
 from openeoerrors import (
     OpenEOError,
