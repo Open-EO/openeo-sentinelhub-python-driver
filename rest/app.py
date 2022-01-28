@@ -31,10 +31,9 @@ from schemas import (
 from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
 from openeoerrors import OpenEOError, AuthenticationRequired, AuthenticationSchemeInvalid, TokenInvalid
 
-from routes.collections import collections_bp
+from openeocollections import collections
 
 app = Flask(__name__)
-app.register_blueprint(collections_bp)
 app.url_map.strict_slashes = False
 
 cors = CORS(
@@ -774,6 +773,25 @@ def available_processes():
         ),
         200,
     )
+
+
+@app.route("/collections", methods=["GET"])
+def available_collections():
+
+    all_collections = collections.get_collections()
+    return flask.make_response(jsonify(collections=all_collections, links=[]), 200)
+
+
+@app.route("/collections/<collection_id>", methods=["GET"])
+def collection_information(collection_id):
+    collection = collections.get_collection(collection_id)
+
+    if not collection:
+        return flask.make_response(
+            jsonify(id=collection_id, code="CollectionNotFound", message="Collection does not exist.", links=[]), 404
+        )
+
+    return flask.make_response(collection, 200)
 
 
 @app.route("/validation", methods=["POST"])
