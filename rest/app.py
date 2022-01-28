@@ -31,8 +31,10 @@ from schemas import (
 from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
 from openeoerrors import OpenEOError, AuthenticationRequired, AuthenticationSchemeInvalid, TokenInvalid
 
+from routes.collections import collections_bp
 
 app = Flask(__name__)
+app.register_blueprint(collections_bp)
 app.url_map.strict_slashes = False
 
 cors = CORS(
@@ -755,40 +757,6 @@ def _execute_and_wait_for_job(job_data):
         )
 
     return flask.make_response(jsonify(id=None, code="Timeout", message="Request timed out.", links=[]), 408)
-
-
-@app.route("/collections", methods=["GET"])
-def available_collections():
-    files = glob.iglob("collection_information/*.json")
-    collections = []
-
-    for file in files:
-        with open(file) as f:
-            data = json.load(f)
-            basic_info = {
-                "stac_version": data["stac_version"],
-                "id": data["id"],
-                "description": data["description"],
-                "license": data["license"],
-                "extent": data["extent"],
-                "links": data["links"],
-            }
-            collections.append(basic_info)
-
-    return flask.make_response(jsonify(collections=collections, links=[]), 200)
-
-
-@app.route("/collections/<collection_id>", methods=["GET"])
-def collection_information(collection_id):
-    if not os.path.isfile("collection_information/{}.json".format(collection_id)):
-        return flask.make_response(
-            jsonify(id=collection_id, code="CollectionNotFound", message="Collection does not exist.", links=[]), 404
-        )
-
-    with open("collection_information/{}.json".format(collection_id)) as f:
-        collection_information = json.load(f)
-
-    return flask.make_response(collection_information, 200)
 
 
 @app.route("/processes", methods=["GET"])
