@@ -11,3 +11,8 @@ def check_process_graph_conversion_validity(process_graph):
 def process_data_synchronously(process):
     p = Process(process)
     return p.execute_sync(), p.mimetype
+
+
+def create_batch_job(process):
+    p = Process(process)
+    return p.create_batch_job()

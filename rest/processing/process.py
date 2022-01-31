@@ -14,6 +14,7 @@ class Process:
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_WIDTH = 100
         self.DEFAULT_HEIGHT = 100
+        self.sentinel_hub = SentinelHub()
 
         self.process_graph = process["process_graph"]
 
@@ -133,8 +134,21 @@ class Process:
         return width, height
 
     def execute_sync(self):
-        sentinel_hub = SentinelHub()
-        return sentinel_hub.create_processing_request(
+        return self.sentinel_hub.create_processing_request(
+            bbox=self.bbox,
+            epsg_code=self.epsg_code,
+            geometry=self.geometry,
+            collection=self.collection,
+            evalscript=self.evalscript,
+            from_date=self.from_date,
+            to_date=self.to_date,
+            width=self.width,
+            height=self.height,
+            mimetype=self.mimetype,
+        )
+
+    def create_batch_job(self):
+        return self.sentinel_hub.create_batch_job(
             bbox=self.bbox,
             epsg_code=self.epsg_code,
             geometry=self.geometry,

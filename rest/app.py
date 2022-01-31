@@ -29,7 +29,7 @@ from schemas import (
     PatchServicesSchema,
 )
 from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
-from processing.processing import check_process_graph_conversion_validity, process_data_synchronously
+from processing.processing import check_process_graph_conversion_validity, process_data_synchronously, create_batch_job
 from processing.openeo_process_errors import OpenEOProcessError
 from openeoerrors import (
     OpenEOError,
@@ -407,8 +407,15 @@ def api_jobs():
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
             return flask.make_response("Invalid request: {}".format(errors), 400)
 
+        invalid_node_id = check_process_graph_conversion_validity(data["process"]["process_graph"])
+
+        if invalid_node_id is not None:
+            raise ProcessUnsupported(invalid_node_id)
+
+        batch_request_id = create_batch_job(data["process"])
+
         data["current_status"] = "created"
-        data["should_be_cancelled"] = False
+        data["batch_request_id"] = batch_request_id
 
         record_id = JobsPersistence.create(data)
 
