@@ -10,6 +10,7 @@ class SentinelHub:
         self.config.sh_client_id = CLIENT_ID
         self.config.sh_client_secret = CLIENT_SECRET
         self.S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
+        self.batch = SentinelHubBatch(config=self.config)
 
     def create_processing_request(
         self,
@@ -118,7 +119,6 @@ class SentinelHub:
         height=None,
         mimetype=None,
     ):
-        batch = SentinelHubBatch(config=self.config)
         request_raw_dict = self.get_request_dictionary(
             bbox=bbox,
             geometry=geometry,
@@ -139,3 +139,18 @@ class SentinelHub:
             description="sentinelhub-py tutorial batch job",
         )
         return batch_request.request_id
+
+    def start_batch_job(self, batch_request_id):
+        batch_request = self.batch.get_request(batch_request_id)
+        self.batch.start_job(batch_request)
+
+    def cancel_batch_job(self, batch_request_id):
+        batch_request = self.batch.get_request(batch_request_id)
+        self.batch.cancel_job(batch_request)
+
+    def delete_batch_job(self, batch_request_id):
+        batch_request = self.batch.get_request(batch_request_id)
+        self.batch.delete_request(batch_request)
+
+    def get_batch_request_info(self, batch_request_id):
+        return self.batch.get_request(batch_request_id)
