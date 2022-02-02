@@ -165,6 +165,7 @@ class JobsPersistence(Persistence):
             "id": {"S": record_id},
             "process": {"S": json.dumps(data["process"])},
             "batch_request_id": {"S": data["batch_request_id"]},
+            "previous_batch_request_ids": {"S": json.dumps([])},
             "current_status": {"S": str(data.get("current_status", "queued"))},
             "created": {"S": timestamp},
             "last_updated": {"S": timestamp},

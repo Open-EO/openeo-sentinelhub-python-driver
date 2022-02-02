@@ -130,13 +130,12 @@ class SentinelHub:
             mimetype=mimetype,
         )
 
-        batch_request = batch.create(
+        batch_request = self.batch.create(
             request_raw_dict,
             tiling_grid=SentinelHubBatch.tiling_grid(
-                grid_id=self.get_appropriate_tiling_grid_id(batch), resolution=10, buffer=(0, 0)
+                grid_id=self.get_appropriate_tiling_grid_id(self.batch), resolution=10, buffer=(0, 0)
             ),
             bucket_name=self.S3_BUCKET_NAME,
-            description="sentinelhub-py tutorial batch job",
         )
         return batch_request.request_id
 

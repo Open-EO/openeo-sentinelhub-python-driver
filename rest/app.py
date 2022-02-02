@@ -38,6 +38,7 @@ from processing.processing import (
     get_batch_request_info,
     cancel_batch_job,
     delete_batch_job,
+    modify_batch_job,
 )
 from processing.openeo_process_errors import OpenEOProcessError
 from openeoerrors import (
@@ -464,7 +465,7 @@ def api_batch_job(job_id):
     elif flask.request.method == "PATCH":
         batch_request_info = get_batch_request_info(job["batch_request_id"])
 
-        if batch_request_info.status in [BatchRequestStatus.RUNNING, BatchRequestStatus.ANALYSING]:
+        if batch_request_info.status in [BatchRequestStatus.PROCESSING, BatchRequestStatus.ANALYSING]:
             raise JobLocked()
 
         data = flask.request.get_json()
@@ -475,7 +476,14 @@ def api_batch_job(job_id):
 
         for key in data:
             JobsPersistence.update_key(job_id, key, data[key])
-        JobsPersistence.update_status(job_id, "created")
+
+        new_batch_request_id = modify_batch_job(data["process"])
+        JobsPersistence.update_key(job_id, "batch_request_id", new_batch_request_id)
+        JobsPersistence.update_key(
+            job_id,
+            "previous_batch_request_ids",
+            [*json.loads(job["previous_batch_request_ids"]), job["batch_request_id"]],
+        )
 
         return flask.make_response("Changes to the job applied successfully.", 204)
 

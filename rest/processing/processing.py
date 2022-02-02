@@ -37,3 +37,13 @@ def cancel_batch_job(batch_request_id):
 def delete_batch_job(batch_request_id):
     sentinel_hub = SentinelHub()
     return sentinel_hub.delete_batch_job(batch_request_id)
+
+
+def modify_batch_job(process):
+    """
+    Sentinel Hub Batch API only allows modifying the description and output object:
+    https://docs.sentinel-hub.com/api/latest/reference/#operation/updateBatchProcessRequest
+    However, openEO allows modifying the entire batch job, including the process.
+    We therefore have to create a new Sentinel Hub batch request.
+    """
+    return create_batch_job(process)
