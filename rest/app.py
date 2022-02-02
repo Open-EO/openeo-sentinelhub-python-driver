@@ -778,7 +778,7 @@ def available_processes():
 @app.route("/collections", methods=["GET"])
 def available_collections():
 
-    all_collections = collections.get_collections()
+    all_collections = collections.get_collections_basic_info()
     return flask.make_response(jsonify(collections=all_collections, links=[]), 200)
 
 

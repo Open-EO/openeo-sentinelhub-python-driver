@@ -6,13 +6,7 @@ from abc import ABC, abstractmethod
 from logging import log, INFO, WARN, ERROR
 
 
-class CollectionsProvider(ABC):
-    @abstractmethod
-    def load_collections(self):
-        pass
-
-
-class URLCollectionsProvider(CollectionsProvider):
+class CollectionsProvider:
     def __init__(self, id, url):
         self.id = id
         self.url = url
@@ -43,28 +37,10 @@ class URLCollectionsProvider(CollectionsProvider):
         return collections
 
 
-class LocalJSONCollectionsProvider(CollectionsProvider):
-    def __init__(self, folder):
-        self.folder = folder
-
-    def load_collections(self):
-        collections = []
-
-        files = glob.iglob(self.folder)
-
-        for file in files:
-            with open(file) as f:
-                data = json.load(f)
-                collections.append(data)
-
-        return collections
-
-
 class Collections:
     def __init__(self):
         self.providers = [
-            LocalJSONCollectionsProvider("collection_information/*.json"),
-            URLCollectionsProvider("edc", "https://collections.eurodatacube.com/stac/index.json"),
+            CollectionsProvider("edc", "https://collections.eurodatacube.com/stac/index.json"),
         ]
         self.collections_cache = {}
 
@@ -74,10 +50,16 @@ class Collections:
             for collection in collections:
                 self.collections_cache[collection["id"]] = collection
 
-    def get_collections(self):
+    def check_if_loaded(self):
         if not self.collections_cache:
             self.load()
 
+    def get_collections(self):
+        self.check_if_loaded()
+        return self.collections_cache
+
+    def get_collections_basic_info(self):
+        self.check_if_loaded()
         collections_basic_info = map(
             lambda collection_info: {
                 "stac_version": collection_info["stac_version"],
@@ -93,11 +75,8 @@ class Collections:
         return list(collections_basic_info)
 
     def get_collection(self, collection_id):
-        if not self.collections_cache:
-            self.load()
-
-        collection = self.collections_cache.get(collection_id)
-        return collection
+        self.check_if_loaded()
+        return self.collections_cache.get(collection_id)
 
 
 collections = Collections()
