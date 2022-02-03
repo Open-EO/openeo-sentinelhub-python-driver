@@ -524,12 +524,28 @@ def add_job_to_queue(job_id):
             aws_access_key_id=AWS_ACCESS_KEY_ID,
             aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
         )
+
+        continuation_token = None
+        results = []
+
+        while True:
+            if continuation_token:
+                response = s3.list_objects_v2(
+                    Bucket=RESULTS_S3_BUCKET_NAME, Prefix=job["batch_request_id"], ContinuationToken=continuation_token
+                )
+            else:
+                response = s3.list_objects_v2(Bucket=RESULTS_S3_BUCKET_NAME, Prefix=job["batch_request_id"])
+            results.extend(response["Contents"])
+            if response["IsTruncated"]:
+                continuation_token = response["NextContinuationToken"]
+            else:
+                break
+
         assets = {}
-        results = json.loads(job["results"])
+
         for result in results:
             # create signed url:
-            filename = result["filename"]
-            object_key = "{}/{}".format(job_id, os.path.basename(filename))
+            object_key = result["Key"]
             url = s3.generate_presigned_url(
                 ClientMethod="get_object",
                 Params={
@@ -537,10 +553,8 @@ def add_job_to_queue(job_id):
                     "Key": object_key,
                 },
             )
-            mime_type = result["type"]
-            assets[filename] = {
+            assets[object_key] = {
                 "href": url,
-                "type": mime_type,
             }
 
         return flask.make_response(
