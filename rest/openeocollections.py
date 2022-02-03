@@ -58,6 +58,9 @@ class Collections:
         self.check_if_loaded()
         return self.collections_cache
 
+    def set_collections(self, collections):
+        self.collections_cache = collections
+
     def get_collections_basic_info(self):
         self.check_if_loaded()
         collections_basic_info = map(
