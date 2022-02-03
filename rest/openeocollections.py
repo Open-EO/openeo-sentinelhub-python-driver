@@ -1,9 +1,6 @@
-import glob
-import json
 import requests
 
-from abc import ABC, abstractmethod
-from logging import log, INFO, WARN, ERROR
+from logging import log, ERROR
 
 
 class CollectionsProvider:
