@@ -141,9 +141,9 @@ def authorization_header_base64(app_client):
     return f'Bearer basic//{j["access_token"]}'
 
 
-def load_collections_fixtures():
+def load_collections_fixtures(folder, wildcard="*"):
     collections = {}
-    files = glob.iglob("fixtures/collection_information/*.json")
+    files = glob.iglob(folder + wildcard + ".json")
     for file in files:
         with open(file) as f:
             data = json.load(f)
@@ -157,7 +157,7 @@ def setup_function(function):
     JobsPersistence.ensure_table_exists()
     JobsPersistence.ensure_queue_exists()
     ServicesPersistence.ensure_table_exists()
-    collections.set_collections(load_collections_fixtures())
+    collections.set_collections(load_collections_fixtures("fixtures/collection_information/"))
 
 
 def teardown_function(function):
@@ -880,3 +880,31 @@ def test_batch_job_json_output(app_client, authorization_header):
         "name": None,
     }
     assert result == expected_result
+
+
+def test_collections(app_client):
+
+    mocked_collections = load_collections_fixtures("fixtures/collection_information/", "S2L1C")
+    collections.set_collections(mocked_collections)
+
+    # get a list of all collections:
+    r = app_client.get("/collections")
+    assert r.status_code == 200, r.data
+    actual = json.loads(r.data.decode("utf-8"))
+    assert len(actual["collections"]) == 1
+
+    # use valid collection id:
+    collection_id = "S2L1C"
+    r = app_client.get(f"/collections/{collection_id}")
+    assert r.status_code == 200, r.data
+    expected = mocked_collections[collection_id]
+    actual = json.loads(r.data.decode("utf-8"))
+    assert actual == expected
+
+    # Use invalid collection id:
+    collection_id = "invalid_collection_id"
+    r = app_client.get(f"/collections/{collection_id}")
+    assert r.status_code == 404, r.data
+    expected = "CollectionNotFound"
+    actual = json.loads(r.data.decode("utf-8")).get("code")
+    assert actual == expected
