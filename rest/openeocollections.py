@@ -19,15 +19,14 @@ class CollectionsProvider:
             log(ERROR, f"Unable to load collections:  {r.status_code} {r.text}")
 
         else:
-            collectionsMetaData = r.json()
-
-            for collectionMetaData in collectionsMetaData:
+            collections_meta_data = r.json()
+            for collection_meta_data in collections_meta_data:
                 # load each collection
-                collection = requests.get(collectionMetaData["link"])
+                collection = requests.get(collection_meta_data["link"])
                 if collection.status_code != 200:
                     log(
                         ERROR,
-                        f"Unable to load collection: {collectionMetaData['id']} {collection.status_code} {collection.text}",
+                        f"Unable to load collection: {collection_meta_data['id']} {collection.status_code} {collection.text}",
                     )
                 else:
                     collections.append(collection.json())
