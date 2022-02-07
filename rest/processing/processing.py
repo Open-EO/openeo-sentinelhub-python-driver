@@ -29,9 +29,10 @@ def get_batch_request_info(batch_request_id):
     return sentinel_hub.get_batch_request_info(batch_request_id)
 
 
-def cancel_batch_job(batch_request_id):
+def cancel_batch_job(batch_request_id, process):
     sentinel_hub = SentinelHub()
-    return sentinel_hub.cancel_batch_job(batch_request_id)
+    sentinel_hub.cancel_batch_job(batch_request_id)
+    return create_batch_job(process)
 
 
 def delete_batch_job(batch_request_id):

@@ -395,7 +395,9 @@ def api_jobs():
                     "id": record["id"],
                     "title": record.get("title", None),
                     "description": record.get("description", None),
-                    "status": openEOBatchJobStatus.from_sentinelhub_batch_job_status(batch_request_info.status).value,
+                    "status": openEOBatchJobStatus.from_sentinelhub_batch_job_status(
+                        batch_request_info.status, batch_request_info.user_action
+                    ).value,
                     "created": record["created"],
                 }
             )
@@ -454,7 +456,9 @@ def api_batch_job(job_id):
                 title=job.get("title", None),
                 description=job.get("description", None),
                 process={"process_graph": json.loads(job["process"])["process_graph"]},
-                status=openEOBatchJobStatus.from_sentinelhub_batch_job_status(batch_request_info.status).value,
+                status=openEOBatchJobStatus.from_sentinelhub_batch_job_status(
+                    batch_request_info.status, batch_request_info.user_action
+                ).value,
                 error=batch_request_info.error if batch_request_info.status == BatchRequestStatus.FAILED else None,
                 created=job["created"],
                 updated=job["last_updated"],
@@ -465,7 +469,9 @@ def api_batch_job(job_id):
     elif flask.request.method == "PATCH":
         batch_request_info = get_batch_request_info(job["batch_request_id"])
 
-        if batch_request_info.status in [BatchRequestStatus.PROCESSING, BatchRequestStatus.ANALYSING]:
+        if openEOBatchJobStatus.from_sentinelhub_batch_job_status(
+            batch_request_info.status, batch_request_info.user_action
+        ) in [openEOBatchJobStatus.QUEUED, openEOBatchJobStatus.RUNNING]:
             raise JobLocked()
 
         data = flask.request.get_json()
@@ -489,6 +495,7 @@ def api_batch_job(job_id):
 
     elif flask.request.method == "DELETE":
         delete_batch_job(job["batch_request_id"])
+        JobsPersistence.delete(job_id)
         return flask.make_response("The job has been successfully deleted.", 204)
 
 
@@ -571,7 +578,14 @@ def add_job_to_queue(job_id):
         )
 
     elif flask.request.method == "DELETE":
-        cancel_batch_job(job["batch_request_id"])
+        new_batch_request_id = cancel_batch_job(job["batch_request_id"], json.loads(job["process"]))
+        if new_batch_request_id:
+            JobsPersistence.update_key(job_id, "batch_request_id", new_batch_request_id)
+            JobsPersistence.update_key(
+                job_id,
+                "previous_batch_request_ids",
+                [*json.loads(job["previous_batch_request_ids"]), job["batch_request_id"]],
+            )
         return flask.make_response("Processing the job has been successfully canceled.", 204)
 
 

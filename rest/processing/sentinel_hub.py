@@ -9,7 +9,7 @@ class SentinelHub:
         CLIENT_SECRET = os.environ.get("TESTS_SH_CLIENT_SECRET")
         self.config.sh_client_id = CLIENT_ID
         self.config.sh_client_secret = CLIENT_SECRET
-        self.S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
+        self.S3_BUCKET_NAME = os.environ.get("RESULTS_S3_BUCKET_NAME", "com.sinergise.openeo.results")
         self.batch = SentinelHubBatch(config=self.config)
 
     def create_processing_request(
