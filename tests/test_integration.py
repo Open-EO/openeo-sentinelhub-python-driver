@@ -876,6 +876,7 @@ def test_process_graph_api(app_client, example_process_graph):
     assert actual == expected
 
 
+@pytest.mark.skip("JSON output format currently not supported.")
 def test_batch_job_json_output(app_client, authorization_header):
     """
     - test /jobs/job_id/results endpoints

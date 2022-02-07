@@ -109,7 +109,6 @@ class Process:
             "gtiff": MimeType.TIFF,
             "png": MimeType.PNG,
             "jpeg": MimeType.JPG,
-            "json": MimeType.JSON,
         }
         output_format = output_format.lower()
         if output_format in OUTPUT_FORMATS:
