@@ -29,7 +29,13 @@ from schemas import (
     PatchServicesSchema,
 )
 from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
-from openeoerrors import OpenEOError, AuthenticationRequired, AuthenticationSchemeInvalid, TokenInvalid
+from openeoerrors import (
+    OpenEOError,
+    AuthenticationRequired,
+    AuthenticationSchemeInvalid,
+    TokenInvalid,
+    CollectionNotFound,
+)
 
 from openeocollections import collections
 
@@ -787,9 +793,7 @@ def collection_information(collection_id):
     collection = collections.get_collection(collection_id)
 
     if not collection:
-        return flask.make_response(
-            jsonify(id=collection_id, code="CollectionNotFound", message="Collection does not exist.", links=[]), 404
-        )
+        raise CollectionNotFound()
 
     return flask.make_response(collection, 200)
 
