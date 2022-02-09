@@ -28,3 +28,9 @@ class CredentialsInvalid(OpenEOError):
     error_code = "CredentialsInvalid"
     http_code = 403
     message = "Credentials are not correct."
+
+
+class CollectionNotFound(OpenEOError):
+    error_code = "CollectionNotFound"
+    http_code = 404
+    message = "Collection not found."
