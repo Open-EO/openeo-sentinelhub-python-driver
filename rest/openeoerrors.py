@@ -52,3 +52,11 @@ class JobLocked(OpenEOError):
     error_code = "JobLocked"
     http_code = 400
     message = "Job is locked due to a queued or running batch computation."
+
+
+class ProcessUnsupported(OpenEOError):
+    def __init__(self, unsupported_process):
+        self.message = f"Process with identifier '{process}' is not available in namespace 'Sentinel Hub'."  # Not sure what the namespace is supposed to be
+
+    error_code = "ProcessUnsupported"
+    http_code = 400
