@@ -363,7 +363,7 @@ def api_jobs():
             )
             link_to_job = {
                 "rel": "related",
-                "href": "{}/jobs/{}".format(flask.request.url_root, record.get("id")),
+                "href": "{}jobs/{}".format(flask.request.url_root, record.get("id")),
             }
             if record.get("title", None):
                 link_to_job["title"] = record["title"]
