@@ -4,9 +4,11 @@ import json
 import os
 import sys
 import time
+import re
 
 import pytest
 import requests
+import responses
 import numpy as np
 
 
@@ -924,3 +926,67 @@ def test_collections(app_client):
     expected = "CollectionNotFound"
     actual = json.loads(r.data.decode("utf-8")).get("code")
     assert actual == expected
+
+
+@responses.activate
+@pytest.mark.parametrize(
+    "collection_id,collection_type,request_url",
+    [
+        ("landsat-7-etm+-l2", "landsat-etm-l2", "https://services-uswest2.sentinel-hub.com"),
+        ("corine-land-cover", "byoc-cbdba844-f86d-41dc-95ad-b3f7f12535e9", "https://creodias.sentinel-hub.com"),
+    ],
+)
+def test_fetching_correct_collection_type(app_client, collection_id, collection_type, request_url):
+    mocked_collections = load_collections_fixtures("fixtures/collection_information/", collection_id)
+    collections.set_collections(mocked_collections)
+
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/oauth/token",
+        body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
+    )
+    responses.add(
+        responses.POST,
+        re.compile(".*"),
+    )
+
+    process_graph = {
+        "loadco1": {
+            "process_id": "load_collection",
+            "arguments": {
+                "id": collection_id,
+                "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+                "temporal_extent": ["2019-08-16", "2019-08-18"],
+                "bands": mocked_collections[collection_id]["cube:dimensions"]["bands"]["values"],
+            },
+        },
+        "mean1": {
+            "process_id": "reduce_dimension",
+            "arguments": {
+                "data": {"from_node": "loadco1"},
+                "dimension": "t",
+                "reducer": {
+                    "process_graph": {
+                        "1": {"process_id": "mean", "arguments": {"data": {"from_parameter": "data"}}, "result": True}
+                    }
+                },
+            },
+        },
+        "result1": {
+            "process_id": "save_result",
+            "arguments": {"data": {"from_node": "mean1"}, "format": "gtiff"},
+            "result": True,
+        },
+    }
+
+    r = app_client.post(
+        "/result",
+        data=json.dumps({"process": {"process_graph": process_graph}}),
+        content_type="application/json",
+    )
+    if len(responses.calls) == 2:
+        assert responses.calls[1].request.url == f"{request_url}/api/v1/process"
+        assert json.loads(responses.calls[1].request.body)["input"]["data"][0]["type"] == collection_type
+    if len(responses.calls) == 1:
+        assert responses.calls[0].request.url == f"{request_url}/api/v1/process"
+        assert json.loads(responses.calls[0].request.body)["input"]["data"][0]["type"] == collection_type

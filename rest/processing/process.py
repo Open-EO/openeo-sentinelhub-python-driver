@@ -8,6 +8,9 @@ from pg_to_evalscript import convert_from_process_graph
 from processing.openeo_process_errors import FormatUnsuitable
 from processing.sentinel_hub import SentinelHub
 
+from openeocollections import collections
+from openeoerrors import CollectionNotFound, Internal
+
 
 class Process:
     def __init__(self, process):
@@ -29,8 +32,32 @@ class Process:
         return results[0]["evalscript"].write()
 
     def id_to_data_collection(self, collection_id):
-        warnings.warn("id_to_data_collection not implemented yet!")
-        return DataCollection.SENTINEL2_L1C
+        collection_info = collections.get_collection(collection_id)
+
+        if not collection_info:
+            raise CollectionNotFound()
+
+        collection_type = collection_info["datasource_type"]
+
+        if collection_type.startswith("byoc"):
+            byoc_collection_id = collection_type.replace("byoc-", "")
+            service_url = next(
+                provider["url"] for provider in collection_info["providers"] if "processor" in provider["roles"]
+            )
+            return DataCollection.define_byoc(byoc_collection_id, service_url=service_url)
+
+        if collection_type.startswith("batch"):
+            batch_collection_id = collection_type.replace("batch-", "")
+            service_url = next(
+                provider["url"] for provider in collection_info["providers"] if "processor" in provider["roles"]
+            )
+            return DataCollection.define_batch(batch_collection_id, service_url=service_url)
+
+        for data_collection in DataCollection:
+            if data_collection.value.api_id == collection_type:
+                return data_collection
+
+        raise Internal(f"Collection {collection_id} could not be mapped to a Sentinel Hub collection type.")
 
     def get_node_by_process_id(self, process_id):
         for node in self.process_graph.values():
