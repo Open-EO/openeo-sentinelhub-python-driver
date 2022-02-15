@@ -123,7 +123,10 @@ FAKE_AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
 FAKE_AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", FAKE_AWS_ACCESS_KEY_ID)
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", FAKE_AWS_SECRET_ACCESS_KEY)
+DATA_AWS_ACCESS_KEY_ID = os.environ.get("DATA_AWS_ACCESS_KEY_ID")
+DATA_AWS_SECRET_ACCESS_KEY = os.environ.get("DATA_AWS_SECRET_ACCESS_KEY")
 S3_LOCAL_URL = os.environ.get("DATA_AWS_S3_ENDPOINT_URL")
+
 
 STAC_VERSION = "0.9.0"
 
@@ -528,10 +531,9 @@ def add_job_to_queue(job_id):
 
         s3 = boto3.client(
             "s3",
-            endpoint_url=S3_LOCAL_URL,
             region_name="eu-central-1",
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+            aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
         )
 
         continuation_token = None
