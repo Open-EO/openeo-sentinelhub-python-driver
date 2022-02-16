@@ -16,6 +16,7 @@ from flask_cors import CORS
 from flask_basicauth import BasicAuth
 import beeline
 from beeline.middleware.flask import HoneyMiddleware
+from sentinelhub import BatchRequestStatus
 
 import globalmaptiles
 from schemas import (
@@ -29,7 +30,16 @@ from schemas import (
     PatchServicesSchema,
 )
 from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
-from processing.processing import check_process_graph_conversion_validity, process_data_synchronously
+from processing.processing import (
+    check_process_graph_conversion_validity,
+    process_data_synchronously,
+    create_batch_job,
+    start_batch_job,
+    get_batch_request_info,
+    cancel_batch_job,
+    delete_batch_job,
+    modify_batch_job,
+)
 from processing.openeo_process_errors import OpenEOProcessError
 from openeoerrors import (
     OpenEOError,
@@ -37,8 +47,12 @@ from openeoerrors import (
     AuthenticationSchemeInvalid,
     TokenInvalid,
     ProcessUnsupported,
+    JobNotFinished,
+    JobNotFound,
+    JobLocked,
     CollectionNotFound,
 )
+from const import openEOBatchJobStatus
 
 from openeocollections import collections
 
@@ -109,7 +123,10 @@ FAKE_AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
 FAKE_AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", FAKE_AWS_ACCESS_KEY_ID)
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", FAKE_AWS_SECRET_ACCESS_KEY)
+DATA_AWS_ACCESS_KEY_ID = os.environ.get("DATA_AWS_ACCESS_KEY_ID")
+DATA_AWS_SECRET_ACCESS_KEY = os.environ.get("DATA_AWS_SECRET_ACCESS_KEY")
 S3_LOCAL_URL = os.environ.get("DATA_AWS_S3_ENDPOINT_URL")
+
 
 STAC_VERSION = "0.9.0"
 
@@ -377,12 +394,15 @@ def api_jobs():
         links = []
 
         for record in JobsPersistence.items():
+            batch_request_info = get_batch_request_info(record["batch_request_id"])
             jobs.append(
                 {
                     "id": record["id"],
                     "title": record.get("title", None),
                     "description": record.get("description", None),
-                    "status": record["current_status"],
+                    "status": openEOBatchJobStatus.from_sentinelhub_batch_job_status(
+                        batch_request_info.status, batch_request_info.user_action
+                    ).value,
                     "created": record["created"],
                 }
             )
@@ -409,8 +429,14 @@ def api_jobs():
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
             return flask.make_response("Invalid request: {}".format(errors), 400)
 
-        data["current_status"] = "created"
-        data["should_be_cancelled"] = False
+        invalid_node_id = check_process_graph_conversion_validity(data["process"]["process_graph"])
+
+        if invalid_node_id is not None:
+            raise ProcessUnsupported(invalid_node_id)
+
+        batch_request_id = create_batch_job(data["process"])
+
+        data["batch_request_id"] = batch_request_id
 
         record_id = JobsPersistence.create(data)
 
@@ -425,20 +451,20 @@ def api_jobs():
 def api_batch_job(job_id):
     job = JobsPersistence.get_by_id(job_id)
     if job is None:
-        return flask.make_response(
-            jsonify(id=job_id, code="JobNotFound", message="The job does not exist.", links=[]), 404
-        )
+        raise JobNotFound()
 
     if flask.request.method == "GET":
-        status = job["current_status"]
+        batch_request_info = get_batch_request_info(job["batch_request_id"])
         return flask.make_response(
             jsonify(
                 id=job_id,
                 title=job.get("title", None),
                 description=job.get("description", None),
                 process={"process_graph": json.loads(job["process"])["process_graph"]},
-                status=status,  # "status" is reserved word in DynamoDB
-                error=job["error_msg"] if status == "error" else None,
+                status=openEOBatchJobStatus.from_sentinelhub_batch_job_status(
+                    batch_request_info.status, batch_request_info.user_action
+                ).value,
+                error=batch_request_info.error if batch_request_info.status == BatchRequestStatus.FAILED else None,
                 created=job["created"],
                 updated=job["last_updated"],
             ),
@@ -446,16 +472,12 @@ def api_batch_job(job_id):
         )
 
     elif flask.request.method == "PATCH":
-        if job["current_status"] in ["queued", "running"]:
-            return flask.make_response(
-                jsonify(
-                    id=job_id,
-                    code="JobLocked",
-                    message="Job is locked due to a queued or running batch computation.",
-                    links=[],
-                ),
-                400,
-            )
+        batch_request_info = get_batch_request_info(job["batch_request_id"])
+
+        if openEOBatchJobStatus.from_sentinelhub_batch_job_status(
+            batch_request_info.status, batch_request_info.user_action
+        ) in [openEOBatchJobStatus.QUEUED, openEOBatchJobStatus.RUNNING]:
+            raise JobLocked()
 
         data = flask.request.get_json()
         errors = PatchJobsSchema().validate(data)
@@ -465,85 +487,76 @@ def api_batch_job(job_id):
 
         for key in data:
             JobsPersistence.update_key(job_id, key, data[key])
-        JobsPersistence.update_status(job_id, "created")
+
+        new_batch_request_id = modify_batch_job(data["process"])
+        JobsPersistence.update_key(job_id, "batch_request_id", new_batch_request_id)
+        JobsPersistence.update_key(
+            job_id,
+            "previous_batch_request_ids",
+            [*json.loads(job["previous_batch_request_ids"]), job["batch_request_id"]],
+        )
 
         return flask.make_response("Changes to the job applied successfully.", 204)
 
     elif flask.request.method == "DELETE":
-        # for queued and running jobs, we need to mark them to be cancelled and wait for their status to change:
-        if job["current_status"] in ["queued", "running"]:
-            JobsPersistence.set_should_be_cancelled(job_id)
-
-            # wait for job to get status 'cancelled':
-            period = 0.5  # check every X seconds
-            n_checks = int(REQUEST_TIMEOUT / period)
-            for _ in range(n_checks):
-                job = JobsPersistence.get_by_id(job_id)
-                if job["current_status"] not in ["queued", "running"]:
-                    break
-                time.sleep(period)
-            # this would be more correct - however, if we have a job which is stuck in "running", even though
-            # there is no worker actually working on it, we will not be able to delete it.
-            # if job["current_status"] in ["queued", "running"]:
-            #     return flask.make_response("Could not stop the job properly.", 500)
-
+        delete_batch_job(job["batch_request_id"])
         JobsPersistence.delete(job_id)
         return flask.make_response("The job has been successfully deleted.", 204)
 
 
 @app.route("/jobs/<job_id>/results", methods=["POST", "GET", "DELETE"])
 def add_job_to_queue(job_id):
-    if flask.request.method == "POST":
-        job = JobsPersistence.get_by_id(job_id)
-        auth_token = _extract_auth_token(flask.request.headers)
+    job = JobsPersistence.get_by_id(job_id)
+    if job is None:
+        raise JobNotFound()
 
-        if job["current_status"] in ["created", "finished", "canceled", "error"]:
-            JobsPersistence.update_auth_token(job_id, auth_token)
-            JobsPersistence.update_status(job_id, "queued")
-            return flask.make_response("The creation of the resource has been queued successfully.", 202)
-        else:
-            return flask.make_response(
-                jsonify(
-                    id=job_id,
-                    code="JobLocked",
-                    message="Job is locked due to a queued or running batch computation.",
-                    links=[],
-                ),
-                400,
-            )
+    if flask.request.method == "POST":
+        start_batch_job(job["batch_request_id"])
+        return flask.make_response("The creation of the resource has been queued successfully.", 202)
 
     elif flask.request.method == "GET":
-        job = JobsPersistence.get_by_id(job_id)
+        batch_request_info = get_batch_request_info(job["batch_request_id"])
 
-        if job["current_status"] not in ["finished", "error"]:
-            return flask.make_response(
-                jsonify(
-                    id=job_id,
-                    code="JobNotFinished",
-                    message="Job has not finished computing the results yet. Please try again later.",
-                    links=[],
-                ),
-                400,
-            )
+        if batch_request_info.status not in [
+            BatchRequestStatus.DONE,
+            BatchRequestStatus.FAILED,
+            BatchRequestStatus.PARTIAL,
+        ]:
+            raise JobNotFinished()
 
-        if job["current_status"] == "error":
+        if batch_request_info.status == BatchRequestStatus.FAILED:
             return flask.make_response(
-                jsonify(id=job_id, code=job["error_code"], level="error", message=job["error_msg"], links=[]), 424
+                jsonify(id=job_id, code=424, level="error", message=batch_request_info.error, links=[]), 424
             )
 
         s3 = boto3.client(
             "s3",
-            endpoint_url=S3_LOCAL_URL,
             region_name="eu-central-1",
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+            aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
         )
+
+        continuation_token = None
+        results = []
+
+        while True:
+            if continuation_token:
+                response = s3.list_objects_v2(
+                    Bucket=RESULTS_S3_BUCKET_NAME, Prefix=job["batch_request_id"], ContinuationToken=continuation_token
+                )
+            else:
+                response = s3.list_objects_v2(Bucket=RESULTS_S3_BUCKET_NAME, Prefix=job["batch_request_id"])
+            results.extend(response["Contents"])
+            if response["IsTruncated"]:
+                continuation_token = response["NextContinuationToken"]
+            else:
+                break
+
         assets = {}
-        results = json.loads(job["results"])
+
         for result in results:
             # create signed url:
-            filename = result["filename"]
-            object_key = "{}/{}".format(job_id, os.path.basename(filename))
+            object_key = result["Key"]
             url = s3.generate_presigned_url(
                 ClientMethod="get_object",
                 Params={
@@ -551,10 +564,8 @@ def add_job_to_queue(job_id):
                     "Key": object_key,
                 },
             )
-            mime_type = result["type"]
-            assets[filename] = {
+            assets[object_key] = {
                 "href": url,
-                "type": mime_type,
             }
 
         return flask.make_response(
@@ -571,19 +582,15 @@ def add_job_to_queue(job_id):
         )
 
     elif flask.request.method == "DELETE":
-        job = JobsPersistence.get_by_id(job_id)
-
-        JobsPersistence.set_should_be_cancelled(job_id)
-
-        period = 0.5  # check every X seconds
-        n_checks = int(REQUEST_TIMEOUT / period)
-        for _ in range(n_checks):
-            job = JobsPersistence.get_by_id(job_id)
-            if job["current_status"] not in ["queued", "running"]:
-                return flask.make_response("Processing the job has been successfully canceled.", 204)
-            time.sleep(period)
-
-        return flask.make_response("Could not cancel the job properly.", 500)
+        new_batch_request_id = cancel_batch_job(job["batch_request_id"], json.loads(job["process"]))
+        if new_batch_request_id:
+            JobsPersistence.update_key(job_id, "batch_request_id", new_batch_request_id)
+            JobsPersistence.update_key(
+                job_id,
+                "previous_batch_request_ids",
+                [*json.loads(job["previous_batch_request_ids"]), job["batch_request_id"]],
+            )
+        return flask.make_response("Processing the job has been successfully canceled.", 204)
 
 
 @app.route("/services", methods=["GET", "POST"])

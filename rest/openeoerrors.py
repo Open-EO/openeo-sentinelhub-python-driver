@@ -36,6 +36,24 @@ class CollectionNotFound(OpenEOError):
     message = "Collection not found."
 
 
+class JobNotFinished(OpenEOError):
+    error_code = "JobNotFinished"
+    http_code = 400
+    message = "Job has not finished computing the results yet. Please try again later."
+
+
+class JobNotFound(OpenEOError):
+    error_code = "JobNotFound"
+    http_code = 404
+    message = "The job does not exist."
+
+
+class JobLocked(OpenEOError):
+    error_code = "JobLocked"
+    http_code = 400
+    message = "Job is locked due to a queued or running batch computation."
+
+
 class ProcessUnsupported(OpenEOError):
     def __init__(self, unsupported_process):
         self.message = f"Process with identifier '{process}' is not available in namespace 'Sentinel Hub'."  # Not sure what the namespace is supposed to be
