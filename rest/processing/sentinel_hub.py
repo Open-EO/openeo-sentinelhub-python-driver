@@ -40,7 +40,7 @@ class SentinelHub:
         )
         download_request = DownloadRequest(
             request_type="POST",
-            url="https://services.sentinel-hub.com/api/v1/process",
+            url=f"{collection.service_url}/api/v1/process",
             post_values=request_raw_dict,
             data_type=mimetype,
             headers={"content-type": "application/json"},

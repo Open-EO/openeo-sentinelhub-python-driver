@@ -60,3 +60,11 @@ class ProcessUnsupported(OpenEOError):
 
     error_code = "ProcessUnsupported"
     http_code = 400
+
+
+class Internal(OpenEOError):
+    def __init__(self, message):
+        self.message = f"Server error: {message}"
+
+    error_code = "Internal"
+    http_code = 500

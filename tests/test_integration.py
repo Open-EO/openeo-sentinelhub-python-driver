@@ -4,9 +4,11 @@ import json
 import os
 import sys
 import time
+import re
 
 import pytest
 import requests
+import responses
 import numpy as np
 
 
@@ -44,7 +46,7 @@ def example_process_graph():
         "loadco1": {
             "process_id": "load_collection",
             "arguments": {
-                "id": "S2L1C",
+                "id": "sentinel-2-l1c",
                 "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
                 "temporal_extent": ["2019-08-16", "2019-08-18"],
                 "bands": ["B01", "B02"],
@@ -76,7 +78,7 @@ def example_process_graph_with_variables():
         "loadco1": {
             "process_id": "load_collection",
             "arguments": {
-                "id": "S2L1C",
+                "id": "sentinel-2-l1c",
                 "spatial_extent": {
                     "west": {"variable_id": "spatial_extent_west"},
                     "east": {"variable_id": "spatial_extent_east"},
@@ -244,7 +246,7 @@ def test_manage_batch_jobs(app_client):
                 "loadco1": {
                     "process_id": "load_collection",
                     "arguments": {
-                        "id": "S2L1C",
+                        "id": "sentinel-2-l1c",
                         "spatial_extent": bbox,
                         "temporal_extent": ["2019-08-16", "2019-08-18"],
                         "bands": ["B01", "B02"],
@@ -296,7 +298,7 @@ def test_manage_batch_jobs(app_client):
                 "loadco1": {
                     "process_id": "load_collection",
                     "arguments": {
-                        "id": "S2L1C",
+                        "id": "sentinel-2-l1c",
                         "spatial_extent": bbox2,
                         "temporal_extent": ["2017-01-01", "2017-03-01"],
                         "bands": ["B01", "B02"],
@@ -548,7 +550,7 @@ def test_reduce(app_client, get_expected_data):
                 "loadco1": {
                     "process_id": "load_collection",
                     "arguments": {
-                        "id": "S2L1C",
+                        "id": "sentinel-2-l1c",
                         "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
                         "temporal_extent": ["2019-08-16", "2019-08-25"],
                     },
@@ -970,7 +972,7 @@ def test_batch_job_json_output(app_client, authorization_header):
 
 def test_collections(app_client):
 
-    mocked_collections = load_collections_fixtures("fixtures/collection_information/", "S2L1C")
+    mocked_collections = load_collections_fixtures("fixtures/collection_information/", "sentinel-2-l1c")
     collections.set_collections(mocked_collections)
 
     # get a list of all collections:
@@ -980,7 +982,7 @@ def test_collections(app_client):
     assert len(actual["collections"]) == 1
 
     # use valid collection id:
-    collection_id = "S2L1C"
+    collection_id = "sentinel-2-l1c"
     r = app_client.get(f"/collections/{collection_id}")
     assert r.status_code == 200, r.data
     expected = mocked_collections[collection_id]
@@ -994,3 +996,65 @@ def test_collections(app_client):
     expected = "CollectionNotFound"
     actual = json.loads(r.data.decode("utf-8")).get("code")
     assert actual == expected
+
+
+@responses.activate
+@pytest.mark.parametrize(
+    "collection_id,collection_type,request_url",
+    [
+        ("landsat-7-etm+-l2", "landsat-etm-l2", "https://services-uswest2.sentinel-hub.com"),
+        ("corine-land-cover", "byoc-cbdba844-f86d-41dc-95ad-b3f7f12535e9", "https://creodias.sentinel-hub.com"),
+        ("sentinel-2-l1c", "sentinel-2-l1c", "https://services.sentinel-hub.com"),
+    ],
+)
+def test_fetching_correct_collection_type(app_client, collection_id, collection_type, request_url):
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/oauth/token",
+        body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
+    )
+    responses.add(
+        responses.POST,
+        re.compile(".*"),
+    )
+
+    process_graph = {
+        "loadco1": {
+            "process_id": "load_collection",
+            "arguments": {
+                "id": collection_id,
+                "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+                "temporal_extent": ["2019-08-16", "2019-08-18"],
+                "bands": collections.get_collection(collection_id)["cube:dimensions"]["bands"]["values"],
+            },
+        },
+        "mean1": {
+            "process_id": "reduce_dimension",
+            "arguments": {
+                "data": {"from_node": "loadco1"},
+                "dimension": "t",
+                "reducer": {
+                    "process_graph": {
+                        "1": {"process_id": "mean", "arguments": {"data": {"from_parameter": "data"}}, "result": True}
+                    }
+                },
+            },
+        },
+        "result1": {
+            "process_id": "save_result",
+            "arguments": {"data": {"from_node": "mean1"}, "format": "gtiff"},
+            "result": True,
+        },
+    }
+
+    r = app_client.post(
+        "/result",
+        data=json.dumps({"process": {"process_graph": process_graph}}),
+        content_type="application/json",
+    )
+    if len(responses.calls) == 2:
+        assert responses.calls[1].request.url == f"{request_url}/api/v1/process"
+        assert json.loads(responses.calls[1].request.body)["input"]["data"][0]["type"] == collection_type
+    if len(responses.calls) == 1:
+        assert responses.calls[0].request.url == f"{request_url}/api/v1/process"
+        assert json.loads(responses.calls[0].request.body)["input"]["data"][0]["type"] == collection_type
