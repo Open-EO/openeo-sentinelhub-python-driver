@@ -99,28 +99,31 @@ class Process:
             south = spatial_extent["south"]
             return (west, south, east, north), epsg_code, None
 
-    def get_maximum_temporal_extent_for_collection(collection):
-        warnings.warn("get_maximum_temporal_extent_for_collection not implemented yet!")
-        return datetime.now(), datetime.now()
+    def get_maximum_temporal_extent_for_collection(self):
+        load_collection_node = self.get_node_by_process_id("load_collection")
+        openeo_collection = collections.get_collection(load_collection_node["arguments"]["id"])
+        extent = openeo_collection.get("extent").get("temporal")["interval"][0]
+        return parse_time(extent[0]), parse_time(extent[1])
 
     def get_temporal_extent(self):
         """
         Returns from_time, to_time
         """
         load_collection_node = self.get_node_by_process_id("load_collection")
-        temporal_extent = load_collection_node["arguments"]["temporal_extent"]
+        temporal_extent = load_collection_node["arguments"].get("temporal_extent")
+
         if temporal_extent is None:
-            from_time, to_time = self.get_maximum_temporal_extent_for_collection(self.collection)
+            from_time, to_time = self.get_maximum_temporal_extent_for_collection()
             return from_time, to_time
 
         interval_start, interval_end = temporal_extent
         if interval_start is None:
-            from_time, _ = self.get_maximum_temporal_extent_for_collection(self.collection)
+            from_time, _ = self.get_maximum_temporal_extent_for_collection()
         else:
             from_time = parse_time(interval_start)
 
         if interval_end is None:
-            _, to_time = self.get_maximum_temporal_extent_for_collection(self.collection)
+            _, to_time = self.get_maximum_temporal_extent_for_collection()
         else:
             to_time = parse_time(interval_end)
 
