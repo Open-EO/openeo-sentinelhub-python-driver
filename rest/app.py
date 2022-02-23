@@ -729,6 +729,7 @@ def api_execute_service(service_id, zoom, tx, ty):
         "description": record.get("description"),
         "variables": variables,
         "auth_token": auth_token,
+        "current_status": "queued",
     }
     return _execute_and_wait_for_job(job_data)
 

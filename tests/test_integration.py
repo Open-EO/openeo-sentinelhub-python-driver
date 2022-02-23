@@ -1,24 +1,4 @@
-import base64
-import glob
-import json
-import os
-import sys
-import time
-import re
-
-import pytest
-import requests
-import responses
-import numpy as np
-
-
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rest"))
-from app import app
-from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
-from openeocollections import collections
-
-
-FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), "fixtures")
+from setup_tests import *
 
 
 @pytest.fixture
@@ -99,6 +79,45 @@ def example_process_graph_with_variables():
 
 
 @pytest.fixture
+def get_example_process_graph_with_bands_and_collection():
+    def wrapped(bands, collection_id):
+        return {
+            "loadco1": {
+                "process_id": "load_collection",
+                "arguments": {
+                    "id": collection_id,
+                    "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+                    "temporal_extent": ["2019-08-16", "2019-08-18"],
+                    "bands": bands,
+                },
+            },
+            "mean1": {
+                "process_id": "reduce_dimension",
+                "arguments": {
+                    "data": {"from_node": "loadco1"},
+                    "dimension": "t",
+                    "reducer": {
+                        "process_graph": {
+                            "1": {
+                                "process_id": "mean",
+                                "arguments": {"data": {"from_parameter": "data"}},
+                                "result": True,
+                            }
+                        }
+                    },
+                },
+            },
+            "result1": {
+                "process_id": "save_result",
+                "arguments": {"data": {"from_node": "mean1"}, "format": "gtiff"},
+                "result": True,
+            },
+        }
+
+    return wrapped
+
+
+@pytest.fixture
 def service_factory(app_client):
     def wrapped(process_graph, title="MyService", service_type="xyz"):
         data = {
@@ -153,32 +172,6 @@ def authorization_header_base64(app_client):
     assert r.status_code == 200, r.data
     j = r.json
     return f'Bearer basic//{j["access_token"]}'
-
-
-def load_collections_fixtures(folder, wildcard="*"):
-    collections = {}
-    files = glob.iglob(folder + wildcard + ".json")
-    for file in files:
-        with open(file) as f:
-            data = json.load(f)
-            collections[data["id"]] = data
-
-    return collections
-
-
-def setup_function(function):
-    ProcessGraphsPersistence.ensure_table_exists()
-    JobsPersistence.ensure_table_exists()
-    JobsPersistence.ensure_queue_exists()
-    ServicesPersistence.ensure_table_exists()
-    collections.set_collections(load_collections_fixtures("fixtures/collection_information/"))
-
-
-def teardown_function(function):
-    ProcessGraphsPersistence.clear_table()
-    JobsPersistence.clear_table()
-    ServicesPersistence.clear_table()
-    collections.set_collections(None)
 
 
 ###################################
@@ -1058,3 +1051,75 @@ def test_fetching_correct_collection_type(app_client, collection_id, collection_
     if len(responses.calls) == 1:
         assert responses.calls[0].request.url == f"{request_url}/api/v1/process"
         assert json.loads(responses.calls[0].request.body)["input"]["data"][0]["type"] == collection_type
+
+
+@pytest.mark.parametrize(
+    "collection_id,bands,should_raise_error",
+    [
+        ("landsat-7-etm+-l2", ["B01", "B02", "B03"], False),
+        ("landsat-7-etm+-l2", ["B01", "Non-existent band", "B03"], True),
+        ("corine-land-cover", ["CLC"], False),
+        ("corine-land-cover", ["Non-existent band"], True),
+        ("corine-land-cover", None, False),
+        (
+            "sentinel-2-l1c",
+            [
+                "B01",
+                "B02",
+                "B03",
+                "B04",
+                "B05",
+                "B06",
+                "B07",
+                "B08",
+                "B8A",
+                "B09",
+                "B10",
+                "B11",
+                "B12",
+                "CLP",
+                "CLM",
+                "sunAzimuthAngles",
+                "sunZenithAngles",
+                "viewAzimuthMean",
+                "viewZenithMean",
+                "dataMask",
+                "Non-existent band",
+            ],
+            True,
+        ),
+    ],
+)
+def test_validate_bands(
+    app_client, get_example_process_graph_with_bands_and_collection, collection_id, bands, should_raise_error
+):
+    process_graph = get_example_process_graph_with_bands_and_collection(bands, collection_id)
+    payload = json.dumps({"process": {"process_graph": process_graph}})
+
+    r = app_client.post(
+        "/result",
+        data=payload,
+        content_type="application/json",
+    )
+
+    if should_raise_error:
+        response_data = json.loads(r.data.decode("utf-8"))
+        assert r.status_code == 400, r.data
+        assert (
+            f"Invalid process graph: Invalid process graph: 'non-existent band' is not a valid band name for collection '{collection_id}'"
+            in response_data["message"]["process"]["process_graph"][0]
+        )
+    else:
+        assert r.status_code == 200, r.data
+
+    r = app_client.post("/jobs", data=payload, content_type="application/json")
+
+    if should_raise_error:
+        response_data = r.data.decode("utf-8")
+        assert r.status_code == 400, r.data
+        assert (
+            f"Invalid process graph: Invalid process graph: 'non-existent band' is not a valid band name for collection '{collection_id}'"
+            in response_data
+        )
+    else:
+        assert r.status_code == 201, r.data

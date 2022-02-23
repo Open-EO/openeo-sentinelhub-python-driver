@@ -7,7 +7,6 @@ from pg_to_evalscript import convert_from_process_graph
 
 from processing.openeo_process_errors import FormatUnsuitable
 from processing.sentinel_hub import SentinelHub
-
 from openeocollections import collections
 from openeoerrors import CollectionNotFound, Internal
 
@@ -30,7 +29,15 @@ class Process:
 
     def get_evalscript(self):
         results = convert_from_process_graph(self.process_graph, encode_result=False)
-        return results[0]["evalscript"].write()
+        evalscript = results[0]["evalscript"]
+
+        if self.get_input_bands() is None:
+            load_collection_node = self.get_node_by_process_id("load_collection")
+            collection = collections.get_collection(load_collection_node["arguments"]["id"])
+            all_bands = collection["cube:dimensions"]["bands"]["values"]
+            evalscript.set_input_bands(all_bands)
+
+        return evalscript
 
     def id_to_data_collection(self, collection_id):
         collection_info = collections.get_collection(collection_id)
@@ -131,6 +138,10 @@ class Process:
         to_time = to_time - timedelta(milliseconds=1)  # End of the interval is not inclusive
         return from_time, to_time
 
+    def get_input_bands(self):
+        load_collection_node = self.get_node_by_process_id("load_collection")
+        return load_collection_node["arguments"].get("bands")
+
     def format_to_mimetype(self, output_format):
         OUTPUT_FORMATS = {
             "gtiff": MimeType.TIFF,
@@ -165,7 +176,7 @@ class Process:
             epsg_code=self.epsg_code,
             geometry=self.geometry,
             collection=self.collection,
-            evalscript=self.evalscript,
+            evalscript=self.evalscript.write(),
             from_date=self.from_date,
             to_date=self.to_date,
             width=self.width,
@@ -179,7 +190,7 @@ class Process:
             epsg_code=self.epsg_code,
             geometry=self.geometry,
             collection=self.collection,
-            evalscript=self.evalscript,
+            evalscript=self.evalscript.write(),
             from_date=self.from_date,
             to_date=self.to_date,
             width=self.width,

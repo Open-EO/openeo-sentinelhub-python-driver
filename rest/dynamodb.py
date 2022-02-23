@@ -168,7 +168,7 @@ class JobsPersistence(Persistence):
                 "S": data.get("batch_request_id", "null")
             },  # .get and default value is needed because services don't use SH batch
             "previous_batch_request_ids": {"S": json.dumps([])},
-            "current_status": {"S": str(data.get("current_status", "queued"))},
+            "current_status": {"S": str(data.get("current_status", ""))},
             "created": {"S": timestamp},
             "last_updated": {"S": timestamp},
             "should_be_cancelled": {"BOOL": data.get("should_be_cancelled", False)},
