@@ -17,6 +17,7 @@ from flask_basicauth import BasicAuth
 import beeline
 from beeline.middleware.flask import HoneyMiddleware
 from sentinelhub import BatchRequestStatus
+from pg_to_evalscript import list_supported_processes
 
 import globalmaptiles
 from schemas import (
@@ -792,8 +793,12 @@ def _execute_and_wait_for_job(job_data):
 
 @app.route("/processes", methods=["GET"])
 def available_processes():
-    files = glob.iglob("process_definitions/*.json")
+    files = []
     processes = []
+
+    for supported_process in list_supported_processes():
+        files = [*files, *glob.glob("process_definitions/{}.json".format(supported_process))]
+
     for file in files:
         with open(file) as f:
             processes.append(json.load(f))
