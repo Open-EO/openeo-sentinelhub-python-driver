@@ -12,7 +12,6 @@ from openeoerrors import CollectionNotFound, Internal
 from time_utils import end_of_day, start_of_day
 
 
-
 class Process:
     def __init__(self, process):
         self.DEFAULT_EPSG_CODE = 4326
@@ -149,7 +148,7 @@ class Process:
             from_time = from_time.replace(tzinfo=timezone.utc)
         if to_time.tzinfo is None:
             to_time = to_time.replace(tzinfo=timezone.utc)
- 
+
         return from_time, to_time
 
     def get_input_bands(self):

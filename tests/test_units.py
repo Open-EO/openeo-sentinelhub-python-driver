@@ -31,6 +31,7 @@ def get_process_graph():
 
     return wrapped
 
+
 @pytest.mark.parametrize(
     "collection_id",
     ["sentinel-2-l1c", "landsat-7-etm+-l2", "corine-land-cover"],
@@ -46,6 +47,8 @@ def test_collections(get_process_graph, collection_id):
 
 
 current_date = datetime.now()
+
+
 @pytest.mark.parametrize(
     "fixture, expected_result",
     [
