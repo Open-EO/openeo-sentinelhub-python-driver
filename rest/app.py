@@ -803,6 +803,8 @@ def available_processes():
         with open(file) as f:
             processes.append(json.load(f))
 
+    processes.sort(key=lambda process: process["id"])
+
     return flask.make_response(
         jsonify(
             processes=processes,
