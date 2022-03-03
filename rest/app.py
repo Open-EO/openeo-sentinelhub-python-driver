@@ -797,7 +797,7 @@ def available_processes():
     processes = []
 
     for supported_process in list_supported_processes():
-        files = [*files, *glob.glob("process_definitions/{}.json".format(supported_process))]
+        files.extend(glob.glob(f"process_definitions/{supported_process}.json"))
 
     for file in files:
         with open(file) as f:
