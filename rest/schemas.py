@@ -174,6 +174,17 @@ class PGValidationSchema(Schema):
     """
 
     process_graph = fields.Dict(required=True)
+    process_id = fields.Str(allow_none=True, data_key="id", validate=validate.Regexp(r"^\w+$"))
+    summary = fields.Str(allow_none=True)
+    description = fields.Str(allow_none=True)
+    categories = fields.List(fields.Str(allow_none=True), allow_none=True)
+    parameters = fields.List(fields.Dict(allow_none=True), allow_none=True)
+    returns = fields.Dict(allow_none=True)
+    deprecated = fields.Bool(allow_none=True)
+    experimental = fields.Bool(allow_none=True)
+    exceptions = fields.Dict(allow_none=True)
+    examples = fields.List(fields.Dict(allow_none=True), allow_none=True)
+    links = fields.List(fields.Dict(allow_none=True), allow_none=True)
 
     @validates("process_graph")
     def validate_process_graph(self, graph):
