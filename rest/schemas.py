@@ -9,6 +9,7 @@ import traceback
 from marshmallow import Schema, fields, validates, ValidationError, validate
 from openeo_pg_parser.validate import validate_process_graph
 from openeocollections import collections
+from pg_to_evalscript import convert_from_process_graph
 
 
 def validate_graph_with_known_processes(graph):
@@ -20,11 +21,16 @@ def validate_graph_with_known_processes(graph):
     try:
         # validate_graph() changes process graph input, so we need to pass a cloned object:
         process = {"process_graph": copy.deepcopy(graph)}
-
         # signature of validate_process_graph is changed in latest version on github - return values are switched
         pg_err_msgs, pg_valid = validate_process_graph(process, collections_src, path_to_process_definitions)
         if not pg_valid:
             raise ValidationError("Invalid process graph: " + "".join(pg_err_msgs))
+
+        # check if conversion to evalscript is possible
+        result = convert_from_process_graph(process["process_graph"], encode_result=False)
+        if result[0]["invalid_node_id"] is not None:
+            raise ValidationError(f"""Unable to convert process graph to evalscript: {result[0]["invalid_node_id"]}""")
+
     except Exception as e:
         log(INFO, traceback.format_exc())
         raise ValidationError("Invalid process graph: " + str(e))
