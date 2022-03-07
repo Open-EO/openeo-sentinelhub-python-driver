@@ -9,7 +9,7 @@ import traceback
 from marshmallow import Schema, fields, validates, ValidationError, validate
 from openeo_pg_parser.validate import validate_process_graph
 from openeocollections import collections
-from pg_to_evalscript import convert_from_process_graph
+from processing.processing import check_process_graph_conversion_validity
 
 
 def validate_graph_with_known_processes(graph):
@@ -26,14 +26,27 @@ def validate_graph_with_known_processes(graph):
         if not pg_valid:
             raise ValidationError("Invalid process graph: " + "".join(pg_err_msgs))
 
-        # check if conversion to evalscript is possible
-        result = convert_from_process_graph(process["process_graph"], encode_result=False)
-        if result[0]["invalid_node_id"] is not None:
-            raise ValidationError(f"""Unable to convert process graph to evalscript: {result[0]["invalid_node_id"]}""")
-
     except Exception as e:
         log(INFO, traceback.format_exc())
         raise ValidationError("Invalid process graph: " + str(e))
+
+
+def validate_graph_conversion(graph):
+    try:
+        # check if conversion to evalscript is possible
+        invalid_node_id = check_process_graph_conversion_validity(copy.deepcopy(graph))
+        if invalid_node_id is not None:
+            raise ValidationError(
+                f"""Unable to convert process graph to evalscript: Invalid node id {invalid_node_id}"""
+            )
+    except Exception as e:
+        log(INFO, traceback.format_exc())
+        raise ValidationError("Unable to convert process graph to evalscript: " + str(e))
+
+
+def validate_graph(graph):
+    validate_graph_with_known_processes(graph)
+    validate_graph_conversion(graph)
 
 
 class PutProcessGraphSchema(Schema):
@@ -57,7 +70,7 @@ class PutProcessGraphSchema(Schema):
 
     @validates("process_graph")
     def validate_process_graph(self, graph):
-        validate_graph_with_known_processes(graph)
+        validate_graph(graph)
 
 
 class PatchProcessGraphsSchema(Schema):
@@ -72,7 +85,7 @@ class PatchProcessGraphsSchema(Schema):
 
     @validates("process_graph")
     def validate_process_graph(self, graph):
-        validate_graph_with_known_processes(graph)
+        validate_graph(graph)
 
 
 class ProcessSchema(Schema):
@@ -97,7 +110,7 @@ class ProcessSchema(Schema):
 
     @validates("process_graph")
     def validate_process_graph(self, graph):
-        validate_graph_with_known_processes(graph)
+        validate_graph(graph)
 
 
 class PostJobsSchema(Schema):
@@ -194,7 +207,7 @@ class PGValidationSchema(Schema):
 
     @validates("process_graph")
     def validate_process_graph(self, graph):
-        validate_graph_with_known_processes(graph)
+        validate_graph(graph)
 
 
 # CORRECT
