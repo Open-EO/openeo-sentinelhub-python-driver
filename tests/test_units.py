@@ -57,15 +57,15 @@ current_date = datetime.now()
             {"params": {"collection_id": "sentinel-2-l1c", "bands": ["B04"]}},
             (3465, 15625),
         ),
-           (
+        (
             {"params": {"collection_id": "sentinel-2-l1c", "bands": ["B07"]}},
             (1732, 7813),
         ),
-           (
+        (
             {"params": {"collection_id": "sentinel-2-l1c", "bands": ["B04", "B07"]}},
             (3465, 15625),
         ),
-            (
+        (
             {"params": {"collection_id": "corine-land-cover", "bands": ["B04"]}},
             (3465, 15625),
         ),
