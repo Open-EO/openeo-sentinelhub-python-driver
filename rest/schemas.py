@@ -36,9 +36,7 @@ def validate_graph_conversion(graph):
         # check if conversion to evalscript is possible
         invalid_node_id = check_process_graph_conversion_validity(copy.deepcopy(graph))
         if invalid_node_id is not None:
-            raise ValidationError(
-                f"""Unable to convert process graph to evalscript: Invalid node id {invalid_node_id}"""
-            )
+            raise ValidationError(f"""Invalid node id {invalid_node_id}""")
     except Exception as e:
         log(INFO, traceback.format_exc())
         raise ValidationError("Unable to convert process graph to evalscript: " + str(e))
