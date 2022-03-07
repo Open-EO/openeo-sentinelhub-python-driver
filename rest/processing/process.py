@@ -1,9 +1,10 @@
 import warnings
 from datetime import datetime, date, timedelta, timezone
 
-from sentinelhub import DataCollection, MimeType
+from sentinelhub import DataCollection, MimeType, BBox, CRS
 from sentinelhub.time_utils import parse_time
 from pg_to_evalscript import convert_from_process_graph
+from sentinelhub.geo_utils import bbox_to_dimensions
 
 from processing.openeo_process_errors import FormatUnsuitable
 from processing.sentinel_hub import SentinelHub
@@ -16,6 +17,7 @@ class Process:
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_WIDTH = 100
         self.DEFAULT_HEIGHT = 100
+        self.DEFAULT_RESOLUTION = (10, 10)
         self.sentinel_hub = SentinelHub()
 
         self.process_graph = process["process_graph"]
@@ -26,6 +28,19 @@ class Process:
         self.from_date, self.to_date = self.get_temporal_extent()
         self.mimetype = self.get_mimetype()
         self.width, self.height = self.get_dimensions()
+
+    @staticmethod
+    def _convert_bbox(spatial_extent):
+        crs = spatial_extent.get("crs", 4326)
+        return BBox(
+            (
+                spatial_extent["west"],
+                spatial_extent["south"],
+                spatial_extent["east"],
+                spatial_extent["north"],
+            ),
+            CRS(crs),  # we support whatever sentinelhub-py supports
+        )
 
     def get_evalscript(self):
         results = convert_from_process_graph(self.process_graph, encode_result=False)
@@ -159,16 +174,38 @@ class Process:
         return self.format_to_mimetype(save_result_node["arguments"]["format"])
 
     def get_dimensions(self):
-        warnings.warn("get_dimensions_from_process_graph when width and height are not specified not implemented yet!")
         load_collection_node = self.get_node_by_process_id("load_collection")
         spatial_extent = load_collection_node["arguments"]["spatial_extent"]
 
         if spatial_extent is None:
             return self.DEFAULT_WIDTH, self.DEFAULT_HEIGHT
 
-        width = spatial_extent.get("width", self.DEFAULT_WIDTH)
-        height = spatial_extent.get("height", self.DEFAULT_HEIGHT)
+        bbox = self._convert_bbox(spatial_extent)
+        resolution = self.get_highest_resolution()
+        width, height = bbox_to_dimensions(bbox, resolution)
         return width, height
+
+    def get_highest_resolution(self):
+        load_collection_node = self.get_node_by_process_id("load_collection")
+        collection = collections.get_collection(load_collection_node["arguments"]["id"])
+        selected_bands = self.get_input_bands()
+
+        if selected_bands is None:
+            selected_bands = collection["cube:dimensions"]["bands"]["values"]
+
+        bands_summaries = collection.get("summaries", {}).get("eo:bands")
+        if bands_summaries is None:
+            return self.DEFAULT_RESOLUTION
+
+        selected_bands_summaries = [
+            band_summary
+            for band_summary in bands_summaries
+            if any(band_summary for selected_band in selected_bands if selected_band == band_summary["name"])
+        ]
+        list_of_resolutions = [x["openeo:gsd"]["value"] for x in selected_bands_summaries]
+        highgest_x_resolution = min(list_of_resolutions, key=lambda x: x[0])[0]
+        highgest_y_resolution = min(list_of_resolutions, key=lambda x: x[1])[1]
+        return (highgest_x_resolution, highgest_y_resolution)
 
     def execute_sync(self):
         return self.sentinel_hub.create_processing_request(
