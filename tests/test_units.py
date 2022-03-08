@@ -1,6 +1,5 @@
 from setup_tests import *
-from pprint import pprint
-from datetime import datetime, timezone
+from datetime import datetime
 
 
 @pytest.fixture
