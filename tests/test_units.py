@@ -69,6 +69,18 @@ current_date = datetime.now()
             {"params": {"collection_id": "corine-land-cover", "bands": ["B04"]}},
             (3465, 15625),
         ),
+        (
+            {"params": {"collection_id": "sentinel-2-l1c", "bands": ["B04", "B07"], "width": 256}},
+            (256, 15625),
+        ),
+          (
+            {"params": {"collection_id": "sentinel-2-l1c", "bands": ["B04", "B07"], "height": 256}},
+            (3465, 256),
+        ),
+           (
+            {"params": {"collection_id": "sentinel-2-l1c", "bands": ["B04", "B07"],"width":256, "height": 256}},
+            (256, 256),
+        ),
     ],
 )
 def test_dimensions(get_process_graph, fixture, expected_result):
@@ -78,6 +90,10 @@ def test_dimensions(get_process_graph, fixture, expected_result):
                 collection_id=fixture["params"]["collection_id"],
                 bands=fixture["params"]["bands"],
             )
-        }
+        },
+        width=fixture["params"].get("width", None),
+        height=fixture["params"].get("height", None),
     )
-    assert expected_result == process.get_dimensions()
+
+    assert expected_result[0] == process.width
+    assert expected_result[1] == process.height
