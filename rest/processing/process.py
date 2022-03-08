@@ -205,9 +205,9 @@ class Process:
         list_of_resolutions = [
             x.get("openeo:gsd", {"value": self.DEFAULT_RESOLUTION}).get("value") for x in selected_bands_summaries
         ]
-        highgest_x_resolution = min(list_of_resolutions, key=lambda x: x[0])[0]
-        highgest_y_resolution = min(list_of_resolutions, key=lambda x: x[1])[1]
-        return (highgest_x_resolution, highgest_y_resolution)
+        highest_x_resolution = min(list_of_resolutions, key=lambda x: x[0])[0]
+        highest_y_resolution = min(list_of_resolutions, key=lambda x: x[1])[1]
+        return (highest_x_resolution, highest_y_resolution)
 
     def execute_sync(self):
         return self.sentinel_hub.create_processing_request(
