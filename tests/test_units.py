@@ -73,12 +73,12 @@ current_date = datetime.now()
             {"params": {"collection_id": "sentinel-2-l1c", "bands": ["B04", "B07"], "width": 256}},
             (256, 15625),
         ),
-          (
+        (
             {"params": {"collection_id": "sentinel-2-l1c", "bands": ["B04", "B07"], "height": 256}},
             (3465, 256),
         ),
-           (
-            {"params": {"collection_id": "sentinel-2-l1c", "bands": ["B04", "B07"],"width":256, "height": 256}},
+        (
+            {"params": {"collection_id": "sentinel-2-l1c", "bands": ["B04", "B07"], "width": 256, "height": 256}},
             (256, 256),
         ),
     ],

@@ -26,8 +26,8 @@ class Process:
         self.collection = self.get_collection()
         self.from_date, self.to_date = self.get_temporal_extent()
         self.mimetype = self.get_mimetype()
-        self.width = kwargs['width'] or self.get_dimensions()[0] 
-        self.height = kwargs['height'] or self.get_dimensions()[1] 
+        self.width = kwargs["width"] or self.get_dimensions()[0]
+        self.height = kwargs["height"] or self.get_dimensions()[1]
 
     @staticmethod
     def _convert_bbox(spatial_extent):
@@ -41,7 +41,7 @@ class Process:
             ),
             CRS(crs),  # we support whatever sentinelhub-py supports
         )
-    
+
     def get_evalscript(self):
         results = convert_from_process_graph(self.process_graph, encode_result=False)
         evalscript = results[0]["evalscript"]
