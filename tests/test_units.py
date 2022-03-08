@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 @pytest.fixture
 def get_process_graph():
-    def wrapped(bands=None, collection_id=None, temporal_extent=None):
+    def wrapped(bands=None, collection_id=None, spatial_extent=None):
         process_graph = {
             "loadco1": {
                 "process_id": "load_collection",
@@ -26,8 +26,8 @@ def get_process_graph():
         }
         if bands:
             process_graph["loadco1"]["arguments"]["bands"] = bands
-        if temporal_extent:
-            process_graph["loadco1"]["arguments"]["temporal_extent"] = temporal_extent
+        if spatial_extent:
+            process_graph["loadco1"]["arguments"]["spatial_extent"] = spatial_extent
         return process_graph
 
     return wrapped
@@ -81,6 +81,16 @@ current_date = datetime.now()
             {"params": {"collection_id": "sentinel-2-l1c", "bands": ["B04", "B07"], "width": 256, "height": 256}},
             (256, 256),
         ),
+        (
+            {
+                "params": {
+                    "collection_id": "sentinel-2-l1c",
+                    "bands": ["B04"],
+                    "spatial_extent": {"west": 12.725279, "east": 13.928021, "north": 41.417766, "south": 41.579378},
+                }
+            },
+            [10074, 1600],
+        ),
     ],
 )
 def test_dimensions(get_process_graph, fixture, expected_result):
@@ -89,6 +99,7 @@ def test_dimensions(get_process_graph, fixture, expected_result):
             "process_graph": get_process_graph(
                 collection_id=fixture["params"]["collection_id"],
                 bands=fixture["params"]["bands"],
+                spatial_extent=fixture["params"].get("spatial_extent", None),
             )
         },
         width=fixture["params"].get("width", None),

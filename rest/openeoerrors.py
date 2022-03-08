@@ -68,3 +68,11 @@ class Internal(OpenEOError):
 
     error_code = "Internal"
     http_code = 500
+
+
+class ProcessGraphComplexity(OpenEOError):
+    def __init__(self, reason):
+        self.message = f"The process is too complex for synchronous processing. Please use a batch job instead. {reason}"
+
+    error_code = "ProcessGraphComplexity"
+    http_code = 400

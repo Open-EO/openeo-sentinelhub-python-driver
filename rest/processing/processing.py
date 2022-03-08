@@ -2,6 +2,7 @@ from pg_to_evalscript import convert_from_process_graph
 
 from processing.process import Process
 from processing.sentinel_hub import SentinelHub
+from openeoerrors import ProcessGraphComplexity
 
 
 def check_process_graph_conversion_validity(process_graph):
@@ -11,6 +12,8 @@ def check_process_graph_conversion_validity(process_graph):
 
 def process_data_synchronously(process):
     p = Process(process)
+    if p.width > 2500 or p.height > 2500:
+        raise ProcessGraphComplexity("Dimensions exeed limit of 2500X2500")
     return p.execute_sync(), p.mimetype
 
 
