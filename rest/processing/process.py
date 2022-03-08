@@ -26,8 +26,8 @@ class Process:
         self.collection = self.get_collection()
         self.from_date, self.to_date = self.get_temporal_extent()
         self.mimetype = self.get_mimetype()
-        self.width = kwargs["width"] or self.get_dimensions()[0]
-        self.height = kwargs["height"] or self.get_dimensions()[1]
+        self.width = kwargs.get("width", None) or self.get_dimensions()[0]
+        self.height = kwargs.get("height", None) or self.get_dimensions()[1]
 
     @staticmethod
     def _convert_bbox(spatial_extent):
