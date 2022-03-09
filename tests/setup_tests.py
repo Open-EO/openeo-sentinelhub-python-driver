@@ -16,6 +16,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__f
 from app import app
 from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
 from openeocollections import collections
+from authentication.authentication import AuthenticationProvider, authentication_provider
 from processing.process import Process
 
 
@@ -39,6 +40,17 @@ def setup_function(function):
     JobsPersistence.ensure_queue_exists()
     ServicesPersistence.ensure_table_exists()
     collections.set_collections(load_collections_fixtures("fixtures/collection_information/"))
+    authentication_provider.set_testing_oidc_responses(
+        oidc_general_info_response={"userinfo_endpoint": ""},
+        oidc_user_info_response={
+            "sub": "example-id",
+            "eduperson_entitlement": [
+                "urn:mace:egi.eu:group:vo.openeo.cloud:role=vm_operator#aai.egi.eu",
+                "urn:mace:egi.eu:group:vo.openeo.cloud:role=member#aai.egi.eu",
+                "urn:mace:egi.eu:group:vo.openeo.cloud:role=early_adopter#aai.egi.eu",
+            ],
+        },
+    )
 
 
 def teardown_function(function):
@@ -46,3 +58,4 @@ def teardown_function(function):
     JobsPersistence.clear_table()
     ServicesPersistence.clear_table()
     collections.set_collections(None)
+    authentication_provider.is_testing = False

@@ -608,7 +608,6 @@ def add_job_to_queue(job_id):
 
 
 @app.route("/services", methods=["GET", "POST"])
-@authentication_provider.with_bearer_auth
 def api_services():
     if flask.request.method == "GET":
         services = []
@@ -664,7 +663,6 @@ def api_services():
 
 
 @app.route("/services/<service_id>", methods=["GET", "PATCH", "DELETE"])
-@authentication_provider.with_bearer_auth
 def api_service(service_id):
     record = ServicesPersistence.get_by_id(service_id)
     if record is None:
