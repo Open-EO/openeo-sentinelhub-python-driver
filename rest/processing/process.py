@@ -13,7 +13,7 @@ from openeoerrors import CollectionNotFound, Internal
 
 
 class Process:
-    def __init__(self, process, **kwargs):
+    def __init__(self, process, width=None, height=None):
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_WIDTH = 100
         self.DEFAULT_HEIGHT = 100
@@ -26,8 +26,8 @@ class Process:
         self.collection = self.get_collection()
         self.from_date, self.to_date = self.get_temporal_extent()
         self.mimetype = self.get_mimetype()
-        self.width = kwargs.get("width", None) or self.get_dimensions()[0]
-        self.height = kwargs.get("height", None) or self.get_dimensions()[1]
+        self.width = width or self.get_dimensions()[0]
+        self.height = height or self.get_dimensions()[1]
 
     @staticmethod
     def _convert_bbox(spatial_extent):
