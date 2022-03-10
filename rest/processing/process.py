@@ -99,7 +99,10 @@ class Process:
         ):
             sh_py_geometry = Geometry.from_geojson(spatial_extent)
             return (
-                (sh_py_geometry.bbox.lower_left, sh_py_geometry.bbox.upper_right),
+                (
+                    *sh_py_geometry.bbox.lower_left,
+                    *sh_py_geometry.bbox.upper_right,
+                ),
                 self.DEFAULT_EPSG_CODE,
                 spatial_extent,
             )
