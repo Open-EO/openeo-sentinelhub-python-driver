@@ -27,7 +27,7 @@ class SentinelHub:
         mimetype=None,
     ):
         if width > 2500 or height > 2500:
-            raise ProcessGraphComplexity("Dimensions exeed limit of 2500X2500")
+            raise ProcessGraphComplexity("Dimensions exceed limit of 2500X2500")
 
         request_raw_dict = self.get_request_dictionary(
             bbox=bbox,
