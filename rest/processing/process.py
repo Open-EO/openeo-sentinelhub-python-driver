@@ -98,7 +98,11 @@ class Process:
             and spatial_extent["type"] in ("Polygon", "MultiPolygon")
         ):
             sh_py_geometry = Geometry.from_geojson(spatial_extent)
-            return (sh_py_geometry.bbox.lower_left, sh_py_geometry.bbox.upper_right), self.DEFAULT_EPSG_CODE, spatial_extent
+            return (
+                (sh_py_geometry.bbox.lower_left, sh_py_geometry.bbox.upper_right),
+                self.DEFAULT_EPSG_CODE,
+                spatial_extent,
+            )
         else:
             epsg_code = spatial_extent.get("crs", self.DEFAULT_EPSG_CODE)
             east = spatial_extent["east"]
