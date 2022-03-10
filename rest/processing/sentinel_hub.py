@@ -25,7 +25,6 @@ class SentinelHub:
         height=None,
         mimetype=None,
     ):
-
         request_raw_dict = self.get_request_dictionary(
             bbox=bbox,
             geometry=geometry,

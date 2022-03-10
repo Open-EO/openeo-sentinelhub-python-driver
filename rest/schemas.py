@@ -11,7 +11,7 @@ from openeo_pg_parser.validate import validate_process_graph
 from openeocollections import collections
 
 
-def validate_graph_with_known_processes(graph):
+def validate_graph_with_known_processes(graph, parameters=None):
     path_to_current_file = os.path.realpath(__file__)
     current_directory = os.path.dirname(path_to_current_file)
     collections_src = collections.get_collections()
@@ -22,7 +22,9 @@ def validate_graph_with_known_processes(graph):
         process = {"process_graph": copy.deepcopy(graph)}
 
         # signature of validate_process_graph is changed in latest version on github - return values are switched
-        pg_err_msgs, pg_valid = validate_process_graph(process, collections_src, path_to_process_definitions)
+        pg_err_msgs, pg_valid = validate_process_graph(
+            process, collections_src, path_to_process_definitions, parameters=parameters
+        )
         if not pg_valid:
             raise ValidationError("Invalid process graph: " + "".join(pg_err_msgs))
     except Exception as e:
@@ -94,6 +96,26 @@ class ProcessSchema(Schema):
         validate_graph_with_known_processes(graph)
 
 
+class ProcessSchemaWithParameters(ProcessSchema):
+    """
+    Request body
+    POST /jobs
+    'process' field
+    """
+
+    @validates("process_graph")
+    def validate_process_graph(self, graph):
+        validate_graph_with_known_processes(
+            graph,
+            parameters={
+                "spatial_extent_west": 1,
+                "spatial_extent_south": 2,
+                "spatial_extent_east": 3,
+                "spatial_extent_north": 4,
+            },
+        )
+
+
 class PostJobsSchema(Schema):
     """
     Request body
@@ -128,7 +150,7 @@ class PostServicesSchema(Schema):
 
     title = fields.Str(allow_none=True)
     description = fields.Str(allow_none=True)
-    process = fields.Nested(ProcessSchema, required=True)
+    process = fields.Nested(ProcessSchemaWithParameters, required=True)
     service_type = fields.Str(required=True, data_key="type")
     enabled = fields.Bool(allow_none=True)
     configuration = fields.Dict(allow_none=True)
@@ -149,7 +171,7 @@ class PatchServicesSchema(Schema):
 
     title = fields.Str(allow_none=True)
     description = fields.Str(allow_none=True)
-    process = fields.Nested(ProcessSchema, allow_none=True)
+    process = fields.Nested(ProcessSchemaWithParameters, allow_none=True)
     enabled = fields.Bool(allow_none=True)
     parameters = fields.Dict(allow_none=True)
     plan = fields.Str(allow_none=True)

@@ -28,7 +28,7 @@ class Process:
         self.width, self.height = self.get_dimensions()
 
     def get_evalscript(self):
-        results = convert_from_process_graph(self.process_graph, encode_result=False)
+        results = convert_from_process_graph(self.process_graph, sample_type="UINT8", encode_result=False)
         evalscript = results[0]["evalscript"]
 
         if self.get_input_bands() is None:
