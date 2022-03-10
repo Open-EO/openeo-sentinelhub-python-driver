@@ -10,8 +10,8 @@ def get_process_graph():
                 "process_id": "load_collection",
                 "arguments": {
                     "id": collection_id,
-                    "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
                     "temporal_extent": ["2017-01-01", "2017-02-01"],
+                    "spatial_extent": spatial_extent,
                 },
             },
             "result1": {
@@ -53,31 +53,76 @@ current_date = datetime.now()
     "fixture, expected_result",
     [
         (
-            {"params": {"collection_id": "sentinel-2-l1c", "bands": ["B04"]}},
-            (3465, 15625),
+            {
+                "params": {
+                    "collection_id": "sentinel-2-l1c",
+                    "bands": ["B04"],
+                }
+            },
+            (14627, 2456420),
         ),
         (
-            {"params": {"collection_id": "sentinel-2-l1c", "bands": ["B07"]}},
+            {
+                "params": {
+                    "collection_id": "sentinel-2-l1c",
+                    "bands": ["B07"],
+                    "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                }
+            },
             (1732, 7813),
         ),
         (
-            {"params": {"collection_id": "sentinel-2-l1c", "bands": ["B04", "B07"]}},
+            {
+                "params": {
+                    "collection_id": "sentinel-2-l1c",
+                    "bands": ["B04", "B07"],
+                    "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                }
+            },
             (3465, 15625),
         ),
         (
-            {"params": {"collection_id": "corine-land-cover", "bands": ["B04"]}},
+            {
+                "params": {
+                    "collection_id": "corine-land-cover",
+                    "bands": ["B04"],
+                    "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                }
+            },
             (3465, 15625),
         ),
         (
-            {"params": {"collection_id": "sentinel-2-l1c", "bands": ["B04", "B07"], "width": 256}},
+            {
+                "params": {
+                    "collection_id": "sentinel-2-l1c",
+                    "bands": ["B04", "B07"],
+                    "width": 256,
+                    "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                }
+            },
             (256, 15625),
         ),
         (
-            {"params": {"collection_id": "sentinel-2-l1c", "bands": ["B04", "B07"], "height": 256}},
+            {
+                "params": {
+                    "collection_id": "sentinel-2-l1c",
+                    "bands": ["B04", "B07"],
+                    "height": 256,
+                    "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                }
+            },
             (3465, 256),
         ),
         (
-            {"params": {"collection_id": "sentinel-2-l1c", "bands": ["B04", "B07"], "width": 256, "height": 256}},
+            {
+                "params": {
+                    "collection_id": "sentinel-2-l1c",
+                    "bands": ["B04", "B07"],
+                    "width": 256,
+                    "height": 256,
+                    "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                }
+            },
             (256, 256),
         ),
         (
@@ -89,6 +134,27 @@ current_date = datetime.now()
                 }
             },
             [10074, 1600],
+        ),
+        (
+            {
+                "params": {
+                    "collection_id": "sentinel-2-l1c",
+                    "bands": ["B04"],
+                    "spatial_extent": {
+                        "type": "Polygon",
+                        "coordinates": [
+                            [
+                                [12.786158, 41.939125],
+                                [12.795811, 41.942638],
+                                [12.810235, 41.938282],
+                                [12.799845, 41.933699],
+                                [12.786158, 41.939125],
+                            ]
+                        ],
+                    },
+                }
+            },
+            [202, 94],
         ),
     ],
 )
