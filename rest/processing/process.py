@@ -197,13 +197,10 @@ class Process:
         if bands_summaries is None:
             return self.DEFAULT_RESOLUTION
 
-        selected_bands_summaries = [
-            band_summary
-            for band_summary in bands_summaries
-            if any(band_summary for selected_band in selected_bands if selected_band == band_summary["name"])
-        ]
         list_of_resolutions = [
-            x.get("openeo:gsd", {"value": self.DEFAULT_RESOLUTION}).get("value") for x in selected_bands_summaries
+            band_summary.get("openeo:gsd", {}).get("value", self.DEFAULT_RESOLUTION)
+            for band_summary in bands_summaries
+            if band_summary["name"] in selected_bands
         ]
         highest_x_resolution = min(list_of_resolutions, key=lambda x: x[0])[0]
         highest_y_resolution = min(list_of_resolutions, key=lambda x: x[1])[1]
