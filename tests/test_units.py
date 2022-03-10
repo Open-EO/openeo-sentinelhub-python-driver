@@ -271,4 +271,3 @@ def test_dimensions(get_process_graph, fixture, expected_result):
 
     assert expected_result[0] == process.width
     assert expected_result[1] == process.height
->>>>>>> develop

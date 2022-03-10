@@ -9,8 +9,8 @@ def check_process_graph_conversion_validity(process_graph):
     return results[0]["invalid_node_id"]
 
 
-def process_data_synchronously(process):
-    p = Process(process)
+def process_data_synchronously(process, width=None, height=None):
+    p = Process(process, width=width, height=height)
     return p.execute_sync(), p.mimetype
 
 

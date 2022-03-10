@@ -9,6 +9,7 @@ import traceback
 from marshmallow import Schema, fields, validates, ValidationError, validate
 from openeo_pg_parser.validate import validate_process_graph
 from openeocollections import collections
+from const import global_parameters_xyz
 
 
 def validate_graph_with_known_processes(graph, parameters=None):
@@ -107,12 +108,7 @@ class ProcessSchemaWithParameters(ProcessSchema):
     def validate_process_graph(self, graph):
         validate_graph_with_known_processes(
             graph,
-            parameters={
-                "spatial_extent_west": 1,
-                "spatial_extent_south": 2,
-                "spatial_extent_east": 3,
-                "spatial_extent_north": 4,
-            },
+            parameters=global_parameters_xyz,
         )
 
 

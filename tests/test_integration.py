@@ -119,7 +119,7 @@ def get_example_process_graph_with_bands_and_collection():
 
 @pytest.fixture
 def service_factory(app_client):
-    def wrapped(process_graph, title="MyService", service_type="xyz"):
+    def wrapped(process_graph, title="MyService", service_type="xyz", tile_size=None):
         data = {
             "title": title,
             "process": {
@@ -127,6 +127,8 @@ def service_factory(app_client):
             },
             "type": service_type,
         }
+        if tile_size is not None:
+            data["configuration"] = {"tile_size": tile_size}
         r = app_client.post("/services", data=json.dumps(data), content_type="application/json")
         assert r.status_code == 201, r.data
         service_id = r.headers["OpenEO-Identifier"]
@@ -602,7 +604,12 @@ def test_xyz_service(app_client, service_factory, example_process_graph_with_var
     assert r.data == expected_data
 
 
-def test_xyz_service_2(app_client, service_factory, get_expected_data, authorization_header):
+@responses.activate
+@pytest.mark.parametrize(
+    "tile_size",
+    [None, 256, 512],
+)
+def test_xyz_service_2(app_client, service_factory, get_expected_data, authorization_header, tile_size):
     process_graph = {
         "loadco1": {
             "process_id": "load_collection",
@@ -646,25 +653,39 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
         },
         "result1": {
             "process_id": "save_result",
-            "arguments": {"data": {"from_node": "linear1"}, "format": "gtiff"},
+            "arguments": {"data": {"from_node": "linear1"}, "format": "jpeg"},
             "result": True,
         },
     }
 
-    service_id = service_factory(process_graph, title="Test XYZ service", service_type="xyz")
+    service_id = service_factory(process_graph, title="Test XYZ service", service_type="xyz", tile_size=tile_size)
 
     zoom, tx, ty = 14, 8660, 5908
 
-    # No auth currently
+    # AUTHENTICATION CURRENTLY NOT IMPLEMENTED
     # r = app_client.get(f"/service/xyz/{service_id}/{int(zoom)}/{int(tx)}/{int(ty)}")
     # assert r.status_code == 401, r.data
+
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/oauth/token",
+        body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
+    )
+    responses.add(
+        responses.POST,
+        re.compile(".*"),
+    )
 
     r = app_client.get(
         f"/service/xyz/{service_id}/{int(zoom)}/{int(tx)}/{int(ty)}", headers={"Authorization": authorization_header}
     )
     assert r.status_code == 200, r.data
+    # Takes too long to process! We'll check requests instead.
     # expected_data = get_expected_data("tile256x256ndvi.jpeg")
     # assert r.data == expected_data, "File is not the same!"
+    payload = json.loads(responses.calls[len(responses.calls) - 1].request.body)
+    assert payload["output"]["width"] == tile_size if tile_size is not None else 256
+    assert payload["output"]["height"] == tile_size if tile_size is not None else 256
 
 
 @pytest.mark.skip("Synchronous job endpoint does not support the testing process graphs currently.")
