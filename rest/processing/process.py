@@ -1,9 +1,10 @@
 import warnings
 from datetime import datetime, date, timedelta, timezone
 
-from sentinelhub import DataCollection, MimeType
+from sentinelhub import DataCollection, MimeType, BBox, Geometry, CRS
 from sentinelhub.time_utils import parse_time
 from pg_to_evalscript import convert_from_process_graph
+from sentinelhub.geo_utils import bbox_to_dimensions
 
 from processing.openeo_process_errors import FormatUnsuitable
 from processing.sentinel_hub import SentinelHub
@@ -12,20 +13,24 @@ from openeoerrors import CollectionNotFound, Internal
 
 
 class Process:
-    def __init__(self, process):
+    def __init__(self, process, width=None, height=None):
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_WIDTH = 100
         self.DEFAULT_HEIGHT = 100
+        self.DEFAULT_RESOLUTION = (10, 10)
         self.sentinel_hub = SentinelHub()
 
         self.process_graph = process["process_graph"]
-
         self.evalscript = self.get_evalscript()
         self.bbox, self.epsg_code, self.geometry = self.get_bounds()
         self.collection = self.get_collection()
         self.from_date, self.to_date = self.get_temporal_extent()
         self.mimetype = self.get_mimetype()
-        self.width, self.height = self.get_dimensions()
+        self.width = width or self.get_dimensions()[0]
+        self.height = height or self.get_dimensions()[1]
+
+    def convert_to_sh_bbox(self):
+        return BBox(self.bbox, CRS(self.epsg_code))
 
     def get_evalscript(self):
         results = convert_from_process_graph(self.process_graph, encode_result=False)
@@ -84,13 +89,23 @@ class Process:
         spatial_extent = load_collection_node["arguments"]["spatial_extent"]
 
         if spatial_extent is None:
-            return (0, -90, 360, 90), self.DEFAULT_EPSG_CODE, None
+            collection = collections.get_collection(load_collection_node["arguments"]["id"])
+            bbox = collection["extent"]["spatial"]["bbox"][0]
+            return tuple(bbox), self.DEFAULT_EPSG_CODE, None
         elif (
             isinstance(spatial_extent, dict)
             and "type" in spatial_extent
             and spatial_extent["type"] in ("Polygon", "MultiPolygon")
         ):
-            return None, self.DEFAULT_EPSG_CODE, spatial_extent
+            sh_py_geometry = Geometry.from_geojson(spatial_extent)
+            return (
+                (
+                    *sh_py_geometry.bbox.lower_left,
+                    *sh_py_geometry.bbox.upper_right,
+                ),
+                self.DEFAULT_EPSG_CODE,
+                spatial_extent,
+            )
         else:
             epsg_code = spatial_extent.get("crs", self.DEFAULT_EPSG_CODE)
             east = spatial_extent["east"]
@@ -159,16 +174,32 @@ class Process:
         return self.format_to_mimetype(save_result_node["arguments"]["format"])
 
     def get_dimensions(self):
-        warnings.warn("get_dimensions_from_process_graph when width and height are not specified not implemented yet!")
-        load_collection_node = self.get_node_by_process_id("load_collection")
-        spatial_extent = load_collection_node["arguments"]["spatial_extent"]
-
-        if spatial_extent is None:
-            return self.DEFAULT_WIDTH, self.DEFAULT_HEIGHT
-
-        width = spatial_extent.get("width", self.DEFAULT_WIDTH)
-        height = spatial_extent.get("height", self.DEFAULT_HEIGHT)
+        spatial_extent = self.bbox
+        bbox = self.convert_to_sh_bbox()
+        resolution = self.get_highest_resolution()
+        width, height = bbox_to_dimensions(bbox, resolution)
         return width, height
+
+    def get_highest_resolution(self):
+        load_collection_node = self.get_node_by_process_id("load_collection")
+        collection = collections.get_collection(load_collection_node["arguments"]["id"])
+        selected_bands = self.get_input_bands()
+
+        if selected_bands is None:
+            selected_bands = collection["cube:dimensions"]["bands"]["values"]
+
+        bands_summaries = collection.get("summaries", {}).get("eo:bands")
+        if bands_summaries is None:
+            return self.DEFAULT_RESOLUTION
+
+        list_of_resolutions = [
+            band_summary.get("openeo:gsd", {}).get("value", self.DEFAULT_RESOLUTION)
+            for band_summary in bands_summaries
+            if band_summary["name"] in selected_bands
+        ]
+        highest_x_resolution = min(list_of_resolutions, key=lambda x: x[0])[0]
+        highest_y_resolution = min(list_of_resolutions, key=lambda x: x[1])[1]
+        return (highest_x_resolution, highest_y_resolution)
 
     def execute_sync(self):
         return self.sentinel_hub.create_processing_request(
