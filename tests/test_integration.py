@@ -87,7 +87,7 @@ def get_example_process_graph_with_bands_and_collection():
                 "arguments": {
                     "id": collection_id,
                     "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
-                    "temporal_extent": ["2019-08-16", "2019-08-18"],
+                    "temporal_extent": ["2017-12-31", "2018-01-07"],
                     "bands": bands,
                 },
             },
@@ -622,7 +622,7 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
                     "south": {"from_parameter": "spatial_extent_south"},
                 },
                 "temporal_extent": ["2019-08-01", "2019-08-18"],
-                "bands": ["B01", "B02", "B03"]
+                "bands": ["B01", "B02", "B03"],
             },
         },
         "reduce1": {
