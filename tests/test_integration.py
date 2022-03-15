@@ -622,6 +622,7 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
                     "south": {"from_parameter": "spatial_extent_south"},
                 },
                 "temporal_extent": ["2019-08-01", "2019-08-18"],
+                "bands": ["B01", "B02", "B03"]
             },
         },
         "reduce1": {
@@ -680,9 +681,10 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
         f"/service/xyz/{service_id}/{int(zoom)}/{int(tx)}/{int(ty)}", headers={"Authorization": authorization_header}
     )
     assert r.status_code == 200, r.data
-    # Takes too long to process! We'll check requests instead.
+    # NDVI process currently not implemented.
     # expected_data = get_expected_data("tile256x256ndvi.jpeg")
     # assert r.data == expected_data, "File is not the same!"
+
     payload = json.loads(responses.calls[len(responses.calls) - 1].request.body)
     assert payload["output"]["width"] == tile_size if tile_size is not None else 256
     assert payload["output"]["height"] == tile_size if tile_size is not None else 256

@@ -384,6 +384,7 @@ def api_result():
             )
 
         response = flask.make_response(data, 200)
+        response.mime_type = mime_type
         response.headers["Content-Type"] = mime_type
         response.headers["OpenEO-Costs"] = None
 
@@ -731,8 +732,10 @@ def api_execute_service(service_id, zoom, tx, ty):
     process_info = json.loads(record["process"])
 
     inject_variables_in_process_graph(process_info["process_graph"], variables)
-    data, _ = process_data_synchronously(process_info, width=tile_size, height=tile_size)
-    return data
+    data, mime_type = process_data_synchronously(process_info, width=tile_size, height=tile_size)
+    response = flask.make_response(data, 200)
+    response.mimetype = mime_type
+    return response
 
 
 @app.route("/processes", methods=["GET"])
