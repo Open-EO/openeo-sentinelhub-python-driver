@@ -25,3 +25,9 @@ default_sample_type_for_mimetype = {
     MimeType.JPG: SampleType.UINT8,
     MimeType.TIFF: SampleType.FLOAT32,
 }
+
+supported_sample_types = {
+    MimeType.PNG: [SampleType.UINT8, SampleType.UINT16],
+    MimeType.JPG: [SampleType.UINT8],
+    MimeType.TIFF: [SampleType.UINT8, SampleType.UINT16, SampleType.FLOAT32],
+}

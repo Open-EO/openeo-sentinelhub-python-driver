@@ -8,7 +8,7 @@ from sentinelhub.geo_utils import bbox_to_dimensions
 
 from processing.openeo_process_errors import FormatUnsuitable
 from processing.sentinel_hub import SentinelHub
-from processing.const import SampleType, default_sample_type_for_mimetype
+from processing.const import SampleType, default_sample_type_for_mimetype, supported_sample_types
 from openeocollections import collections
 from openeoerrors import CollectionNotFound, Internal, ProcessParameterInvalid
 
@@ -179,11 +179,19 @@ class Process:
 
     def get_sample_type(self):
         save_result_node = self.get_node_by_process_id("save_result")
-        if save_result_node.get("options", {}).get("datatype"):
-            datatype = save_result_node["options"]["datatype"]
+
+        if save_result_node["arguments"].get("options", {}).get("datatype"):
+            datatype = save_result_node["arguments"]["options"]["datatype"]
             sample_type = SampleType.from_gdal_datatype(datatype)
             if not sample_type:
-                raise ProcessParameterInvalid("options", "save_result")
+                raise ProcessParameterInvalid("options", "save_result", f"{datatype} is not a supported 'datatype'.")
+            if sample_type not in supported_sample_types[self.mimetype]:
+                output_format = save_result_node["arguments"]["format"]
+                raise ProcessParameterInvalid(
+                    "options", "save_result", f"{datatype} is not a valid 'datatype' for format {output_format}."
+                )
+            return sample_type
+
         return default_sample_type_for_mimetype.get(self.mimetype, SampleType.UINT8)
 
     def get_dimensions(self):
