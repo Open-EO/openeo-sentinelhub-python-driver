@@ -49,6 +49,7 @@ def test_collections(get_process_graph, collection_id):
     assert process.evalscript.input_bands == example_bands
 
 
+# @responses.activate
 @pytest.mark.parametrize(
     "oidc_user_info_response,headers,should_raise_error,error,func",
     [
@@ -100,19 +101,38 @@ def test_authentication_provider(oidc_user_info_response, headers, should_raise_
     authentication_provider = AuthenticationProvider(
         oidc_providers=[{"id": "egi", "issuer": "https://aai.egi.eu/oidc/"}]
     )
-    authentication_provider.set_testing_oidc_responses(
-        oidc_general_info_response={"userinfo_endpoint": ""}, oidc_user_info_response=oidc_user_info_response
-    )
 
     if func is None:
         func = lambda: True
 
     with app.test_request_context("/", headers=headers):
+        # Decorating test_authentication_provider outside this context with responses.activate causes an error
         if should_raise_error:
-            with pytest.raises(error) as e:
-                authentication_provider.with_bearer_auth(func)()
+
+            @responses.activate
+            def execute():
+                responses.add(
+                    responses.GET,
+                    "https://aai.egi.eu/oidc/.well-known/openid-configuration",
+                    json={"userinfo_endpoint": "http://dummy_userinfo_endpoint"},
+                )
+                responses.add(responses.GET, "http://dummy_userinfo_endpoint", json=oidc_user_info_response)
+                with pytest.raises(error) as e:
+                    authentication_provider.with_bearer_auth(func)()
+
         else:
-            assert authentication_provider.with_bearer_auth(func)()
+
+            @responses.activate
+            def execute():
+                responses.add(
+                    responses.GET,
+                    "https://aai.egi.eu/oidc/.well-known/openid-configuration",
+                    json={"userinfo_endpoint": "http://dummy_userinfo_endpoint"},
+                )
+                responses.add(responses.GET, "http://dummy_userinfo_endpoint", json=oidc_user_info_response)
+                assert authentication_provider.with_bearer_auth(func)()
+
+        execute()
 
 
 def test_inject_variables_in_process_graph():

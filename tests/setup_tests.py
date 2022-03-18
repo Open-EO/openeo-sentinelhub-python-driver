@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import re
+from functools import wraps
 
 import pytest
 import requests
@@ -34,23 +35,43 @@ def load_collections_fixtures(folder, wildcard="*"):
     return collections
 
 
+def with_mocked_auth(func):
+    """
+    Adds mocked responses for OIDC auth with EGI client. Passes through other requests.
+    """
+
+    @wraps(func)
+    @responses.activate
+    def decorated_function(*args, **kwargs):
+        responses.add(
+            responses.GET,
+            "https://aai.egi.eu/oidc/.well-known/openid-configuration",
+            json={"userinfo_endpoint": "http://dummy_userinfo_endpoint"},
+        )
+        responses.add(
+            responses.GET,
+            "http://dummy_userinfo_endpoint",
+            json={
+                "sub": "example-id",
+                "eduperson_entitlement": [
+                    "urn:mace:egi.eu:group:vo.openeo.cloud:role=vm_operator#aai.egi.eu",
+                    "urn:mace:egi.eu:group:vo.openeo.cloud:role=member#aai.egi.eu",
+                    "urn:mace:egi.eu:group:vo.openeo.cloud:role=early_adopter#aai.egi.eu",
+                ],
+            },
+        )
+        responses.add_passthru(re.compile(".*"))
+        return func(*args, **kwargs)
+
+    return decorated_function
+
+
 def setup_function(function):
     ProcessGraphsPersistence.ensure_table_exists()
     JobsPersistence.ensure_table_exists()
     JobsPersistence.ensure_queue_exists()
     ServicesPersistence.ensure_table_exists()
     collections.set_collections(load_collections_fixtures("fixtures/collection_information/"))
-    authentication_provider.set_testing_oidc_responses(
-        oidc_general_info_response={"userinfo_endpoint": ""},
-        oidc_user_info_response={
-            "sub": "example-id",
-            "eduperson_entitlement": [
-                "urn:mace:egi.eu:group:vo.openeo.cloud:role=vm_operator#aai.egi.eu",
-                "urn:mace:egi.eu:group:vo.openeo.cloud:role=member#aai.egi.eu",
-                "urn:mace:egi.eu:group:vo.openeo.cloud:role=early_adopter#aai.egi.eu",
-            ],
-        },
-    )
 
 
 def teardown_function(function):
@@ -58,4 +79,3 @@ def teardown_function(function):
     JobsPersistence.clear_table()
     ServicesPersistence.clear_table()
     collections.set_collections(None)
-    authentication_provider.is_testing = False

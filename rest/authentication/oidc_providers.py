@@ -1,14 +1,5 @@
 oidc_providers = [
     {
-        "default_client": {
-            "grant_types": [
-                "authorization_code+pkce",
-                "urn:ietf:params:oauth:grant-type:device_code+pkce",
-                "refresh_token",
-            ],
-            "id": "vito-default-client",
-            "redirect_urls": ["https://editor.openeo.org", "http://localhost:1410/"],
-        },
         "default_clients": [
             {
                 "grant_types": [

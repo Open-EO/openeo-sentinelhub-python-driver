@@ -217,6 +217,7 @@ def test_root(app_client):
     assert expected_endpoint in actual["endpoints"]
 
 
+@with_mocked_auth
 def test_manage_batch_jobs(app_client, example_authorization_header_with_oidc):
     """
     - test POST "/jobs"
@@ -371,6 +372,7 @@ def test_manage_batch_jobs(app_client, example_authorization_header_with_oidc):
     assert r.status_code == 404
 
 
+@with_mocked_auth
 def test_process_batch_job(app_client, example_process_graph, example_authorization_header_with_oidc):
     """
     - test /jobs/job_id/results endpoints
@@ -415,6 +417,7 @@ def test_process_batch_job(app_client, example_process_graph, example_authorizat
     assert r.status_code == 204
 
 
+@with_mocked_auth
 def test_result_not_encoded_secret(app_client, example_process_graph, example_authorization_header_with_oidc):
     """
     - test /result endpoint
@@ -830,6 +833,7 @@ def test_run_test_process_graphs(app_client, process_graph_filename, authorizati
     assert r.status_code == 200, r.data
 
 
+@with_mocked_auth
 def test_process_graph_api(app_client, example_process_graph, example_authorization_header_with_oidc):
     """
     Get /process_graphs/ (must be empty), test CRUD operations.
@@ -1100,6 +1104,7 @@ def test_fetching_correct_collection_type(app_client, collection_id, collection_
         assert json.loads(responses.calls[0].request.body)["input"]["data"][0]["type"] == collection_type
 
 
+@with_mocked_auth
 @pytest.mark.parametrize(
     "collection_id,bands,should_raise_error",
     [
