@@ -55,8 +55,8 @@ class JobLocked(OpenEOError):
 
 
 class ProcessUnsupported(OpenEOError):
-    def __init__(self, unsupported_process):
-        self.message = f"Process with identifier '{process}' is not available in namespace 'Sentinel Hub'."  # Not sure what the namespace is supposed to be
+    def __init__(self, process_id):
+        self.message = f"Process with identifier '{process_id}' is not available in namespace 'Sentinel Hub'."  # Not sure what the namespace is supposed to be
 
     error_code = "ProcessUnsupported"
     http_code = 400
@@ -68,6 +68,14 @@ class Internal(OpenEOError):
 
     error_code = "Internal"
     http_code = 500
+
+
+class ServiceNotFound(OpenEOError):
+    def __init__(self, service_id):
+        self.message = f"Service '{service_id}' does not exist."
+
+    error_code = "ServiceNotFound"
+    http_code = 404
 
 
 class ProcessGraphComplexity(OpenEOError):

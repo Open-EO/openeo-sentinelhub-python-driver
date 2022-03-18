@@ -16,8 +16,6 @@ from openeoerrors import CollectionNotFound, Internal, ProcessParameterInvalid
 class Process:
     def __init__(self, process, width=None, height=None):
         self.DEFAULT_EPSG_CODE = 4326
-        self.DEFAULT_WIDTH = 100
-        self.DEFAULT_HEIGHT = 100
         self.DEFAULT_RESOLUTION = (10, 10)
         self.sentinel_hub = SentinelHub()
 

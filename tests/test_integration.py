@@ -87,7 +87,7 @@ def get_example_process_graph_with_bands_and_collection():
                 "arguments": {
                     "id": collection_id,
                     "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
-                    "temporal_extent": ["2019-08-16", "2019-08-18"],
+                    "temporal_extent": ["2017-12-31", "2018-01-07"],
                     "bands": bands,
                 },
             },
@@ -119,7 +119,7 @@ def get_example_process_graph_with_bands_and_collection():
 
 @pytest.fixture
 def service_factory(app_client):
-    def wrapped(process_graph, title="MyService", service_type="xyz"):
+    def wrapped(process_graph, title="MyService", service_type="xyz", tile_size=None):
         data = {
             "title": title,
             "process": {
@@ -127,6 +127,8 @@ def service_factory(app_client):
             },
             "type": service_type,
         }
+        if tile_size is not None:
+            data["configuration"] = {"tile_size": tile_size}
         r = app_client.post("/services", data=json.dumps(data), content_type="application/json")
         assert r.status_code == 201, r.data
         service_id = r.headers["OpenEO-Identifier"]
@@ -602,28 +604,31 @@ def test_xyz_service(app_client, service_factory, example_process_graph_with_var
     assert r.data == expected_data
 
 
-@pytest.mark.skip("temporary disable")
-def test_xyz_service_2(app_client, service_factory, get_expected_data, authorization_header):
+@responses.activate
+@pytest.mark.parametrize(
+    "tile_size",
+    [None, 256, 512],
+)
+def test_xyz_service_2(app_client, service_factory, get_expected_data, authorization_header, tile_size):
     process_graph = {
         "loadco1": {
             "process_id": "load_collection",
             "arguments": {
-                "id": "S2L1C",
+                "id": "sentinel-2-l1c",
                 "spatial_extent": {
-                    "west": {"variable_id": "spatial_extent_west"},
-                    "east": {"variable_id": "spatial_extent_east"},
-                    "north": {"variable_id": "spatial_extent_north"},
-                    "south": {"variable_id": "spatial_extent_south"},
+                    "west": {"from_parameter": "spatial_extent_west"},
+                    "east": {"from_parameter": "spatial_extent_east"},
+                    "north": {"from_parameter": "spatial_extent_north"},
+                    "south": {"from_parameter": "spatial_extent_south"},
                 },
                 "temporal_extent": ["2019-08-01", "2019-08-18"],
-                "options": {"width": {"variable_id": "tile_size"}, "height": {"variable_id": "tile_size"}},
+                "bands": ["B01", "B02", "B03"],
             },
         },
-        "ndvi1": {"process_id": "ndvi", "arguments": {"data": {"from_node": "loadco1"}}},
         "reduce1": {
             "process_id": "reduce_dimension",
             "arguments": {
-                "data": {"from_node": "ndvi1"},
+                "data": {"from_node": "loadco1"},
                 "reducer": {
                     "process_graph": {
                         "2": {"process_id": "mean", "arguments": {"data": {"from_parameter": "data"}}, "result": True}
@@ -649,24 +654,40 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
         },
         "result1": {
             "process_id": "save_result",
-            "arguments": {"data": {"from_node": "linear1"}, "format": "JPEG", "options": {"datatype": "byte"}},
+            "arguments": {"data": {"from_node": "linear1"}, "format": "jpeg"},
             "result": True,
         },
     }
 
-    service_id = service_factory(process_graph, title="Test XYZ service", service_type="xyz")
+    service_id = service_factory(process_graph, title="Test XYZ service", service_type="xyz", tile_size=tile_size)
 
     zoom, tx, ty = 14, 8660, 5908
 
-    r = app_client.get(f"/service/xyz/{service_id}/{int(zoom)}/{int(tx)}/{int(ty)}")
-    assert r.status_code == 401, r.data
+    # AUTHENTICATION CURRENTLY NOT IMPLEMENTED
+    # r = app_client.get(f"/service/xyz/{service_id}/{int(zoom)}/{int(tx)}/{int(ty)}")
+    # assert r.status_code == 401, r.data
+
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/oauth/token",
+        body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
+    )
+    responses.add(
+        responses.POST,
+        re.compile(".*"),
+    )
 
     r = app_client.get(
         f"/service/xyz/{service_id}/{int(zoom)}/{int(tx)}/{int(ty)}", headers={"Authorization": authorization_header}
     )
     assert r.status_code == 200, r.data
-    expected_data = get_expected_data("tile256x256ndvi.jpeg")
-    assert r.data == expected_data, "File is not the same!"
+    # NDVI process currently not implemented.
+    # expected_data = get_expected_data("tile256x256ndvi.jpeg")
+    # assert r.data == expected_data, "File is not the same!"
+
+    payload = json.loads(responses.calls[len(responses.calls) - 1].request.body)
+    assert payload["output"]["width"] == tile_size if tile_size is not None else 256
+    assert payload["output"]["height"] == tile_size if tile_size is not None else 256
 
 
 @pytest.mark.skip("Synchronous job endpoint does not support the testing process graphs currently.")
