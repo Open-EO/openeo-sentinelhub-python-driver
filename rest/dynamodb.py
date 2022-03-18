@@ -170,7 +170,6 @@ class JobsPersistence(Persistence):
             "previous_batch_request_ids": {"S": json.dumps([])},
             "created": {"S": timestamp},
             "last_updated": {"S": timestamp},
-            "should_be_cancelled": {"BOOL": data.get("should_be_cancelled", False)},
             "error_msg": {"S": str(data.get("error_msg"))},
             "error_code": {"S": str(data.get("error_code"))},
             "http_code": {"N": data.get("http_code", "200")},
@@ -180,16 +179,10 @@ class JobsPersistence(Persistence):
             item["title"] = {"S": str(data.get("title"))}
         if data.get("description"):
             item["description"] = {"S": str(data.get("description"))}
-        if data.get("variables"):
-            item["variables"] = {"S": json.dumps(data.get("variables"))}
         if data.get("plan"):
             item["plan"] = {"S": str(data.get("plan"))}
         if data.get("budget"):
             item["budget"] = {"S": str(data.get("budget"))}
-        if data.get("auth_token"):
-            item["auth_token"] = {"S": str(data.get("auth_token"))}
-        if data.get("current_status"):
-            item["current_status"] = {"S": str(data.get("current_status"))}
 
         cls.dynamodb.put_item(
             TableName=cls.TABLE_NAME,

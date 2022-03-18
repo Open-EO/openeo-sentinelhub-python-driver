@@ -15,8 +15,6 @@ from openeoerrors import CollectionNotFound, Internal
 class Process:
     def __init__(self, process, width=None, height=None):
         self.DEFAULT_EPSG_CODE = 4326
-        self.DEFAULT_WIDTH = 100
-        self.DEFAULT_HEIGHT = 100
         self.DEFAULT_RESOLUTION = (10, 10)
         self.sentinel_hub = SentinelHub()
 
@@ -33,7 +31,7 @@ class Process:
         return BBox(self.bbox, CRS(self.epsg_code))
 
     def get_evalscript(self):
-        results = convert_from_process_graph(self.process_graph, encode_result=False)
+        results = convert_from_process_graph(self.process_graph, sample_type="UINT8", encode_result=False)
         evalscript = results[0]["evalscript"]
 
         if self.get_input_bands() is None:
