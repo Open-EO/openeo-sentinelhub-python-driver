@@ -118,7 +118,7 @@ def get_example_process_graph_with_bands_and_collection():
 
 
 @pytest.fixture
-def service_factory(app_client):
+def service_factory(app_client, example_authorization_header_with_oidc):
     def wrapped(process_graph, title="MyService", service_type="xyz", tile_size=None):
         data = {
             "title": title,
@@ -129,7 +129,12 @@ def service_factory(app_client):
         }
         if tile_size is not None:
             data["configuration"] = {"tile_size": tile_size}
-        r = app_client.post("/services", data=json.dumps(data), content_type="application/json")
+        r = app_client.post(
+            "/services",
+            data=json.dumps(data),
+            content_type="application/json",
+            headers=example_authorization_header_with_oidc,
+        )
         assert r.status_code == 201, r.data
         service_id = r.headers["OpenEO-Identifier"]
         return service_id
@@ -464,11 +469,12 @@ def test_result_base64_encoded_secret(app_client, example_process_graph, authori
     assert r.status_code == 200
 
 
-def test_services_crud(app_client, example_process_graph):
+@with_mocked_auth
+def test_services_crud(app_client, example_process_graph, example_authorization_header_with_oidc):
     """
     - test /services endpoint
     """
-    r = app_client.get("/services")
+    r = app_client.get("/services", headers=example_authorization_header_with_oidc)
     expected = []
     actual = json.loads(r.data.decode("utf-8")).get("services")
     assert r.status_code == 200
@@ -481,11 +487,16 @@ def test_services_crud(app_client, example_process_graph):
         },
         "type": "xyz",
     }
-    r = app_client.post("/services", data=json.dumps(data), content_type="application/json")
+    r = app_client.post(
+        "/services",
+        data=json.dumps(data),
+        content_type="application/json",
+        headers=example_authorization_header_with_oidc,
+    )
     assert r.status_code == 201
     service_id = r.headers["OpenEO-Identifier"]
 
-    r = app_client.get("/services")
+    r = app_client.get("/services", headers=example_authorization_header_with_oidc)
     assert r.status_code == 200
     services = json.loads(r.data.decode("utf-8")).get("services")
     assert len(services) == 1
@@ -506,19 +517,22 @@ def test_services_crud(app_client, example_process_graph):
         "title": "MyService2",
     }
     r = app_client.patch(
-        "/services/{}".format(service_id), data=json.dumps(patch_data), content_type="application/json"
+        "/services/{}".format(service_id),
+        data=json.dumps(patch_data),
+        content_type="application/json",
+        headers=example_authorization_header_with_oidc,
     )
     assert r.status_code == 204
 
     expected.update(patch_data)
 
-    r = app_client.get("/services")
+    r = app_client.get("/services", headers=example_authorization_header_with_oidc)
     assert r.status_code == 200
     services = json.loads(r.data.decode("utf-8")).get("services")
     assert len(services) == 1
     assert services[0] == expected
 
-    r = app_client.get("/services/{}".format(service_id))
+    r = app_client.get("/services/{}".format(service_id), headers=example_authorization_header_with_oidc)
     assert r.status_code == 200
     actual = json.loads(r.data.decode("utf-8"))
     # get record supports additional fields:
@@ -534,13 +548,13 @@ def test_services_crud(app_client, example_process_graph):
     assert actual == expected
 
     # delete service and make sure it is deleted:
-    r = app_client.delete("/services/{}".format(service_id))
+    r = app_client.delete("/services/{}".format(service_id), headers=example_authorization_header_with_oidc)
     assert r.status_code == 204
 
-    r = app_client.get("/services/{}".format(service_id))
+    r = app_client.get("/services/{}".format(service_id), headers=example_authorization_header_with_oidc)
     assert r.status_code == 404
 
-    r = app_client.get("/services")
+    r = app_client.get("/services", headers=example_authorization_header_with_oidc)
     expected = []
     actual = json.loads(r.data.decode("utf-8")).get("services")
     assert r.status_code == 200
@@ -619,7 +633,8 @@ def test_xyz_service(app_client, service_factory, example_process_graph_with_var
     assert r.data == expected_data
 
 
-@responses.activate
+# @responses.activate
+@with_mocked_auth
 @pytest.mark.parametrize(
     "tile_size",
     [None, 256, 512],
