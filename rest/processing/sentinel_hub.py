@@ -79,6 +79,7 @@ class SentinelHub:
                                 "from": from_date.isoformat(),
                                 "to": to_date.isoformat(),
                             },
+                            "previewMode": "EXTENDED_PREVIEW",
                         },
                     }
                 ],

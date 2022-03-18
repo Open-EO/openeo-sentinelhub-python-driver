@@ -26,3 +26,11 @@ class openEOBatchJobStatus(Enum):
         if sentinelhub_batch_user_action == BatchUserAction.START:
             return openEOBatchJobStatus.QUEUED
         return conversion_table.get(sentinelhub_batch_job_status)
+
+
+global_parameters_xyz = {
+    "spatial_extent_west": 1,
+    "spatial_extent_south": 2,
+    "spatial_extent_east": 3,
+    "spatial_extent_north": 4,
+}
