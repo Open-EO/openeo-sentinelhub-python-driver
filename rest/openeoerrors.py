@@ -15,7 +15,7 @@ class AuthenticationRequired(OpenEOError):
 class AuthenticationSchemeInvalid(OpenEOError):
     error_code = "AuthenticationSchemeInvalid"
     http_code = 403
-    message = "Invalid authentication scheme (e.g. Bearer)."
+    message = "Authentication method not supported."
 
 
 class TokenInvalid(OpenEOError):

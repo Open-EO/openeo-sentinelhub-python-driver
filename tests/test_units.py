@@ -1,7 +1,13 @@
 from setup_tests import *
 from datetime import datetime
 
-from openeoerrors import ProcessParameterInvalid
+from openeoerrors import (
+    AuthenticationRequired,
+    AuthenticationSchemeInvalid,
+    Internal,
+    CredentialsInvalid,
+    ProcessParameterInvalid,
+)
 from processing.utils import inject_variables_in_process_graph
 
 
@@ -49,6 +55,92 @@ def test_collections(get_process_graph, collection_id):
     example_bands = ["B01", "B02"]
     process = Process({"process_graph": get_process_graph(collection_id=collection_id, bands=example_bands)})
     assert process.evalscript.input_bands == example_bands
+
+
+# @responses.activate
+@pytest.mark.parametrize(
+    "oidc_user_info_response,headers,should_raise_error,error,func",
+    [
+        (
+            {
+                "sub": "example-id",
+                "eduperson_entitlement": [
+                    "urn:mace:egi.eu:group:vo.openeo.cloud:role=vm_operator#aai.egi.eu",
+                    "urn:mace:egi.eu:group:vo.openeo.cloud:role=member#aai.egi.eu",
+                    "urn:mace:egi.eu:group:vo.openeo.cloud:role=early_adopter#aai.egi.eu",
+                ],
+            },
+            {"Authorization": "Bearer oidc/egi/<token>"},
+            False,
+            None,
+            None,
+        ),
+        (None, None, True, AuthenticationRequired, None),
+        (None, {"Authorization": "Bearer oidc/non-existent/<token>"}, True, CredentialsInvalid, None),
+        (None, {"Authorization": "Bearer <token>"}, True, AuthenticationSchemeInvalid, None),
+        (
+            {
+                "sub": "example-id",
+                "eduperson_entitlement": [
+                    "urn:mace:egi.eu:group:vo.non.existent.cloud:role=vm_operator#aai.egi.eu",
+                ],
+            },
+            {"Authorization": "Bearer oidc/egi/<token>"},
+            True,
+            CredentialsInvalid,
+            None,
+        ),
+        (
+            {
+                "sub": "example-id",
+                "eduperson_entitlement": [
+                    "urn:mace:egi.eu:group:vo.non.existent.cloud:role=vm_operator#aai.egi.eu",
+                    "urn:mace:egi.eu:group:vo.openeo.cloud:role=vm_operator#aai.egi.eu",
+                ],
+            },
+            {"Authorization": "Bearer oidc/egi/<token>"},
+            False,
+            None,
+            lambda user=None: user is not None,
+        ),
+    ],
+)
+def test_authentication_provider(oidc_user_info_response, headers, should_raise_error, error, func):
+    authentication_provider = AuthenticationProvider(
+        oidc_providers=[{"id": "egi", "issuer": "https://aai.egi.eu/oidc/"}]
+    )
+
+    if func is None:
+        func = lambda: True
+
+    with app.test_request_context("/", headers=headers):
+        # Decorating test_authentication_provider outside this context with responses.activate causes an error
+        if should_raise_error:
+
+            @responses.activate
+            def execute():
+                responses.add(
+                    responses.GET,
+                    "https://aai.egi.eu/oidc/.well-known/openid-configuration",
+                    json={"userinfo_endpoint": "http://dummy_userinfo_endpoint"},
+                )
+                responses.add(responses.GET, "http://dummy_userinfo_endpoint", json=oidc_user_info_response)
+                with pytest.raises(error) as e:
+                    authentication_provider.with_bearer_auth(func)()
+
+        else:
+
+            @responses.activate
+            def execute():
+                responses.add(
+                    responses.GET,
+                    "https://aai.egi.eu/oidc/.well-known/openid-configuration",
+                    json={"userinfo_endpoint": "http://dummy_userinfo_endpoint"},
+                )
+                responses.add(responses.GET, "http://dummy_userinfo_endpoint", json=oidc_user_info_response)
+                assert authentication_provider.with_bearer_auth(func)()
+
+        execute()
 
 
 def test_inject_variables_in_process_graph():
