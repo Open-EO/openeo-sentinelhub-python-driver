@@ -43,6 +43,7 @@ from processing.processing import (
 )
 from processing.utils import inject_variables_in_process_graph
 from processing.openeo_process_errors import OpenEOProcessError
+from authentication.authentication import authentication_provider
 from openeoerrors import (
     OpenEOError,
     AuthenticationRequired,
@@ -242,6 +243,12 @@ def api_credentials_basic():
     )
 
 
+@app.route("/credentials/oidc", methods=["GET"])
+def oidc_credentials():
+    providers = {"providers": authentication_provider.get_oidc_providers()}
+    return flask.make_response(jsonify(providers))
+
+
 @app.route("/file_formats", methods=["GET"])
 def api_file_formats():
     output_formats = {}
@@ -274,6 +281,7 @@ def api_service_types():
 
 
 @app.route("/process_graphs", methods=["GET"])
+@authentication_provider.with_bearer_auth
 def api_process_graphs():
     process_graphs = []
     links = []
@@ -316,6 +324,7 @@ def api_process_graphs():
 
 
 @app.route("/process_graphs/<process_graph_id>", methods=["GET", "DELETE", "PUT"])
+@authentication_provider.with_bearer_auth
 def api_process_graph(process_graph_id):
     if flask.request.method in ["GET", "HEAD"]:
         record = ProcessGraphsPersistence.get_by_id(process_graph_id)
@@ -357,6 +366,7 @@ def api_process_graph(process_graph_id):
 
 
 @app.route("/result", methods=["POST"])
+@authentication_provider.with_bearer_auth
 def api_result():
     if flask.request.method == "POST":
         job_data = flask.request.get_json()
@@ -392,6 +402,7 @@ def api_result():
 
 
 @app.route("/jobs", methods=["GET", "POST"])
+@authentication_provider.with_bearer_auth
 def api_jobs():
     if flask.request.method == "GET":
         jobs = []
@@ -452,6 +463,7 @@ def api_jobs():
 
 
 @app.route("/jobs/<job_id>", methods=["GET", "PATCH", "DELETE"])
+@authentication_provider.with_bearer_auth
 def api_batch_job(job_id):
     job = JobsPersistence.get_by_id(job_id)
     if job is None:
@@ -509,6 +521,7 @@ def api_batch_job(job_id):
 
 
 @app.route("/jobs/<job_id>/results", methods=["POST", "GET", "DELETE"])
+@authentication_provider.with_bearer_auth
 def add_job_to_queue(job_id):
     job = JobsPersistence.get_by_id(job_id)
     if job is None:
@@ -598,6 +611,7 @@ def add_job_to_queue(job_id):
 
 
 @app.route("/services", methods=["GET", "POST"])
+@authentication_provider.with_bearer_auth
 def api_services():
     if flask.request.method == "GET":
         services = []
@@ -659,6 +673,7 @@ def api_services():
 
 
 @app.route("/services/<service_id>", methods=["GET", "PATCH", "DELETE"])
+@authentication_provider.with_bearer_auth
 def api_service(service_id):
     record = ServicesPersistence.get_by_id(service_id)
     if record is None:

@@ -118,7 +118,7 @@ def get_example_process_graph_with_bands_and_collection():
 
 
 @pytest.fixture
-def service_factory(app_client):
+def service_factory(app_client, example_authorization_header_with_oidc):
     def wrapped(process_graph, title="MyService", service_type="xyz", tile_size=None):
         data = {
             "title": title,
@@ -129,7 +129,12 @@ def service_factory(app_client):
         }
         if tile_size is not None:
             data["configuration"] = {"tile_size": tile_size}
-        r = app_client.post("/services", data=json.dumps(data), content_type="application/json")
+        r = app_client.post(
+            "/services",
+            data=json.dumps(data),
+            content_type="application/json",
+            headers=example_authorization_header_with_oidc,
+        )
         assert r.status_code == 201, r.data
         service_id = r.headers["OpenEO-Identifier"]
         return service_id
@@ -176,6 +181,11 @@ def authorization_header_base64(app_client):
     return f'Bearer basic//{j["access_token"]}'
 
 
+@pytest.fixture
+def example_authorization_header_with_oidc(oidc_provider_id="egi"):
+    return {"Authorization": f"Bearer oidc/{oidc_provider_id}/<token>"}
+
+
 ###################################
 
 
@@ -212,7 +222,8 @@ def test_root(app_client):
     assert expected_endpoint in actual["endpoints"]
 
 
-def test_manage_batch_jobs(app_client):
+@with_mocked_auth
+def test_manage_batch_jobs(app_client, example_authorization_header_with_oidc):
     """
     - test POST "/jobs"
     - test /jobs/job_id endpoints
@@ -272,13 +283,14 @@ def test_manage_batch_jobs(app_client):
         },
     }
 
-    r = app_client.post("/jobs", data=json.dumps(data), content_type="application/json")
-
-    assert r.status_code == 201
+    r = app_client.post(
+        "/jobs", data=json.dumps(data), headers=example_authorization_header_with_oidc, content_type="application/json"
+    )
+    assert r.status_code == 201, r.data
 
     record_id = r.headers["OpenEO-Identifier"]
 
-    r = app_client.get("/jobs/{}".format(record_id))
+    r = app_client.get("/jobs/{}".format(record_id), headers=example_authorization_header_with_oidc)
     actual = json.loads(r.data.decode("utf-8"))
 
     assert r.status_code == 200
@@ -340,27 +352,33 @@ def test_manage_batch_jobs(app_client):
         "title": "Load collection test",
     }
 
-    r = app_client.patch("/jobs/{}".format(record_id), data=json.dumps(data2), content_type="application/json")
+    r = app_client.patch(
+        "/jobs/{}".format(record_id),
+        data=json.dumps(data2),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
 
     assert r.status_code == 204
 
-    r = app_client.get("/jobs/{}".format(record_id))
+    r = app_client.get("/jobs/{}".format(record_id), headers=example_authorization_header_with_oidc)
     actual = json.loads(r.data.decode("utf-8"))
 
     assert r.status_code == 200
     assert actual["process"]["process_graph"] == data2["process"]["process_graph"]
     assert actual["title"] == data2["title"]
 
-    r = app_client.delete("/jobs/{}".format(record_id))
+    r = app_client.delete("/jobs/{}".format(record_id), headers=example_authorization_header_with_oidc)
 
     assert r.status_code == 204
 
-    r = app_client.get("/jobs/{}".format(record_id))
+    r = app_client.get("/jobs/{}".format(record_id), headers=example_authorization_header_with_oidc)
 
     assert r.status_code == 404
 
 
-def test_process_batch_job(app_client, example_process_graph, authorization_header):
+@with_mocked_auth
+def test_process_batch_job(app_client, example_process_graph, example_authorization_header_with_oidc):
     """
     - test /jobs/job_id/results endpoints
     """
@@ -369,24 +387,25 @@ def test_process_batch_job(app_client, example_process_graph, authorization_head
             "process_graph": example_process_graph,
         }
     }
-    r = app_client.post("/jobs", data=json.dumps(data), content_type="application/json")
+    r = app_client.post(
+        "/jobs", data=json.dumps(data), headers=example_authorization_header_with_oidc, content_type="application/json"
+    )
     assert r.status_code == 201
     job_id = r.headers["OpenEO-Identifier"]
 
-    r = app_client.delete(f"/jobs/{job_id}/results")
+    r = app_client.delete(f"/jobs/{job_id}/results", headers=example_authorization_header_with_oidc)
     assert r.status_code == 204
 
-    # AUTHENTICATION CURRENTLY NOT IMPLEMENTED
     # without authorization header, this call fails:
-    # r = app_client.post(f"/jobs/{job_id}/results")
-    # assert r.status_code == 401
+    r = app_client.post(f"/jobs/{job_id}/results")
+    assert r.status_code == 401
 
-    r = app_client.post(f"/jobs/{job_id}/results", headers={"Authorization": authorization_header})
+    r = app_client.post(f"/jobs/{job_id}/results", headers=example_authorization_header_with_oidc)
     assert r.status_code == 202
 
     # it might take some time before the job is accepted - keep trying for 5s:
     for _ in range(10):
-        r = app_client.get(f"/jobs/{job_id}")
+        r = app_client.get(f"/jobs/{job_id}", headers=example_authorization_header_with_oidc)
         actual = json.loads(r.data.decode("utf-8"))
         assert r.status_code == 200
         if actual["status"] != "created":
@@ -394,16 +413,17 @@ def test_process_batch_job(app_client, example_process_graph, authorization_head
         time.sleep(0.5)
     assert actual["status"] in ["queued", "running", "error", "finished"]
 
-    r = app_client.get(f"/jobs/{job_id}/results")
+    r = app_client.get(f"/jobs/{job_id}/results", headers=example_authorization_header_with_oidc)
     actual = json.loads(r.data.decode("utf-8"))
     assert r.status_code == 400
     assert actual["code"] == "JobNotFinished"
 
-    r = app_client.delete(f"/jobs/{job_id}/results")
+    r = app_client.delete(f"/jobs/{job_id}/results", headers=example_authorization_header_with_oidc)
     assert r.status_code == 204
 
 
-def test_result_not_encoded_secret(app_client, example_process_graph, authorization_header):
+@with_mocked_auth
+def test_result_not_encoded_secret(app_client, example_process_graph, example_authorization_header_with_oidc):
     """
     - test /result endpoint
     """
@@ -413,19 +433,19 @@ def test_result_not_encoded_secret(app_client, example_process_graph, authorizat
         }
     }
 
-    # Authentication is currently disabled
-    # r = app_client.post("/result", data=json.dumps(data), content_type="application/json")
-    # assert r.status_code == 401
+    r = app_client.post("/result", data=json.dumps(data), content_type="application/json")
+    assert r.status_code == 401
 
     r = app_client.post(
         "/result",
         data=json.dumps(data),
         content_type="application/json",
-        headers={"Authorization": authorization_header},
+        headers=example_authorization_header_with_oidc,
     )
     assert r.status_code == 200
 
 
+@pytest.mark.skip("Authentication currently does not use clientid/secret")
 def test_result_base64_encoded_secret(app_client, example_process_graph, authorization_header_base64):
     """
     - test /result endpoint, but this time use a base64-encoded version of password (both should work)
@@ -449,11 +469,12 @@ def test_result_base64_encoded_secret(app_client, example_process_graph, authori
     assert r.status_code == 200
 
 
-def test_services_crud(app_client, example_process_graph):
+@with_mocked_auth
+def test_services_crud(app_client, example_process_graph, example_authorization_header_with_oidc):
     """
     - test /services endpoint
     """
-    r = app_client.get("/services")
+    r = app_client.get("/services", headers=example_authorization_header_with_oidc)
     expected = []
     actual = json.loads(r.data.decode("utf-8")).get("services")
     assert r.status_code == 200
@@ -466,11 +487,16 @@ def test_services_crud(app_client, example_process_graph):
         },
         "type": "xyz",
     }
-    r = app_client.post("/services", data=json.dumps(data), content_type="application/json")
+    r = app_client.post(
+        "/services",
+        data=json.dumps(data),
+        content_type="application/json",
+        headers=example_authorization_header_with_oidc,
+    )
     assert r.status_code == 201
     service_id = r.headers["OpenEO-Identifier"]
 
-    r = app_client.get("/services")
+    r = app_client.get("/services", headers=example_authorization_header_with_oidc)
     assert r.status_code == 200
     services = json.loads(r.data.decode("utf-8")).get("services")
     assert len(services) == 1
@@ -491,19 +517,22 @@ def test_services_crud(app_client, example_process_graph):
         "title": "MyService2",
     }
     r = app_client.patch(
-        "/services/{}".format(service_id), data=json.dumps(patch_data), content_type="application/json"
+        "/services/{}".format(service_id),
+        data=json.dumps(patch_data),
+        content_type="application/json",
+        headers=example_authorization_header_with_oidc,
     )
     assert r.status_code == 204
 
     expected.update(patch_data)
 
-    r = app_client.get("/services")
+    r = app_client.get("/services", headers=example_authorization_header_with_oidc)
     assert r.status_code == 200
     services = json.loads(r.data.decode("utf-8")).get("services")
     assert len(services) == 1
     assert services[0] == expected
 
-    r = app_client.get("/services/{}".format(service_id))
+    r = app_client.get("/services/{}".format(service_id), headers=example_authorization_header_with_oidc)
     assert r.status_code == 200
     actual = json.loads(r.data.decode("utf-8"))
     # get record supports additional fields:
@@ -519,13 +548,13 @@ def test_services_crud(app_client, example_process_graph):
     assert actual == expected
 
     # delete service and make sure it is deleted:
-    r = app_client.delete("/services/{}".format(service_id))
+    r = app_client.delete("/services/{}".format(service_id), headers=example_authorization_header_with_oidc)
     assert r.status_code == 204
 
-    r = app_client.get("/services/{}".format(service_id))
+    r = app_client.get("/services/{}".format(service_id), headers=example_authorization_header_with_oidc)
     assert r.status_code == 404
 
-    r = app_client.get("/services")
+    r = app_client.get("/services", headers=example_authorization_header_with_oidc)
     expected = []
     actual = json.loads(r.data.decode("utf-8")).get("services")
     assert r.status_code == 200
@@ -604,7 +633,8 @@ def test_xyz_service(app_client, service_factory, example_process_graph_with_var
     assert r.data == expected_data
 
 
-@responses.activate
+# @responses.activate
+@with_mocked_auth
 @pytest.mark.parametrize(
     "tile_size",
     [None, 256, 512],
@@ -818,12 +848,13 @@ def test_run_test_process_graphs(app_client, process_graph_filename, authorizati
     assert r.status_code == 200, r.data
 
 
-def test_process_graph_api(app_client, example_process_graph):
+@with_mocked_auth
+def test_process_graph_api(app_client, example_process_graph, example_authorization_header_with_oidc):
     """
     Get /process_graphs/ (must be empty), test CRUD operations.
     """
     # get a list of process graphs, should be empty:
-    r = app_client.get("/process_graphs")
+    r = app_client.get("/process_graphs", headers=example_authorization_header_with_oidc)
     assert r.status_code == 200, r.data
     expected = []
     actual = json.loads(r.data.decode("utf-8")).get("processes")
@@ -835,7 +866,12 @@ def test_process_graph_api(app_client, example_process_graph):
         "summary": "invalid id",
         "process_graph": example_process_graph,
     }
-    r = app_client.put(f"/process_graphs/{process_graph_id}", data=json.dumps(data), content_type="application/json")
+    r = app_client.put(
+        f"/process_graphs/{process_graph_id}",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
     assert r.status_code == 400, r.data
 
     # create a process graph:
@@ -844,11 +880,16 @@ def test_process_graph_api(app_client, example_process_graph):
         "summary": "test",
         "process_graph": example_process_graph,
     }
-    r = app_client.put(f"/process_graphs/{process_graph_id}", data=json.dumps(data), content_type="application/json")
+    r = app_client.put(
+        f"/process_graphs/{process_graph_id}",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
     assert r.status_code == 200, r.data
 
     # get a list of process graphs again:
-    r = app_client.get("/process_graphs")
+    r = app_client.get("/process_graphs", headers=example_authorization_header_with_oidc)
     assert r.status_code == 200, r.data
     expected = [
         {
@@ -860,7 +901,7 @@ def test_process_graph_api(app_client, example_process_graph):
     assert actual == expected
 
     # get the process graph:
-    r = app_client.get("/process_graphs/{}".format(process_graph_id))
+    r = app_client.get("/process_graphs/{}".format(process_graph_id), headers=example_authorization_header_with_oidc)
     assert r.status_code == 200, r.data
     expected = {
         "id": process_graph_id,
@@ -878,12 +919,15 @@ def test_process_graph_api(app_client, example_process_graph):
         "process_graph": example_process_graph,
     }
     r = app_client.put(
-        "/process_graphs/{}".format(process_graph_id), data=json.dumps(data), content_type="application/json"
+        "/process_graphs/{}".format(process_graph_id),
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
     )
     assert r.status_code == 200, r.data
 
     # get the process graph again:
-    r = app_client.get("/process_graphs/{}".format(process_graph_id))
+    r = app_client.get("/process_graphs/{}".format(process_graph_id), headers=example_authorization_header_with_oidc)
     assert r.status_code == 200, r.data
     expected = {
         "id": process_graph_id,
@@ -895,13 +939,13 @@ def test_process_graph_api(app_client, example_process_graph):
     assert actual == expected
 
     # delete it:
-    r = app_client.delete("/process_graphs/{}".format(process_graph_id))
+    r = app_client.delete("/process_graphs/{}".format(process_graph_id), headers=example_authorization_header_with_oidc)
     assert r.status_code == 204, r.data
 
     # make sure the record is removed:
-    r = app_client.get("/process_graphs/{}".format(process_graph_id))
+    r = app_client.get("/process_graphs/{}".format(process_graph_id), headers=example_authorization_header_with_oidc)
     assert r.status_code == 404
-    r = app_client.get("/process_graphs")
+    r = app_client.get("/process_graphs", headers=example_authorization_header_with_oidc)
     assert r.status_code == 200, r.data
     expected = []
     actual = json.loads(r.data.decode("utf-8")).get("processes")
@@ -1075,6 +1119,7 @@ def test_fetching_correct_collection_type(app_client, collection_id, collection_
         assert json.loads(responses.calls[0].request.body)["input"]["data"][0]["type"] == collection_type
 
 
+@with_mocked_auth
 @pytest.mark.parametrize(
     "collection_id,bands,should_raise_error",
     [
@@ -1113,7 +1158,12 @@ def test_fetching_correct_collection_type(app_client, collection_id, collection_
     ],
 )
 def test_validate_bands(
-    app_client, get_example_process_graph_with_bands_and_collection, collection_id, bands, should_raise_error
+    app_client,
+    get_example_process_graph_with_bands_and_collection,
+    collection_id,
+    bands,
+    should_raise_error,
+    example_authorization_header_with_oidc,
 ):
     process_graph = get_example_process_graph_with_bands_and_collection(bands, collection_id)
     payload = json.dumps({"process": {"process_graph": process_graph}})
@@ -1121,6 +1171,7 @@ def test_validate_bands(
     r = app_client.post(
         "/result",
         data=payload,
+        headers=example_authorization_header_with_oidc,
         content_type="application/json",
     )
 
@@ -1134,7 +1185,9 @@ def test_validate_bands(
     else:
         assert r.status_code == 200, r.data
 
-    r = app_client.post("/jobs", data=payload, content_type="application/json")
+    r = app_client.post(
+        "/jobs", data=payload, headers=example_authorization_header_with_oidc, content_type="application/json"
+    )
 
     if should_raise_error:
         response_data = r.data.decode("utf-8")
