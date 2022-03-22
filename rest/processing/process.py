@@ -8,8 +8,9 @@ from sentinelhub.geo_utils import bbox_to_dimensions
 
 from processing.openeo_process_errors import FormatUnsuitable
 from processing.sentinel_hub import SentinelHub
+from processing.const import SampleType, default_sample_type_for_mimetype, supported_sample_types
 from openeocollections import collections
-from openeoerrors import CollectionNotFound, Internal
+from openeoerrors import CollectionNotFound, Internal, ProcessParameterInvalid
 
 
 class Process:
@@ -19,19 +20,22 @@ class Process:
         self.sentinel_hub = SentinelHub()
 
         self.process_graph = process["process_graph"]
-        self.evalscript = self.get_evalscript()
         self.bbox, self.epsg_code, self.geometry = self.get_bounds()
         self.collection = self.get_collection()
         self.from_date, self.to_date = self.get_temporal_extent()
         self.mimetype = self.get_mimetype()
         self.width = width or self.get_dimensions()[0]
         self.height = height or self.get_dimensions()[1]
+        self.sample_type = self.get_sample_type()
+        self.evalscript = self.get_evalscript()
 
     def convert_to_sh_bbox(self):
         return BBox(self.bbox, CRS(self.epsg_code))
 
     def get_evalscript(self):
-        results = convert_from_process_graph(self.process_graph, sample_type="UINT8", encode_result=False)
+        results = convert_from_process_graph(
+            self.process_graph, sample_type=self.sample_type.value, encode_result=False
+        )
         evalscript = results[0]["evalscript"]
 
         if self.get_input_bands() is None:
@@ -170,6 +174,23 @@ class Process:
     def get_mimetype(self):
         save_result_node = self.get_node_by_process_id("save_result")
         return self.format_to_mimetype(save_result_node["arguments"]["format"])
+
+    def get_sample_type(self):
+        save_result_node = self.get_node_by_process_id("save_result")
+
+        if save_result_node["arguments"].get("options", {}).get("datatype"):
+            datatype = save_result_node["arguments"]["options"]["datatype"]
+            sample_type = SampleType.from_gdal_datatype(datatype)
+            if not sample_type:
+                raise ProcessParameterInvalid("options", "save_result", f"{datatype} is not a supported 'datatype'.")
+            if sample_type not in supported_sample_types[self.mimetype]:
+                output_format = save_result_node["arguments"]["format"]
+                raise ProcessParameterInvalid(
+                    "options", "save_result", f"{datatype} is not a valid 'datatype' for format {output_format}."
+                )
+            return sample_type
+
+        return default_sample_type_for_mimetype.get(self.mimetype, SampleType.UINT8)
 
     def get_dimensions(self):
         spatial_extent = self.bbox

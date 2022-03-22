@@ -86,3 +86,11 @@ class ProcessGraphComplexity(OpenEOError):
 
     error_code = "ProcessGraphComplexity"
     http_code = 400
+
+
+class ProcessParameterInvalid(OpenEOError):
+    def __init__(self, parameter, process, reason):
+        self.message = f"The value passed for parameter '{parameter}' in process '{process}' is invalid: {reason}"
+
+    error_code = "ProcessParameterInvalid"
+    http_code = 400
