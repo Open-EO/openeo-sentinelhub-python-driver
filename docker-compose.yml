@@ -57,29 +57,5 @@ services:
     ports:
       - '9324:9324'
 
-  workers:
-    image: shopeneo/workers
-    container_name: workers
-    build:
-      context: .
-      dockerfile: workers/Dockerfile
-    depends_on:
-      dynamodb:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-    environment:
-      # SH details should be specified in .env file:
-      SENTINELHUB_INSTANCE_ID: "${SENTINELHUB_INSTANCE_ID}"
-      SENTINELHUB_LAYER_ID_S2L1C: "${SENTINELHUB_LAYER_ID_S2L1C}"
-      SENTINELHUB_LAYER_ID_S1GRD: "${SENTINELHUB_LAYER_ID_S1GRD}"
-      # S3 details - in our case, we connect to minio container:
-      DATA_AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
-      DATA_AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-      DATA_AWS_S3_ENDPOINT_URL: http://minio:9000
-      DYNAMODB_LOCAL_URL: http://dynamodb:8000
-      SQS_LOCAL_URL: http://sqs:9324
-      HONEYCOMP_APM_API_KEY: "${HONEYCOMP_APM_API_KEY}"
-
 volumes:
   minio-data:
