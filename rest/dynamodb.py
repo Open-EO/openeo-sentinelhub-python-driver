@@ -30,7 +30,7 @@ class DeploymentTypes(Enum):
         return deployment_type_str_to_enum.get(deployment_type_str)
 
 
-DEPLOYMENT_TYPE = DeploymentTypes.from_string(os.environ.get("DEPLOYMENT_TYPE", "testing").lower())
+DEPLOYMENT_TYPE = DeploymentTypes.from_string(os.environ.get("DEPLOYMENT_TYPE", "").lower())
 
 if DEPLOYMENT_TYPE == DeploymentTypes.PRODUCTION:
     TABLE_NAME_PREFIX = ""
@@ -41,7 +41,6 @@ else:
 
 # we use local DynamoDB by default, to avoid using AWS for testing by mistake
 DYNAMODB_LOCAL_URL = os.environ.get("DYNAMODB_LOCAL_URL", "http://localhost:8000")
-SQS_LOCAL_URL = os.environ.get("SQS_LOCAL_URL", "http://localhost:9324")
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", FAKE_AWS_ACCESS_KEY_ID)
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", FAKE_AWS_SECRET_ACCESS_KEY)
 
@@ -54,7 +53,7 @@ class Persistence(object):
             aws_access_key_id=AWS_ACCESS_KEY_ID,
             aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
         )
-        if DEPLOYMENT_TYPE == DeploymentTypes.PRODUCTION
+        if DEPLOYMENT_TYPE in [DeploymentTypes.PRODUCTION, DeploymentTypes.TESTING]
         else boto3.client(
             "dynamodb",
             endpoint_url=DYNAMODB_LOCAL_URL,
@@ -158,23 +157,6 @@ class Persistence(object):
 
 class JobsPersistence(Persistence):
     TABLE_NAME = TABLE_NAME_PREFIX + "shopeneo_jobs"
-    SQS_QUEUE_NAME = "shopeneo-jobs-queue"
-    sqs = (
-        boto3.client(
-            "sqs",
-            region_name="eu-central-1",
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-        )
-        if DEPLOYMENT_TYPE == DeploymentTypes.PRODUCTION
-        else boto3.client(
-            "sqs",
-            endpoint_url=SQS_LOCAL_URL,
-            region_name="eu-central-1",
-            aws_access_key_id="x",
-            aws_secret_access_key="x",
-        )
-    )
 
     @classmethod
     def create(cls, data):
@@ -210,9 +192,6 @@ class JobsPersistence(Persistence):
             TableName=cls.TABLE_NAME,
             Item=item,
         )
-
-        if data.get("current_status", "queued") == "queued":
-            cls._alert_workers(record_id)
         return record_id
 
     @classmethod
@@ -220,42 +199,10 @@ class JobsPersistence(Persistence):
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         cls.update_key(job_id, "last_updated", timestamp)
         cls.update_key(job_id, "current_status", new_value)
-        cls._alert_workers(job_id)
-
-    @classmethod
-    def update_auth_token(cls, job_id, new_value):
-        cls.update_key(job_id, "auth_token", new_value)
-
-    @classmethod
-    def set_should_be_cancelled(cls, job_id):
-        cls.update_key(job_id, "should_be_cancelled", True)
-        cls._alert_workers(job_id)
 
     @classmethod
     def delete(cls, job_id):
         cls.dynamodb.delete_item(TableName=cls.TABLE_NAME, Key={"id": {"S": job_id}})
-        cls._alert_workers(job_id)
-
-    @classmethod
-    def _alert_workers(cls, job_id):
-        # alert workers about the change:
-        queue_url = cls.sqs.get_queue_url(QueueName=cls.SQS_QUEUE_NAME)["QueueUrl"]
-        cls.sqs.send_message(QueueUrl=queue_url, MessageBody=job_id)
-
-    @classmethod
-    def ensure_queue_exists(cls):
-        try:
-            cls.sqs.create_queue(
-                QueueName=cls.SQS_QUEUE_NAME,
-                Attributes={
-                    "DelaySeconds": "0",
-                    "MessageRetentionPeriod": "60",
-                    "ReceiveMessageWaitTimeSeconds": "20",
-                },
-            )
-            log(INFO, "SQS queue created.")
-        except ClientError:
-            log(INFO, "SQS queue already exists.")
 
 
 class ProcessGraphsPersistence(Persistence):
@@ -344,7 +291,6 @@ if __name__ == "__main__":
         ),
     )
     JobsPersistence.ensure_table_exists()
-    JobsPersistence.ensure_queue_exists()
     ProcessGraphsPersistence.ensure_table_exists()
     ServicesPersistence.ensure_table_exists()
     log(INFO, "DynamoDB initialized.")

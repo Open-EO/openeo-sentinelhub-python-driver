@@ -49,13 +49,5 @@ services:
       /usr/bin/mc policy set public openEo/com.sinergise.openeo.results;
       tail -f /dev/null;"
 
-  sqs:
-    # Native image is much smaller and thus faster, but it is experimental:
-    image: softwaremill/elasticmq-native
-    # image: softwaremill/elasticmq
-    container_name: sqs
-    ports:
-      - '9324:9324'
-
 volumes:
   minio-data:
