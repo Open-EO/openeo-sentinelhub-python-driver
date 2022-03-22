@@ -154,6 +154,8 @@ deploy-testing-rest-lambda:
     - sed -i "s/@@AWS_ACCESS_KEY_ID@@/$TESTINGDATA_AWS_ACCESS_KEY_ID/g" zappa_settings.json
     - sed -i "s#@@AWS_SECRET_ACCESS_KEY@@#$TESTINGDATA_AWS_SECRET_ACCESS_KEY#g" zappa_settings.json
     - sed -i "s/@@S3_DATA_BUCKET@@/$TESTING_S3_BUCKET/g" zappa_settings.json
+    - sed -i "s/@@TESTING_SH_CLIENT_ID@@/$TESTING_SH_CLIENT_ID/g" zappa_settings.json
+    - sed -i "s/@@TESTING_SH_CLIENT_SECRET@@/$TESTING_SH_CLIENT_SECRET/g" zappa_settings.json
     - sed -i "s/@@BACKEND_VERSION@@/$CI_COMMIT_TAG/g" zappa_settings.json
     - pipenv run zappa deploy testing || pipenv run zappa update testing
     # ensure tables are created:

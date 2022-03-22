@@ -144,10 +144,10 @@ def service_factory(app_client, example_authorization_header_with_oidc):
 
 @pytest.fixture
 def authorization_header(app_client):
-    SH_CLIENT_ID = os.environ.get("TESTS_SH_CLIENT_ID", None)
-    SH_CLIENT_SECRET = os.environ.get("TESTS_SH_CLIENT_SECRET", None)
+    SH_CLIENT_ID = os.environ.get("SH_CLIENT_ID", None)
+    SH_CLIENT_SECRET = os.environ.get("SH_CLIENT_SECRET", None)
     if not SH_CLIENT_ID or not SH_CLIENT_SECRET:
-        raise Exception("This test needs TESTS_SH_CLIENT_ID and TESTS_SH_CLIENT_SECRET env vars to be set.")
+        raise Exception("This test needs SH_CLIENT_ID and SH_CLIENT_SECRET env vars to be set.")
 
     r = app_client.get(
         "/credentials/basic",
@@ -164,10 +164,10 @@ def authorization_header(app_client):
 @pytest.fixture
 def authorization_header_base64(app_client):
     # same as authorization_header fixture, except that client_secret is base64 encoded:
-    SH_CLIENT_ID = os.environ.get("TESTS_SH_CLIENT_ID", None)
-    SH_CLIENT_SECRET = os.environ.get("TESTS_SH_CLIENT_SECRET", None)
+    SH_CLIENT_ID = os.environ.get("SH_CLIENT_ID", None)
+    SH_CLIENT_SECRET = os.environ.get("SH_CLIENT_SECRET", None)
     if not SH_CLIENT_ID or not SH_CLIENT_SECRET:
-        raise Exception("This test needs TESTS_SH_CLIENT_ID and TESTS_SH_CLIENT_SECRET env vars to be set.")
+        raise Exception("This test needs SH_CLIENT_ID and SH_CLIENT_SECRET env vars to be set.")
 
     secret = base64.b64encode(bytes(SH_CLIENT_SECRET, "ascii")).decode("ascii").rstrip()
     r = app_client.get(
