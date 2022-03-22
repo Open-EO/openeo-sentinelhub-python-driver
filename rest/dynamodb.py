@@ -7,6 +7,7 @@ from logging import log, INFO
 import os
 import uuid
 import datetime
+from enum import Enum
 
 
 logging.basicConfig(level=logging.INFO)
@@ -16,8 +17,29 @@ FAKE_AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
 FAKE_AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
 
+class DeploymentTypes(Enum):
+    PRODUCTION = "production"
+    TESTING = "testing"
+
+    @staticmethod
+    def from_string(deployment_type_str):
+        deployment_type_str_to_enum = {
+            "production": DeploymentTypes.PRODUCTION,
+            "testing": DeploymentTypes.TESTING,
+        }
+        return deployment_type_str_to_enum.get(deployment_type_str)
+
+
+DEPLOYMENT_TYPE = DeploymentTypes.from_string(os.environ.get("DEPLOYMENT_TYPE", "testing").lower())
+
+if DEPLOYMENT_TYPE == DeploymentTypes.PRODUCTION:
+    TABLE_NAME_PREFIX = ""
+elif DEPLOYMENT_TYPE == DeploymentTypes.TESTING:
+    TABLE_NAME_PREFIX = "testing"
+else:
+    TABLE_NAME_PREFIX = "local"
+
 # we use local DynamoDB by default, to avoid using AWS for testing by mistake
-DYNAMODB_PRODUCTION = os.environ.get("DYNAMODB_PRODUCTION", "").lower() in ["true", "1", "yes"]
 DYNAMODB_LOCAL_URL = os.environ.get("DYNAMODB_LOCAL_URL", "http://localhost:8000")
 SQS_LOCAL_URL = os.environ.get("SQS_LOCAL_URL", "http://localhost:9324")
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", FAKE_AWS_ACCESS_KEY_ID)
@@ -32,7 +54,7 @@ class Persistence(object):
             aws_access_key_id=AWS_ACCESS_KEY_ID,
             aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
         )
-        if DYNAMODB_PRODUCTION
+        if DEPLOYMENT_TYPE == DeploymentTypes.PRODUCTION
         else boto3.client(
             "dynamodb",
             endpoint_url=DYNAMODB_LOCAL_URL,
@@ -135,7 +157,7 @@ class Persistence(object):
 
 
 class JobsPersistence(Persistence):
-    TABLE_NAME = "shopeneo_jobs"
+    TABLE_NAME = TABLE_NAME_PREFIX + "shopeneo_jobs"
     SQS_QUEUE_NAME = "shopeneo-jobs-queue"
     sqs = (
         boto3.client(
@@ -144,7 +166,7 @@ class JobsPersistence(Persistence):
             aws_access_key_id=AWS_ACCESS_KEY_ID,
             aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
         )
-        if DYNAMODB_PRODUCTION
+        if DEPLOYMENT_TYPE == DeploymentTypes.PRODUCTION
         else boto3.client(
             "sqs",
             endpoint_url=SQS_LOCAL_URL,
@@ -237,7 +259,7 @@ class JobsPersistence(Persistence):
 
 
 class ProcessGraphsPersistence(Persistence):
-    TABLE_NAME = "shopeneo_process_graphs"
+    TABLE_NAME = TABLE_NAME_PREFIX + "shopeneo_process_graphs"
 
     @classmethod
     def create(cls, data, record_id):
@@ -277,7 +299,7 @@ class ProcessGraphsPersistence(Persistence):
 
 
 class ServicesPersistence(Persistence):
-    TABLE_NAME = "shopeneo_services"
+    TABLE_NAME = TABLE_NAME_PREFIX + "shopeneo_services"
 
     @classmethod
     def create(cls, data):
@@ -309,13 +331,18 @@ if __name__ == "__main__":
 
     # To create tables, run:
     #   $ pipenv shell
-    #   <shell> $ DYNAMODB_PRODUCTION=yes ./dynamodb.py
+    #   <shell> $ DEPLOYMENT_TYPE="production" ./dynamodb.py
     #
     # Currently it is not posible to create tables from the Lambda because the
     # boto3 version included is too old, and we can't upload newer one (creating
     # tables doesn't work if we do that)
 
-    log(INFO, "Initializing DynamoDB (url: {}, production: {})...".format(DYNAMODB_LOCAL_URL, DYNAMODB_PRODUCTION))
+    log(
+        INFO,
+        "Initializing DynamoDB (url: {}, production: {})...".format(
+            DYNAMODB_LOCAL_URL, DEPLOYMENT_TYPE == DeploymentTypes.PRODUCTION
+        ),
+    )
     JobsPersistence.ensure_table_exists()
     JobsPersistence.ensure_queue_exists()
     ProcessGraphsPersistence.ensure_table_exists()

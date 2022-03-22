@@ -1,20 +1,19 @@
 {
-  "production": {
+  "testing": {
     "app_function": "app.app",
     "aws_region": "eu-central-1",
+    "lambda_description": "Testing deploy of Sentinel Hub openEO backend",
     "environment_variables": {
-      "DYNAMODB_PRODUCTION": "@@DYNAMODB_PRODUCTION@@",
-      "DYNAMODB_LOCAL_URL": "@@DYNAMODB_LOCAL_URL@@",
+      "DEPLOYMENT_TYPE": "testing",
       "AWS_ACCESS_KEY_ID": "@@AWS_ACCESS_KEY_ID@@",
       "AWS_SECRET_ACCESS_KEY": "@@AWS_SECRET_ACCESS_KEY@@",
       "S3_DATA_BUCKET": "@@S3_DATA_BUCKET@@",
-      "HONEYCOMP_APM_API_KEY": "@@HONEYCOMP_APM_API_KEY@@",
       "BACKEND_VERSION": "@@BACKEND_VERSION@@"
     },
     "memory_size": 128,
-    "timeout_seconds": 31,
+    "timeout_seconds": 180,
     "profile_name": "default",
-    "project_name": "sentinelhub-openeo",
+    "project_name": "sentinelhub-openeo-testing",
     "runtime": "python3.6",
     "s3_bucket": "shopeneoproduction"
   }
