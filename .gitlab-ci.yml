@@ -135,4 +135,4 @@ deploy-testing-rest-lambda:
     # ensure tables are created:
     - export AWS_ACCESS_KEY_ID="$TESTING_AWS_ACCESS_KEY_ID"
     - export AWS_SECRET_ACCESS_KEY="$TESTING_AWS_SECRET_ACCESS_KEY"
-    - pipenv run bash -c "DYNAMODB_PRODUCTION=yes python dynamodb.py"
+    - pipenv run bash -c "DEPLOYMENT_TYPE=testing python dynamodb.py"
