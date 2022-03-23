@@ -7,7 +7,7 @@ version: "2.4"
 services:
 
   dynamodb:
-    image: amazon/dynamodb-local
+    image: amazon/dynamodb-local:1.18.0
     ports:
       - '8000:8000'
     # Instead od using in-memory DB, we could also persist data:
