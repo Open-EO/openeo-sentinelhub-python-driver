@@ -12,7 +12,7 @@
       "SH_CLIENT_SECRET": "@@TESTING_SH_CLIENT_SECRET@@",
       "BACKEND_VERSION": "@@BACKEND_VERSION@@"
     },
-    "memory_size": 128,
+    "memory_size": 512,
     "timeout_seconds": 180,
     "profile_name": "default",
     "project_name": "sentinelhub-openeo-testing",
