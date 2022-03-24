@@ -23,7 +23,10 @@ class openEOBatchJobStatus(Enum):
             BatchRequestStatus.PARTIAL: openEOBatchJobStatus.ERROR,
             BatchRequestStatus.CANCELED: openEOBatchJobStatus.CANCELED,
         }
-        if sentinelhub_batch_user_action == BatchUserAction.START:
+        if sentinelhub_batch_user_action == BatchUserAction.START and sentinelhub_batch_job_status in [
+            BatchRequestStatus.CREATED,
+            BatchRequestStatus.ANALYSIS_DONE,
+        ]:
             return openEOBatchJobStatus.QUEUED
         return conversion_table.get(sentinelhub_batch_job_status)
 
