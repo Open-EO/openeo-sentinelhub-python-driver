@@ -158,6 +158,7 @@ def openeo_exception_handler(error):
         jsonify(id=error.record_id, code=error.error_code, message=error.message, links=[]), error.http_code
     )
 
+
 @app.errorhandler(Exception)
 def handle_exception(e):
     # pass through HTTP errors
