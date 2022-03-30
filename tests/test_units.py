@@ -103,6 +103,22 @@ def test_collections(get_process_graph, collection_id):
             None,
             lambda user=None: user is not None,
         ),
+        (
+            {
+                "sub": "example@egi.eu",
+                "eduperson_entitlement": [
+                    "urn:mace:egi.eu:group:vo.openeo.cloud:role=member#aai.egi.eu",
+                    "urn:mace:egi.eu:group:vo.openeo.cloud:role=vm_operator#aai.egi.eu",
+                    "urn:mace:egi.eu:group:vo.openeo.cloud:role=early_adopter#aai.egi.eu",
+                    "urn:mace:egi.eu:group:vo.openeo.cloud:admins:role=member#aai.egi.eu",
+                    "urn:mace:egi.eu:group:vo.openeo.cloud:admins:role=owner#aai.egi.eu",
+                ],
+            },
+            {"Authorization": "Bearer oidc/egi/<token>"},
+            False,
+            None,
+            None,
+        ),
     ],
 )
 def test_authentication_provider(oidc_user_info_response, headers, should_raise_error, error, func):

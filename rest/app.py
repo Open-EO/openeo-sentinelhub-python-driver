@@ -55,6 +55,7 @@ from openeoerrors import (
     JobLocked,
     CollectionNotFound,
     ServiceNotFound,
+    Internal,
 )
 from const import openEOBatchJobStatus
 
@@ -388,10 +389,10 @@ def api_result():
 
         try:
             data, mime_type = process_data_synchronously(job_data["process"])
-        except OpenEOProcessError as error:
-            return flask.make_response(
-                jsonify(id=None, code=error.error_code, message=error.message, links=[]), error.http_code
-            )
+        except (OpenEOProcessError, OpenEOError) as error:
+            raise
+        except Exception as error:
+            raise Internal(str(error))
 
         response = flask.make_response(data, 200)
         response.mime_type = mime_type
@@ -747,7 +748,14 @@ def api_execute_service(service_id, zoom, tx, ty):
     process_info = json.loads(record["process"])
 
     inject_variables_in_process_graph(process_info["process_graph"], variables)
-    data, mime_type = process_data_synchronously(process_info, width=tile_size, height=tile_size)
+
+    try:
+        data, mime_type = process_data_synchronously(process_info, width=tile_size, height=tile_size)
+    except (OpenEOProcessError, OpenEOError) as error:
+        raise
+    except Exception as error:
+        raise Internal(str(error))
+
     response = flask.make_response(data, 200)
     response.mimetype = mime_type
     return response
