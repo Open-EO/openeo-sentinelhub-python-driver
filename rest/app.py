@@ -18,6 +18,7 @@ import beeline
 from beeline.middleware.flask import HoneyMiddleware
 from sentinelhub import BatchRequestStatus
 from pg_to_evalscript import list_supported_processes
+from werkzeug.exceptions import HTTPException
 
 import globalmaptiles
 from schemas import (
@@ -153,6 +154,19 @@ def _extract_auth_token(headers):
 
 @app.errorhandler(OpenEOError)
 def openeo_exception_handler(error):
+    return flask.make_response(
+        jsonify(id=error.record_id, code=error.error_code, message=error.message, links=[]), error.http_code
+    )
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # pass through HTTP errors
+    log(INFO, f"Error: {str(e)}")
+    if isinstance(e, HTTPException):
+        return e
+
+    # now you're handling non-HTTP exceptions only
+    error = Internal(str(e))
     return flask.make_response(
         jsonify(id=error.record_id, code=error.error_code, message=error.message, links=[]), error.http_code
     )
@@ -559,6 +573,7 @@ def add_job_to_queue(job_id):
 
         while True:
             if continuation_token:
+                log(INFO, f"Fetch from bucket")
                 response = s3.list_objects_v2(
                     Bucket=RESULTS_S3_BUCKET_NAME, Prefix=job["batch_request_id"], ContinuationToken=continuation_token
                 )
@@ -571,6 +586,7 @@ def add_job_to_queue(job_id):
                 break
 
         assets = {}
+        log(INFO, f"Fetched all results: {str(results)}")
 
         for result in results:
             # create signed url:
