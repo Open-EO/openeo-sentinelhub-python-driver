@@ -147,6 +147,10 @@ class SentinelHub:
         batch_request = self.batch.get_request(batch_request_id)
         self.batch.start_job(batch_request)
 
+    def restart_batch_job(self, batch_request_id):
+        batch_request = self.batch.get_request(batch_request_id)
+        self.batch.restart_job(batch_request)
+
     def cancel_batch_job(self, batch_request_id):
         batch_request = self.batch.get_request(batch_request_id)
         self.batch.cancel_job(batch_request)
