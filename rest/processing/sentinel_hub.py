@@ -67,7 +67,7 @@ class SentinelHub:
         width=None,
         height=None,
         mimetype=None,
-        preview_mode="EXTENDED_PREVIEW"
+        preview_mode="EXTENDED_PREVIEW",
     ):
         return {
             "input": {
@@ -133,7 +133,7 @@ class SentinelHub:
             from_date=from_date,
             to_date=to_date,
             mimetype=mimetype,
-            preview_mode="DETAIL"
+            preview_mode="DETAIL",
         )
 
         batch_request = self.batch.create(

@@ -537,7 +537,6 @@ def api_batch_job(job_id):
         return flask.make_response("Changes to the job applied successfully.", 204)
 
     elif flask.request.method == "DELETE":
-        delete_batch_job(job["batch_request_id"])
         JobsPersistence.delete(job_id)
         return flask.make_response("The job has been successfully deleted.", 204)
 
