@@ -67,6 +67,7 @@ class SentinelHub:
         width=None,
         height=None,
         mimetype=None,
+        preview_mode="EXTENDED_PREVIEW"
     ):
         return {
             "input": {
@@ -79,7 +80,7 @@ class SentinelHub:
                                 "from": from_date.isoformat(),
                                 "to": to_date.isoformat(),
                             },
-                            "previewMode": "EXTENDED_PREVIEW",
+                            "previewMode": preview_mode,
                         },
                     }
                 ],
@@ -132,6 +133,7 @@ class SentinelHub:
             from_date=from_date,
             to_date=to_date,
             mimetype=mimetype,
+            preview_mode="DETAIL"
         )
 
         batch_request = self.batch.create(
