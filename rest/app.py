@@ -532,7 +532,7 @@ def api_batch_job(job_id):
             JobsPersistence.update_key(job_id, key, data[key])
 
         new_batch_request_id = modify_batch_job(data["process"])
-        new_batch_request_id(job_id, job, new_batch_request_id)
+        update_batch_request_id(job_id, job, new_batch_request_id)
 
         return flask.make_response("Changes to the job applied successfully.", 204)
 
