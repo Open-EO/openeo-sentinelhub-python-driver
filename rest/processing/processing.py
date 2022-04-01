@@ -1,3 +1,5 @@
+import time
+
 from pg_to_evalscript import convert_from_process_graph
 from sentinelhub import BatchRequestStatus
 
@@ -64,3 +66,22 @@ def modify_batch_job(process):
     We therefore have to create a new Sentinel Hub batch request.
     """
     return create_batch_job(process)
+
+
+def get_batch_job_estimate(batch_request_id):
+    sentinel_hub = SentinelHub()
+    sentinel_hub.start_batch_job_analysis(batch_request_id)
+
+    analysis_sleep_time_s = 5
+    estimate_secure_factor = 2
+
+    batch_request = sentinel_hub.get_batch_request_info(batch_request_id)
+
+    while batch_request.value_estimate is None and batch_request.status in [
+        BatchRequestStatus.CREATED,
+        BatchRequestStatus.ANALYSING,
+    ]:
+        time.sleep(analysis_sleep_time_s)
+        batch_request = sentinel_hub.get_batch_request_info(batch_request_id)
+
+    return estimate_secure_factor * batch_request.value_estimate

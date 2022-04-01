@@ -42,6 +42,7 @@ from processing.processing import (
     cancel_batch_job,
     delete_batch_job,
     modify_batch_job,
+    get_batch_job_estimate,
 )
 from processing.utils import inject_variables_in_process_graph
 from processing.openeo_process_errors import OpenEOProcessError
@@ -194,6 +195,7 @@ def api_root():
         "title": "Sentinel Hub OpenEO",
         "description": "Sentinel Hub OpenEO by [Sinergise](https://sinergise.com)",
         "endpoints": get_endpoints(),
+        "billing": {"currency": "processing units"},
         "links": get_links(),
     }
 
@@ -253,6 +255,12 @@ def get_links():
             "rel": "data",
             "type": "application/json",
             "title": "List of Datasets",
+        },
+        {
+            "href": "https://docs.sentinel-hub.com/api/latest/api/overview/processing-unit/",
+            "rel": "about",
+            "type": "text/html",
+            "title": "Explanation of processing units",
         },
     ]
 
@@ -635,6 +643,22 @@ def add_job_to_queue(job_id):
                 [*json.loads(job["previous_batch_request_ids"]), job["batch_request_id"]],
             )
         return flask.make_response("Processing the job has been successfully canceled.", 204)
+
+
+@app.route("/jobs/<job_id>/estimate", methods=["GET"])
+@authentication_provider.with_bearer_auth
+def estimate_job_cost(job_id):
+    job = JobsPersistence.get_by_id(job_id)
+    if job is None:
+        raise JobNotFound()
+
+    estimated_pu = get_batch_job_estimate(job["batch_request_id"])
+    return flask.make_response(
+        jsonify(
+            costs=estimated_pu,
+        ),
+        200,
+    )
 
 
 @app.route("/services", methods=["GET", "POST"])
