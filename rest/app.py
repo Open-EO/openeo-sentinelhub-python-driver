@@ -652,7 +652,7 @@ def estimate_job_cost(job_id):
     if job is None:
         raise JobNotFound()
 
-    estimated_pu = get_batch_job_estimate(job["batch_request_id"])
+    estimated_pu = get_batch_job_estimate(job["batch_request_id"], json.loads(job["process"]))
     return flask.make_response(
         jsonify(
             costs=estimated_pu,

@@ -116,6 +116,13 @@ class Process:
             south = spatial_extent["south"]
             return (west, south, east, north), epsg_code, None
 
+    def get_collection_temporal_step(self):
+        load_collection_node = self.get_node_by_process_id("load_collection")
+        collection = collections.get_collection(load_collection_node["arguments"]["id"])
+        if not collection:
+            return None
+        return collection["cube:dimensions"]["t"].get("step")
+
     def get_maximum_temporal_extent_for_collection(collection):
         warnings.warn("get_maximum_temporal_extent_for_collection not implemented yet!")
         return datetime.now(), datetime.now()

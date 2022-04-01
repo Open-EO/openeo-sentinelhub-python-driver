@@ -66,6 +66,38 @@ def with_mocked_auth(func):
     return decorated_function
 
 
+@pytest.fixture
+def get_process_graph():
+    def wrapped(bands=None, collection_id=None, spatial_extent=None, file_format="gtiff", options=None):
+        process_graph = {
+            "loadco1": {
+                "process_id": "load_collection",
+                "arguments": {
+                    "id": collection_id,
+                    "temporal_extent": ["2017-01-01", "2017-02-01"],
+                    "spatial_extent": spatial_extent,
+                },
+            },
+            "result1": {
+                "process_id": "save_result",
+                "arguments": {
+                    "data": {"from_node": "loadco1"},
+                    "format": file_format,
+                },
+                "result": True,
+            },
+        }
+        if bands:
+            process_graph["loadco1"]["arguments"]["bands"] = bands
+        if spatial_extent:
+            process_graph["loadco1"]["arguments"]["spatial_extent"] = spatial_extent
+        if options:
+            process_graph["result1"]["arguments"]["options"] = options
+        return process_graph
+
+    return wrapped
+
+
 def setup_function(function):
     ProcessGraphsPersistence.ensure_table_exists()
     JobsPersistence.ensure_table_exists()

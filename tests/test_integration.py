@@ -1198,3 +1198,98 @@ def test_validate_bands(
         )
     else:
         assert r.status_code == 201, r.data
+
+
+@with_mocked_auth
+@pytest.mark.parametrize(
+    "bands,collection_id,spatial_extent,file_format,options,backend_estimate,expected_costs",
+    [
+        (
+            ["B01"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "gtiff",
+            None,
+            30,
+            36,
+        ),
+        (
+            ["CLC"],
+            "corine-land-cover",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "gtiff",
+            None,
+            30,
+            36,
+        ),
+        (
+            ["B01"],
+            "landsat-7-etm+-l2",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "gtiff",
+            None,
+            30,
+            11.25,
+        ),
+    ],
+)
+def test_batch_job_estimate(
+    app_client,
+    get_process_graph,
+    example_authorization_header_with_oidc,
+    bands,
+    collection_id,
+    spatial_extent,
+    file_format,
+    options,
+    backend_estimate,
+    expected_costs,
+):
+
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/oauth/token",
+        body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
+    )
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/api/v1/batch/process",
+        body=json.dumps({"id": "example", "processRequest": {}, "status": "CREATED"}),
+    )
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/api/v1/batch/process/example/analyse",
+    )
+    responses.add(
+        responses.GET,
+        re.compile("https://services.sentinel-hub.com/api/v1/batch/process/example"),
+        body=json.dumps(
+            {"valueEstimate": backend_estimate, "id": "example", "processRequest": {}, "status": "ANALYSIS_DONE"}
+        ),
+    )
+
+    data = {
+        "process": {
+            "process_graph": get_process_graph(
+                bands=bands,
+                collection_id=collection_id,
+                spatial_extent=spatial_extent,
+                file_format=file_format,
+                options=options,
+            ),
+        }
+    }
+
+    r = app_client.post(
+        "/jobs", data=json.dumps(data), headers=example_authorization_header_with_oidc, content_type="application/json"
+    )
+    assert r.status_code == 201, r.data
+    job_id = r.headers["OpenEO-Identifier"]
+
+    r = app_client.get(f"/jobs/{job_id}/estimate")
+    assert r.status_code == 401, r.data
+
+    r = app_client.get(f"/jobs/{job_id}/estimate", headers=example_authorization_header_with_oidc)
+    assert r.status_code == 200, r.data
+    data = json.loads(r.data.decode("utf-8"))
+    assert data["costs"] == expected_costs
