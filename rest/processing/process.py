@@ -1,14 +1,16 @@
 import warnings
+import math
 from datetime import datetime, date, timedelta, timezone
 
 from sentinelhub import DataCollection, MimeType, BBox, Geometry, CRS
 from sentinelhub.time_utils import parse_time
 from pg_to_evalscript import convert_from_process_graph
 from sentinelhub.geo_utils import bbox_to_dimensions
+from isodate import parse_duration
 
 from processing.openeo_process_errors import FormatUnsuitable
 from processing.sentinel_hub import SentinelHub
-from processing.const import SampleType, default_sample_type_for_mimetype, supported_sample_types
+from processing.const import SampleType, default_sample_type_for_mimetype, supported_sample_types, sample_types_to_bytes
 from openeocollections import collections
 from openeoerrors import CollectionNotFound, Internal, ProcessParameterInvalid
 
@@ -123,6 +125,19 @@ class Process:
             return None
         return collection["cube:dimensions"]["t"].get("step")
 
+    def get_temporal_interval(self, in_days=False):
+        step = self.get_collection_temporal_step()
+
+        if step is None:
+            return None
+
+        temporal_interval = parse_duration(step)
+
+        if in_days:
+            n_seconds_per_day = 86400
+            return temporal_interval.total_seconds() / n_seconds_per_day
+        return temporal_interval.total_seconds()
+
     def get_maximum_temporal_extent_for_collection(collection):
         warnings.warn("get_maximum_temporal_extent_for_collection not implemented yet!")
         return datetime.now(), datetime.now()
@@ -226,6 +241,38 @@ class Process:
         highest_x_resolution = min(list_of_resolutions, key=lambda x: x[0])[0]
         highest_y_resolution = min(list_of_resolutions, key=lambda x: x[1])[1]
         return (highest_x_resolution, highest_y_resolution)
+
+    def estimate_file_size(self):
+        n_pixels = self.width * self.height
+        n_bytes = sample_types_to_bytes.get(self.sample_type)
+        output_dimensions = self.evalscript.determine_output_dimensions()
+        n_original_temporal_dimensions = 0
+        n_output_bands = 1
+
+        for output_dimension in output_dimensions:
+            if output_dimension.get("original_temporal"):
+                n_original_temporal_dimensions += 1
+            else:
+                n_output_bands *= output_dimension["size"]
+
+        if n_original_temporal_dimensions > 0:
+            temporal_interval = self.get_temporal_interval()
+
+            if temporal_interval is None:
+                n_seconds_per_day = 86400
+                default_temporal_interval = 3
+                temporal_interval = default_temporal_interval * n_seconds_per_day
+
+            date_diff = (self.to_date - self.from_date).total_seconds()
+            n_dates = math.ceil(date_diff / temporal_interval) + 1
+            n_output_bands *= n_dates * n_original_temporal_dimensions
+
+        if self.mimetype == MimeType.PNG:
+            n_output_bands = min(n_output_bands, 4)
+        elif self.mimetype == MimeType.JPG:
+            n_output_bands = min(n_output_bands, 3)
+
+        return n_pixels * n_bytes * n_output_bands
 
     def execute_sync(self):
         return self.sentinel_hub.create_processing_request(

@@ -2,7 +2,6 @@ import time
 
 from pg_to_evalscript import convert_from_process_graph
 from sentinelhub import BatchRequestStatus
-from isodate import parse_duration
 
 from processing.process import Process
 from processing.sentinel_hub import SentinelHub
@@ -86,15 +85,13 @@ def get_batch_job_estimate(batch_request_id, process):
 
     default_temporal_interval = 3
     estimate_secure_factor = 2
-    n_seconds_per_day = 86400
 
     p = Process(process)
-    temporal_interval = p.get_collection_temporal_step()
+    temporal_interval = p.get_temporal_interval(in_days=True)
 
     if temporal_interval is None:
         temporal_interval = default_temporal_interval
-    else:
-        temporal_interval = parse_duration(temporal_interval)
-        temporal_interval = temporal_interval.total_seconds() / n_seconds_per_day
 
-    return estimate_secure_factor * batch_request.value_estimate * default_temporal_interval / temporal_interval
+    estimated_pu = estimate_secure_factor * batch_request.value_estimate * default_temporal_interval / temporal_interval
+    estimated_file_size = p.estimate_file_size()
+    return estimated_pu, estimated_file_size

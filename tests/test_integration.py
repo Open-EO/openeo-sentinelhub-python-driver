@@ -1202,7 +1202,7 @@ def test_validate_bands(
 
 @with_mocked_auth
 @pytest.mark.parametrize(
-    "bands,collection_id,spatial_extent,file_format,options,backend_estimate,expected_costs",
+    "bands,collection_id,spatial_extent,file_format,options,backend_estimate,expected_costs,expected_file_size",
     [
         (
             ["B01"],
@@ -1212,24 +1212,87 @@ def test_validate_bands(
             None,
             30,
             36,
+            8064,
         ),
         (
             ["CLC"],
             "corine-land-cover",
             {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
-            "gtiff",
+            "png",
             None,
             30,
             36,
+            36080,
         ),
         (
             ["B01"],
             "landsat-7-etm+-l2",
             {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
-            "gtiff",
+            "jpeg",
             None,
             30,
             11.25,
+            2997,
+        ),
+        (
+            ["B03"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "gtiff",
+            None,
+            30,
+            36,
+            288640,
+        ),
+        (
+            ["B01"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "png",
+            None,
+            30,
+            36,
+            1008,
+        ),
+        (
+            ["B01"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "jpeg",
+            None,
+            30,
+            36,
+            756,
+        ),
+        (
+            ["B01"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "png",
+            {"datatype": "uint16"},
+            30,
+            36,
+            2016,
+        ),
+        (
+            ["B01"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "gtiff",
+            {"datatype": "byte"},
+            30,
+            36,
+            2016,
+        ),
+        (
+            ["B01"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "gtiff",
+            {"datatype": "uint16"},
+            30,
+            36,
+            4032,
         ),
     ],
 )
@@ -1244,6 +1307,7 @@ def test_batch_job_estimate(
     options,
     backend_estimate,
     expected_costs,
+    expected_file_size,
 ):
 
     responses.add(
@@ -1293,3 +1357,4 @@ def test_batch_job_estimate(
     assert r.status_code == 200, r.data
     data = json.loads(r.data.decode("utf-8"))
     assert data["costs"] == expected_costs
+    assert data["size"] == expected_file_size
