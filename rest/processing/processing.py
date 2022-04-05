@@ -70,11 +70,12 @@ def modify_batch_job(process):
 
 def get_batch_job_estimate(batch_request_id, process):
     sentinel_hub = SentinelHub()
-    sentinel_hub.start_batch_job_analysis(batch_request_id)
-
-    analysis_sleep_time_s = 5
 
     batch_request = sentinel_hub.get_batch_request_info(batch_request_id)
+
+    if batch_request.value_estimate is None:
+        analysis_sleep_time_s = 5
+        sentinel_hub.start_batch_job_analysis(batch_request_id)
 
     while batch_request.value_estimate is None and batch_request.status in [
         BatchRequestStatus.CREATED,
