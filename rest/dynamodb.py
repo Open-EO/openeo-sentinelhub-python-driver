@@ -155,7 +155,6 @@ class Persistence(object):
                         "IndexName": "user_id",
                         "KeySchema": [{"AttributeName": "user_id", "KeyType": "HASH"}],
                         "Projection": {"ProjectionType": "ALL"},
-                        "ProvisionedThroughput": {"ReadCapacityUnits": 1, "WriteCapacityUnits": 1},
                     }
                 ],
                 TableName=cls.TABLE_NAME,
