@@ -70,10 +70,20 @@ class Persistence(object):
         paginator = cls.dynamodb.get_paginator("scan")
         for page in paginator.paginate(TableName=cls.TABLE_NAME):
             for item in page["Items"]:
-                for key, value in item.items():
-                    data_type = list(value)[0]
-                    item[key] = value[data_type]
-                yield item
+                yield cls.prepare_loaded_item(item)
+
+    @classmethod
+    def query_by_user_id(cls, user_id):
+        paginator = cls.dynamodb.get_paginator("query")
+        for page in paginator.paginate(
+            TableName=cls.TABLE_NAME,
+            IndexName="user_id",
+            KeyConditionExpression="#itemskey = :itemsvalue",
+            ExpressionAttributeNames={"#itemskey": "user_id"},
+            ExpressionAttributeValues={":itemsvalue": {"S": user_id}},
+        ):
+            for item in page["Items"]:
+                yield cls.prepare_loaded_item(item)
 
     @classmethod
     def delete(cls, record_id):
@@ -82,7 +92,10 @@ class Persistence(object):
     @classmethod
     def get_by_id(cls, record_id):
         item = cls.dynamodb.get_item(TableName=cls.TABLE_NAME, Key={"id": {"S": record_id}}).get("Item")
+        return cls.prepare_loaded_item(item)
 
+    @staticmethod
+    def prepare_loaded_item(item):
         if item is None:
             return None
 
@@ -126,12 +139,24 @@ class Persistence(object):
                         "AttributeName": "id",
                         "AttributeType": "S",
                     },
+                    {
+                        "AttributeName": "user_id",
+                        "AttributeType": "S",
+                    },
                 ],
                 KeySchema=[
                     {
                         "AttributeName": "id",
                         "KeyType": "HASH",
                     },
+                ],
+                GlobalSecondaryIndexes=[
+                    {
+                        "IndexName": "user_id",
+                        "KeySchema": [{"AttributeName": "user_id", "KeyType": "HASH"}],
+                        "Projection": {"ProjectionType": "ALL"},
+                        "ProvisionedThroughput": {"ReadCapacityUnits": 1, "WriteCapacityUnits": 1},
+                    }
                 ],
                 TableName=cls.TABLE_NAME,
                 BillingMode="PAY_PER_REQUEST",  # we use on-demand pricing
@@ -167,6 +192,7 @@ class JobsPersistence(Persistence):
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         item = {
             "id": {"S": record_id},
+            "user_id": {"S": data["user_id"]},
             "process": {"S": json.dumps(data["process"])},
             "batch_request_id": {
                 "S": data.get("batch_request_id", "null")
@@ -215,6 +241,7 @@ class ProcessGraphsPersistence(Persistence):
         """
         item = {
             "id": {"S": record_id},
+            "user_id": {"S": data["user_id"]},
             "process_graph": {"S": json.dumps(data.get("process_graph"))},
         }
         if data.get("summary"):
@@ -257,6 +284,7 @@ class ServicesPersistence(Persistence):
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         item = {
             "id": {"S": record_id},
+            "user_id": {"S": data["user_id"]},
             "service_type": {"S": str(data.get("type"))},
             "process": {"S": json.dumps(data.get("process"))},
             "enabled": {"BOOL": data.get("enabled", True)},
