@@ -1508,3 +1508,34 @@ def test_user_workspace(app_client, example_authorization_header_with_oidc, exam
     actual = json.loads(r.data.decode("utf-8"))
     assert len(actual["processes"]) == 1
     assert actual["processes"][0]["id"] == process_graph_id
+
+
+@with_mocked_auth
+@pytest.mark.parametrize(
+    "spatial_extent,temporal_extent",
+    [
+        ({"west": 1.32271, "east": 12.33572, "north": 42.07112, "south": 2.06347}, ["2019-08-16", "2019-08-18"]),
+    ],
+)
+def test_sync_jobs_filesize(
+    app_client, example_process_graph, example_authorization_header_with_oidc, spatial_extent, temporal_extent
+):
+    """
+    - Test requests with too large file size are rejected
+    """
+    example_process_graph["loadco1"]["arguments"]["spatial_extent"] = spatial_extent
+    example_process_graph["loadco1"]["arguments"]["temporal_extent"] = temporal_extent
+    data = {
+        "process": {
+            "process_graph": example_process_graph,
+        }
+    }
+
+    r = app_client.post(
+        "/result",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
+    assert r.status_code == ProcessGraphComplexity.http_code, r.data
+    assert ProcessGraphComplexity.error_code in r.data.decode("utf-8")

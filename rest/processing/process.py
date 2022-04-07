@@ -12,13 +12,14 @@ from processing.openeo_process_errors import FormatUnsuitable
 from processing.sentinel_hub import SentinelHub
 from processing.const import SampleType, default_sample_type_for_mimetype, supported_sample_types, sample_types_to_bytes
 from openeocollections import collections
-from openeoerrors import CollectionNotFound, Internal, ProcessParameterInvalid
+from openeoerrors import CollectionNotFound, Internal, ProcessParameterInvalid, ProcessGraphComplexity
 
 
 class Process:
     def __init__(self, process, width=None, height=None):
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_RESOLUTION = (10, 10)
+        self.MAXIMUM_SYNC_FILESIZE_BYTES = 5000000
         self.sentinel_hub = SentinelHub()
 
         self.process_graph = process["process_graph"]
@@ -275,6 +276,12 @@ class Process:
         return n_pixels * n_bytes * n_output_bands
 
     def execute_sync(self):
+        estimated_file_size = self.estimate_file_size()
+        if estimated_file_size > self.MAXIMUM_SYNC_FILESIZE_BYTES:
+            raise ProcessGraphComplexity(
+                f"estimated size of generated output of {estimated_file_size} bytes exceeds maximum supported size of {self.MAXIMUM_SYNC_FILESIZE_BYTES} bytes."
+            )
+
         return self.sentinel_hub.create_processing_request(
             bbox=self.bbox,
             epsg_code=self.epsg_code,
