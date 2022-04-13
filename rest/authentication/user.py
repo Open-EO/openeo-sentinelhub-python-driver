@@ -1,5 +1,5 @@
 class User:
-    def __init__(self, user_id=None, entitlements=None):
+    def __init__(self, user_id=None, entitlements=[]):
         self.user_id = user_id
         self.entitlements = [self.convert_entitlement(entitlement) for entitlement in entitlements]
 

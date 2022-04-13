@@ -27,3 +27,4 @@ flask-basicauth = "==0.2.0"
 pg-to-evalscript = "==0.2.1rc2"
 sentinelhub = "==3.4.2"
 isodate = "*"
+pyjwt = {extras = ["crypto"], version = "*"}
