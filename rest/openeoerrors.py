@@ -94,3 +94,9 @@ class ProcessParameterInvalid(OpenEOError):
 
     error_code = "ProcessParameterInvalid"
     http_code = 400
+
+
+class UnsupportedGeometry(OpenEOError):
+    error_code = "UnsupportedGeometry"
+    http_code = 400
+    message = "Unsupported geometry found, only Polygon or MultiPolygon geometries are supported"
