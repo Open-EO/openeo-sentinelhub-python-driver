@@ -11,6 +11,7 @@ from processing.sentinel_hub import SentinelHub
 from processing.const import SampleType, default_sample_type_for_mimetype, supported_sample_types
 from openeocollections import collections
 from openeoerrors import CollectionNotFound, Internal, ProcessParameterInvalid
+from processing.utils import is_geojson, validate_geojson, parse_geojson
 
 
 class Process:
@@ -94,20 +95,18 @@ class Process:
             collection = collections.get_collection(load_collection_node["arguments"]["id"])
             bbox = collection["extent"]["spatial"]["bbox"][0]
             return tuple(bbox), self.DEFAULT_EPSG_CODE, None
-        elif (
-            isinstance(spatial_extent, dict)
-            and "type" in spatial_extent
-            and spatial_extent["type"] in ("Polygon", "MultiPolygon")
-        ):
-            sh_py_geometry = Geometry.from_geojson(spatial_extent)
-            return (
-                (
-                    *sh_py_geometry.bbox.lower_left,
-                    *sh_py_geometry.bbox.upper_right,
-                ),
-                self.DEFAULT_EPSG_CODE,
-                spatial_extent,
-            )
+        elif is_geojson(spatial_extent):
+            if validate_geojson(spatial_extent):
+                geojson = parse_geojson(spatial_extent)
+                sh_py_geometry = Geometry.from_geojson(geojson)
+                return (
+                    (
+                        *sh_py_geometry.bbox.lower_left,
+                        *sh_py_geometry.bbox.upper_right,
+                    ),
+                    self.DEFAULT_EPSG_CODE,
+                    spatial_extent,
+                )
         else:
             epsg_code = spatial_extent.get("crs", self.DEFAULT_EPSG_CODE)
             east = spatial_extent["east"]
