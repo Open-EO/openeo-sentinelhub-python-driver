@@ -139,5 +139,4 @@ deploy-testing-rest-lambda:
   after_script:
     - cd rest/
     - pipenv install --dev
-    - pipenv run zappa tail testing
-    - echo pipenv run zappa tail testing
+    - pipenv run zappa tail testing --disable-keep-open
