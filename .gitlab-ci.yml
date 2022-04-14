@@ -136,3 +136,8 @@ deploy-testing-rest-lambda:
     - export AWS_ACCESS_KEY_ID="$TESTING_AWS_ACCESS_KEY_ID"
     - export AWS_SECRET_ACCESS_KEY="$TESTING_AWS_SECRET_ACCESS_KEY"
     - pipenv run bash -c "DEPLOYMENT_TYPE=testing python dynamodb.py"
+  after_script:
+    - cd rest/
+    - pipenv install --dev
+    - pipenv run zappa tail testing
+    - echo pipenv run zappa tail testing
