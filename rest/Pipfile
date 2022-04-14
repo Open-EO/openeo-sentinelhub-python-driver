@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [dev-packages]
-zappa = "==0.54.1"
+zappa = "==0.54.0"
 pylint = "==2.12.2"
 responses = "==0.17.0"
 cryptography = "==36.0.1"
