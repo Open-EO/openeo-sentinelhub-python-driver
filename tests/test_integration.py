@@ -445,7 +445,6 @@ def test_result_not_encoded_secret(app_client, example_process_graph, example_au
     assert r.status_code == 200
 
 
-@pytest.mark.skip("Authentication currently does not use clientid/secret")
 def test_result_base64_encoded_secret(app_client, example_process_graph, authorization_header_base64):
     """
     - test /result endpoint, but this time use a base64-encoded version of password (both should work)
@@ -456,9 +455,8 @@ def test_result_base64_encoded_secret(app_client, example_process_graph, authori
         }
     }
 
-    # Authentication is currently disabled
-    # r = app_client.post("/result", data=json.dumps(data), content_type="application/json")
-    # assert r.status_code == 401
+    r = app_client.post("/result", data=json.dumps(data), content_type="application/json")
+    assert r.status_code == 401
 
     r = app_client.post(
         "/result",

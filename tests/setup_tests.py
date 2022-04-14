@@ -67,6 +67,36 @@ def with_mocked_auth(func):
     return decorated_function
 
 
+valid_sh_token = None
+
+
+def set_valid_sh_token():
+    global valid_sh_token
+
+    if valid_sh_token is not None:
+        return
+
+    SH_CLIENT_ID = os.environ.get("SH_CLIENT_ID", None)
+    SH_CLIENT_SECRET = os.environ.get("SH_CLIENT_SECRET", None)
+    if not SH_CLIENT_ID or not SH_CLIENT_SECRET:
+        raise Exception("This test needs SH_CLIENT_ID and SH_CLIENT_SECRET env vars to be set.")
+
+    r = requests.post(
+        "https://services.sentinel-hub.com/oauth/token",
+        data={
+            "grant_type": "client_credentials",
+            "client_id": SH_CLIENT_ID,
+            "client_secret": SH_CLIENT_SECRET,
+        },
+    )
+    r.raise_for_status()
+    j = r.json()
+    valid_sh_token = j["access_token"]
+
+
+set_valid_sh_token()
+
+
 @pytest.fixture
 def get_process_graph():
     def wrapped(bands=None, collection_id=None, spatial_extent=None, file_format="gtiff", options=None):

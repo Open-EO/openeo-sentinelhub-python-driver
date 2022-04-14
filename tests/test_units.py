@@ -7,6 +7,7 @@ from openeoerrors import (
     Internal,
     CredentialsInvalid,
     ProcessParameterInvalid,
+    TokenInvalid,
 )
 from processing.utils import inject_variables_in_process_graph
 
@@ -89,7 +90,7 @@ def test_collections(get_process_graph, collection_id):
         ),
     ],
 )
-def test_authentication_provider(oidc_user_info_response, headers, should_raise_error, error, func):
+def test_authentication_provider_oidc(oidc_user_info_response, headers, should_raise_error, error, func):
     authentication_provider = AuthenticationProvider(
         oidc_providers=[{"id": "egi", "issuer": "https://aai.egi.eu/oidc/"}]
     )
@@ -125,6 +126,54 @@ def test_authentication_provider(oidc_user_info_response, headers, should_raise_
                 assert authentication_provider.with_bearer_auth(func)()
 
         execute()
+
+
+expired_sh_token = "eyJraWQiOiJzaCIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiIzM2ExOWY2ZC1mYTM3LTQ2ZTAtOTk3Yy04OWQ0YTc5MDllMDgiLCJhdWQiOiIyMGI2NTZmOS02NGNjLTQzM2EtYmJjYi1lOTFlODZjN2E3NTciLCJqdGkiOiI1ZTdhODliMS03YWVmLTRjZmYtYTUzZi0zYjQ3ZGZiNjVhZTMiLCJleHAiOjE2NDk4NzI5NDAsIm5hbWUiOiJFTyBCcm93c2VyIGFwcCAiLCJlbWFpbCI6ImluZm8rZW9icm93c2VyQHNlbnRpbmVsLWh1Yi5jb20iLCJnaXZlbl9uYW1lIjoiRU8gQnJvd3NlciBhcHAiLCJmYW1pbHlfbmFtZSI6IiIsInNpZCI6IjI4NTkwZDMxLTUxN2UtNGZjMC1hY2NiLTdiMTM2YWU3MWU0NiIsIm9yZyI6ImE1MmNlNmRhLTIyOTAtNDdjMi04NGIxLTVmZDU4OWRhYWMyNSIsImRpZCI6MSwiYWlkIjoiZTViNWU2NjUtMzZhNy00NjI3LWIzYjUtNWI2M2MwYjkyNjlmIiwiZCI6eyIxIjp7InJhIjp7InJhZyI6NH0sInQiOjE0MDAwfX19.e-3w6Q_NJ8LmRkTczHtvfOCxFocrn2MD2PG4dV5bTSCAS1YAP2c8eFSvQgQUCmuxCEZScIXY1FviWyGF5toAL5c3nlpBeN_lG0meaQz6_PO6943h58dxNVdT8lto4dBZLR1QKydP8OWUS9GuKXXk3JjplqIlBmjHz7sSGzPD8nWMl1uuD07tRhnY382q_wEQ61mw4GdVinm4azotgERSGbCjGlSQzlf75GQKT4HpOmoY26tgbf19HRmr0aQ-QUd8dxUuq6LuY83XmAeok7G9eGxx3BmQnySQlfAJE2oQ31jaxX2q3kR-7riSFD2r5o1Qq4vFwW7yTOSj8o9FqT5LJQ"
+
+
+@pytest.mark.parametrize(
+    "headers,should_raise_error,error,func",
+    [
+        (
+            {"Authorization": f"Bearer basic//{valid_sh_token}"},
+            False,
+            None,
+            None,
+        ),
+        (
+            {"Authorization": f"Bearer basic//{expired_sh_token}"},
+            True,
+            TokenInvalid,
+            None,
+        ),
+        (
+            {"Authorization": f"Bearer basic//<invalid-token>"},
+            True,
+            TokenInvalid,
+            None,
+        ),
+        (
+            {"Authorization": f"Bearer basic/{valid_sh_token}"},
+            True,
+            AuthenticationSchemeInvalid,
+            None,
+        ),
+    ],
+)
+def test_authentication_provider_basic(headers, should_raise_error, error, func):
+    authentication_provider = AuthenticationProvider()
+
+    if func is None:
+        func = lambda: True
+
+    with app.test_request_context("/", headers=headers):
+        # Decorating test_authentication_provider outside this context with responses.activate causes an error
+        if should_raise_error:
+            with pytest.raises(error) as e:
+                authentication_provider.with_bearer_auth(func)()
+
+        else:
+            assert authentication_provider.with_bearer_auth(func)()
 
 
 def test_inject_variables_in_process_graph():
