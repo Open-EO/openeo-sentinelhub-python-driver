@@ -1,7 +1,10 @@
 import os
+import base64
+import traceback
 from enum import Enum
 from functools import wraps
 from inspect import getfullargspec
+from logging import log, INFO, WARN, ERROR
 
 import requests
 from flask import request
@@ -9,7 +12,14 @@ import jwt
 from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.backends import default_backend
 
-from openeoerrors import AuthenticationRequired, AuthenticationSchemeInvalid, Internal, CredentialsInvalid
+from openeoerrors import (
+    OpenEOError,
+    AuthenticationRequired,
+    AuthenticationSchemeInvalid,
+    Internal,
+    CredentialsInvalid,
+    TokenInvalid,
+)
 from authentication.oidc_providers import oidc_providers
 from authentication.user import User
 
@@ -42,8 +52,12 @@ class AuthenticationProvider:
 
         userinfo_url = general_info["userinfo_endpoint"]
 
-        userinfo_resp = requests.get(userinfo_url, headers={"Authorization": f"Bearer {access_token}"})
-        userinfo_resp.raise_for_status()
+        try:
+            userinfo_resp = requests.get(userinfo_url, headers={"Authorization": f"Bearer {access_token}"})
+            userinfo_resp.raise_for_status()
+        except:
+            raise TokenInvalid()
+
         userinfo = userinfo_resp.json()
 
         user_id = userinfo["sub"]
@@ -68,7 +82,7 @@ class AuthenticationProvider:
         try:
             decoded = jwt.decode(access_token, cert_obj.public_key(), algorithms="RS256", options={"verify_aud": False})
         except:
-            return None
+            raise TokenInvalid()
 
         user = User(decoded["sub"])
         return user
@@ -94,8 +108,51 @@ class AuthenticationProvider:
                 return self.authenticate_user_oidc(token, provider_id)
             if auth_scheme == AuthScheme.BASIC:
                 return self.authenticate_user_basic(token)
+        except OpenEOError:
+            raise
         except Exception as e:
+            log(ERROR, traceback.format_exc())
             raise Internal(f"Problems during authentication: {str(e)}")
+
+    def parse_credentials_from_header(self):
+        if "Authorization" in request.headers:
+            try:
+                encoded_credentials = request.headers["Authorization"].split("Basic")[1].strip()
+                credentials = base64.b64decode(bytes(encoded_credentials, "ascii")).decode("ascii")
+                username, password = credentials.strip().split(":", 1)
+                return username, password
+            except:
+                raise AuthenticationSchemeInvalid()
+        raise AuthenticationRequired()
+
+    def check_credentials_basic(self):
+        """We expect HTTP Basic username / password to be SentinelHub clientId / clientSecret, with
+        which we obtain the auth token from the service.
+        Password (clientSecret) can be supplied verbatim or as base64-encoded string, to avoid
+        problems with non-ASCII characters. Anything longer than 50 characters will be treated
+        as BASE64-encoded string.
+        """
+        username, password = self.parse_credentials_from_header()
+        secret = password if len(password) <= 50 else base64.b64decode(bytes(password, "ascii")).decode("ascii")
+        r = requests.post(
+            "https://services.sentinel-hub.com/oauth/token",
+            data={
+                "grant_type": "client_credentials",
+                "client_id": username,
+                "client_secret": secret,
+            },
+        )
+        if r.status_code != 200:
+            log(INFO, f"Access denied: {r.status_code} {r.text}")
+            raise CredentialsInvalid()
+
+        j = r.json()
+        access_token = j.get("access_token")
+        if not access_token:
+            log(ERROR, f"Error decoding access token from: {r.text}")
+            raise Internal(f"Problems during authentication: Error decoding access token from: {r.text}")
+
+        return access_token
 
     def with_bearer_auth(self, func):
         @wraps(func)

@@ -1,4 +1,3 @@
-import base64
 import datetime
 import glob
 import json
@@ -50,7 +49,6 @@ from openeoerrors import (
     OpenEOError,
     AuthenticationRequired,
     AuthenticationSchemeInvalid,
-    TokenInvalid,
     ProcessUnsupported,
     JobNotFinished,
     JobNotFound,
@@ -101,21 +99,6 @@ S3_LOCAL_URL = os.environ.get("DATA_AWS_S3_ENDPOINT_URL")
 
 
 STAC_VERSION = "0.9.0"
-
-
-def _extract_auth_token(headers):
-    # note that the extracted token is not necessarily valid - this needs to be checked separately
-    auth_header = headers.get("Authorization")
-    if not auth_header:
-        raise AuthenticationRequired()
-    must_start_with = "bearer basic//"
-    if auth_header[0 : len(must_start_with)].lower() != must_start_with:
-        raise AuthenticationSchemeInvalid()
-
-    token = auth_header[len(must_start_with) :]
-    if not token:
-        raise TokenInvalid()
-    return token
 
 
 def update_batch_request_id(job_id, job, new_batch_request_id):
@@ -230,12 +213,12 @@ def get_links():
 
 
 @app.route("/credentials/basic", methods=["GET"])
-# @basic_auth.required
 def api_credentials_basic():
+    access_token = authentication_provider.check_credentials_basic()
     return flask.make_response(
         jsonify(
             {
-                "access_token": flask.g.basic_auth_access_token,
+                "access_token": access_token,
             }
         ),
         200,
