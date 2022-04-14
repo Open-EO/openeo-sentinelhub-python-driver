@@ -1,4 +1,4 @@
-FROM python:3.6.6
+FROM python:3.6.8
 ADD . /
 RUN chmod +x download-process-definitions.sh
 RUN ./download-process-definitions.sh
