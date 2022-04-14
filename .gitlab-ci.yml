@@ -117,6 +117,7 @@ deploy-testing-rest-lambda:
     - mkdir -p ~/.aws
     - echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
     - echo -e "[default]\naws_access_key_id=$TESTINGZAPPA_AWS_ACCESS_KEY_ID\naws_secret_access_key=$TESTINGZAPPA_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
+    - pip install --upgrade pip
     - pip install --upgrade pipenv
   script:
     - chmod +x download-process-definitions.sh
@@ -137,6 +138,4 @@ deploy-testing-rest-lambda:
     - export AWS_SECRET_ACCESS_KEY="$TESTING_AWS_SECRET_ACCESS_KEY"
     - pipenv run bash -c "DEPLOYMENT_TYPE=testing python dynamodb.py"
   after_script:
-    - cd rest/
-    - pipenv install --dev
     - pipenv run zappa tail testing --disable-keep-open
