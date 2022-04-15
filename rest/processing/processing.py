@@ -26,6 +26,16 @@ def start_batch_job(batch_request_id, process):
     Sentinel Hub Batch API only allows starting the job if it hasn't been run yet.
     If some tiles succeeded and some failed, it allows restarting it.
     Otherwise, we have to create a new job.
+
+    Based on status:
+    CREATED: we can start
+    ANALYSIS_DONE: we can start
+    PARTIAL: we can restart
+    DONE: we have to create a new job
+    FAILED: we have to create a new job
+    CANCELED: we have to create a new job
+    ANALYSING: we don't do anything
+    PROCESSING: we don't do anything
     """
     sentinel_hub = SentinelHub()
     batch_request_info = sentinel_hub.get_batch_request_info(batch_request_id)
@@ -34,7 +44,7 @@ def start_batch_job(batch_request_id, process):
         sentinel_hub.start_batch_job(batch_request_id)
     elif batch_request_info.status == BatchRequestStatus.PARTIAL:
         sentinel_hub.restart_batch_job(batch_request_id)
-    else:
+    elif batch_request_info.status in [BatchRequestStatus.DONE, BatchRequestStatus.FAILED, BatchRequestStatus.CANCELED]:
         new_batch_request_id = create_batch_job(process)
         sentinel_hub.start_batch_job(new_batch_request_id)
         return new_batch_request_id
