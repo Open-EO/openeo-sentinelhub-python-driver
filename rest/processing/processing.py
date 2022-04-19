@@ -1,7 +1,7 @@
 import time
 
 from pg_to_evalscript import convert_from_process_graph
-from sentinelhub import BatchRequestStatus
+from sentinelhub import BatchRequestStatus, SentinelHubBatch
 
 from processing.process import Process
 from processing.sentinel_hub import SentinelHub
@@ -94,5 +94,7 @@ def get_batch_job_estimate(batch_request_id, process):
         temporal_interval = default_temporal_interval
 
     estimated_pu = estimate_secure_factor * batch_request.value_estimate * default_temporal_interval / temporal_interval
-    estimated_file_size = p.estimate_file_size()
+
+    n_pixels = batch_request.tile_count * batch_request.tile_width_px * batch_request.tile_height_px
+    estimated_file_size = p.estimate_file_size(n_pixels=n_pixels)
     return estimated_pu, estimated_file_size

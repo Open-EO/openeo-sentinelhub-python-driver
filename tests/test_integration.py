@@ -1202,7 +1202,7 @@ def test_validate_bands(
 
 @with_mocked_auth
 @pytest.mark.parametrize(
-    "bands,collection_id,spatial_extent,file_format,options,backend_estimate,expected_costs,expected_file_size",
+    "bands,collection_id,spatial_extent,file_format,options,backend_estimate,expected_costs,n_tiles,tile_width,tile_height,expected_file_size",
     [
         (
             ["B01"],
@@ -1212,7 +1212,10 @@ def test_validate_bands(
             None,
             30,
             36,
-            8064,
+            2,
+            2004,
+            2004,
+            2 * 2004 * 2004 * 8 * 4,  # n_tiles * tile_width * tile_height * n_output_bands * n_bytes
         ),
         (
             ["CLC"],
@@ -1222,7 +1225,10 @@ def test_validate_bands(
             None,
             30,
             36,
-            36080,
+            2,
+            2004,
+            2004,
+            2 * 2004 * 2004 * 4 * 1,
         ),
         (
             ["B01"],
@@ -1232,7 +1238,10 @@ def test_validate_bands(
             None,
             30,
             11.25,
-            2997,
+            2,
+            2004,
+            2004,
+            2 * 2004 * 2004 * 3 * 1,
         ),
         (
             ["B03"],
@@ -1242,7 +1251,10 @@ def test_validate_bands(
             None,
             30,
             36,
-            288640,
+            1,
+            2004,
+            2004,
+            1 * 2004 * 2004 * 8 * 4,
         ),
         (
             ["B01"],
@@ -1252,7 +1264,10 @@ def test_validate_bands(
             None,
             30,
             36,
-            1008,
+            1,
+            2004,
+            2004,
+            1 * 2004 * 2004 * 4 * 1,
         ),
         (
             ["B01"],
@@ -1262,7 +1277,10 @@ def test_validate_bands(
             None,
             30,
             36,
-            756,
+            1,
+            2004,
+            2004,
+            1 * 2004 * 2004 * 3 * 1,
         ),
         (
             ["B01"],
@@ -1272,7 +1290,10 @@ def test_validate_bands(
             {"datatype": "uint16"},
             30,
             36,
-            2016,
+            2,
+            2004,
+            2004,
+            2 * 2004 * 2004 * 4 * 2,
         ),
         (
             ["B01"],
@@ -1282,7 +1303,10 @@ def test_validate_bands(
             {"datatype": "byte"},
             30,
             36,
-            2016,
+            2,
+            2004,
+            2004,
+            2 * 2004 * 2004 * 8 * 1,
         ),
         (
             ["B01"],
@@ -1292,7 +1316,10 @@ def test_validate_bands(
             {"datatype": "uint16"},
             30,
             36,
-            4032,
+            2,
+            2004,
+            2004,
+            2 * 2004 * 2004 * 8 * 2,
         ),
     ],
 )
@@ -1307,6 +1334,9 @@ def test_batch_job_estimate(
     options,
     backend_estimate,
     expected_costs,
+    n_tiles,
+    tile_width,
+    tile_height,
     expected_file_size,
 ):
 
@@ -1328,7 +1358,15 @@ def test_batch_job_estimate(
         responses.GET,
         re.compile("https://services.sentinel-hub.com/api/v1/batch/process/example"),
         body=json.dumps(
-            {"valueEstimate": backend_estimate, "id": "example", "processRequest": {}, "status": "ANALYSIS_DONE"}
+            {
+                "valueEstimate": backend_estimate,
+                "id": "example",
+                "processRequest": {},
+                "status": "ANALYSIS_DONE",
+                "tileCount": n_tiles,
+                "tileWidthPx": tile_width,
+                "tileHeightPx": tile_height,
+            }
         ),
     )
 
