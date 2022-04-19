@@ -1,5 +1,5 @@
 from pg_to_evalscript import convert_from_process_graph
-from sentinelhub import BatchRequestStatus
+from sentinelhub import BatchRequestStatus, BatchUserAction
 
 from processing.process import Process
 from processing.sentinel_hub import SentinelHub
@@ -34,7 +34,8 @@ def start_batch_job(batch_request_id, process):
     DONE: we have to create a new job
     FAILED: we have to create a new job
     CANCELED: we have to create a new job
-    ANALYSING: we don't do anything
+    ANALYSING + user action START: User started the job and the pre-job analysis is running, we don't do anything
+    ANALYSING + user action ANALYSE: Analysis is running, but the job hasn't started. We create a new one.
     PROCESSING: we don't do anything
     """
     sentinel_hub = SentinelHub()
@@ -44,7 +45,14 @@ def start_batch_job(batch_request_id, process):
         sentinel_hub.start_batch_job(batch_request_id)
     elif batch_request_info.status == BatchRequestStatus.PARTIAL:
         sentinel_hub.restart_batch_job(batch_request_id)
-    elif batch_request_info.status in [BatchRequestStatus.DONE, BatchRequestStatus.FAILED, BatchRequestStatus.CANCELED]:
+    elif batch_request_info.status in [
+        BatchRequestStatus.DONE,
+        BatchRequestStatus.FAILED,
+        BatchRequestStatus.CANCELED,
+    ] or (
+        batch_request_info.status == BatchRequestStatus.ANALYSING
+        and batch_request_info.user_action == BatchUserAction.ANALYSE
+    ):
         new_batch_request_id = create_batch_job(process)
         sentinel_hub.start_batch_job(new_batch_request_id)
         return new_batch_request_id
