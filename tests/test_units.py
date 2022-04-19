@@ -472,3 +472,24 @@ def test_sample_type(
             }
         )
         assert process.sample_type.value == expected_sample_type
+
+
+@pytest.mark.parametrize(
+    "collection_id,bands,expected_tiling_grid_id,expected_tiling_grid_resolution",
+    [
+        ("sentinel-2-l1c", ["B01"], 0, 60),
+        ("sentinel-2-l1c", ["B01", "B05"], 1, 20),
+        ("sentinel-2-l1c", ["B01", "B02"], 1, 10),
+        ("sentinel-2-l1c", ["B01", "CLM"], 0, 60),
+        ("sentinel-2-l1c", ["CLM"], 2, 120),
+        ("sentinel-2-l1c", ["sunAzimuthAngles"], 2, 360),
+    ],
+)
+def test_tiling_grids(
+    get_process_graph, collection_id, bands, expected_tiling_grid_id, expected_tiling_grid_resolution
+):
+    process = Process({"process_graph": get_process_graph(collection_id=collection_id, bands=bands)})
+    tiling_grid_id, tiling_grid_resolution = process.get_appropriate_tiling_grid_and_resolution()
+
+    assert expected_tiling_grid_id == tiling_grid_id
+    assert expected_tiling_grid_resolution == tiling_grid_resolution

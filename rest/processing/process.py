@@ -10,7 +10,13 @@ from isodate import parse_duration
 
 from processing.openeo_process_errors import FormatUnsuitable
 from processing.sentinel_hub import SentinelHub
-from processing.const import SampleType, default_sample_type_for_mimetype, supported_sample_types, sample_types_to_bytes
+from processing.const import (
+    SampleType,
+    default_sample_type_for_mimetype,
+    supported_sample_types,
+    sample_types_to_bytes,
+    utm_tiling_grids,
+)
 from openeocollections import collections
 from openeoerrors import CollectionNotFound, Internal, ProcessParameterInvalid, ProcessGraphComplexity
 
@@ -29,6 +35,7 @@ class Process:
         self.mimetype = self.get_mimetype()
         self.width = width or self.get_dimensions()[0]
         self.height = height or self.get_dimensions()[1]
+        self.tiling_grid_id, self.tiling_grid_resolution = self.get_appropriate_tiling_grid_and_resolution()
         self.sample_type = self.get_sample_type()
         self.evalscript = self.get_evalscript()
 
@@ -243,6 +250,30 @@ class Process:
         highest_y_resolution = min(list_of_resolutions, key=lambda x: x[1])[1]
         return (highest_x_resolution, highest_y_resolution)
 
+    def get_appropriate_tiling_grid_and_resolution(self):
+        global utm_tiling_grids
+        requested_resolution = min(self.get_highest_resolution())
+        utm_tiling_grids = sorted(
+            utm_tiling_grids, key=lambda tg: tg["properties"]["tileWidth"]
+        )  # We prefer grids with smaller tiles
+        best_tiling_grid_id = None
+        best_tiling_grid_resolution = math.inf
+
+        for tiling_grid in utm_tiling_grids:
+            resolutions = tiling_grid["properties"]["resolutions"]
+
+            for resolution in resolutions:
+                if resolution <= requested_resolution and abs(resolution - requested_resolution) < abs(
+                    best_tiling_grid_resolution - requested_resolution
+                ):
+                    best_tiling_grid_id = tiling_grid["id"]
+                    best_tiling_grid_resolution = resolution
+
+        if best_tiling_grid_id is None and best_tiling_grid_resolution is None:
+            return utm_tiling_grids[0]["id"], min(utm_tiling_grids[0]["properties"]["resolutions"])
+
+        return best_tiling_grid_id, best_tiling_grid_resolution
+
     def estimate_file_size(self):
         n_pixels = self.width * self.height
         n_bytes = sample_types_to_bytes.get(self.sample_type)
@@ -304,7 +335,7 @@ class Process:
             evalscript=self.evalscript.write(),
             from_date=self.from_date,
             to_date=self.to_date,
-            width=self.width,
-            height=self.height,
+            tiling_grid_id=self.tiling_grid_id,
+            tiling_grid_resolution=self.tiling_grid_resolution,
             mimetype=self.mimetype,
         )
