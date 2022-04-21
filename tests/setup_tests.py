@@ -99,7 +99,9 @@ set_valid_sh_token()
 
 @pytest.fixture
 def get_process_graph():
-    def wrapped(bands=None, collection_id=None, spatial_extent=None, file_format="gtiff", options=None):
+    def wrapped(
+        bands=None, collection_id=None, spatial_extent=None, file_format="gtiff", options=None, featureflags=None
+    ):
         process_graph = {
             "loadco1": {
                 "process_id": "load_collection",
@@ -122,8 +124,11 @@ def get_process_graph():
             process_graph["loadco1"]["arguments"]["bands"] = bands
         if spatial_extent:
             process_graph["loadco1"]["arguments"]["spatial_extent"] = spatial_extent
+        if featureflags:
+            process_graph["loadco1"]["arguments"]["featureflags"] = featureflags
         if options:
             process_graph["result1"]["arguments"]["options"] = options
+
         return process_graph
 
     return wrapped

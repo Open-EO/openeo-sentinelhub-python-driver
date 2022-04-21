@@ -31,7 +31,20 @@ def test_collections(get_process_graph, collection_id):
     "url,directory,expected_collection_ids",
     [
         ("http://some-url", None, ["a", "b", "c"]),
-        (None, "../../tests/fixtures/commercial_collections", ["SPOT", "pleiades", "worldview", "PLANETSCOPE"]),
+        (
+            None,
+            "../../tests/fixtures/collection_information",
+            [
+                "SPOT",
+                "pleiades",
+                "worldview",
+                "PLANETSCOPE",
+                "landsat-7-etm+-l2",
+                "sentinel-2-l1c",
+                "corine-land-cover",
+                "S2L1C",
+            ],
+        ),
     ],
 )
 def test_collections_provider(url, directory, expected_collection_ids):
@@ -519,3 +532,25 @@ def test_tiling_grids(
 
     assert expected_tiling_grid_id == tiling_grid_id
     assert expected_tiling_grid_resolution == tiling_grid_resolution
+
+
+@pytest.mark.parametrize(
+    "collection_id,featureflags,should_raise_error,error,expected_datacollection_api_id",
+    [
+        ("sentinel-2-l1c", None, False, None, "sentinel-2-l1c"),
+        ("PLANETSCOPE", None, True, Internal, None),
+        ("worldview", {}, True, Internal, None),
+        ("pleiades", {"byoc_collection_id": "byoc-some-id"}, False, None, "byoc-some-id"),
+    ],
+)
+def test_get_collection(
+    get_process_graph, collection_id, featureflags, should_raise_error, error, expected_datacollection_api_id
+):
+    if should_raise_error:
+        with pytest.raises(error) as e:
+            process = Process(
+                {"process_graph": get_process_graph(collection_id=collection_id, featureflags=featureflags)}
+            )
+    else:
+        process = Process({"process_graph": get_process_graph(collection_id=collection_id, featureflags=featureflags)})
+        assert process.collection.api_id == expected_datacollection_api_id

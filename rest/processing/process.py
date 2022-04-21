@@ -56,6 +56,13 @@ class Process:
 
         return evalscript
 
+    def _create_custom_datacollection(self, collection_type, collection_info, subtype):
+        service_url = next(
+            provider["url"] for provider in collection_info["providers"] if "processor" in provider["roles"]
+        )
+        byoc_collection_id = collection_type.replace(f"{subtype}-", "")
+        return DataCollection.define_byoc(byoc_collection_id, service_url=service_url)
+
     def id_to_data_collection(self, collection_id):
         collection_info = collections.get_collection(collection_id)
 
@@ -73,26 +80,13 @@ class Process:
                 raise Internal(
                     f"Collection {collection_id} requires 'byoc_collection_id' parameter to be set in 'featureflags' argument of 'load_collection'."
                 )
-
-            service_url = next(
-                provider["url"] for provider in collection_info["providers"] if "processor" in provider["roles"]
-            )
-            byoc_collection_id = collection_type.replace("byoc-", "")
-            return DataCollection.define_byoc(byoc_collection_id, service_url=service_url)
+            return self._create_custom_datacollection(byoc_collection_id, collection_info, "byoc")
 
         if collection_type.startswith("byoc"):
-            byoc_collection_id = collection_type.replace("byoc-", "")
-            service_url = next(
-                provider["url"] for provider in collection_info["providers"] if "processor" in provider["roles"]
-            )
-            return DataCollection.define_byoc(byoc_collection_id, service_url=service_url)
+            return self._create_custom_datacollection(collection_type, collection_info, "byoc")
 
         if collection_type.startswith("batch"):
-            batch_collection_id = collection_type.replace("batch-", "")
-            service_url = next(
-                provider["url"] for provider in collection_info["providers"] if "processor" in provider["roles"]
-            )
-            return DataCollection.define_batch(batch_collection_id, service_url=service_url)
+            return self._create_custom_datacollection(collection_type, collection_info, "batch")
 
         for data_collection in DataCollection:
             if data_collection.value.api_id == collection_type:
