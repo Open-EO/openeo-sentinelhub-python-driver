@@ -5,7 +5,7 @@ FROM python:3.6-buster as python-requirements
 COPY ./workers/Pipfile ./workers/Pipfile.lock /src/
 WORKDIR /src/
 RUN \
-    pip install --upgrade pipenv && \
+    pip install pipenv==2022.4.8 && \
     pipenv lock -r > /requirements.txt
 
 
