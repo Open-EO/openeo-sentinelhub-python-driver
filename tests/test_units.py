@@ -26,7 +26,33 @@ def test_collections(get_process_graph, collection_id):
     assert process.evalscript.input_bands == example_bands
 
 
-# @responses.activate
+@responses.activate
+@pytest.mark.parametrize(
+    "url,directory,expected_collection_ids",
+    [
+        ("http://some-url", None, ["a", "b", "c"]),
+        (None, "../../tests/fixtures/commercial_collections", ["SPOT", "pleiades", "worldview", "PLANETSCOPE"]),
+    ],
+)
+def test_collections_provider(url, directory, expected_collection_ids):
+    collections_provider = CollectionsProvider("test", url=url, directory=directory)
+    if url is not None:
+        responses.add(
+            responses.GET,
+            url,
+            json=[
+                {"id": collection_id, "link": f"http://some-url/{collection_id}"}
+                for collection_id in expected_collection_ids
+            ],
+        )
+        for collection_id in expected_collection_ids:
+            responses.add(responses.GET, f"http://some-url/{collection_id}", json={"id": collection_id})
+
+    collections = collections_provider.load_collections()
+    collection_ids = [collection["id"] for collection in collections]
+    assert sorted(collection_ids) == sorted(expected_collection_ids)
+
+
 @pytest.mark.parametrize(
     "oidc_user_info_response,headers,should_raise_error,error,func",
     [
