@@ -661,7 +661,7 @@ current_date = datetime.now()
         ),
     ],
 )
-def test_temporal_extend(get_process_graph, fixture, expected_result):
+def test_temporal_extent(get_process_graph, fixture, expected_result):
     if type(expected_result) == type and issubclass(expected_result, Exception):
         with pytest.raises(expected_result):
             process = Process(
