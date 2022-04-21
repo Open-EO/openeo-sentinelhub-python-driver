@@ -683,6 +683,5 @@ def test_temporal_extent(get_process_graph, fixture, expected_result):
                 )
             }
         )
-        print(expected_result["from_date"])
         assert process.from_date == expected_result["from_date"]
         assert process.to_date == expected_result["to_date"]

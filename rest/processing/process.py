@@ -165,7 +165,6 @@ class Process:
         if to_time.tzinfo is None:
             to_time = to_time.replace(tzinfo=timezone.utc)
 
-        print("{} - {}", from_time, to_time)
         to_time = to_time - timedelta(microseconds=1)  # End of the interval is not inclusive
         if to_time < from_time:
             raise TemporalExtentError()
