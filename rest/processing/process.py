@@ -1,5 +1,5 @@
 import warnings
-from datetime import datetime, date, timezone
+from datetime import datetime, date, timezone, timedelta
 
 from sentinelhub import DataCollection, MimeType, BBox, Geometry, CRS
 from sentinelhub.time_utils import parse_time
@@ -12,7 +12,7 @@ from processing.const import SampleType, default_sample_type_for_mimetype, suppo
 from openeocollections import collections
 from openeoerrors import CollectionNotFound, Internal, ProcessParameterInvalid
 from processing.utils import is_geojson, validate_geojson, parse_geojson
-from time_utils import end_of_day, start_of_day
+from openeoerrors import CollectionNotFound, Internal, TemporalExtentError
 
 
 class Process:
@@ -125,13 +125,13 @@ class Process:
             from_time = parse_time(from_time)
         else:
             current_date = datetime.now()
-            from_time = start_of_day(current_date)
+            from_time = current_date.replace(hour=0, minute=0, second=0, microsecond=0)
 
         if to_time is not None:
             to_time = parse_time(to_time)
         else:
             current_date = datetime.now()
-            to_time = end_of_day(current_date)
+            to_time = current_date.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
         return from_time, to_time
 
     def get_temporal_extent(self):
@@ -156,14 +156,19 @@ class Process:
 
         # type(d) is date is used because Datetime is a subclass of Date and isinstance(d, Date) is always True
         if type(from_time) is date:
-            from_time = start_of_day(datetime(from_time.year, from_time.month, from_time.day))
+            from_time = datetime(from_time.year, from_time.month, from_time.day)
         if type(to_time) is date:
-            to_time = end_of_day(datetime(to_time.year, to_time.month, to_time.day))
+            to_time = datetime(to_time.year, to_time.month, to_time.day)
 
         if from_time.tzinfo is None:
             from_time = from_time.replace(tzinfo=timezone.utc)
         if to_time.tzinfo is None:
             to_time = to_time.replace(tzinfo=timezone.utc)
+
+        print("{} - {}", from_time, to_time)
+        to_time = to_time - timedelta(microseconds=1)  # End of the interval is not inclusive
+        if to_time < from_time:
+            raise TemporalExtentError()
 
         return from_time, to_time
 

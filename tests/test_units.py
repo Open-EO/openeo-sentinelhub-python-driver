@@ -1,5 +1,4 @@
 from setup_tests import *
-from pprint import pprint
 from datetime import datetime, timezone
 from datetime import datetime
 
@@ -630,10 +629,7 @@ current_date = datetime.now()
         ),
         (
             {"params": {"collection_id": "sentinel-2-l1c", "temporal_extent": ["2017-01-01", "2017-01-01"]}},
-            {
-                "from_date": datetime(2017, 1, 1, tzinfo=timezone.utc),
-                "to_date": datetime(2017, 1, 1, hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc),
-            },
+            TemporalExtentError,
         ),
         (
             {
@@ -644,7 +640,7 @@ current_date = datetime.now()
             },
             {
                 "from_date": datetime(2018, 10, 1, tzinfo=timezone.utc),
-                "to_date": datetime(2018, 10, 1, hour=10, minute=0, second=0, microsecond=0, tzinfo=timezone.utc),
+                "to_date": datetime(2018, 10, 1, hour=9, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc),
             },
         ),
         (
@@ -666,14 +662,27 @@ current_date = datetime.now()
     ],
 )
 def test_temporal_extend(get_process_graph, fixture, expected_result):
-    process = Process(
-        {
-            "process_graph": get_process_graph(
-                collection_id=fixture["params"]["collection_id"],
-                bands=None,
-                temporal_extent=fixture["params"]["temporal_extent"],
+    if type(expected_result) == type and issubclass(expected_result, Exception):
+        with pytest.raises(expected_result):
+            process = Process(
+                {
+                    "process_graph": get_process_graph(
+                        collection_id=fixture["params"]["collection_id"],
+                        bands=None,
+                        temporal_extent=fixture["params"]["temporal_extent"],
+                    )
+                }
             )
-        }
-    )
-    assert process.from_date == expected_result["from_date"]
-    assert process.to_date == expected_result["to_date"]
+    else:
+        process = Process(
+            {
+                "process_graph": get_process_graph(
+                    collection_id=fixture["params"]["collection_id"],
+                    bands=None,
+                    temporal_extent=fixture["params"]["temporal_extent"],
+                )
+            }
+        )
+        print(expected_result["from_date"])
+        assert process.from_date == expected_result["from_date"]
+        assert process.to_date == expected_result["to_date"]
