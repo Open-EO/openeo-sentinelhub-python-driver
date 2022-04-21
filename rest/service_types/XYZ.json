@@ -1,17 +1,13 @@
 {
-   "title":"OGC Web Map Service",
+   "title":"XYZ tiled web map",
    "configuration":{
-
+      "tile_size": {
+         "default": 512,
+         "description": "Tile size in pixels.",
+         "type": "number"
+      }
    },
    "process_parameters":[
-      {
-         "name":"tile_size",
-         "description":"Tile dimensions.",
-         "schema":{
-            "type":"number"
-         },
-         "default":"roads"
-      },
       {
          "name":"spatial_extent_west",
          "description":"The lower left corner for coordinate axis 1 of the extent currently shown to the consumer.",
@@ -36,13 +32,6 @@
       {
          "name":"spatial_extent_north",
          "description":"The upper right corner for coordinate axis 2 of the extent currently shown to the consumer.",
-         "schema":{
-            "type":"number"
-         }
-      },
-      {
-         "name":"spatial_extent_crs",
-         "description":"Coordinate reference system of the coordinates",
          "schema":{
             "type":"number"
          }

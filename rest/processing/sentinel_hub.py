@@ -1,5 +1,6 @@
 import os
 from sentinelhub import DownloadRequest, SentinelHubDownloadClient, SHConfig, SentinelHubBatch
+from openeoerrors import ProcessGraphComplexity
 
 
 class SentinelHub:
@@ -25,6 +26,8 @@ class SentinelHub:
         height=None,
         mimetype=None,
     ):
+        if width > 2500 or height > 2500:
+            raise ProcessGraphComplexity("Dimensions exceed limit of 2500X2500")
 
         request_raw_dict = self.get_request_dictionary(
             bbox=bbox,
@@ -76,6 +79,7 @@ class SentinelHub:
                                 "from": from_date.isoformat(),
                                 "to": to_date.isoformat(),
                             },
+                            "previewMode": "EXTENDED_PREVIEW",
                         },
                     }
                 ],

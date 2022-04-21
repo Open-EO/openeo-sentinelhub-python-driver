@@ -17,6 +17,7 @@ from flask_basicauth import BasicAuth
 import beeline
 from beeline.middleware.flask import HoneyMiddleware
 from sentinelhub import BatchRequestStatus
+from pg_to_evalscript import list_supported_processes
 
 import globalmaptiles
 from schemas import (
@@ -40,7 +41,9 @@ from processing.processing import (
     delete_batch_job,
     modify_batch_job,
 )
+from processing.utils import inject_variables_in_process_graph
 from processing.openeo_process_errors import OpenEOProcessError
+from authentication.authentication import authentication_provider
 from openeoerrors import (
     OpenEOError,
     AuthenticationRequired,
@@ -51,6 +54,7 @@ from openeoerrors import (
     JobNotFound,
     JobLocked,
     CollectionNotFound,
+    ServiceNotFound,
 )
 from const import openEOBatchJobStatus
 
@@ -239,6 +243,12 @@ def api_credentials_basic():
     )
 
 
+@app.route("/credentials/oidc", methods=["GET"])
+def oidc_credentials():
+    providers = {"providers": authentication_provider.get_oidc_providers()}
+    return flask.make_response(jsonify(providers))
+
+
 @app.route("/file_formats", methods=["GET"])
 def api_file_formats():
     output_formats = {}
@@ -271,6 +281,7 @@ def api_service_types():
 
 
 @app.route("/process_graphs", methods=["GET"])
+@authentication_provider.with_bearer_auth
 def api_process_graphs():
     process_graphs = []
     links = []
@@ -313,6 +324,7 @@ def api_process_graphs():
 
 
 @app.route("/process_graphs/<process_graph_id>", methods=["GET", "DELETE", "PUT"])
+@authentication_provider.with_bearer_auth
 def api_process_graph(process_graph_id):
     if flask.request.method in ["GET", "HEAD"]:
         record = ProcessGraphsPersistence.get_by_id(process_graph_id)
@@ -354,6 +366,7 @@ def api_process_graph(process_graph_id):
 
 
 @app.route("/result", methods=["POST"])
+@authentication_provider.with_bearer_auth
 def api_result():
     if flask.request.method == "POST":
         job_data = flask.request.get_json()
@@ -381,6 +394,7 @@ def api_result():
             )
 
         response = flask.make_response(data, 200)
+        response.mime_type = mime_type
         response.headers["Content-Type"] = mime_type
         response.headers["OpenEO-Costs"] = None
 
@@ -388,6 +402,7 @@ def api_result():
 
 
 @app.route("/jobs", methods=["GET", "POST"])
+@authentication_provider.with_bearer_auth
 def api_jobs():
     if flask.request.method == "GET":
         jobs = []
@@ -448,6 +463,7 @@ def api_jobs():
 
 
 @app.route("/jobs/<job_id>", methods=["GET", "PATCH", "DELETE"])
+@authentication_provider.with_bearer_auth
 def api_batch_job(job_id):
     job = JobsPersistence.get_by_id(job_id)
     if job is None:
@@ -505,6 +521,7 @@ def api_batch_job(job_id):
 
 
 @app.route("/jobs/<job_id>/results", methods=["POST", "GET", "DELETE"])
+@authentication_provider.with_bearer_auth
 def add_job_to_queue(job_id):
     job = JobsPersistence.get_by_id(job_id)
     if job is None:
@@ -594,6 +611,7 @@ def add_job_to_queue(job_id):
 
 
 @app.route("/services", methods=["GET", "POST"])
+@authentication_provider.with_bearer_auth
 def api_services():
     if flask.request.method == "GET":
         services = []
@@ -609,11 +627,12 @@ def api_services():
                 ),
                 "type": record["service_type"],
                 "enabled": record.get("enabled", True),
+                # "created": record["created"],
                 "costs": 0,
                 "budget": record.get("budget", None),
             }
             if record.get("plan"):
-                service_item["plan"] = (record["plan"],)
+                service_item["plan"] = record["plan"]
             if record.get("configuration") and json.loads(record["configuration"]):
                 service_item["configuration"] = json.loads(record["configuration"])
             else:
@@ -639,6 +658,11 @@ def api_services():
         if errors:
             return flask.make_response("Invalid request: {}".format(errors), 400)
 
+        invalid_node_id = check_process_graph_conversion_validity(data["process"]["process_graph"])
+
+        if invalid_node_id is not None:
+            raise ProcessUnsupported(data["process"]["process_graph"][invalid_node_id]["process_id"])
+
         record_id = ServicesPersistence.create(data)
 
         # add requested headers to 201 response:
@@ -649,12 +673,11 @@ def api_services():
 
 
 @app.route("/services/<service_id>", methods=["GET", "PATCH", "DELETE"])
+@authentication_provider.with_bearer_auth
 def api_service(service_id):
     record = ServicesPersistence.get_by_id(service_id)
     if record is None:
-        return flask.make_response(
-            jsonify(id=service_id, code="ServiceNotFound", message="The service does not exist.", links=[]), 404
-        )
+        raise ServiceNotFound(service_id)
 
     if flask.request.method == "GET":
         service = {
@@ -689,6 +712,11 @@ def api_service(service_id):
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
             return flask.make_response(jsonify(id=service_id, code=400, message=errors, links=[]), 400)
 
+        if data.get("process"):
+            invalid_node_id = check_process_graph_conversion_validity(data["process"]["process_graph"])
+            if invalid_node_id is not None:
+                raise ProcessUnsupported(data["process"]["process_graph"][invalid_node_id]["process_id"])
+
         for key in data:
             ServicesPersistence.update_key(service_id, key, data[key])
 
@@ -701,102 +729,43 @@ def api_service(service_id):
 
 @app.route("/service/xyz/<service_id>/<int:zoom>/<int:tx>/<int:ty>", methods=["GET"])
 def api_execute_service(service_id, zoom, tx, ty):
-    auth_token = _extract_auth_token(flask.request.headers)
-
     record = ServicesPersistence.get_by_id(service_id)
     if record is None or record["service_type"].lower() != "xyz":
-        return flask.make_response(
-            jsonify(id=service_id, code="ServiceNotFound", message="The service does not exist.", links=[]), 404
-        )
+        raise ServiceNotFound(service_id)
 
     # https://www.maptiler.com/google-maps-coordinates-tile-bounds-projection/
-    TILE_SIZE = 256
+    tile_size = (json.loads(record.get("configuration")) or {}).get("tile_size", 256)
     ty = (2 ** zoom - 1) - ty  # convert from Google Tile XYZ to TMS
-    minLat, minLon, maxLat, maxLon = globalmaptiles.GlobalMercator(tileSize=TILE_SIZE).TileLatLonBounds(tx, ty, zoom)
+    minLat, minLon, maxLat, maxLon = globalmaptiles.GlobalMercator(tileSize=tile_size).TileLatLonBounds(tx, ty, zoom)
     variables = {
         "spatial_extent_west": minLon,
         "spatial_extent_south": minLat,
         "spatial_extent_east": maxLon,
         "spatial_extent_north": maxLat,
-        "spatial_extent_crs": 4326,
-        "tile_size": TILE_SIZE,
     }
-    job_data = {
-        "process": json.loads(record["process"]),
-        "plan": record.get("plan"),
-        "budget": record.get("budget"),
-        "title": record.get("title"),
-        "description": record.get("description"),
-        "variables": variables,
-        "auth_token": auth_token,
-        "current_status": "queued",
-    }
-    return _execute_and_wait_for_job(job_data)
 
+    process_info = json.loads(record["process"])
 
-def _execute_and_wait_for_job(job_data):
-    job_id = JobsPersistence.create(job_data)
-
-    # wait for job to finish:
-    with beeline.tracer("waiting for workers"):
-        period = 0.5  # check every X seconds
-        n_checks = int(REQUEST_TIMEOUT / period)
-        for _ in range(n_checks):
-            job = JobsPersistence.get_by_id(job_id)
-            if job["current_status"] in ["finished", "error"]:
-                break
-            time.sleep(period)
-
-    JobsPersistence.delete(job_id)
-
-    if job["current_status"] == "finished":
-        results = json.loads(job["results"])
-        if len(results) != 1:
-            return flask.make_response(
-                jsonify(
-                    id=None,
-                    code=400,
-                    message="This endpoint can only succeed if process graph yields exactly one result, instead it received: {}.".format(
-                        len(results)
-                    ),
-                    links=[],
-                ),
-                400,
-            )
-
-        s3 = boto3.client(
-            "s3",
-            endpoint_url=S3_LOCAL_URL,
-            region_name="eu-central-1",
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-        )
-
-        result = results[0]
-        filename = result["filename"]
-        object_key = "{}/{}".format(job_id, os.path.basename(filename))
-
-        s3_object = s3.get_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key)
-        content = s3_object["Body"].read()
-        response = flask.make_response(content, 200)
-        response.mimetype = result["type"]
-        return response
-
-    if job["current_status"] == "error":
-        return flask.make_response(
-            jsonify(id=None, code=job["error_code"], message=job["error_msg"], links=[]), job["http_code"]
-        )
-
-    return flask.make_response(jsonify(id=None, code="Timeout", message="Request timed out.", links=[]), 408)
+    inject_variables_in_process_graph(process_info["process_graph"], variables)
+    data, mime_type = process_data_synchronously(process_info, width=tile_size, height=tile_size)
+    response = flask.make_response(data, 200)
+    response.mimetype = mime_type
+    return response
 
 
 @app.route("/processes", methods=["GET"])
 def available_processes():
-    files = glob.iglob("process_definitions/*.json")
+    files = []
     processes = []
+
+    for supported_process in list_supported_processes():
+        files.extend(glob.glob(f"process_definitions/{supported_process}.json"))
+
     for file in files:
         with open(file) as f:
             processes.append(json.load(f))
+
+    processes.sort(key=lambda process: process["id"])
 
     return flask.make_response(
         jsonify(

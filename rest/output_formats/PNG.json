@@ -10,8 +10,7 @@
         "byte",
         "uint16"
       ],
-      "default": "uint16"
+      "default": "byte"
     }
-  },
-  "links": []
+  }
 }
