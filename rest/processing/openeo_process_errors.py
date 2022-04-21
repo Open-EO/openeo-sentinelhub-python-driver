@@ -9,4 +9,3 @@ class FormatUnsuitable(OpenEOProcessError):
     error_code = "FormatUnsuitable"
     http_code = 400
     message = "Data can't be transformed into the requested output format."
-
