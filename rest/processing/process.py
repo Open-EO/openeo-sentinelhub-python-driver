@@ -14,6 +14,7 @@ from openeoerrors import CollectionNotFound, Internal, ProcessParameterInvalid
 from processing.utils import is_geojson, validate_geojson, parse_geojson
 from time_utils import end_of_day, start_of_day
 
+
 class Process:
     def __init__(self, process, width=None, height=None):
         self.DEFAULT_EPSG_CODE = 4326

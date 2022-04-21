@@ -17,7 +17,9 @@ from fixtures.geojson_fixtures import GeoJSON_Fixtures
 
 @pytest.fixture
 def get_process_graph():
-    def wrapped(bands=None, collection_id=None, spatial_extent=None, temporal_extent=None, file_format="gtiff", options=None):
+    def wrapped(
+        bands=None, collection_id=None, spatial_extent=None, temporal_extent=None, file_format="gtiff", options=None
+    ):
         process_graph = {
             "loadco1": {
                 "process_id": "load_collection",
@@ -605,6 +607,8 @@ def test_geojson_parsing(fixture, expected_result):
 
 
 current_date = datetime.now()
+
+
 @pytest.mark.parametrize(
     "fixture, expected_result",
     [
