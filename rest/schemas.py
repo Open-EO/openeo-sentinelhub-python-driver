@@ -8,7 +8,7 @@ import traceback
 
 from marshmallow import Schema, fields, validates, ValidationError, validate
 from openeo_pg_parser.validate import validate_process_graph
-from openeocollections import collections
+from openeo_collections.collections import collections
 from processing.processing import check_process_graph_conversion_validity
 from const import global_parameters_xyz
 

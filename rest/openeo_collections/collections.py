@@ -1,14 +1,40 @@
+import os
+import glob
+import json
+
 import requests
 
 from logging import log, ERROR
 
 
 class CollectionsProvider:
-    def __init__(self, id, url):
+    def __init__(self, id, url=None, directory=None):
         self.id = id
         self.url = url
+        self.directory = directory
 
     def load_collections(self):
+        all_collections = []
+        if self.url is not None:
+            all_collections.extend(self.load_collections_from_url())
+        if self.directory is not None:
+            all_collections.extend(self.load_collections_from_directory())
+        return all_collections
+
+    def load_collections_from_directory(self):
+        script_dir = os.path.dirname(__file__)
+        abs_filepath = os.path.join(script_dir, self.directory)
+
+        collections = []
+
+        for file in glob.iglob(f"{abs_filepath}/*.json"):
+            with open(file) as f:
+                output_format = os.path.splitext(os.path.basename(file))[0]
+                collections.append(json.load(f))
+
+        return collections
+
+    def load_collections_from_url(self):
         collections = []
 
         r = requests.get(
@@ -36,7 +62,8 @@ class CollectionsProvider:
 class Collections:
     def __init__(self):
         self.providers = [
-            CollectionsProvider("edc", "https://collections.eurodatacube.com/stac/index.json"),
+            CollectionsProvider("edc", url="https://collections.eurodatacube.com/stac/index.json"),
+            CollectionsProvider("commercial-data", directory="./commercial_collections"),
         ]
         self.collections_cache = {}
 

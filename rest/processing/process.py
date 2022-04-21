@@ -17,7 +17,7 @@ from processing.const import (
     sample_types_to_bytes,
     utm_tiling_grids,
 )
-from openeocollections import collections
+from openeo_collections.collections import collections
 from openeoerrors import CollectionNotFound, Internal, ProcessParameterInvalid, ProcessGraphComplexity
 
 
@@ -63,6 +63,22 @@ class Process:
             raise CollectionNotFound()
 
         collection_type = collection_info["datasource_type"]
+
+        if collection_type == "byoc-ID":
+            load_collection_node = self.get_node_by_process_id("load_collection")
+            featureflags = load_collection_node["arguments"].get("featureflags", {})
+            byoc_collection_id = featureflags.get("byoc_collection_id")
+
+            if not byoc_collection_id:
+                raise Internal(
+                    f"Collection {collection_id} requires 'byoc_collection_id' parameter to be set in 'featureflags' argument of 'load_collection'."
+                )
+
+            service_url = next(
+                provider["url"] for provider in collection_info["providers"] if "processor" in provider["roles"]
+            )
+            byoc_collection_id = collection_type.replace("byoc-", "")
+            return DataCollection.define_byoc(byoc_collection_id, service_url=service_url)
 
         if collection_type.startswith("byoc"):
             byoc_collection_id = collection_type.replace("byoc-", "")

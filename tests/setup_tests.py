@@ -16,7 +16,7 @@ import numpy as np
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rest"))
 from app import app
 from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
-from openeocollections import collections
+from openeo_collections.collections import collections
 from authentication.authentication import AuthenticationProvider, authentication_provider
 from processing.process import Process
 from openeoerrors import ProcessGraphComplexity
