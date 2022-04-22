@@ -103,6 +103,6 @@ class UnsupportedGeometry(OpenEOError):
 
 
 class TemporalExtentError(Exception):
-    error_code = "FormatUnsuitable"
+    error_code = "TemporalExtentError"
     http_code = 400
     message = "Invalid temporal_extent"
