@@ -1,4 +1,5 @@
 from setup_tests import *
+from datetime import datetime, timezone
 from datetime import datetime
 
 from openeoerrors import (
@@ -15,13 +16,15 @@ from fixtures.geojson_fixtures import GeoJSON_Fixtures
 
 @pytest.fixture
 def get_process_graph():
-    def wrapped(bands=None, collection_id=None, spatial_extent=None, file_format="gtiff", options=None):
+    def wrapped(
+        bands=None, collection_id=None, spatial_extent=None, temporal_extent=None, file_format="gtiff", options=None
+    ):
         process_graph = {
             "loadco1": {
                 "process_id": "load_collection",
                 "arguments": {
                     "id": collection_id,
-                    "temporal_extent": ["2017-01-01", "2017-02-01"],
+                    "temporal_extent": temporal_extent,
                     "spatial_extent": spatial_extent,
                 },
             },
@@ -36,6 +39,8 @@ def get_process_graph():
         }
         if bands:
             process_graph["loadco1"]["arguments"]["bands"] = bands
+        if temporal_extent:
+            process_graph["loadco1"]["arguments"]["temporal_extent"] = temporal_extent
         if spatial_extent:
             process_graph["loadco1"]["arguments"]["spatial_extent"] = spatial_extent
         if options:
@@ -598,3 +603,85 @@ def test_geojson_parsing(fixture, expected_result):
             parse_geojson(fixture["params"]["spatial_extent"])
     else:
         assert parse_geojson(fixture["params"]["spatial_extent"]) == expected_result
+
+
+current_date = datetime.now()
+
+
+@pytest.mark.parametrize(
+    "fixture, expected_result",
+    [
+        (
+            {"params": {"collection_id": "sentinel-2-l1c", "temporal_extent": ["2019-01-01", None]}},
+            {
+                "from_date": datetime(2019, 1, 1, tzinfo=timezone.utc),
+                "to_date": datetime(
+                    current_date.year,
+                    current_date.month,
+                    current_date.day,
+                    hour=23,
+                    minute=59,
+                    second=59,
+                    microsecond=999999,
+                    tzinfo=timezone.utc,
+                ),
+            },
+        ),
+        (
+            {"params": {"collection_id": "sentinel-2-l1c", "temporal_extent": ["2017-01-01", "2017-01-01"]}},
+            TemporalExtentError,
+        ),
+        (
+            {
+                "params": {
+                    "collection_id": "sentinel-2-l1c",
+                    "temporal_extent": ["2018-10-01T00:00:00Z", "2018-10-01T10:00:00Z"],
+                }
+            },
+            {
+                "from_date": datetime(2018, 10, 1, tzinfo=timezone.utc),
+                "to_date": datetime(2018, 10, 1, hour=9, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc),
+            },
+        ),
+        (
+            {"params": {"collection_id": "mapzen-dem", "temporal_extent": None}},
+            {
+                "from_date": datetime(current_date.year, current_date.month, current_date.day, tzinfo=timezone.utc),
+                "to_date": datetime(
+                    current_date.year,
+                    current_date.month,
+                    current_date.day,
+                    hour=23,
+                    minute=59,
+                    second=59,
+                    microsecond=999999,
+                    tzinfo=timezone.utc,
+                ),
+            },
+        ),
+    ],
+)
+def test_temporal_extent(get_process_graph, fixture, expected_result):
+    if type(expected_result) == type and issubclass(expected_result, Exception):
+        with pytest.raises(expected_result):
+            process = Process(
+                {
+                    "process_graph": get_process_graph(
+                        collection_id=fixture["params"]["collection_id"],
+                        bands=None,
+                        temporal_extent=fixture["params"]["temporal_extent"],
+                    )
+                }
+            )
+    else:
+        process = Process(
+            {
+                "process_graph": get_process_graph(
+                    collection_id=fixture["params"]["collection_id"],
+                    bands=None,
+                    temporal_extent=fixture["params"]["temporal_extent"],
+                )
+            }
+        )
+        assert process.from_date == expected_result["from_date"]
+        assert process.to_date == expected_result["to_date"]
