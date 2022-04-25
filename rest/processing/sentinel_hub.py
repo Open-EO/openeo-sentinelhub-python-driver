@@ -67,6 +67,7 @@ class SentinelHub:
         width=None,
         height=None,
         mimetype=None,
+        preview_mode="EXTENDED_PREVIEW",
     ):
         return {
             "input": {
@@ -79,7 +80,7 @@ class SentinelHub:
                                 "from": from_date.isoformat(),
                                 "to": to_date.isoformat(),
                             },
-                            "previewMode": "EXTENDED_PREVIEW",
+                            "previewMode": preview_mode,
                         },
                     }
                 ],
@@ -132,6 +133,7 @@ class SentinelHub:
             from_date=from_date,
             to_date=to_date,
             mimetype=mimetype,
+            preview_mode="DETAIL",
         )
 
         batch_request = self.batch.create(
@@ -146,6 +148,10 @@ class SentinelHub:
     def start_batch_job(self, batch_request_id):
         batch_request = self.batch.get_request(batch_request_id)
         self.batch.start_job(batch_request)
+
+    def restart_batch_job(self, batch_request_id):
+        batch_request = self.batch.get_request(batch_request_id)
+        self.batch.restart_job(batch_request)
 
     def cancel_batch_job(self, batch_request_id):
         batch_request = self.batch.get_request(batch_request_id)

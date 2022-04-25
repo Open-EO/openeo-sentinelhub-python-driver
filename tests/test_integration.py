@@ -359,7 +359,7 @@ def test_manage_batch_jobs(app_client, example_authorization_header_with_oidc):
         content_type="application/json",
     )
 
-    assert r.status_code == 204
+    assert r.status_code == 204, r.data
 
     r = app_client.get("/jobs/{}".format(record_id), headers=example_authorization_header_with_oidc)
     actual = json.loads(r.data.decode("utf-8"))
@@ -370,7 +370,7 @@ def test_manage_batch_jobs(app_client, example_authorization_header_with_oidc):
 
     r = app_client.delete("/jobs/{}".format(record_id), headers=example_authorization_header_with_oidc)
 
-    assert r.status_code == 204
+    assert r.status_code == 204, r.data
 
     r = app_client.get("/jobs/{}".format(record_id), headers=example_authorization_header_with_oidc)
 

@@ -1,4 +1,5 @@
 from pg_to_evalscript import convert_from_process_graph
+from sentinelhub import BatchRequestStatus, BatchUserAction
 
 from processing.process import Process
 from processing.sentinel_hub import SentinelHub
@@ -19,9 +20,42 @@ def create_batch_job(process):
     return p.create_batch_job()
 
 
-def start_batch_job(batch_request_id):
+def start_batch_job(batch_request_id, process):
+    """
+    openEO allows starting a batch job regardless of the status, unless it's already running or queued.
+    Sentinel Hub Batch API only allows starting the job if it hasn't been run yet.
+    If some tiles succeeded and some failed, it allows restarting it.
+    Otherwise, we have to create a new job.
+
+    Based on status:
+    CREATED: we can start
+    ANALYSIS_DONE: we can start
+    PARTIAL: we can restart
+    DONE: we have to create a new job
+    FAILED: we have to create a new job
+    CANCELED: we have to create a new job
+    ANALYSING + user action START: User started the job and the pre-job analysis is running, we don't do anything
+    ANALYSING + user action ANALYSE: Analysis is running, but the job hasn't started. We create a new one.
+    PROCESSING: we don't do anything
+    """
     sentinel_hub = SentinelHub()
-    sentinel_hub.start_batch_job(batch_request_id)
+    batch_request_info = sentinel_hub.get_batch_request_info(batch_request_id)
+
+    if batch_request_info.status in [BatchRequestStatus.CREATED, BatchRequestStatus.ANALYSIS_DONE]:
+        sentinel_hub.start_batch_job(batch_request_id)
+    elif batch_request_info.status == BatchRequestStatus.PARTIAL:
+        sentinel_hub.restart_batch_job(batch_request_id)
+    elif batch_request_info.status in [
+        BatchRequestStatus.DONE,
+        BatchRequestStatus.FAILED,
+        BatchRequestStatus.CANCELED,
+    ] or (
+        batch_request_info.status == BatchRequestStatus.ANALYSING
+        and batch_request_info.user_action == BatchUserAction.ANALYSE
+    ):
+        new_batch_request_id = create_batch_job(process)
+        sentinel_hub.start_batch_job(new_batch_request_id)
+        return new_batch_request_id
 
 
 def get_batch_request_info(batch_request_id):

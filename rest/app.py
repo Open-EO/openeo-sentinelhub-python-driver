@@ -7,6 +7,7 @@ import os
 import re
 import sys
 import time
+import traceback
 
 import requests
 import boto3
@@ -18,6 +19,7 @@ import beeline
 from beeline.middleware.flask import HoneyMiddleware
 from sentinelhub import BatchRequestStatus
 from pg_to_evalscript import list_supported_processes
+from werkzeug.exceptions import HTTPException
 
 import globalmaptiles
 from schemas import (
@@ -151,8 +153,32 @@ def _extract_auth_token(headers):
     return token
 
 
+def update_batch_request_id(job_id, job, new_batch_request_id):
+    JobsPersistence.update_key(job_id, "batch_request_id", new_batch_request_id)
+    JobsPersistence.update_key(
+        job_id,
+        "previous_batch_request_ids",
+        [*json.loads(job["previous_batch_request_ids"]), job["batch_request_id"]],
+    )
+
+
 @app.errorhandler(OpenEOError)
 def openeo_exception_handler(error):
+    return flask.make_response(
+        jsonify(id=error.record_id, code=error.error_code, message=error.message, links=[]), error.http_code
+    )
+
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # pass through HTTP errors
+    log(INFO, f"Error: {str(e)}")
+    if isinstance(e, HTTPException):
+        return e
+
+    # now you're handling non-HTTP exceptions only
+    log(INFO, traceback.format_exc())
+    error = Internal(str(e))
     return flask.make_response(
         jsonify(id=error.record_id, code=error.error_code, message=error.message, links=[]), error.http_code
     )
@@ -505,18 +531,13 @@ def api_batch_job(job_id):
         for key in data:
             JobsPersistence.update_key(job_id, key, data[key])
 
-        new_batch_request_id = modify_batch_job(data["process"])
-        JobsPersistence.update_key(job_id, "batch_request_id", new_batch_request_id)
-        JobsPersistence.update_key(
-            job_id,
-            "previous_batch_request_ids",
-            [*json.loads(job["previous_batch_request_ids"]), job["batch_request_id"]],
-        )
+        if data.get("process"):
+            new_batch_request_id = modify_batch_job(data["process"])
+            update_batch_request_id(job_id, job, new_batch_request_id)
 
         return flask.make_response("Changes to the job applied successfully.", 204)
 
     elif flask.request.method == "DELETE":
-        delete_batch_job(job["batch_request_id"])
         JobsPersistence.delete(job_id)
         return flask.make_response("The job has been successfully deleted.", 204)
 
@@ -529,7 +550,11 @@ def add_job_to_queue(job_id):
         raise JobNotFound()
 
     if flask.request.method == "POST":
-        start_batch_job(job["batch_request_id"])
+        new_batch_request_id = start_batch_job(job["batch_request_id"], json.loads(job["process"]))
+
+        if new_batch_request_id and new_batch_request_id != job["batch_request_id"]:
+            update_batch_request_id(job_id, job, new_batch_request_id)
+
         return flask.make_response("The creation of the resource has been queued successfully.", 202)
 
     elif flask.request.method == "GET":
@@ -559,6 +584,7 @@ def add_job_to_queue(job_id):
 
         while True:
             if continuation_token:
+                log(INFO, f"Fetch from bucket")
                 response = s3.list_objects_v2(
                     Bucket=RESULTS_S3_BUCKET_NAME, Prefix=job["batch_request_id"], ContinuationToken=continuation_token
                 )
@@ -571,6 +597,7 @@ def add_job_to_queue(job_id):
                 break
 
         assets = {}
+        log(INFO, f"Fetched all results: {str(results)}")
 
         for result in results:
             # create signed url:
