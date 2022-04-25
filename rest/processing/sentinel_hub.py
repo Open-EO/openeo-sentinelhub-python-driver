@@ -163,3 +163,7 @@ class SentinelHub:
 
     def get_batch_request_info(self, batch_request_id):
         return self.batch.get_request(batch_request_id)
+
+    def start_batch_job_analysis(self, batch_request_id):
+        batch_request = self.batch.get_request(batch_request_id)
+        self.batch.start_analysis(batch_request)

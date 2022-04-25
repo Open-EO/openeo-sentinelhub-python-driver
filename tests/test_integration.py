@@ -477,7 +477,7 @@ def test_services_crud(app_client, example_process_graph, example_authorization_
     r = app_client.get("/services", headers=example_authorization_header_with_oidc)
     expected = []
     actual = json.loads(r.data.decode("utf-8")).get("services")
-    assert r.status_code == 200
+    assert r.status_code == 200, r.data
     assert actual == expected
 
     data = {
@@ -1198,3 +1198,382 @@ def test_validate_bands(
         )
     else:
         assert r.status_code == 201, r.data
+
+
+@with_mocked_auth
+@pytest.mark.parametrize(
+    "bands,collection_id,spatial_extent,file_format,options,backend_estimate,expected_costs,n_tiles,tile_width,tile_height,expected_file_size",
+    [
+        (
+            ["B01"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "gtiff",
+            None,
+            30,
+            36,
+            2,
+            2004,
+            2004,
+            2 * 2004 * 2004 * 8 * 4,  # n_tiles * tile_width * tile_height * n_output_bands * n_bytes
+        ),
+        (
+            ["CLC"],
+            "corine-land-cover",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "png",
+            None,
+            30,
+            36,
+            2,
+            2004,
+            2004,
+            2 * 2004 * 2004 * 4 * 1,
+        ),
+        (
+            ["B01"],
+            "landsat-7-etm+-l2",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "jpeg",
+            None,
+            30,
+            11.25,
+            2,
+            2004,
+            2004,
+            2 * 2004 * 2004 * 3 * 1,
+        ),
+        (
+            ["B03"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "gtiff",
+            None,
+            30,
+            36,
+            1,
+            2004,
+            2004,
+            1 * 2004 * 2004 * 8 * 4,
+        ),
+        (
+            ["B01"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "png",
+            None,
+            30,
+            36,
+            1,
+            2004,
+            2004,
+            1 * 2004 * 2004 * 4 * 1,
+        ),
+        (
+            ["B01"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "jpeg",
+            None,
+            30,
+            36,
+            1,
+            2004,
+            2004,
+            1 * 2004 * 2004 * 3 * 1,
+        ),
+        (
+            ["B01"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "png",
+            {"datatype": "uint16"},
+            30,
+            36,
+            2,
+            2004,
+            2004,
+            2 * 2004 * 2004 * 4 * 2,
+        ),
+        (
+            ["B01"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "gtiff",
+            {"datatype": "byte"},
+            30,
+            36,
+            2,
+            2004,
+            2004,
+            2 * 2004 * 2004 * 8 * 1,
+        ),
+        (
+            ["B01"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "gtiff",
+            {"datatype": "uint16"},
+            30,
+            36,
+            2,
+            2004,
+            2004,
+            2 * 2004 * 2004 * 8 * 2,
+        ),
+    ],
+)
+def test_batch_job_estimate(
+    app_client,
+    get_process_graph,
+    example_authorization_header_with_oidc,
+    bands,
+    collection_id,
+    spatial_extent,
+    file_format,
+    options,
+    backend_estimate,
+    expected_costs,
+    n_tiles,
+    tile_width,
+    tile_height,
+    expected_file_size,
+):
+
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/oauth/token",
+        body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
+    )
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/api/v1/batch/process",
+        body=json.dumps({"id": "example", "processRequest": {}, "status": "CREATED"}),
+    )
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/api/v1/batch/process/example/analyse",
+    )
+    responses.add(
+        responses.GET,
+        re.compile("https://services.sentinel-hub.com/api/v1/batch/process/example"),
+        body=json.dumps(
+            {
+                "valueEstimate": backend_estimate,
+                "id": "example",
+                "processRequest": {},
+                "status": "ANALYSIS_DONE",
+                "tileCount": n_tiles,
+                "tileWidthPx": tile_width,
+                "tileHeightPx": tile_height,
+            }
+        ),
+    )
+
+    data = {
+        "process": {
+            "process_graph": get_process_graph(
+                bands=bands,
+                collection_id=collection_id,
+                spatial_extent=spatial_extent,
+                file_format=file_format,
+                options=options,
+            ),
+        }
+    }
+
+    r = app_client.post(
+        "/jobs", data=json.dumps(data), headers=example_authorization_header_with_oidc, content_type="application/json"
+    )
+    assert r.status_code == 201, r.data
+    job_id = r.headers["OpenEO-Identifier"]
+
+    r = app_client.get(f"/jobs/{job_id}/estimate")
+    assert r.status_code == 401, r.data
+
+    r = app_client.get(f"/jobs/{job_id}/estimate", headers=example_authorization_header_with_oidc)
+    assert r.status_code == 200, r.data
+    data = json.loads(r.data.decode("utf-8"))
+    assert data["costs"] == expected_costs
+    assert data["size"] == expected_file_size
+
+
+@responses.activate
+def test_user_workspace(app_client, example_authorization_header_with_oidc, example_process_graph):
+    """
+    Test jobs, services and process graphs are only available to the user who created them
+    """
+    data = {
+        "process": {
+            "process_graph": example_process_graph,
+        }
+    }
+    current_user_index = 0
+    user_ids = ["example-id1", "example-id-2"]
+
+    def request_callback(request):
+        resp_body = {
+            "sub": user_ids[current_user_index],
+            "eduperson_entitlement": [
+                "urn:mace:egi.eu:group:vo.openeo.cloud:role=vm_operator#aai.egi.eu",
+                "urn:mace:egi.eu:group:vo.openeo.cloud:role=member#aai.egi.eu",
+                "urn:mace:egi.eu:group:vo.openeo.cloud:role=early_adopter#aai.egi.eu",
+            ],
+        }
+        return (200, {}, json.dumps(resp_body))
+
+    responses.add(
+        responses.GET,
+        "https://aai.egi.eu/oidc/.well-known/openid-configuration",
+        json={"userinfo_endpoint": "http://dummy_userinfo_endpoint"},
+    )
+    responses.add_callback(responses.GET, "http://dummy_userinfo_endpoint", callback=request_callback)
+    responses.add_passthru(re.compile(".*"))
+
+    # Create a batch job for user 0
+    current_user_index = 0
+    r = app_client.post(
+        "/jobs", data=json.dumps(data), headers=example_authorization_header_with_oidc, content_type="application/json"
+    )
+    assert r.status_code == 201, r.data
+    record_id_1 = r.headers["OpenEO-Identifier"]
+    # Fetch the batch job with user 0
+    r = app_client.get("/jobs/{}".format(record_id_1), headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert r.status_code == 200
+    assert actual["id"] == record_id_1
+    # Fetch the batch job with user 1
+    current_user_index = 1
+    r = app_client.get("/jobs/{}".format(record_id_1), headers=example_authorization_header_with_oidc)
+    assert r.status_code == 404
+    # Fetch all jobs as user 1
+    r = app_client.get("/jobs", headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert actual["jobs"] == []
+    # Fetch all jobs as user 0
+    current_user_index = 0
+    r = app_client.get("/jobs", headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert len(actual["jobs"]) == 1
+    assert actual["jobs"][0]["id"] == record_id_1
+    # Create a batch job for user 1
+    current_user_index = 1
+    r = app_client.post(
+        "/jobs", data=json.dumps(data), headers=example_authorization_header_with_oidc, content_type="application/json"
+    )
+    record_id_2 = r.headers["OpenEO-Identifier"]
+    assert r.status_code == 201, r.data
+    # Fetch all jobs as user 1
+    r = app_client.get("/jobs", headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert len(actual["jobs"]) == 1
+    assert actual["jobs"][0]["id"] == record_id_2
+
+    # Create a service for user 0
+    data = {
+        "title": "Example service",
+        "process": {
+            "process_graph": example_process_graph,
+        },
+        "type": "xyz",
+    }
+    current_user_index = 0
+    r = app_client.post(
+        "/services",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
+    assert r.status_code == 201, r.data
+    record_id_1 = r.headers["OpenEO-Identifier"]
+    # Fetch the batch job with user 0
+    r = app_client.get("/services/{}".format(record_id_1), headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert r.status_code == 200
+    assert actual["id"] == record_id_1
+    # Fetch the batch job with user 1
+    current_user_index = 1
+    r = app_client.get("/services/{}".format(record_id_1), headers=example_authorization_header_with_oidc)
+    assert r.status_code == 404
+    # Fetch all jobs as user 1
+    r = app_client.get("/services", headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert actual["services"] == []
+    # Fetch all jobs as user 0
+    current_user_index = 0
+    r = app_client.get("/services", headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert len(actual["services"]) == 1
+    assert actual["services"][0]["id"] == record_id_1
+    # Create a batch job for user 1
+    current_user_index = 1
+    r = app_client.post(
+        "/services",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
+    record_id_2 = r.headers["OpenEO-Identifier"]
+    assert r.status_code == 201, r.data
+    # Fetch all jobs as user 1
+    r = app_client.get("/services", headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert len(actual["services"]) == 1
+    assert actual["services"][0]["id"] == record_id_2
+
+    # Create a process graph for user 0
+    process_graph_id = "testing_process_graph"
+    data = {
+        "summary": "test",
+        "process_graph": example_process_graph,
+    }
+    current_user_index = 0
+    r = app_client.put(
+        f"/process_graphs/{process_graph_id}",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
+    assert r.status_code == 200, r.data
+    # Fetch all process graphs as user 1
+    current_user_index = 1
+    r = app_client.get("/process_graphs", headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert actual["processes"] == []
+    # Fetch all process graphs as user 0
+    current_user_index = 0
+    r = app_client.get("/process_graphs", headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert len(actual["processes"]) == 1
+    assert actual["processes"][0]["id"] == process_graph_id
+
+
+@with_mocked_auth
+@pytest.mark.parametrize(
+    "spatial_extent,temporal_extent",
+    [
+        ({"west": 1.32271, "east": 12.33572, "north": 42.07112, "south": 2.06347}, ["2019-08-16", "2019-08-18"]),
+    ],
+)
+def test_sync_jobs_filesize(
+    app_client, example_process_graph, example_authorization_header_with_oidc, spatial_extent, temporal_extent
+):
+    """
+    - Test requests with too large file size are rejected
+    """
+    example_process_graph["loadco1"]["arguments"]["spatial_extent"] = spatial_extent
+    example_process_graph["loadco1"]["arguments"]["temporal_extent"] = temporal_extent
+    data = {
+        "process": {
+            "process_graph": example_process_graph,
+        }
+    }
+
+    r = app_client.post(
+        "/result",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
+    assert r.status_code == ProcessGraphComplexity.http_code, r.data
+    assert ProcessGraphComplexity.error_code in r.data.decode("utf-8")

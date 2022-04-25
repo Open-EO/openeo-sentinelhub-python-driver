@@ -42,6 +42,7 @@ from processing.processing import (
     cancel_batch_job,
     delete_batch_job,
     modify_batch_job,
+    get_batch_job_estimate,
 )
 from processing.utils import inject_variables_in_process_graph
 from processing.openeo_process_errors import OpenEOProcessError
@@ -194,6 +195,7 @@ def api_root():
         "title": "Sentinel Hub OpenEO",
         "description": "Sentinel Hub OpenEO by [Sinergise](https://sinergise.com)",
         "endpoints": get_endpoints(),
+        "billing": {"currency": "processing units"},
         "links": get_links(),
     }
 
@@ -254,6 +256,12 @@ def get_links():
             "type": "application/json",
             "title": "List of Datasets",
         },
+        {
+            "href": "https://docs.sentinel-hub.com/api/latest/api/overview/processing-unit/",
+            "rel": "about",
+            "type": "text/html",
+            "title": "Explanation of processing units",
+        },
     ]
 
 
@@ -309,10 +317,10 @@ def api_service_types():
 
 @app.route("/process_graphs", methods=["GET"])
 @authentication_provider.with_bearer_auth
-def api_process_graphs():
+def api_process_graphs(user):
     process_graphs = []
     links = []
-    for record in ProcessGraphsPersistence.items():
+    for record in ProcessGraphsPersistence.query_by_user_id(user.user_id):
         process_item = {
             "id": record["id"],
         }
@@ -352,7 +360,7 @@ def api_process_graphs():
 
 @app.route("/process_graphs/<process_graph_id>", methods=["GET", "DELETE", "PUT"])
 @authentication_provider.with_bearer_auth
-def api_process_graph(process_graph_id):
+def api_process_graph(process_graph_id, user):
     if flask.request.method in ["GET", "HEAD"]:
         record = ProcessGraphsPersistence.get_by_id(process_graph_id)
         if record is None:
@@ -386,6 +394,7 @@ def api_process_graph(process_graph_id):
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
             return flask.make_response(jsonify(id=process_graph_id, code=400, message=errors, links=[]), 400)
 
+        data["user_id"] = user.user_id
         ProcessGraphsPersistence.create(data, process_graph_id)
 
         response = flask.make_response("The user-defined process has been stored successfully.", 200)
@@ -430,12 +439,12 @@ def api_result():
 
 @app.route("/jobs", methods=["GET", "POST"])
 @authentication_provider.with_bearer_auth
-def api_jobs():
+def api_jobs(user):
     if flask.request.method == "GET":
         jobs = []
         links = []
 
-        for record in JobsPersistence.items():
+        for record in JobsPersistence.query_by_user_id(user.user_id):
             batch_request_info = get_batch_request_info(record["batch_request_id"])
             jobs.append(
                 {
@@ -479,6 +488,7 @@ def api_jobs():
         batch_request_id = create_batch_job(data["process"])
 
         data["batch_request_id"] = batch_request_id
+        data["user_id"] = user.user_id
 
         record_id = JobsPersistence.create(data)
 
@@ -491,9 +501,9 @@ def api_jobs():
 
 @app.route("/jobs/<job_id>", methods=["GET", "PATCH", "DELETE"])
 @authentication_provider.with_bearer_auth
-def api_batch_job(job_id):
+def api_batch_job(job_id, user):
     job = JobsPersistence.get_by_id(job_id)
-    if job is None:
+    if job is None or job["user_id"] != user.user_id:
         raise JobNotFound()
 
     if flask.request.method == "GET":
@@ -544,9 +554,9 @@ def api_batch_job(job_id):
 
 @app.route("/jobs/<job_id>/results", methods=["POST", "GET", "DELETE"])
 @authentication_provider.with_bearer_auth
-def add_job_to_queue(job_id):
+def add_job_to_queue(job_id, user):
     job = JobsPersistence.get_by_id(job_id)
-    if job is None:
+    if job is None or job["user_id"] != user.user_id:
         raise JobNotFound()
 
     if flask.request.method == "POST":
@@ -638,14 +648,28 @@ def add_job_to_queue(job_id):
         return flask.make_response("Processing the job has been successfully canceled.", 204)
 
 
+@app.route("/jobs/<job_id>/estimate", methods=["GET"])
+@authentication_provider.with_bearer_auth
+def estimate_job_cost(job_id):
+    job = JobsPersistence.get_by_id(job_id)
+    if job is None:
+        raise JobNotFound()
+
+    estimated_pu, estimated_file_size = get_batch_job_estimate(job["batch_request_id"], json.loads(job["process"]))
+    return flask.make_response(
+        jsonify(costs=estimated_pu, size=estimated_file_size),
+        200,
+    )
+
+
 @app.route("/services", methods=["GET", "POST"])
 @authentication_provider.with_bearer_auth
-def api_services():
+def api_services(user):
     if flask.request.method == "GET":
         services = []
         links = []
 
-        for record in ServicesPersistence.items():
+        for record in ServicesPersistence.query_by_user_id(user.user_id):
             service_item = {
                 "id": record["id"],
                 "title": record.get("title", None),
@@ -691,6 +715,7 @@ def api_services():
         if invalid_node_id is not None:
             raise ProcessUnsupported(data["process"]["process_graph"][invalid_node_id]["process_id"])
 
+        data["user_id"] = user.user_id
         record_id = ServicesPersistence.create(data)
 
         # add requested headers to 201 response:
@@ -702,9 +727,9 @@ def api_services():
 
 @app.route("/services/<service_id>", methods=["GET", "PATCH", "DELETE"])
 @authentication_provider.with_bearer_auth
-def api_service(service_id):
+def api_service(service_id, user):
     record = ServicesPersistence.get_by_id(service_id)
-    if record is None:
+    if record is None or record["user_id"] != user.user_id:
         raise ServiceNotFound(service_id)
 
     if flask.request.method == "GET":

@@ -1,5 +1,7 @@
+import time
+
 from pg_to_evalscript import convert_from_process_graph
-from sentinelhub import BatchRequestStatus, BatchUserAction
+from sentinelhub import BatchRequestStatus, BatchUserAction, SentinelHubBatch
 
 from processing.process import Process
 from processing.sentinel_hub import SentinelHub
@@ -82,3 +84,35 @@ def modify_batch_job(process):
     We therefore have to create a new Sentinel Hub batch request.
     """
     return create_batch_job(process)
+
+
+def get_batch_job_estimate(batch_request_id, process):
+    sentinel_hub = SentinelHub()
+
+    batch_request = sentinel_hub.get_batch_request_info(batch_request_id)
+
+    if batch_request.value_estimate is None:
+        analysis_sleep_time_s = 5
+        sentinel_hub.start_batch_job_analysis(batch_request_id)
+
+    while batch_request.value_estimate is None and batch_request.status in [
+        BatchRequestStatus.CREATED,
+        BatchRequestStatus.ANALYSING,
+    ]:
+        time.sleep(analysis_sleep_time_s)
+        batch_request = sentinel_hub.get_batch_request_info(batch_request_id)
+
+    default_temporal_interval = 3
+    estimate_secure_factor = 2
+
+    p = Process(process)
+    temporal_interval = p.get_temporal_interval(in_days=True)
+
+    if temporal_interval is None:
+        temporal_interval = default_temporal_interval
+
+    estimated_pu = estimate_secure_factor * batch_request.value_estimate * default_temporal_interval / temporal_interval
+
+    n_pixels = batch_request.tile_count * batch_request.tile_width_px * batch_request.tile_height_px
+    estimated_file_size = p.estimate_file_size(n_pixels=n_pixels)
+    return estimated_pu, estimated_file_size

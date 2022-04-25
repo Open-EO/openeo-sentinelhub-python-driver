@@ -1,5 +1,4 @@
 from setup_tests import *
-from datetime import datetime, timezone
 from datetime import datetime
 
 from openeoerrors import (
@@ -8,46 +7,8 @@ from openeoerrors import (
     Internal,
     CredentialsInvalid,
     ProcessParameterInvalid,
-    UnsupportedGeometry,
 )
-from processing.utils import inject_variables_in_process_graph, validate_geojson, parse_geojson
-from fixtures.geojson_fixtures import GeoJSON_Fixtures
-
-
-@pytest.fixture
-def get_process_graph():
-    def wrapped(
-        bands=None, collection_id=None, spatial_extent=None, temporal_extent=None, file_format="gtiff", options=None
-    ):
-        process_graph = {
-            "loadco1": {
-                "process_id": "load_collection",
-                "arguments": {
-                    "id": collection_id,
-                    "temporal_extent": temporal_extent,
-                    "spatial_extent": spatial_extent,
-                },
-            },
-            "result1": {
-                "process_id": "save_result",
-                "arguments": {
-                    "data": {"from_node": "loadco1"},
-                    "format": file_format,
-                },
-                "result": True,
-            },
-        }
-        if bands:
-            process_graph["loadco1"]["arguments"]["bands"] = bands
-        if temporal_extent:
-            process_graph["loadco1"]["arguments"]["temporal_extent"] = temporal_extent
-        if spatial_extent:
-            process_graph["loadco1"]["arguments"]["spatial_extent"] = spatial_extent
-        if options:
-            process_graph["result1"]["arguments"]["options"] = options
-        return process_graph
-
-    return wrapped
+from processing.utils import inject_variables_in_process_graph
 
 
 @pytest.mark.parametrize(
@@ -372,68 +333,23 @@ def test_inject_variables_in_process_graph():
             },
             [202, 94],
         ),
-        (
-            {
-                "params": {
-                    "collection_id": "sentinel-2-l1c",
-                    "bands": ["B04"],
-                    "spatial_extent": GeoJSON_Fixtures.multi_polygon,
-                }
-            },
-            [33358, 33241],
-        ),
-        (
-            {
-                "params": {
-                    "collection_id": "sentinel-2-l1c",
-                    "bands": ["B04"],
-                    "spatial_extent": GeoJSON_Fixtures.polygon_multi_polygon_feature_collection,
-                }
-            },
-            [33358, 33241],
-        ),
-        (
-            {
-                "params": {
-                    "collection_id": "sentinel-2-l1c",
-                    "bands": ["B04"],
-                    "spatial_extent": GeoJSON_Fixtures.polygon_point_feature_collection,
-                }
-            },
-            UnsupportedGeometry,
-        ),
     ],
 )
 def test_dimensions(get_process_graph, fixture, expected_result):
-    if type(expected_result) == type and issubclass(expected_result, Exception):
-        with pytest.raises(UnsupportedGeometry) as ex:
-            process = Process(
-                {
-                    "process_graph": get_process_graph(
-                        collection_id=fixture["params"]["collection_id"],
-                        bands=fixture["params"]["bands"],
-                        spatial_extent=fixture["params"].get("spatial_extent", None),
-                    )
-                },
-                width=fixture["params"].get("width", None),
-                height=fixture["params"].get("height", None),
+    process = Process(
+        {
+            "process_graph": get_process_graph(
+                collection_id=fixture["params"]["collection_id"],
+                bands=fixture["params"]["bands"],
+                spatial_extent=fixture["params"].get("spatial_extent", None),
             )
-        assert ex.value.message == expected_result.message
-    else:
-        process = Process(
-            {
-                "process_graph": get_process_graph(
-                    collection_id=fixture["params"]["collection_id"],
-                    bands=fixture["params"]["bands"],
-                    spatial_extent=fixture["params"].get("spatial_extent", None),
-                )
-            },
-            width=fixture["params"].get("width", None),
-            height=fixture["params"].get("height", None),
-        )
+        },
+        width=fixture["params"].get("width", None),
+        height=fixture["params"].get("height", None),
+    )
 
-        assert expected_result[0] == process.width
-        assert expected_result[1] == process.height
+    assert expected_result[0] == process.width
+    assert expected_result[1] == process.height
 
 
 @pytest.mark.parametrize(
@@ -507,197 +423,3 @@ def test_sample_type(
             }
         )
         assert process.sample_type.value == expected_sample_type
-
-
-@pytest.mark.parametrize(
-    "fixture, expected_result",
-    [
-        (
-            {"params": {"spatial_extent": GeoJSON_Fixtures.polygon}},
-            True,
-        ),
-        (
-            {"params": {"spatial_extent": GeoJSON_Fixtures.multi_polygon}},
-            True,
-        ),
-        (
-            {"params": {"spatial_extent": GeoJSON_Fixtures.polygon_feature}},
-            True,
-        ),
-        (
-            {"params": {"spatial_extent": GeoJSON_Fixtures.multi_polygon_feature}},
-            True,
-        ),
-        (
-            {"params": {"spatial_extent": GeoJSON_Fixtures.polygon_feature_collection}},
-            True,
-        ),
-        (
-            {"params": {"spatial_extent": GeoJSON_Fixtures.polygon_multi_polygon_feature_collection}},
-            True,
-        ),
-        (
-            {"params": {"spatial_extent": GeoJSON_Fixtures.polygon_geometry_collection}},
-            True,
-        ),
-        (
-            {"params": {"spatial_extent": GeoJSON_Fixtures.polygon_multi_polygon_geometry_collection}},
-            True,
-        ),
-        (
-            {"params": {"spatial_extent": GeoJSON_Fixtures.point}},
-            UnsupportedGeometry,
-        ),
-        (
-            {"params": {"spatial_extent": GeoJSON_Fixtures.point_feature}},
-            UnsupportedGeometry,
-        ),
-        (
-            {"params": {"spatial_extent": GeoJSON_Fixtures.polygon_point_feature_collection}},
-            UnsupportedGeometry,
-        ),
-        (
-            {"params": {"spatial_extent": GeoJSON_Fixtures.polygon_point_geometry_collection}},
-            UnsupportedGeometry,
-        ),
-    ],
-)
-def test_geojson_validation(fixture, expected_result):
-    if type(expected_result) == type and issubclass(expected_result, Exception):
-        with pytest.raises(expected_result):
-            validate_geojson(fixture["params"]["spatial_extent"])
-    else:
-        assert validate_geojson(fixture["params"]["spatial_extent"]) == expected_result
-
-
-@pytest.mark.parametrize(
-    "fixture, expected_result",
-    [
-        (
-            {"params": {"spatial_extent": GeoJSON_Fixtures.polygon}},
-            GeoJSON_Fixtures.polygon,
-        ),
-        (
-            {"params": {"spatial_extent": GeoJSON_Fixtures.polygon_feature}},
-            GeoJSON_Fixtures.polygon,
-        ),
-        (
-            {"params": {"spatial_extent": GeoJSON_Fixtures.multi_polygon}},
-            GeoJSON_Fixtures.multi_polygon,
-        ),
-        (
-            {"params": {"spatial_extent": GeoJSON_Fixtures.multi_polygon_feature}},
-            GeoJSON_Fixtures.multi_polygon,
-        ),
-        (
-            {"params": {"spatial_extent": GeoJSON_Fixtures.polygon_multi_polygon_feature_collection}},
-            {
-                "type": "MultiPolygon",
-                "coordinates": [
-                    GeoJSON_Fixtures.polygon["coordinates"],
-                    *GeoJSON_Fixtures.multi_polygon["coordinates"],
-                ],
-            },
-        ),
-        (
-            {"params": {"spatial_extent": GeoJSON_Fixtures.polygon_multi_polygon_geometry_collection}},
-            {
-                "type": "MultiPolygon",
-                "coordinates": [
-                    GeoJSON_Fixtures.polygon["coordinates"],
-                    *GeoJSON_Fixtures.multi_polygon["coordinates"],
-                ],
-            },
-        ),
-        ({"params": {"spatial_extent": GeoJSON_Fixtures.polygon_point_feature_collection}}, UnsupportedGeometry),
-        ({"params": {"spatial_extent": GeoJSON_Fixtures.polygon_point_geometry_collection}}, UnsupportedGeometry),
-    ],
-)
-def test_geojson_parsing(fixture, expected_result):
-    if type(expected_result) == type and issubclass(expected_result, Exception):
-        with pytest.raises(expected_result):
-            parse_geojson(fixture["params"]["spatial_extent"])
-    else:
-        assert parse_geojson(fixture["params"]["spatial_extent"]) == expected_result
-
-
-current_date = datetime.now()
-
-
-@pytest.mark.parametrize(
-    "fixture, expected_result",
-    [
-        (
-            {"params": {"collection_id": "sentinel-2-l1c", "temporal_extent": ["2019-01-01", None]}},
-            {
-                "from_date": datetime(2019, 1, 1, tzinfo=timezone.utc),
-                "to_date": datetime(
-                    current_date.year,
-                    current_date.month,
-                    current_date.day,
-                    hour=23,
-                    minute=59,
-                    second=59,
-                    microsecond=999999,
-                    tzinfo=timezone.utc,
-                ),
-            },
-        ),
-        (
-            {"params": {"collection_id": "sentinel-2-l1c", "temporal_extent": ["2017-01-01", "2017-01-01"]}},
-            TemporalExtentError,
-        ),
-        (
-            {
-                "params": {
-                    "collection_id": "sentinel-2-l1c",
-                    "temporal_extent": ["2018-10-01T00:00:00Z", "2018-10-01T10:00:00Z"],
-                }
-            },
-            {
-                "from_date": datetime(2018, 10, 1, tzinfo=timezone.utc),
-                "to_date": datetime(2018, 10, 1, hour=9, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc),
-            },
-        ),
-        (
-            {"params": {"collection_id": "mapzen-dem", "temporal_extent": None}},
-            {
-                "from_date": datetime(current_date.year, current_date.month, current_date.day, tzinfo=timezone.utc),
-                "to_date": datetime(
-                    current_date.year,
-                    current_date.month,
-                    current_date.day,
-                    hour=23,
-                    minute=59,
-                    second=59,
-                    microsecond=999999,
-                    tzinfo=timezone.utc,
-                ),
-            },
-        ),
-    ],
-)
-def test_temporal_extent(get_process_graph, fixture, expected_result):
-    if type(expected_result) == type and issubclass(expected_result, Exception):
-        with pytest.raises(expected_result):
-            process = Process(
-                {
-                    "process_graph": get_process_graph(
-                        collection_id=fixture["params"]["collection_id"],
-                        bands=None,
-                        temporal_extent=fixture["params"]["temporal_extent"],
-                    )
-                }
-            )
-    else:
-        process = Process(
-            {
-                "process_graph": get_process_graph(
-                    collection_id=fixture["params"]["collection_id"],
-                    bands=None,
-                    temporal_extent=fixture["params"]["temporal_extent"],
-                )
-            }
-        )
-        assert process.from_date == expected_result["from_date"]
-        assert process.to_date == expected_result["to_date"]

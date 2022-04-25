@@ -1,24 +1,25 @@
 import warnings
-from datetime import datetime, date, timezone, timedelta
+import math
+from datetime import datetime, date, timedelta, timezone
 
 from sentinelhub import DataCollection, MimeType, BBox, Geometry, CRS
 from sentinelhub.time_utils import parse_time
 from pg_to_evalscript import convert_from_process_graph
 from sentinelhub.geo_utils import bbox_to_dimensions
+from isodate import parse_duration
 
 from processing.openeo_process_errors import FormatUnsuitable
 from processing.sentinel_hub import SentinelHub
-from processing.const import SampleType, default_sample_type_for_mimetype, supported_sample_types
+from processing.const import SampleType, default_sample_type_for_mimetype, supported_sample_types, sample_types_to_bytes
 from openeocollections import collections
-from openeoerrors import CollectionNotFound, Internal, ProcessParameterInvalid
-from processing.utils import is_geojson, validate_geojson, parse_geojson
-from openeoerrors import CollectionNotFound, Internal, TemporalExtentError
+from openeoerrors import CollectionNotFound, Internal, ProcessParameterInvalid, ProcessGraphComplexity
 
 
 class Process:
     def __init__(self, process, width=None, height=None):
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_RESOLUTION = (10, 10)
+        self.MAXIMUM_SYNC_FILESIZE_BYTES = 5000000
         self.sentinel_hub = SentinelHub()
 
         self.process_graph = process["process_graph"]
@@ -96,18 +97,20 @@ class Process:
             collection = collections.get_collection(load_collection_node["arguments"]["id"])
             bbox = collection["extent"]["spatial"]["bbox"][0]
             return tuple(bbox), self.DEFAULT_EPSG_CODE, None
-        elif is_geojson(spatial_extent):
-            if validate_geojson(spatial_extent):
-                geojson = parse_geojson(spatial_extent)
-                sh_py_geometry = Geometry.from_geojson(geojson)
-                return (
-                    (
-                        *sh_py_geometry.bbox.lower_left,
-                        *sh_py_geometry.bbox.upper_right,
-                    ),
-                    self.DEFAULT_EPSG_CODE,
-                    spatial_extent,
-                )
+        elif (
+            isinstance(spatial_extent, dict)
+            and "type" in spatial_extent
+            and spatial_extent["type"] in ("Polygon", "MultiPolygon")
+        ):
+            sh_py_geometry = Geometry.from_geojson(spatial_extent)
+            return (
+                (
+                    *sh_py_geometry.bbox.lower_left,
+                    *sh_py_geometry.bbox.upper_right,
+                ),
+                self.DEFAULT_EPSG_CODE,
+                spatial_extent,
+            )
         else:
             epsg_code = spatial_extent.get("crs", self.DEFAULT_EPSG_CODE)
             east = spatial_extent["east"]
@@ -116,41 +119,48 @@ class Process:
             south = spatial_extent["south"]
             return (west, south, east, north), epsg_code, None
 
-    def get_maximum_temporal_extent_for_collection(self):
+    def get_collection_temporal_step(self):
         load_collection_node = self.get_node_by_process_id("load_collection")
-        openeo_collection = collections.get_collection(load_collection_node["arguments"]["id"])
-        from_time, to_time = openeo_collection.get("extent").get("temporal")["interval"][0]
+        collection = collections.get_collection(load_collection_node["arguments"]["id"])
+        if not collection:
+            return None
+        return collection["cube:dimensions"]["t"].get("step")
 
-        if from_time is not None:
-            from_time = parse_time(from_time)
-        else:
-            current_date = datetime.now()
-            from_time = current_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    def get_temporal_interval(self, in_days=False):
+        step = self.get_collection_temporal_step()
 
-        if to_time is not None:
-            to_time = parse_time(to_time)
-        else:
-            current_date = datetime.now()
-            to_time = current_date.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
-        return from_time, to_time
+        if step is None:
+            return None
+
+        temporal_interval = parse_duration(step)
+
+        if in_days:
+            n_seconds_per_day = 86400
+            return temporal_interval.total_seconds() / n_seconds_per_day
+        return temporal_interval.total_seconds()
+
+    def get_maximum_temporal_extent_for_collection(collection):
+        warnings.warn("get_maximum_temporal_extent_for_collection not implemented yet!")
+        return datetime.now(), datetime.now()
 
     def get_temporal_extent(self):
         """
         Returns from_time, to_time
         """
         load_collection_node = self.get_node_by_process_id("load_collection")
-        temporal_extent = load_collection_node["arguments"].get("temporal_extent")
+        temporal_extent = load_collection_node["arguments"]["temporal_extent"]
         if temporal_extent is None:
-            temporal_extent = self.get_maximum_temporal_extent_for_collection()
+            from_time, to_time = self.get_maximum_temporal_extent_for_collection(self.collection)
+            return from_time, to_time
 
         interval_start, interval_end = temporal_extent
         if interval_start is None:
-            from_time, _ = self.get_maximum_temporal_extent_for_collection()
+            from_time, _ = self.get_maximum_temporal_extent_for_collection(self.collection)
         else:
             from_time = parse_time(interval_start)
 
         if interval_end is None:
-            _, to_time = self.get_maximum_temporal_extent_for_collection()
+            _, to_time = self.get_maximum_temporal_extent_for_collection(self.collection)
         else:
             to_time = parse_time(interval_end)
 
@@ -158,17 +168,14 @@ class Process:
         if type(from_time) is date:
             from_time = datetime(from_time.year, from_time.month, from_time.day)
         if type(to_time) is date:
-            to_time = datetime(to_time.year, to_time.month, to_time.day)
+            to_time = datetime(to_time.year, to_time.month, to_time.day) + timedelta(days=1)
 
         if from_time.tzinfo is None:
             from_time = from_time.replace(tzinfo=timezone.utc)
         if to_time.tzinfo is None:
             to_time = to_time.replace(tzinfo=timezone.utc)
 
-        to_time = to_time - timedelta(microseconds=1)  # End of the interval is not inclusive
-        if to_time < from_time:
-            raise TemporalExtentError()
-
+        to_time = to_time - timedelta(milliseconds=1)  # End of the interval is not inclusive
         return from_time, to_time
 
     def get_input_bands(self):
@@ -209,6 +216,10 @@ class Process:
         return default_sample_type_for_mimetype.get(self.mimetype, SampleType.UINT8)
 
     def get_dimensions(self):
+        """
+        Returns the expected dimensions of only the AOI based on the resolution.
+        This is not accurate for Batch API, as it processes more area than requested.
+        """
         spatial_extent = self.bbox
         bbox = self.convert_to_sh_bbox()
         resolution = self.get_highest_resolution()
@@ -236,7 +247,47 @@ class Process:
         highest_y_resolution = min(list_of_resolutions, key=lambda x: x[1])[1]
         return (highest_x_resolution, highest_y_resolution)
 
+    def estimate_file_size(self, n_pixels=None):
+        if n_pixels is None:
+            n_pixels = self.width * self.height
+
+        n_bytes = sample_types_to_bytes.get(self.sample_type)
+        output_dimensions = self.evalscript.determine_output_dimensions()
+        n_original_temporal_dimensions = 0
+        n_output_bands = 1
+
+        for output_dimension in output_dimensions:
+            if output_dimension.get("original_temporal"):
+                n_original_temporal_dimensions += 1
+            else:
+                n_output_bands *= output_dimension["size"]
+
+        if n_original_temporal_dimensions > 0:
+            temporal_interval = self.get_temporal_interval()
+
+            if temporal_interval is None:
+                n_seconds_per_day = 86400
+                default_temporal_interval = 3
+                temporal_interval = default_temporal_interval * n_seconds_per_day
+
+            date_diff = (self.to_date - self.from_date).total_seconds()
+            n_dates = math.ceil(date_diff / temporal_interval) + 1
+            n_output_bands *= n_dates * n_original_temporal_dimensions
+
+        if self.mimetype == MimeType.PNG:
+            n_output_bands = min(n_output_bands, 4)
+        elif self.mimetype == MimeType.JPG:
+            n_output_bands = min(n_output_bands, 3)
+
+        return n_pixels * n_bytes * n_output_bands
+
     def execute_sync(self):
+        estimated_file_size = self.estimate_file_size()
+        if estimated_file_size > self.MAXIMUM_SYNC_FILESIZE_BYTES:
+            raise ProcessGraphComplexity(
+                f"estimated size of generated output of {estimated_file_size} bytes exceeds maximum supported size of {self.MAXIMUM_SYNC_FILESIZE_BYTES} bytes."
+            )
+
         return self.sentinel_hub.create_processing_request(
             bbox=self.bbox,
             epsg_code=self.epsg_code,

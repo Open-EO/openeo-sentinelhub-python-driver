@@ -31,3 +31,9 @@ supported_sample_types = {
     MimeType.JPG: [SampleType.UINT8],
     MimeType.TIFF: [SampleType.UINT8, SampleType.UINT16, SampleType.FLOAT32],
 }
+
+sample_types_to_bytes = {
+    SampleType.UINT8: 1,
+    SampleType.UINT16: 2,
+    SampleType.FLOAT32: 4,
+}
