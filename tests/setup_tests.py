@@ -19,6 +19,7 @@ from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersiste
 from openeocollections import collections
 from authentication.authentication import AuthenticationProvider, authentication_provider
 from processing.process import Process
+from openeoerrors import ProcessGraphComplexity
 
 
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), "fixtures")
