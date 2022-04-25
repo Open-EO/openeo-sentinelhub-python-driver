@@ -7,8 +7,12 @@ oidc_providers = [
                     "urn:ietf:params:oauth:grant-type:device_code+pkce",
                     "refresh_token",
                 ],
-                "id": "vito-default-client",
-                "redirect_urls": ["https://editor.openeo.org", "http://localhost:1410/"],
+                "id": "sentinel-hub-default-client",
+                "redirect_urls": [
+                    "https://editor.openeo.org",
+                    "http://localhost:5000/",
+                    "http://localhost:5000/callback",
+                ],
             }
         ],
         "id": "egi",

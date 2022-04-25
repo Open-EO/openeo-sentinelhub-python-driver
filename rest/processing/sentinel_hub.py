@@ -6,8 +6,8 @@ from openeoerrors import ProcessGraphComplexity
 class SentinelHub:
     def __init__(self):
         self.config = SHConfig()
-        CLIENT_ID = os.environ.get("TESTS_SH_CLIENT_ID")
-        CLIENT_SECRET = os.environ.get("TESTS_SH_CLIENT_SECRET")
+        CLIENT_ID = os.environ.get("SH_CLIENT_ID")
+        CLIENT_SECRET = os.environ.get("SH_CLIENT_SECRET")
         self.config.sh_client_id = CLIENT_ID
         self.config.sh_client_secret = CLIENT_SECRET
         self.S3_BUCKET_NAME = os.environ.get("RESULTS_S3_BUCKET_NAME", "com.sinergise.openeo.results")

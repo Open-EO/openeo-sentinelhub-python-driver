@@ -70,7 +70,6 @@ def with_mocked_auth(func):
 def setup_function(function):
     ProcessGraphsPersistence.ensure_table_exists()
     JobsPersistence.ensure_table_exists()
-    JobsPersistence.ensure_queue_exists()
     ServicesPersistence.ensure_table_exists()
     collections.set_collections(load_collections_fixtures("fixtures/collection_information/"))
 
