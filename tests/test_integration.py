@@ -1537,3 +1537,37 @@ def test_sync_jobs_filesize(
     )
     assert r.status_code == ProcessGraphComplexity.http_code, r.data
     assert ProcessGraphComplexity.error_code in r.data.decode("utf-8")
+
+
+def test_user_token_user(app_client, example_process_graph):
+    """
+    - Test user token is used in request
+    """
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/api/v1/process",
+        match=[matchers.header_matcher({"Authorization": f"Bearer {valid_sh_token}"})],
+    )
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/api/v1/batch/process",
+        json={"id": "example", "processRequest": {}, "status": "CREATED"},
+        match=[matchers.header_matcher({"Authorization": f"Bearer {valid_sh_token}"})],
+    )
+
+    data = {
+        "process": {
+            "process_graph": example_process_graph,
+        }
+    }
+    headers = {"Authorization": f"Bearer basic//{valid_sh_token}"}
+
+    r = app_client.post(
+        "/result",
+        data=json.dumps(data),
+        headers=headers,
+        content_type="application/json",
+    )
+    assert r.status_code == 200, r.data
+    r = app_client.post("/jobs", data=json.dumps(data), headers=headers, content_type="application/json")
+    assert r.status_code == 201, r.data
