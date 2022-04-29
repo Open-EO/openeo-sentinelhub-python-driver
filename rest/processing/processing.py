@@ -2,6 +2,7 @@ import time
 
 from pg_to_evalscript import convert_from_process_graph
 from sentinelhub import BatchRequestStatus
+from flask import g
 
 from processing.process import Process
 from processing.sentinel_hub import SentinelHub
@@ -13,12 +14,12 @@ def check_process_graph_conversion_validity(process_graph):
 
 
 def process_data_synchronously(process, width=None, height=None):
-    p = Process(process, width=width, height=height)
+    p = Process(process, width=width, height=height, access_token=g.user.sh_access_token)
     return p.execute_sync(), p.mimetype.get_string()
 
 
 def create_batch_job(process):
-    p = Process(process)
+    p = Process(process, access_token=g.user.sh_access_token)
     return p.create_batch_job()
 
 
@@ -29,7 +30,7 @@ def start_batch_job(batch_request_id, process):
     If some tiles succeeded and some failed, it allows restarting it.
     Otherwise, we have to create a new job.
     """
-    sentinel_hub = SentinelHub()
+    sentinel_hub = SentinelHub(access_token=g.user.sh_access_token)
     batch_request_info = sentinel_hub.get_batch_request_info(batch_request_id)
 
     if batch_request_info.status in [BatchRequestStatus.CREATED, BatchRequestStatus.ANALYSIS_DONE]:
@@ -43,18 +44,18 @@ def start_batch_job(batch_request_id, process):
 
 
 def get_batch_request_info(batch_request_id):
-    sentinel_hub = SentinelHub()
+    sentinel_hub = SentinelHub(access_token=g.user.sh_access_token)
     return sentinel_hub.get_batch_request_info(batch_request_id)
 
 
 def cancel_batch_job(batch_request_id, process):
-    sentinel_hub = SentinelHub()
+    sentinel_hub = SentinelHub(access_token=g.user.sh_access_token)
     sentinel_hub.cancel_batch_job(batch_request_id)
     return create_batch_job(process)
 
 
 def delete_batch_job(batch_request_id):
-    sentinel_hub = SentinelHub()
+    sentinel_hub = SentinelHub(access_token=g.user.sh_access_token)
     return sentinel_hub.delete_batch_job(batch_request_id)
 
 
@@ -69,7 +70,7 @@ def modify_batch_job(process):
 
 
 def get_batch_job_estimate(batch_request_id, process):
-    sentinel_hub = SentinelHub()
+    sentinel_hub = SentinelHub(access_token=g.user.sh_access_token)
 
     batch_request = sentinel_hub.get_batch_request_info(batch_request_id)
 
@@ -87,7 +88,7 @@ def get_batch_job_estimate(batch_request_id, process):
     default_temporal_interval = 3
     estimate_secure_factor = 2
 
-    p = Process(process)
+    p = Process(process, access_token=g.user.sh_access_token)
     temporal_interval = p.get_temporal_interval(in_days=True)
 
     if temporal_interval is None:

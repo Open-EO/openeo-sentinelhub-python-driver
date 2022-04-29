@@ -7,7 +7,7 @@ from inspect import getfullargspec
 from logging import log, INFO, WARN, ERROR
 
 import requests
-from flask import request
+from flask import request, g
 import jwt
 from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.backends import default_backend
@@ -84,7 +84,7 @@ class AuthenticationProvider:
         except:
             raise TokenInvalid()
 
-        user = User(decoded["sub"])
+        user = User(decoded["sub"], sh_access_token=access_token)
         return user
 
     def authenticate_user(self, bearer):
@@ -167,6 +167,8 @@ class AuthenticationProvider:
 
                 if not user:
                     raise CredentialsInvalid()
+
+                g.user = user
 
                 if "user" in getfullargspec(func).args:
                     kwargs["user"] = user
