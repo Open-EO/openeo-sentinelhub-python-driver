@@ -15,7 +15,6 @@ linting:
   script:
     - pip install --upgrade black==20.8b1
     # make sure that the *same* version is used in Pipfiles to avoid incompatibilities:
-    - grep 'black = "==20.8b1"' workers/Pipfile
     - grep 'black = "==20.8b1"' rest/Pipfile
     # check the files for correct formatting:
     - black -l 120 --check . || exit 1
@@ -28,16 +27,6 @@ integration tests:
     - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml up --exit-code-from pytest
   after_script:
     - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml down -v
-
-unit tests:
-  stage: test
-  script:
-    - cd workers/tests/
-    - set | grep SENTINEL | tr -d "'" >> .env
-    - docker-compose build
-    - docker-compose up --exit-code-from workers-unittests
-  after_script:
-    - docker-compose down -v
 
 
 ## GITHUB:
