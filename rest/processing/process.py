@@ -17,16 +17,16 @@ from processing.const import (
     sample_types_to_bytes,
     utm_tiling_grids,
 )
-from openeocollections import collections
+from openeo_collections.collections import collections
 from openeoerrors import CollectionNotFound, Internal, ProcessParameterInvalid, ProcessGraphComplexity
 
 
 class Process:
-    def __init__(self, process, width=None, height=None):
+    def __init__(self, process, width=None, height=None, access_token=None):
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_RESOLUTION = (10, 10)
         self.MAXIMUM_SYNC_FILESIZE_BYTES = 5000000
-        self.sentinel_hub = SentinelHub()
+        self.sentinel_hub = SentinelHub(access_token=access_token)
 
         self.process_graph = process["process_graph"]
         self.bbox, self.epsg_code, self.geometry = self.get_bounds()
@@ -56,6 +56,13 @@ class Process:
 
         return evalscript
 
+    def _create_custom_datacollection(self, collection_type, collection_info, subtype):
+        service_url = next(
+            provider["url"] for provider in collection_info["providers"] if "processor" in provider["roles"]
+        )
+        byoc_collection_id = collection_type.replace(f"{subtype}-", "")
+        return DataCollection.define_byoc(byoc_collection_id, service_url=service_url)
+
     def id_to_data_collection(self, collection_id):
         collection_info = collections.get_collection(collection_id)
 
@@ -64,19 +71,22 @@ class Process:
 
         collection_type = collection_info["datasource_type"]
 
+        if collection_type == "byoc-ID":
+            load_collection_node = self.get_node_by_process_id("load_collection")
+            featureflags = load_collection_node["arguments"].get("featureflags", {})
+            byoc_collection_id = featureflags.get("byoc_collection_id")
+
+            if not byoc_collection_id:
+                raise Internal(
+                    f"Collection {collection_id} requires 'byoc_collection_id' parameter to be set in 'featureflags' argument of 'load_collection'."
+                )
+            return self._create_custom_datacollection(byoc_collection_id, collection_info, "byoc")
+
         if collection_type.startswith("byoc"):
-            byoc_collection_id = collection_type.replace("byoc-", "")
-            service_url = next(
-                provider["url"] for provider in collection_info["providers"] if "processor" in provider["roles"]
-            )
-            return DataCollection.define_byoc(byoc_collection_id, service_url=service_url)
+            return self._create_custom_datacollection(collection_type, collection_info, "byoc")
 
         if collection_type.startswith("batch"):
-            batch_collection_id = collection_type.replace("batch-", "")
-            service_url = next(
-                provider["url"] for provider in collection_info["providers"] if "processor" in provider["roles"]
-            )
-            return DataCollection.define_batch(batch_collection_id, service_url=service_url)
+            return self._create_custom_datacollection(collection_type, collection_info, "batch")
 
         for data_collection in DataCollection:
             if data_collection.value.api_id == collection_type:

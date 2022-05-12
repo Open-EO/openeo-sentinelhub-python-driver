@@ -10,6 +10,7 @@ from openeoerrors import (
     TokenInvalid,
 )
 from processing.utils import inject_variables_in_process_graph
+from processing.sentinel_hub import SentinelHub
 
 
 @pytest.mark.parametrize(
@@ -26,7 +27,46 @@ def test_collections(get_process_graph, collection_id):
     assert process.evalscript.input_bands == example_bands
 
 
-# @responses.activate
+@responses.activate
+@pytest.mark.parametrize(
+    "url,directory,expected_collection_ids",
+    [
+        ("http://some-url", None, ["a", "b", "c"]),
+        (
+            None,
+            "../../tests/fixtures/collection_information",
+            [
+                "SPOT",
+                "pleiades",
+                "worldview",
+                "PLANETSCOPE",
+                "landsat-7-etm+-l2",
+                "sentinel-2-l1c",
+                "corine-land-cover",
+                "S2L1C",
+            ],
+        ),
+    ],
+)
+def test_collections_provider(url, directory, expected_collection_ids):
+    collections_provider = CollectionsProvider("test", url=url, directory=directory)
+    if url is not None:
+        responses.add(
+            responses.GET,
+            url,
+            json=[
+                {"id": collection_id, "link": f"http://some-url/{collection_id}"}
+                for collection_id in expected_collection_ids
+            ],
+        )
+        for collection_id in expected_collection_ids:
+            responses.add(responses.GET, f"http://some-url/{collection_id}", json={"id": collection_id})
+
+    collections = collections_provider.load_collections()
+    collection_ids = [collection["id"] for collection in collections]
+    assert sorted(collection_ids) == sorted(expected_collection_ids)
+
+
 @pytest.mark.parametrize(
     "oidc_user_info_response,headers,should_raise_error,error,func",
     [
@@ -493,3 +533,82 @@ def test_tiling_grids(
 
     assert expected_tiling_grid_id == tiling_grid_id
     assert expected_tiling_grid_resolution == tiling_grid_resolution
+
+
+@pytest.mark.parametrize(
+    "collection_id,featureflags,should_raise_error,error,expected_datacollection_api_id",
+    [
+        ("sentinel-2-l1c", None, False, None, "sentinel-2-l1c"),
+        ("PLANETSCOPE", None, True, Internal, None),
+        ("worldview", {}, True, Internal, None),
+        ("pleiades", {"byoc_collection_id": "byoc-some-id"}, False, None, "byoc-some-id"),
+    ],
+)
+def test_get_collection(
+    get_process_graph, collection_id, featureflags, should_raise_error, error, expected_datacollection_api_id
+):
+    if should_raise_error:
+        with pytest.raises(error) as e:
+            process = Process(
+                {"process_graph": get_process_graph(collection_id=collection_id, featureflags=featureflags)}
+            )
+    else:
+        process = Process({"process_graph": get_process_graph(collection_id=collection_id, featureflags=featureflags)})
+        assert process.collection.api_id == expected_datacollection_api_id
+
+
+@responses.activate
+@pytest.mark.parametrize(
+    "access_token",
+    ["<some-token>"],
+)
+def test_sentinel_hub_access_token(access_token):
+    example_token = "example"
+
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/oauth/token",
+        body=json.dumps({"access_token": example_token, "expires_at": 2147483647}),
+    )
+
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/api/v1/process",
+        match=[
+            matchers.header_matcher(
+                {"Authorization": f"Bearer {access_token if access_token is not None else example_token}"}
+            )
+        ],
+    )
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/api/v1/batch/process",
+        json={"id": "example", "processRequest": {}, "status": "CREATED"},
+        match=[
+            matchers.header_matcher(
+                {"Authorization": f"Bearer {access_token if access_token is not None else example_token}"}
+            )
+        ],
+    )
+
+    sh = SentinelHub(access_token=access_token)
+    sh.create_processing_request(
+        bbox=BBox((1, 2, 3, 4), crs=CRS.WGS84),
+        collection=DataCollection.SENTINEL2_L2A,
+        evalscript="",
+        from_date=datetime.now(),
+        to_date=datetime.now(),
+        width=1,
+        height=1,
+        mimetype=MimeType.PNG,
+    )
+    sh = SentinelHub(access_token=access_token)
+    sh.create_batch_job(
+        collection=DataCollection.SENTINEL2_L2A,
+        evalscript="",
+        from_date=datetime.now(),
+        to_date=datetime.now(),
+        tiling_grid_id=1,
+        tiling_grid_resolution=20,
+        mimetype=MimeType.PNG,
+    )
