@@ -59,7 +59,7 @@ from openeoerrors import (
 )
 from const import openEOBatchJobStatus
 
-from openeocollections import collections
+from openeo_collections.collections import collections
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False

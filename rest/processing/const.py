@@ -1,6 +1,7 @@
+import os
 from enum import Enum
 
-from sentinelhub import MimeType
+from sentinelhub import MimeType, SentinelHubBatch, SHConfig
 
 
 class SampleType(Enum):
@@ -37,3 +38,13 @@ sample_types_to_bytes = {
     SampleType.UINT16: 2,
     SampleType.FLOAT32: 4,
 }
+
+sh_config = SHConfig()
+sh_config.sh_client_id = os.environ.get("SH_CLIENT_ID")
+sh_config.sh_client_secret = os.environ.get("SH_CLIENT_SECRET")
+
+utm_tiling_grids = [
+    tiling_grid
+    for tiling_grid in SentinelHubBatch(config=sh_config).iter_tiling_grids()
+    if tiling_grid["id"] in (0, 1, 2)
+]

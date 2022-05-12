@@ -1,7 +1,8 @@
 class User:
-    def __init__(self, user_id=None, entitlements=[]):
+    def __init__(self, user_id=None, entitlements=[], sh_access_token=None):
         self.user_id = user_id
         self.entitlements = [self.convert_entitlement(entitlement) for entitlement in entitlements]
+        self.sh_access_token = sh_access_token
 
     @staticmethod
     def convert_entitlement(entitlement):
