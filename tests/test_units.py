@@ -44,6 +44,7 @@ def test_collections(get_process_graph, collection_id):
                 "sentinel-2-l1c",
                 "corine-land-cover",
                 "S2L1C",
+                "mapzen-dem",
             ],
         ),
     ],
