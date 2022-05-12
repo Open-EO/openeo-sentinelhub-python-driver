@@ -1,6 +1,7 @@
 import time
 
 from pg_to_evalscript import convert_from_process_graph
+from flask import g
 from sentinelhub import BatchRequestStatus, BatchUserAction, SentinelHubBatch
 
 from processing.process import Process
@@ -12,14 +13,26 @@ def check_process_graph_conversion_validity(process_graph):
     return results[0]["invalid_node_id"]
 
 
+def get_sh_access_token():
+    if g.get("user"):
+        return g.user.sh_access_token
+
+
+def new_process(process, width=None, height=None):
+    return Process(process, width=width, height=height, access_token=get_sh_access_token())
+
+
+def new_sentinel_hub():
+    return SentinelHub(access_token=get_sh_access_token())
+
+
 def process_data_synchronously(process, width=None, height=None):
-    p = Process(process, width=width, height=height)
+    p = new_process(process, width=width, height=height)
     return p.execute_sync(), p.mimetype.get_string()
 
 
 def create_batch_job(process):
-    p = Process(process)
-    return p.create_batch_job()
+    return new_process(process).create_batch_job()
 
 
 def start_batch_job(batch_request_id, process):
@@ -40,7 +53,7 @@ def start_batch_job(batch_request_id, process):
     ANALYSING + user action ANALYSE: Analysis is running, but the job hasn't started. We create a new one.
     PROCESSING: we don't do anything
     """
-    sentinel_hub = SentinelHub()
+    sentinel_hub = new_sentinel_hub()
     batch_request_info = sentinel_hub.get_batch_request_info(batch_request_id)
 
     if batch_request_info.status in [BatchRequestStatus.CREATED, BatchRequestStatus.ANALYSIS_DONE]:
@@ -61,19 +74,16 @@ def start_batch_job(batch_request_id, process):
 
 
 def get_batch_request_info(batch_request_id):
-    sentinel_hub = SentinelHub()
-    return sentinel_hub.get_batch_request_info(batch_request_id)
+    return new_sentinel_hub().get_batch_request_info(batch_request_id)
 
 
 def cancel_batch_job(batch_request_id, process):
-    sentinel_hub = SentinelHub()
-    sentinel_hub.cancel_batch_job(batch_request_id)
+    new_sentinel_hub().cancel_batch_job(batch_request_id)
     return create_batch_job(process)
 
 
 def delete_batch_job(batch_request_id):
-    sentinel_hub = SentinelHub()
-    return sentinel_hub.delete_batch_job(batch_request_id)
+    return new_sentinel_hub().delete_batch_job(batch_request_id)
 
 
 def modify_batch_job(process):
@@ -87,7 +97,7 @@ def modify_batch_job(process):
 
 
 def get_batch_job_estimate(batch_request_id, process):
-    sentinel_hub = SentinelHub()
+    sentinel_hub = new_sentinel_hub()
 
     batch_request = sentinel_hub.get_batch_request_info(batch_request_id)
 
@@ -105,7 +115,7 @@ def get_batch_job_estimate(batch_request_id, process):
     default_temporal_interval = 3
     estimate_secure_factor = 2
 
-    p = Process(process)
+    p = Process(process, access_token=g.user.sh_access_token)
     temporal_interval = p.get_temporal_interval(in_days=True)
 
     if temporal_interval is None:

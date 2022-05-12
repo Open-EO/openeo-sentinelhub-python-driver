@@ -1,4 +1,3 @@
-import base64
 import datetime
 import glob
 import json
@@ -14,7 +13,6 @@ import boto3
 import flask
 from flask import Flask, url_for, jsonify
 from flask_cors import CORS
-from flask_basicauth import BasicAuth
 import beeline
 from beeline.middleware.flask import HoneyMiddleware
 from sentinelhub import BatchRequestStatus
@@ -51,7 +49,6 @@ from openeoerrors import (
     OpenEOError,
     AuthenticationRequired,
     AuthenticationSchemeInvalid,
-    TokenInvalid,
     ProcessUnsupported,
     JobNotFinished,
     JobNotFound,
@@ -62,7 +59,7 @@ from openeoerrors import (
 )
 from const import openEOBatchJobStatus
 
-from openeocollections import collections
+from openeo_collections.collections import collections
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
@@ -78,41 +75,6 @@ cors = CORS(
     supports_credentials=True,
     max_age=3600,
 )
-
-
-class BasicAuthSentinelHub(BasicAuth):
-    def check_credentials(self, username, password):
-        """We expect HTTP Basic username / password to be SentinelHub clientId / clientSecret, with
-        which we obtain the auth token from the service.
-        Password (clientSecret) can be supplied verbatim or as base64-encoded string, to avoid
-        problems with non-ASCII characters. Anything longer than 50 characters will be treated
-        as BASE64-encoded string.
-        """
-        secret = password if len(password) <= 50 else base64.b64decode(bytes(password, "ascii")).decode("ascii")
-        r = requests.post(
-            "https://services.sentinel-hub.com/oauth/token",
-            data={
-                "grant_type": "client_credentials",
-                "client_id": username,
-                "client_secret": secret,
-            },
-        )
-        if r.status_code != 200:
-            log(INFO, f"Access denied: {r.status_code} {r.text}")
-            return False
-
-        j = r.json()
-        access_token = j.get("access_token")
-        if not access_token:
-            log(ERROR, f"Error decoding access token from: {r.text}")
-            return False
-
-        flask.g.basic_auth_access_token = access_token
-        return True
-
-
-basic_auth = BasicAuthSentinelHub(app)
-
 
 # application performance monitoring:
 HONEYCOMP_APM_API_KEY = os.environ.get("HONEYCOMP_APM_API_KEY")
@@ -137,21 +99,6 @@ S3_LOCAL_URL = os.environ.get("DATA_AWS_S3_ENDPOINT_URL")
 
 
 STAC_VERSION = "0.9.0"
-
-
-def _extract_auth_token(headers):
-    # note that the extracted token is not necessarily valid - this needs to be checked separately
-    auth_header = headers.get("Authorization")
-    if not auth_header:
-        raise AuthenticationRequired()
-    must_start_with = "bearer basic//"
-    if auth_header[0 : len(must_start_with)].lower() != must_start_with:
-        raise AuthenticationSchemeInvalid()
-
-    token = auth_header[len(must_start_with) :]
-    if not token:
-        raise TokenInvalid()
-    return token
 
 
 def update_batch_request_id(job_id, job, new_batch_request_id):
@@ -266,12 +213,12 @@ def get_links():
 
 
 @app.route("/credentials/basic", methods=["GET"])
-@basic_auth.required
 def api_credentials_basic():
+    access_token = authentication_provider.check_credentials_basic()
     return flask.make_response(
         jsonify(
             {
-                "access_token": flask.g.basic_auth_access_token,
+                "access_token": access_token,
             }
         ),
         200,

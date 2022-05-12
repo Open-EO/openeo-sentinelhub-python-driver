@@ -10,17 +10,23 @@ from isodate import parse_duration
 
 from processing.openeo_process_errors import FormatUnsuitable
 from processing.sentinel_hub import SentinelHub
-from processing.const import SampleType, default_sample_type_for_mimetype, supported_sample_types, sample_types_to_bytes
-from openeocollections import collections
+from processing.const import (
+    SampleType,
+    default_sample_type_for_mimetype,
+    supported_sample_types,
+    sample_types_to_bytes,
+    utm_tiling_grids,
+)
+from openeo_collections.collections import collections
 from openeoerrors import CollectionNotFound, Internal, ProcessParameterInvalid, ProcessGraphComplexity
 
 
 class Process:
-    def __init__(self, process, width=None, height=None):
+    def __init__(self, process, width=None, height=None, access_token=None):
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_RESOLUTION = (10, 10)
         self.MAXIMUM_SYNC_FILESIZE_BYTES = 5000000
-        self.sentinel_hub = SentinelHub()
+        self.sentinel_hub = SentinelHub(access_token=access_token)
 
         self.process_graph = process["process_graph"]
         self.bbox, self.epsg_code, self.geometry = self.get_bounds()
@@ -29,6 +35,7 @@ class Process:
         self.mimetype = self.get_mimetype()
         self.width = width or self.get_dimensions()[0]
         self.height = height or self.get_dimensions()[1]
+        self.tiling_grid_id, self.tiling_grid_resolution = self.get_appropriate_tiling_grid_and_resolution()
         self.sample_type = self.get_sample_type()
         self.evalscript = self.get_evalscript()
 
@@ -49,6 +56,13 @@ class Process:
 
         return evalscript
 
+    def _create_custom_datacollection(self, collection_type, collection_info, subtype):
+        service_url = next(
+            provider["url"] for provider in collection_info["providers"] if "processor" in provider["roles"]
+        )
+        byoc_collection_id = collection_type.replace(f"{subtype}-", "")
+        return DataCollection.define_byoc(byoc_collection_id, service_url=service_url)
+
     def id_to_data_collection(self, collection_id):
         collection_info = collections.get_collection(collection_id)
 
@@ -57,19 +71,22 @@ class Process:
 
         collection_type = collection_info["datasource_type"]
 
+        if collection_type == "byoc-ID":
+            load_collection_node = self.get_node_by_process_id("load_collection")
+            featureflags = load_collection_node["arguments"].get("featureflags", {})
+            byoc_collection_id = featureflags.get("byoc_collection_id")
+
+            if not byoc_collection_id:
+                raise Internal(
+                    f"Collection {collection_id} requires 'byoc_collection_id' parameter to be set in 'featureflags' argument of 'load_collection'."
+                )
+            return self._create_custom_datacollection(byoc_collection_id, collection_info, "byoc")
+
         if collection_type.startswith("byoc"):
-            byoc_collection_id = collection_type.replace("byoc-", "")
-            service_url = next(
-                provider["url"] for provider in collection_info["providers"] if "processor" in provider["roles"]
-            )
-            return DataCollection.define_byoc(byoc_collection_id, service_url=service_url)
+            return self._create_custom_datacollection(collection_type, collection_info, "byoc")
 
         if collection_type.startswith("batch"):
-            batch_collection_id = collection_type.replace("batch-", "")
-            service_url = next(
-                provider["url"] for provider in collection_info["providers"] if "processor" in provider["roles"]
-            )
-            return DataCollection.define_batch(batch_collection_id, service_url=service_url)
+            return self._create_custom_datacollection(collection_type, collection_info, "batch")
 
         for data_collection in DataCollection:
             if data_collection.value.api_id == collection_type:
@@ -247,6 +264,30 @@ class Process:
         highest_y_resolution = min(list_of_resolutions, key=lambda x: x[1])[1]
         return (highest_x_resolution, highest_y_resolution)
 
+    def get_appropriate_tiling_grid_and_resolution(self):
+        global utm_tiling_grids
+        requested_resolution = min(self.get_highest_resolution())
+        utm_tiling_grids = sorted(
+            utm_tiling_grids, key=lambda tg: tg["properties"]["tileWidth"]
+        )  # We prefer grids with smaller tiles
+        best_tiling_grid_id = None
+        best_tiling_grid_resolution = math.inf
+
+        for tiling_grid in utm_tiling_grids:
+            resolutions = tiling_grid["properties"]["resolutions"]
+
+            for resolution in resolutions:
+                if resolution <= requested_resolution and abs(resolution - requested_resolution) < abs(
+                    best_tiling_grid_resolution - requested_resolution
+                ):
+                    best_tiling_grid_id = tiling_grid["id"]
+                    best_tiling_grid_resolution = resolution
+
+        if best_tiling_grid_id is None and best_tiling_grid_resolution is None:
+            return utm_tiling_grids[0]["id"], min(utm_tiling_grids[0]["properties"]["resolutions"])
+
+        return best_tiling_grid_id, best_tiling_grid_resolution
+
     def estimate_file_size(self, n_pixels=None):
         if n_pixels is None:
             n_pixels = self.width * self.height
@@ -310,7 +351,7 @@ class Process:
             evalscript=self.evalscript.write(),
             from_date=self.from_date,
             to_date=self.to_date,
-            width=self.width,
-            height=self.height,
+            tiling_grid_id=self.tiling_grid_id,
+            tiling_grid_resolution=self.tiling_grid_resolution,
             mimetype=self.mimetype,
         )
