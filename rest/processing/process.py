@@ -233,6 +233,10 @@ class Process:
         return default_sample_type_for_mimetype.get(self.mimetype, SampleType.UINT8)
 
     def get_dimensions(self):
+        """
+        Returns the expected dimensions of only the AOI based on the resolution.
+        This is not accurate for Batch API, as it processes more area than requested.
+        """
         spatial_extent = self.bbox
         bbox = self.convert_to_sh_bbox()
         resolution = self.get_highest_resolution()
@@ -284,8 +288,10 @@ class Process:
 
         return best_tiling_grid_id, best_tiling_grid_resolution
 
-    def estimate_file_size(self):
-        n_pixels = self.width * self.height
+    def estimate_file_size(self, n_pixels=None):
+        if n_pixels is None:
+            n_pixels = self.width * self.height
+
         n_bytes = sample_types_to_bytes.get(self.sample_type)
         output_dimensions = self.evalscript.determine_output_dimensions()
         n_original_temporal_dimensions = 0
