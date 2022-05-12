@@ -390,24 +390,24 @@ def test_process_batch_job(app_client, example_process_graph, example_authorizat
     r = app_client.post(
         "/jobs", data=json.dumps(data), headers=example_authorization_header_with_oidc, content_type="application/json"
     )
-    assert r.status_code == 201
+    assert r.status_code == 201, r.data
     job_id = r.headers["OpenEO-Identifier"]
 
     r = app_client.delete(f"/jobs/{job_id}/results", headers=example_authorization_header_with_oidc)
-    assert r.status_code == 204
+    assert r.status_code == 204, r.data
 
     # without authorization header, this call fails:
     r = app_client.post(f"/jobs/{job_id}/results")
-    assert r.status_code == 401
+    assert r.status_code == 401, r.data
 
     r = app_client.post(f"/jobs/{job_id}/results", headers=example_authorization_header_with_oidc)
-    assert r.status_code == 202
+    assert r.status_code == 202, r.data
 
     # it might take some time before the job is accepted - keep trying for 5s:
     for _ in range(10):
         r = app_client.get(f"/jobs/{job_id}", headers=example_authorization_header_with_oidc)
         actual = json.loads(r.data.decode("utf-8"))
-        assert r.status_code == 200
+        assert r.status_code == 200, r.data
         if actual["status"] != "created":
             break
         time.sleep(0.5)
@@ -415,11 +415,11 @@ def test_process_batch_job(app_client, example_process_graph, example_authorizat
 
     r = app_client.get(f"/jobs/{job_id}/results", headers=example_authorization_header_with_oidc)
     actual = json.loads(r.data.decode("utf-8"))
-    assert r.status_code == 400
+    assert r.status_code == 400, r.data
     assert actual["code"] == "JobNotFinished"
 
     r = app_client.delete(f"/jobs/{job_id}/results", headers=example_authorization_header_with_oidc)
-    assert r.status_code == 204
+    assert r.status_code == 204, r.data
 
 
 @with_mocked_auth
@@ -1537,3 +1537,37 @@ def test_sync_jobs_filesize(
     )
     assert r.status_code == ProcessGraphComplexity.http_code, r.data
     assert ProcessGraphComplexity.error_code in r.data.decode("utf-8")
+
+
+def test_user_token_user(app_client, example_process_graph):
+    """
+    - Test user token is used in request
+    """
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/api/v1/process",
+        match=[matchers.header_matcher({"Authorization": f"Bearer {valid_sh_token}"})],
+    )
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/api/v1/batch/process",
+        json={"id": "example", "processRequest": {}, "status": "CREATED"},
+        match=[matchers.header_matcher({"Authorization": f"Bearer {valid_sh_token}"})],
+    )
+
+    data = {
+        "process": {
+            "process_graph": example_process_graph,
+        }
+    }
+    headers = {"Authorization": f"Bearer basic//{valid_sh_token}"}
+
+    r = app_client.post(
+        "/result",
+        data=json.dumps(data),
+        headers=headers,
+        content_type="application/json",
+    )
+    assert r.status_code == 200, r.data
+    r = app_client.post("/jobs", data=json.dumps(data), headers=headers, content_type="application/json")
+    assert r.status_code == 201, r.data

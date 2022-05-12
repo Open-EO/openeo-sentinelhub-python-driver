@@ -22,11 +22,11 @@ from openeoerrors import CollectionNotFound, Internal, ProcessParameterInvalid, 
 
 
 class Process:
-    def __init__(self, process, width=None, height=None):
+    def __init__(self, process, width=None, height=None, access_token=None):
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_RESOLUTION = (10, 10)
         self.MAXIMUM_SYNC_FILESIZE_BYTES = 5000000
-        self.sentinel_hub = SentinelHub()
+        self.sentinel_hub = SentinelHub(access_token=access_token)
 
         self.process_graph = process["process_graph"]
         self.bbox, self.epsg_code, self.geometry = self.get_bounds()

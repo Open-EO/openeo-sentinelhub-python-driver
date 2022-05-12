@@ -10,6 +10,7 @@ from openeoerrors import (
     TokenInvalid,
 )
 from processing.utils import inject_variables_in_process_graph
+from processing.sentinel_hub import SentinelHub
 
 
 @pytest.mark.parametrize(
@@ -554,3 +555,60 @@ def test_get_collection(
     else:
         process = Process({"process_graph": get_process_graph(collection_id=collection_id, featureflags=featureflags)})
         assert process.collection.api_id == expected_datacollection_api_id
+
+
+@responses.activate
+@pytest.mark.parametrize(
+    "access_token",
+    ["<some-token>"],
+)
+def test_sentinel_hub_access_token(access_token):
+    example_token = "example"
+
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/oauth/token",
+        body=json.dumps({"access_token": example_token, "expires_at": 2147483647}),
+    )
+
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/api/v1/process",
+        match=[
+            matchers.header_matcher(
+                {"Authorization": f"Bearer {access_token if access_token is not None else example_token}"}
+            )
+        ],
+    )
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/api/v1/batch/process",
+        json={"id": "example", "processRequest": {}, "status": "CREATED"},
+        match=[
+            matchers.header_matcher(
+                {"Authorization": f"Bearer {access_token if access_token is not None else example_token}"}
+            )
+        ],
+    )
+
+    sh = SentinelHub(access_token=access_token)
+    sh.create_processing_request(
+        bbox=BBox((1, 2, 3, 4), crs=CRS.WGS84),
+        collection=DataCollection.SENTINEL2_L2A,
+        evalscript="",
+        from_date=datetime.now(),
+        to_date=datetime.now(),
+        width=1,
+        height=1,
+        mimetype=MimeType.PNG,
+    )
+    sh = SentinelHub(access_token=access_token)
+    sh.create_batch_job(
+        collection=DataCollection.SENTINEL2_L2A,
+        evalscript="",
+        from_date=datetime.now(),
+        to_date=datetime.now(),
+        tiling_grid_id=1,
+        tiling_grid_resolution=20,
+        mimetype=MimeType.PNG,
+    )

@@ -10,7 +10,9 @@ from functools import wraps
 import pytest
 import requests
 import responses
+from responses import matchers
 import numpy as np
+from sentinelhub import BBox, DataCollection, MimeType, CRS
 
 
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rest"))
