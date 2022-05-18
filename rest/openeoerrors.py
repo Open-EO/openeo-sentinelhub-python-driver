@@ -96,13 +96,32 @@ class ProcessParameterInvalid(OpenEOError):
     http_code = 400
 
 
-class UnsupportedGeometry(OpenEOError):
+class SHOpenEOError(Exception):
+    # Class for exceptions that are not listed in https://openeo.org/documentation/0.4/developers/api/errors.html#openeo-error-codes
+    record_id = None
+
+
+class ProcessGraphNotFound(SHOpenEOError):
+    error_code = "ProcessGraphNotFound"
+    http_code = 404
+    message = "Process graph does not exist."
+
+
+class UnsupportedGeometry(SHOpenEOError):
     error_code = "UnsupportedGeometry"
     http_code = 400
     message = "Unsupported geometry found, only Polygon or MultiPolygon geometries are supported"
 
 
-class TemporalExtentError(Exception):
+class TemporalExtentError(SHOpenEOError):
     error_code = "TemporalExtentError"
     http_code = 400
     message = "Invalid temporal_extent"
+
+
+class BadRequest(SHOpenEOError):
+    def __init__(self, message):
+        self.message = f"Invalid request: {message}"
+
+    error_code = "BadRequest"
+    http_code = 400

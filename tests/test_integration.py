@@ -949,6 +949,39 @@ def test_process_graph_api(app_client, example_process_graph, example_authorizat
     actual = json.loads(r.data.decode("utf-8")).get("processes")
     assert actual == expected
 
+    # create a process graph with invalid id (clashes with pre-defined process):
+    process_graph_id = "reduce_dimension"
+    data = {
+        "summary": "Invalid process",
+        "process_graph": example_process_graph,
+    }
+    r = app_client.put(
+        f"/process_graphs/{process_graph_id}",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
+    assert r.status_code == 400, r.data
+
+    # create a process graph with with id different in payload than url param:
+    process_graph_id = "id_in_url"
+    data = {
+        "id": "id_in_payload",
+        "summary": "Id in payload different than url param",
+        "process_graph": example_process_graph,
+    }
+    r = app_client.put(
+        f"/process_graphs/{process_graph_id}",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
+    assert r.status_code == 200, r.data
+    # Check the id in payload got overridden
+    r = app_client.get("/process_graphs/{}".format(process_graph_id), headers=example_authorization_header_with_oidc)
+    assert r.status_code == 200, r.data
+    assert json.loads(r.data.decode("utf-8"))["id"] == process_graph_id
+
 
 @pytest.mark.skip("JSON output format currently not supported.")
 def test_batch_job_json_output(app_client, authorization_header):

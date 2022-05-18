@@ -56,6 +56,9 @@ from openeoerrors import (
     CollectionNotFound,
     ServiceNotFound,
     Internal,
+    BadRequest,
+    ProcessGraphNotFound,
+    SHOpenEOError,
 )
 from const import openEOBatchJobStatus
 
@@ -126,10 +129,11 @@ def handle_exception(e):
 
     # now you're handling non-HTTP exceptions only
     log(INFO, traceback.format_exc())
-    error = Internal(str(e))
-    return flask.make_response(
-        jsonify(id=error.record_id, code=error.error_code, message=error.message, links=[]), error.http_code
-    )
+
+    if not issubclass(type(e), (OpenEOError, OpenEOProcessError, SHOpenEOError)):
+        e = Internal(str(e))
+
+    return flask.make_response(jsonify(id=e.record_id, code=e.error_code, message=e.message, links=[]), e.http_code)
 
 
 @app.route("/", methods=["GET"])
@@ -311,12 +315,7 @@ def api_process_graph(process_graph_id, user):
     if flask.request.method in ["GET", "HEAD"]:
         record = ProcessGraphsPersistence.get_by_id(process_graph_id)
         if record is None:
-            return flask.make_response(
-                jsonify(
-                    id=process_graph_id, code="ProcessGraphNotFound", message="Process graph does not exist.", links=[]
-                ),
-                404,
-            )
+            raise ProcessGraphNotFound()
         return {
             "id": process_graph_id,
             "process_graph": json.loads(record["process_graph"]),
@@ -338,14 +337,18 @@ def api_process_graph(process_graph_id, user):
             errors = "Process graph id does not match the required pattern"
 
         if errors:
-            # Response procedure for validation will depend on how openeo_pg_parser_python will work
-            return flask.make_response(jsonify(id=process_graph_id, code=400, message=errors, links=[]), 400)
+            raise BadRequest(str(errors))
+
+        if "id" in data and data["id"] != process_graph_id:
+            data["id"] = process_graph_id
+
+        if process_graph_id in list_supported_processes():
+            raise BadRequest(f"Process with id '{process_graph_id}' already exists among pre-defined processes.")
 
         data["user_id"] = user.user_id
         ProcessGraphsPersistence.create(data, process_graph_id)
 
-        response = flask.make_response("The user-defined process has been stored successfully.", 200)
-        return response
+        return flask.make_response("The user-defined process has been stored successfully.", 200)
 
 
 @app.route("/result", methods=["POST"])
