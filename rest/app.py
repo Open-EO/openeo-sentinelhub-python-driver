@@ -60,7 +60,7 @@ from openeoerrors import (
     ProcessGraphNotFound,
     SHOpenEOError,
 )
-from const import openEOBatchJobStatus
+from const import openEOBatchJobStatus, optional_process_parameters
 
 from openeo_collections.collections import collections
 
@@ -272,27 +272,15 @@ def api_process_graphs(user):
     process_graphs = []
     links = []
     for record in ProcessGraphsPersistence.query_by_user_id(user.user_id):
+        # We don't return process_graph and only return explicitly set optional values as documentation states:
+        # > It is strongly RECOMMENDED to keep the response size small by omitting larger optional values from the objects
         process_item = {
             "id": record["id"],
         }
-        if record.get("description"):
-            # It's supposed to be nullable, but validator disagrees
-            process_item["description"] = record.get("description")
-        if record.get("summary"):
-            # It's supposed to be nullable, but validator disagrees
-            process_item["summary"] = record.get("summary")
-        if record.get("returns"):
-            # It's supposed to be nullable, but validator disagrees
-            process_item["returns"] = record.get("returns")
-        if record.get("parameters"):
-            # It's supposed to be nullable, but validator disagrees
-            process_item["parameters"] = record.get("parameters")
-        if record.get("categories"):
-            process_item["categories"] = record.get("categories")
-        if record.get("deprecated"):
-            process_item["deprecated"] = record.get("deprecated")
-        if record.get("experimental"):
-            process_item["experimental"] = record.get("experimental")
+
+        for attr in optional_process_parameters:
+            if record.get(attr) is not None:
+                process_item[attr] = record[attr]
 
         process_graphs.append(process_item)
 
@@ -300,8 +288,6 @@ def api_process_graphs(user):
             "rel": "related",
             "href": "{}/process_graphs/{}".format(flask.request.url_root, record["id"]),
         }
-        if record.get("title", None):
-            link_to_pg["title"] = record["title"]
         links.append(link_to_pg)
     return {
         "processes": process_graphs,
@@ -316,12 +302,28 @@ def api_process_graph(process_graph_id, user):
         record = ProcessGraphsPersistence.get_by_id(process_graph_id)
         if record is None:
             raise ProcessGraphNotFound()
-        return {
-            "id": process_graph_id,
+
+        process_item = {
+            "id": record["id"],
             "process_graph": json.loads(record["process_graph"]),
-            "summary": record.get("summary"),
-            "description": record.get("description"),
-        }, 200
+        }
+        for attr in optional_process_parameters:
+            process_item[attr] = record.get(attr)
+
+        if process_item["deprecated"] is None:
+            process_item["deprecated"] = False
+        if process_item["experimental"] is None:
+            process_item["experimental"] = False
+        if process_item["categories"] is None:
+            process_item["categories"] = []
+        if process_item["exceptions"] is None:
+            process_item["exceptions"] = {}
+        if process_item["examples"] is None:
+            process_item["examples"] = []
+        if process_item["links"] is None:
+            process_item["links"] = []
+
+        return process_item, 200
 
     elif flask.request.method == "DELETE":
         ProcessGraphsPersistence.delete(process_graph_id)

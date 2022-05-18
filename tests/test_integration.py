@@ -874,10 +874,7 @@ def test_process_graph_api(app_client, example_process_graph, example_authorizat
 
     # create a process graph:
     process_graph_id = "testing_process_graph"
-    data = {
-        "summary": "test",
-        "process_graph": example_process_graph,
-    }
+    data = {"summary": "test", "process_graph": example_process_graph, "experimental": False, "deprecated": True}
     r = app_client.put(
         f"/process_graphs/{process_graph_id}",
         data=json.dumps(data),
@@ -890,10 +887,7 @@ def test_process_graph_api(app_client, example_process_graph, example_authorizat
     r = app_client.get("/process_graphs", headers=example_authorization_header_with_oidc)
     assert r.status_code == 200, r.data
     expected = [
-        {
-            "id": process_graph_id,
-            "summary": "test",
-        },
+        {"id": process_graph_id, "summary": "test", "experimental": False, "deprecated": True},
     ]
     actual = json.loads(r.data.decode("utf-8")).get("processes")
     assert actual == expected
@@ -902,10 +896,18 @@ def test_process_graph_api(app_client, example_process_graph, example_authorizat
     r = app_client.get("/process_graphs/{}".format(process_graph_id), headers=example_authorization_header_with_oidc)
     assert r.status_code == 200, r.data
     expected = {
-        "id": process_graph_id,
         "summary": "test",
-        "process_graph": example_process_graph,
         "description": None,
+        "parameters": None,
+        "returns": None,
+        "id": process_graph_id,
+        "categories": [],
+        "deprecated": True,
+        "experimental": False,
+        "exceptions": {},
+        "examples": [],
+        "links": [],
+        "process_graph": example_process_graph,
     }
     actual = json.loads(r.data.decode("utf-8"))
     assert actual == expected
@@ -931,6 +933,14 @@ def test_process_graph_api(app_client, example_process_graph, example_authorizat
         "id": process_graph_id,
         "summary": "test2",
         "description": "asdf",
+        "parameters": None,
+        "returns": None,
+        "categories": [],
+        "deprecated": False,
+        "experimental": False,
+        "exceptions": {},
+        "examples": [],
+        "links": [],
         "process_graph": example_process_graph,
     }
     actual = json.loads(r.data.decode("utf-8"))

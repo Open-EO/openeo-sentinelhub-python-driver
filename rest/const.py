@@ -37,3 +37,16 @@ global_parameters_xyz = {
     "spatial_extent_east": 3,
     "spatial_extent_north": 4,
 }
+
+optional_process_parameters = [
+    "summary",
+    "description",
+    "parameters",
+    "returns",
+    "categories",
+    "deprecated",
+    "experimental",
+    "exceptions",
+    "examples",
+    "links",
+]
