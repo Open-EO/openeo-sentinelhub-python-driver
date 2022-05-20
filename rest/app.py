@@ -505,7 +505,7 @@ def api_batch_job(job_id, user):
         res = s3.list_objects_v2(Bucket=RESULTS_S3_BUCKET_NAME, Prefix=f"{job_id}/")
         for obj in res["Contents"]:
             s3.delete_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=obj["Key"])
-            
+
         JobsPersistence.delete(job_id)
         return flask.make_response("The job has been successfully deleted.", 204)
 
