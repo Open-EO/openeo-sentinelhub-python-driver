@@ -11,7 +11,7 @@ import traceback
 import requests
 import boto3
 import flask
-from flask import Flask, url_for, jsonify
+from flask import Flask, url_for, jsonify, g
 from flask_cors import CORS
 import beeline
 from beeline.middleware.flask import HoneyMiddleware
@@ -61,6 +61,7 @@ from openeoerrors import (
     SHOpenEOError,
 )
 from const import openEOBatchJobStatus, optional_process_parameters
+from utils import get_all_process_definitions
 
 from openeo_collections.collections import collections
 
@@ -78,6 +79,12 @@ cors = CORS(
     supports_credentials=True,
     max_age=3600,
 )
+
+def get_all_user_defined_processes():
+    all_user_defined_processes = dict()
+    for record in ProcessGraphsPersistence.query_by_user_id(g.user.user_id):
+        all_user_defined_processes[record["id"]] = record["process_graph"]
+    return all_user_defined_processes
 
 # application performance monitoring:
 HONEYCOMP_APM_API_KEY = os.environ.get("HONEYCOMP_APM_API_KEY")
@@ -767,16 +774,7 @@ def api_execute_service(service_id, zoom, tx, ty):
 
 @app.route("/processes", methods=["GET"])
 def available_processes():
-    files = []
-    processes = []
-
-    for supported_process in list_supported_processes():
-        files.extend(glob.glob(f"process_definitions/{supported_process}.json"))
-
-    for file in files:
-        with open(file) as f:
-            processes.append(json.load(f))
-
+    processes = get_all_process_definitions()
     processes.sort(key=lambda process: process["id"])
 
     return flask.make_response(
