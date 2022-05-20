@@ -1,4 +1,3 @@
-import base64
 import datetime
 import glob
 import json
@@ -7,15 +6,18 @@ import os
 import re
 import sys
 import time
+import traceback
 
 import requests
 import boto3
 import flask
 from flask import Flask, url_for, jsonify
 from flask_cors import CORS
-from flask_basicauth import BasicAuth
 import beeline
 from beeline.middleware.flask import HoneyMiddleware
+from sentinelhub import BatchRequestStatus
+from pg_to_evalscript import list_supported_processes
+from werkzeug.exceptions import HTTPException
 
 import globalmaptiles
 from schemas import (
@@ -29,8 +31,35 @@ from schemas import (
     PatchServicesSchema,
 )
 from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
-from openeoerrors import OpenEOError, AuthenticationRequired, AuthenticationSchemeInvalid, TokenInvalid
+from processing.processing import (
+    check_process_graph_conversion_validity,
+    process_data_synchronously,
+    create_batch_job,
+    start_batch_job,
+    get_batch_request_info,
+    cancel_batch_job,
+    delete_batch_job,
+    modify_batch_job,
+    get_batch_job_estimate,
+)
+from processing.utils import inject_variables_in_process_graph
+from processing.openeo_process_errors import OpenEOProcessError
+from authentication.authentication import authentication_provider
+from openeoerrors import (
+    OpenEOError,
+    AuthenticationRequired,
+    AuthenticationSchemeInvalid,
+    ProcessUnsupported,
+    JobNotFinished,
+    JobNotFound,
+    JobLocked,
+    CollectionNotFound,
+    ServiceNotFound,
+    Internal,
+)
+from const import openEOBatchJobStatus
 
+from openeo_collections.collections import collections
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
@@ -46,41 +75,6 @@ cors = CORS(
     supports_credentials=True,
     max_age=3600,
 )
-
-
-class BasicAuthSentinelHub(BasicAuth):
-    def check_credentials(self, username, password):
-        """We expect HTTP Basic username / password to be SentinelHub clientId / clientSecret, with
-        which we obtain the auth token from the service.
-        Password (clientSecret) can be supplied verbatim or as base64-encoded string, to avoid
-        problems with non-ASCII characters. Anything longer than 50 characters will be treated
-        as BASE64-encoded string.
-        """
-        secret = password if len(password) <= 50 else base64.b64decode(bytes(password, "ascii")).decode("ascii")
-        r = requests.post(
-            "https://services.sentinel-hub.com/oauth/token",
-            data={
-                "grant_type": "client_credentials",
-                "client_id": username,
-                "client_secret": secret,
-            },
-        )
-        if r.status_code != 200:
-            log(INFO, f"Access denied: {r.status_code} {r.text}")
-            return False
-
-        j = r.json()
-        access_token = j.get("access_token")
-        if not access_token:
-            log(ERROR, f"Error decoding access token from: {r.text}")
-            return False
-
-        flask.g.basic_auth_access_token = access_token
-        return True
-
-
-basic_auth = BasicAuthSentinelHub(app)
-
 
 # application performance monitoring:
 HONEYCOMP_APM_API_KEY = os.environ.get("HONEYCOMP_APM_API_KEY")
@@ -99,28 +93,40 @@ FAKE_AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
 FAKE_AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", FAKE_AWS_ACCESS_KEY_ID)
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", FAKE_AWS_SECRET_ACCESS_KEY)
+DATA_AWS_ACCESS_KEY_ID = os.environ.get("DATA_AWS_ACCESS_KEY_ID")
+DATA_AWS_SECRET_ACCESS_KEY = os.environ.get("DATA_AWS_SECRET_ACCESS_KEY")
 S3_LOCAL_URL = os.environ.get("DATA_AWS_S3_ENDPOINT_URL")
+
 
 STAC_VERSION = "0.9.0"
 
 
-def _extract_auth_token(headers):
-    # note that the extracted token is not necessarily valid - this needs to be checked separately
-    auth_header = headers.get("Authorization")
-    if not auth_header:
-        raise AuthenticationRequired()
-    must_start_with = "bearer basic//"
-    if auth_header[0 : len(must_start_with)].lower() != must_start_with:
-        raise AuthenticationSchemeInvalid()
-
-    token = auth_header[len(must_start_with) :]
-    if not token:
-        raise TokenInvalid()
-    return token
+def update_batch_request_id(job_id, job, new_batch_request_id):
+    JobsPersistence.update_key(job_id, "batch_request_id", new_batch_request_id)
+    JobsPersistence.update_key(
+        job_id,
+        "previous_batch_request_ids",
+        [*json.loads(job["previous_batch_request_ids"]), job["batch_request_id"]],
+    )
 
 
 @app.errorhandler(OpenEOError)
 def openeo_exception_handler(error):
+    return flask.make_response(
+        jsonify(id=error.record_id, code=error.error_code, message=error.message, links=[]), error.http_code
+    )
+
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # pass through HTTP errors
+    log(INFO, f"Error: {str(e)}")
+    if isinstance(e, HTTPException):
+        return e
+
+    # now you're handling non-HTTP exceptions only
+    log(INFO, traceback.format_exc())
+    error = Internal(str(e))
     return flask.make_response(
         jsonify(id=error.record_id, code=error.error_code, message=error.message, links=[]), error.http_code
     )
@@ -136,6 +142,7 @@ def api_root():
         "title": "Sentinel Hub OpenEO",
         "description": "Sentinel Hub OpenEO by [Sinergise](https://sinergise.com)",
         "endpoints": get_endpoints(),
+        "billing": {"currency": "processing units"},
         "links": get_links(),
     }
 
@@ -196,20 +203,32 @@ def get_links():
             "type": "application/json",
             "title": "List of Datasets",
         },
+        {
+            "href": "https://docs.sentinel-hub.com/api/latest/api/overview/processing-unit/",
+            "rel": "about",
+            "type": "text/html",
+            "title": "Explanation of processing units",
+        },
     ]
 
 
 @app.route("/credentials/basic", methods=["GET"])
-@basic_auth.required
 def api_credentials_basic():
+    access_token = authentication_provider.check_credentials_basic()
     return flask.make_response(
         jsonify(
             {
-                "access_token": flask.g.basic_auth_access_token,
+                "access_token": access_token,
             }
         ),
         200,
     )
+
+
+@app.route("/credentials/oidc", methods=["GET"])
+def oidc_credentials():
+    providers = {"providers": authentication_provider.get_oidc_providers()}
+    return flask.make_response(jsonify(providers))
 
 
 @app.route("/file_formats", methods=["GET"])
@@ -244,10 +263,11 @@ def api_service_types():
 
 
 @app.route("/process_graphs", methods=["GET"])
-def api_process_graphs():
+@authentication_provider.with_bearer_auth
+def api_process_graphs(user):
     process_graphs = []
     links = []
-    for record in ProcessGraphsPersistence.items():
+    for record in ProcessGraphsPersistence.query_by_user_id(user.user_id):
         process_item = {
             "id": record["id"],
         }
@@ -286,7 +306,8 @@ def api_process_graphs():
 
 
 @app.route("/process_graphs/<process_graph_id>", methods=["GET", "DELETE", "PUT"])
-def api_process_graph(process_graph_id):
+@authentication_provider.with_bearer_auth
+def api_process_graph(process_graph_id, user):
     if flask.request.method in ["GET", "HEAD"]:
         record = ProcessGraphsPersistence.get_by_id(process_graph_id)
         if record is None:
@@ -320,6 +341,7 @@ def api_process_graph(process_graph_id):
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
             return flask.make_response(jsonify(id=process_graph_id, code=400, message=errors, links=[]), 400)
 
+        data["user_id"] = user.user_id
         ProcessGraphsPersistence.create(data, process_graph_id)
 
         response = flask.make_response("The user-defined process has been stored successfully.", 200)
@@ -327,10 +349,10 @@ def api_process_graph(process_graph_id):
 
 
 @app.route("/result", methods=["POST"])
+@authentication_provider.with_bearer_auth
 def api_result():
     if flask.request.method == "POST":
         job_data = flask.request.get_json()
-        auth_token = _extract_auth_token(flask.request.headers)
 
         schema = PostResultSchema()
         errors = schema.validate(job_data)
@@ -339,31 +361,52 @@ def api_result():
             log(WARN, "Invalid request: {}".format(errors))
             return flask.make_response(jsonify(id=None, code=400, message=errors, links=[]), 400)
 
-        job_data["current_status"] = "queued"
-        job_data["should_be_cancelled"] = False
-        job_data["auth_token"] = auth_token
-        return _execute_and_wait_for_job(job_data)
+        invalid_node_id = check_process_graph_conversion_validity(job_data["process"]["process_graph"])
+
+        if invalid_node_id is not None:
+            error = ProcessUnsupported(invalid_node_id)
+            return flask.make_response(
+                jsonify(id=None, code=error.error_code, message=error.message, links=[]), error.http_code
+            )
+
+        try:
+            data, mime_type = process_data_synchronously(job_data["process"])
+        except (OpenEOProcessError, OpenEOError) as error:
+            raise
+        except Exception as error:
+            raise Internal(str(error))
+
+        response = flask.make_response(data, 200)
+        response.mime_type = mime_type
+        response.headers["Content-Type"] = mime_type
+        response.headers["OpenEO-Costs"] = None
+
+        return response
 
 
 @app.route("/jobs", methods=["GET", "POST"])
-def api_jobs():
+@authentication_provider.with_bearer_auth
+def api_jobs(user):
     if flask.request.method == "GET":
         jobs = []
         links = []
 
-        for record in JobsPersistence.items():
+        for record in JobsPersistence.query_by_user_id(user.user_id):
+            batch_request_info = get_batch_request_info(record["batch_request_id"])
             jobs.append(
                 {
                     "id": record["id"],
                     "title": record.get("title", None),
                     "description": record.get("description", None),
-                    "status": record["current_status"],
+                    "status": openEOBatchJobStatus.from_sentinelhub_batch_job_status(
+                        batch_request_info.status, batch_request_info.user_action
+                    ).value,
                     "created": record["created"],
                 }
             )
             link_to_job = {
                 "rel": "related",
-                "href": "{}/jobs/{}".format(flask.request.url_root, record.get("id")),
+                "href": "{}jobs/{}".format(flask.request.url_root, record.get("id")),
             }
             if record.get("title", None):
                 link_to_job["title"] = record["title"]
@@ -384,8 +427,15 @@ def api_jobs():
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
             return flask.make_response("Invalid request: {}".format(errors), 400)
 
-        data["current_status"] = "created"
-        data["should_be_cancelled"] = False
+        invalid_node_id = check_process_graph_conversion_validity(data["process"]["process_graph"])
+
+        if invalid_node_id is not None:
+            raise ProcessUnsupported(invalid_node_id)
+
+        batch_request_id = create_batch_job(data["process"])
+
+        data["batch_request_id"] = batch_request_id
+        data["user_id"] = user.user_id
 
         record_id = JobsPersistence.create(data)
 
@@ -397,23 +447,24 @@ def api_jobs():
 
 
 @app.route("/jobs/<job_id>", methods=["GET", "PATCH", "DELETE"])
-def api_batch_job(job_id):
+@authentication_provider.with_bearer_auth
+def api_batch_job(job_id, user):
     job = JobsPersistence.get_by_id(job_id)
-    if job is None:
-        return flask.make_response(
-            jsonify(id=job_id, code="JobNotFound", message="The job does not exist.", links=[]), 404
-        )
+    if job is None or job["user_id"] != user.user_id:
+        raise JobNotFound()
 
     if flask.request.method == "GET":
-        status = job["current_status"]
+        batch_request_info = get_batch_request_info(job["batch_request_id"])
         return flask.make_response(
             jsonify(
                 id=job_id,
                 title=job.get("title", None),
                 description=job.get("description", None),
                 process={"process_graph": json.loads(job["process"])["process_graph"]},
-                status=status,  # "status" is reserved word in DynamoDB
-                error=job["error_msg"] if status == "error" else None,
+                status=openEOBatchJobStatus.from_sentinelhub_batch_job_status(
+                    batch_request_info.status, batch_request_info.user_action
+                ).value,
+                error=batch_request_info.error if batch_request_info.status == BatchRequestStatus.FAILED else None,
                 created=job["created"],
                 updated=job["last_updated"],
             ),
@@ -421,16 +472,12 @@ def api_batch_job(job_id):
         )
 
     elif flask.request.method == "PATCH":
-        if job["current_status"] in ["queued", "running"]:
-            return flask.make_response(
-                jsonify(
-                    id=job_id,
-                    code="JobLocked",
-                    message="Job is locked due to a queued or running batch computation.",
-                    links=[],
-                ),
-                400,
-            )
+        batch_request_info = get_batch_request_info(job["batch_request_id"])
+
+        if openEOBatchJobStatus.from_sentinelhub_batch_job_status(
+            batch_request_info.status, batch_request_info.user_action
+        ) in [openEOBatchJobStatus.QUEUED, openEOBatchJobStatus.RUNNING]:
+            raise JobLocked()
 
         data = flask.request.get_json()
         errors = PatchJobsSchema().validate(data)
@@ -440,28 +487,14 @@ def api_batch_job(job_id):
 
         for key in data:
             JobsPersistence.update_key(job_id, key, data[key])
-        JobsPersistence.update_status(job_id, "created")
+
+        if data.get("process"):
+            new_batch_request_id = modify_batch_job(data["process"])
+            update_batch_request_id(job_id, job, new_batch_request_id)
 
         return flask.make_response("Changes to the job applied successfully.", 204)
 
     elif flask.request.method == "DELETE":
-        # for queued and running jobs, we need to mark them to be cancelled and wait for their status to change:
-        if job["current_status"] in ["queued", "running"]:
-            JobsPersistence.set_should_be_cancelled(job_id)
-
-            # wait for job to get status 'cancelled':
-            period = 0.5  # check every X seconds
-            n_checks = int(REQUEST_TIMEOUT / period)
-            for _ in range(n_checks):
-                job = JobsPersistence.get_by_id(job_id)
-                if job["current_status"] not in ["queued", "running"]:
-                    break
-                time.sleep(period)
-            # this would be more correct - however, if we have a job which is stuck in "running", even though
-            # there is no worker actually working on it, we will not be able to delete it.
-            # if job["current_status"] in ["queued", "running"]:
-            #     return flask.make_response("Could not stop the job properly.", 500)
-
         s3 = boto3.client(
             "s3",
             endpoint_url=S3_LOCAL_URL,
@@ -472,64 +505,71 @@ def api_batch_job(job_id):
         res = s3.list_objects_v2(Bucket=RESULTS_S3_BUCKET_NAME, Prefix=f"{job_id}/")
         for obj in res["Contents"]:
             s3.delete_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=obj["Key"])
-
+            
         JobsPersistence.delete(job_id)
         return flask.make_response("The job has been successfully deleted.", 204)
 
 
 @app.route("/jobs/<job_id>/results", methods=["POST", "GET", "DELETE"])
-def add_job_to_queue(job_id):
-    if flask.request.method == "POST":
-        job = JobsPersistence.get_by_id(job_id)
-        auth_token = _extract_auth_token(flask.request.headers)
+@authentication_provider.with_bearer_auth
+def add_job_to_queue(job_id, user):
+    job = JobsPersistence.get_by_id(job_id)
+    if job is None or job["user_id"] != user.user_id:
+        raise JobNotFound()
 
-        if job["current_status"] in ["created", "finished", "canceled", "error"]:
-            JobsPersistence.update_auth_token(job_id, auth_token)
-            JobsPersistence.update_status(job_id, "queued")
-            return flask.make_response("The creation of the resource has been queued successfully.", 202)
-        else:
-            return flask.make_response(
-                jsonify(
-                    id=job_id,
-                    code="JobLocked",
-                    message="Job is locked due to a queued or running batch computation.",
-                    links=[],
-                ),
-                400,
-            )
+    if flask.request.method == "POST":
+        new_batch_request_id = start_batch_job(job["batch_request_id"], json.loads(job["process"]))
+
+        if new_batch_request_id and new_batch_request_id != job["batch_request_id"]:
+            update_batch_request_id(job_id, job, new_batch_request_id)
+
+        return flask.make_response("The creation of the resource has been queued successfully.", 202)
 
     elif flask.request.method == "GET":
-        job = JobsPersistence.get_by_id(job_id)
+        batch_request_info = get_batch_request_info(job["batch_request_id"])
 
-        if job["current_status"] not in ["finished", "error"]:
-            return flask.make_response(
-                jsonify(
-                    id=job_id,
-                    code="JobNotFinished",
-                    message="Job has not finished computing the results yet. Please try again later.",
-                    links=[],
-                ),
-                400,
-            )
+        if batch_request_info.status not in [
+            BatchRequestStatus.DONE,
+            BatchRequestStatus.FAILED,
+            BatchRequestStatus.PARTIAL,
+        ]:
+            raise JobNotFinished()
 
-        if job["current_status"] == "error":
+        if batch_request_info.status == BatchRequestStatus.FAILED:
             return flask.make_response(
-                jsonify(id=job_id, code=job["error_code"], level="error", message=job["error_msg"], links=[]), 424
+                jsonify(id=job_id, code=424, level="error", message=batch_request_info.error, links=[]), 424
             )
 
         s3 = boto3.client(
             "s3",
-            endpoint_url=S3_LOCAL_URL,
             region_name="eu-central-1",
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+            aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
         )
+
+        continuation_token = None
+        results = []
+
+        while True:
+            if continuation_token:
+                log(INFO, f"Fetch from bucket")
+                response = s3.list_objects_v2(
+                    Bucket=RESULTS_S3_BUCKET_NAME, Prefix=job["batch_request_id"], ContinuationToken=continuation_token
+                )
+            else:
+                response = s3.list_objects_v2(Bucket=RESULTS_S3_BUCKET_NAME, Prefix=job["batch_request_id"])
+            results.extend(response["Contents"])
+            if response["IsTruncated"]:
+                continuation_token = response["NextContinuationToken"]
+            else:
+                break
+
         assets = {}
-        results = json.loads(job["results"])
+        log(INFO, f"Fetched all results: {str(results)}")
+
         for result in results:
             # create signed url:
-            filename = result["filename"]
-            object_key = "{}/{}".format(job_id, os.path.basename(filename))
+            object_key = result["Key"]
             url = s3.generate_presigned_url(
                 ClientMethod="get_object",
                 Params={
@@ -537,10 +577,8 @@ def add_job_to_queue(job_id):
                     "Key": object_key,
                 },
             )
-            mime_type = result["type"]
-            assets[filename] = {
+            assets[object_key] = {
                 "href": url,
-                "type": mime_type,
             }
 
         return flask.make_response(
@@ -557,28 +595,39 @@ def add_job_to_queue(job_id):
         )
 
     elif flask.request.method == "DELETE":
-        job = JobsPersistence.get_by_id(job_id)
+        new_batch_request_id = cancel_batch_job(job["batch_request_id"], json.loads(job["process"]))
+        if new_batch_request_id:
+            JobsPersistence.update_key(job_id, "batch_request_id", new_batch_request_id)
+            JobsPersistence.update_key(
+                job_id,
+                "previous_batch_request_ids",
+                [*json.loads(job["previous_batch_request_ids"]), job["batch_request_id"]],
+            )
+        return flask.make_response("Processing the job has been successfully canceled.", 204)
 
-        JobsPersistence.set_should_be_cancelled(job_id)
 
-        period = 0.5  # check every X seconds
-        n_checks = int(REQUEST_TIMEOUT / period)
-        for _ in range(n_checks):
-            job = JobsPersistence.get_by_id(job_id)
-            if job["current_status"] not in ["queued", "running"]:
-                return flask.make_response("Processing the job has been successfully canceled.", 204)
-            time.sleep(period)
+@app.route("/jobs/<job_id>/estimate", methods=["GET"])
+@authentication_provider.with_bearer_auth
+def estimate_job_cost(job_id):
+    job = JobsPersistence.get_by_id(job_id)
+    if job is None:
+        raise JobNotFound()
 
-        return flask.make_response("Could not cancel the job properly.", 500)
+    estimated_pu, estimated_file_size = get_batch_job_estimate(job["batch_request_id"], json.loads(job["process"]))
+    return flask.make_response(
+        jsonify(costs=estimated_pu, size=estimated_file_size),
+        200,
+    )
 
 
 @app.route("/services", methods=["GET", "POST"])
-def api_services():
+@authentication_provider.with_bearer_auth
+def api_services(user):
     if flask.request.method == "GET":
         services = []
         links = []
 
-        for record in ServicesPersistence.items():
+        for record in ServicesPersistence.query_by_user_id(user.user_id):
             service_item = {
                 "id": record["id"],
                 "title": record.get("title", None),
@@ -588,11 +637,12 @@ def api_services():
                 ),
                 "type": record["service_type"],
                 "enabled": record.get("enabled", True),
+                # "created": record["created"],
                 "costs": 0,
                 "budget": record.get("budget", None),
             }
             if record.get("plan"):
-                service_item["plan"] = (record["plan"],)
+                service_item["plan"] = record["plan"]
             if record.get("configuration") and json.loads(record["configuration"]):
                 service_item["configuration"] = json.loads(record["configuration"])
             else:
@@ -618,6 +668,12 @@ def api_services():
         if errors:
             return flask.make_response("Invalid request: {}".format(errors), 400)
 
+        invalid_node_id = check_process_graph_conversion_validity(data["process"]["process_graph"])
+
+        if invalid_node_id is not None:
+            raise ProcessUnsupported(data["process"]["process_graph"][invalid_node_id]["process_id"])
+
+        data["user_id"] = user.user_id
         record_id = ServicesPersistence.create(data)
 
         # add requested headers to 201 response:
@@ -628,12 +684,11 @@ def api_services():
 
 
 @app.route("/services/<service_id>", methods=["GET", "PATCH", "DELETE"])
-def api_service(service_id):
+@authentication_provider.with_bearer_auth
+def api_service(service_id, user):
     record = ServicesPersistence.get_by_id(service_id)
-    if record is None:
-        return flask.make_response(
-            jsonify(id=service_id, code="ServiceNotFound", message="The service does not exist.", links=[]), 404
-        )
+    if record is None or record["user_id"] != user.user_id:
+        raise ServiceNotFound(service_id)
 
     if flask.request.method == "GET":
         service = {
@@ -668,6 +723,11 @@ def api_service(service_id):
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
             return flask.make_response(jsonify(id=service_id, code=400, message=errors, links=[]), 400)
 
+        if data.get("process"):
+            invalid_node_id = check_process_graph_conversion_validity(data["process"]["process_graph"])
+            if invalid_node_id is not None:
+                raise ProcessUnsupported(data["process"]["process_graph"][invalid_node_id]["process_id"])
+
         for key in data:
             ServicesPersistence.update_key(service_id, key, data[key])
 
@@ -680,135 +740,50 @@ def api_service(service_id):
 
 @app.route("/service/xyz/<service_id>/<int:zoom>/<int:tx>/<int:ty>", methods=["GET"])
 def api_execute_service(service_id, zoom, tx, ty):
-    auth_token = _extract_auth_token(flask.request.headers)
-
     record = ServicesPersistence.get_by_id(service_id)
     if record is None or record["service_type"].lower() != "xyz":
-        return flask.make_response(
-            jsonify(id=service_id, code="ServiceNotFound", message="The service does not exist.", links=[]), 404
-        )
+        raise ServiceNotFound(service_id)
 
     # https://www.maptiler.com/google-maps-coordinates-tile-bounds-projection/
-    TILE_SIZE = 256
+    tile_size = (json.loads(record.get("configuration")) or {}).get("tile_size", 256)
     ty = (2 ** zoom - 1) - ty  # convert from Google Tile XYZ to TMS
-    minLat, minLon, maxLat, maxLon = globalmaptiles.GlobalMercator(tileSize=TILE_SIZE).TileLatLonBounds(tx, ty, zoom)
+    minLat, minLon, maxLat, maxLon = globalmaptiles.GlobalMercator(tileSize=tile_size).TileLatLonBounds(tx, ty, zoom)
     variables = {
         "spatial_extent_west": minLon,
         "spatial_extent_south": minLat,
         "spatial_extent_east": maxLon,
         "spatial_extent_north": maxLat,
-        "spatial_extent_crs": 4326,
-        "tile_size": TILE_SIZE,
     }
-    job_data = {
-        "process": json.loads(record["process"]),
-        "plan": record.get("plan"),
-        "budget": record.get("budget"),
-        "title": record.get("title"),
-        "description": record.get("description"),
-        "variables": variables,
-        "auth_token": auth_token,
-    }
-    return _execute_and_wait_for_job(job_data)
 
+    process_info = json.loads(record["process"])
 
-def _execute_and_wait_for_job(job_data):
-    job_id = JobsPersistence.create(job_data)
+    inject_variables_in_process_graph(process_info["process_graph"], variables)
 
-    # wait for job to finish:
-    with beeline.tracer("waiting for workers"):
-        period = 0.5  # check every X seconds
-        n_checks = int(REQUEST_TIMEOUT / period)
-        for _ in range(n_checks):
-            job = JobsPersistence.get_by_id(job_id)
-            if job["current_status"] in ["finished", "error"]:
-                break
-            time.sleep(period)
+    try:
+        data, mime_type = process_data_synchronously(process_info, width=tile_size, height=tile_size)
+    except (OpenEOProcessError, OpenEOError) as error:
+        raise
+    except Exception as error:
+        raise Internal(str(error))
 
-    JobsPersistence.delete(job_id)
-
-    if job["current_status"] == "finished":
-        results = json.loads(job["results"])
-        if len(results) != 1:
-            return flask.make_response(
-                jsonify(
-                    id=None,
-                    code=400,
-                    message="This endpoint can only succeed if process graph yields exactly one result, instead it received: {}.".format(
-                        len(results)
-                    ),
-                    links=[],
-                ),
-                400,
-            )
-
-        s3 = boto3.client(
-            "s3",
-            endpoint_url=S3_LOCAL_URL,
-            region_name="eu-central-1",
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-        )
-
-        result = results[0]
-        filename = result["filename"]
-        object_key = "{}/{}".format(job_id, os.path.basename(filename))
-
-        s3_object = s3.get_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=object_key)
-        content = s3_object["Body"].read()
-        response = flask.make_response(content, 200)
-        response.mimetype = result["type"]
-        return response
-
-    if job["current_status"] == "error":
-        return flask.make_response(
-            jsonify(id=None, code=job["error_code"], message=job["error_msg"], links=[]), job["http_code"]
-        )
-
-    return flask.make_response(jsonify(id=None, code="Timeout", message="Request timed out.", links=[]), 408)
-
-
-@app.route("/collections", methods=["GET"])
-def available_collections():
-    files = glob.iglob("collection_information/*.json")
-    collections = []
-
-    for file in files:
-        with open(file) as f:
-            data = json.load(f)
-            basic_info = {
-                "stac_version": data["stac_version"],
-                "id": data["id"],
-                "description": data["description"],
-                "license": data["license"],
-                "extent": data["extent"],
-                "links": data["links"],
-            }
-            collections.append(basic_info)
-
-    return flask.make_response(jsonify(collections=collections, links=[]), 200)
-
-
-@app.route("/collections/<collection_id>", methods=["GET"])
-def collection_information(collection_id):
-    if not os.path.isfile("collection_information/{}.json".format(collection_id)):
-        return flask.make_response(
-            jsonify(id=collection_id, code="CollectionNotFound", message="Collection does not exist.", links=[]), 404
-        )
-
-    with open("collection_information/{}.json".format(collection_id)) as f:
-        collection_information = json.load(f)
-
-    return flask.make_response(collection_information, 200)
+    response = flask.make_response(data, 200)
+    response.mimetype = mime_type
+    return response
 
 
 @app.route("/processes", methods=["GET"])
 def available_processes():
-    files = glob.iglob("process_definitions/*.json")
+    files = []
     processes = []
+
+    for supported_process in list_supported_processes():
+        files.extend(glob.glob(f"process_definitions/{supported_process}.json"))
+
     for file in files:
         with open(file) as f:
             processes.append(json.load(f))
+
+    processes.sort(key=lambda process: process["id"])
 
     return flask.make_response(
         jsonify(
@@ -817,6 +792,23 @@ def available_processes():
         ),
         200,
     )
+
+
+@app.route("/collections", methods=["GET"])
+def available_collections():
+
+    all_collections = collections.get_collections_basic_info()
+    return flask.make_response(jsonify(collections=all_collections, links=[]), 200)
+
+
+@app.route("/collections/<collection_id>", methods=["GET"])
+def collection_information(collection_id):
+    collection = collections.get_collection(collection_id)
+
+    if not collection:
+        raise CollectionNotFound()
+
+    return flask.make_response(collection, 200)
 
 
 @app.route("/validation", methods=["POST"])

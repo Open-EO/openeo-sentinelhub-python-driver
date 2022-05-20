@@ -7,6 +7,7 @@ from logging import log, INFO
 import os
 import uuid
 import datetime
+from enum import Enum
 
 
 logging.basicConfig(level=logging.INFO)
@@ -16,10 +17,30 @@ FAKE_AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
 FAKE_AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
 
+class DeploymentTypes(Enum):
+    PRODUCTION = "production"
+    TESTING = "testing"
+
+    @staticmethod
+    def from_string(deployment_type_str):
+        deployment_type_str_to_enum = {
+            "production": DeploymentTypes.PRODUCTION,
+            "testing": DeploymentTypes.TESTING,
+        }
+        return deployment_type_str_to_enum.get(deployment_type_str)
+
+
+DEPLOYMENT_TYPE = DeploymentTypes.from_string(os.environ.get("DEPLOYMENT_TYPE", "").lower())
+
+if DEPLOYMENT_TYPE == DeploymentTypes.PRODUCTION:
+    TABLE_NAME_PREFIX = ""
+elif DEPLOYMENT_TYPE == DeploymentTypes.TESTING:
+    TABLE_NAME_PREFIX = "testing"
+else:
+    TABLE_NAME_PREFIX = "local"
+
 # we use local DynamoDB by default, to avoid using AWS for testing by mistake
-DYNAMODB_PRODUCTION = os.environ.get("DYNAMODB_PRODUCTION", "").lower() in ["true", "1", "yes"]
 DYNAMODB_LOCAL_URL = os.environ.get("DYNAMODB_LOCAL_URL", "http://localhost:8000")
-SQS_LOCAL_URL = os.environ.get("SQS_LOCAL_URL", "http://localhost:9324")
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", FAKE_AWS_ACCESS_KEY_ID)
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", FAKE_AWS_SECRET_ACCESS_KEY)
 
@@ -32,7 +53,7 @@ class Persistence(object):
             aws_access_key_id=AWS_ACCESS_KEY_ID,
             aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
         )
-        if DYNAMODB_PRODUCTION
+        if DEPLOYMENT_TYPE in [DeploymentTypes.PRODUCTION, DeploymentTypes.TESTING]
         else boto3.client(
             "dynamodb",
             endpoint_url=DYNAMODB_LOCAL_URL,
@@ -49,10 +70,20 @@ class Persistence(object):
         paginator = cls.dynamodb.get_paginator("scan")
         for page in paginator.paginate(TableName=cls.TABLE_NAME):
             for item in page["Items"]:
-                for key, value in item.items():
-                    data_type = list(value)[0]
-                    item[key] = value[data_type]
-                yield item
+                yield cls.prepare_loaded_item(item)
+
+    @classmethod
+    def query_by_user_id(cls, user_id):
+        paginator = cls.dynamodb.get_paginator("query")
+        for page in paginator.paginate(
+            TableName=cls.TABLE_NAME,
+            IndexName="user_id",
+            KeyConditionExpression="#itemskey = :itemsvalue",
+            ExpressionAttributeNames={"#itemskey": "user_id"},
+            ExpressionAttributeValues={":itemsvalue": {"S": user_id}},
+        ):
+            for item in page["Items"]:
+                yield cls.prepare_loaded_item(item)
 
     @classmethod
     def delete(cls, record_id):
@@ -61,7 +92,10 @@ class Persistence(object):
     @classmethod
     def get_by_id(cls, record_id):
         item = cls.dynamodb.get_item(TableName=cls.TABLE_NAME, Key={"id": {"S": record_id}}).get("Item")
+        return cls.prepare_loaded_item(item)
 
+    @staticmethod
+    def prepare_loaded_item(item):
         if item is None:
             return None
 
@@ -105,12 +139,23 @@ class Persistence(object):
                         "AttributeName": "id",
                         "AttributeType": "S",
                     },
+                    {
+                        "AttributeName": "user_id",
+                        "AttributeType": "S",
+                    },
                 ],
                 KeySchema=[
                     {
                         "AttributeName": "id",
                         "KeyType": "HASH",
                     },
+                ],
+                GlobalSecondaryIndexes=[
+                    {
+                        "IndexName": "user_id",
+                        "KeySchema": [{"AttributeName": "user_id", "KeyType": "HASH"}],
+                        "Projection": {"ProjectionType": "ALL"},
+                    }
                 ],
                 TableName=cls.TABLE_NAME,
                 BillingMode="PAY_PER_REQUEST",  # we use on-demand pricing
@@ -135,24 +180,7 @@ class Persistence(object):
 
 
 class JobsPersistence(Persistence):
-    TABLE_NAME = "shopeneo_jobs"
-    SQS_QUEUE_NAME = "shopeneo-jobs-queue"
-    sqs = (
-        boto3.client(
-            "sqs",
-            region_name="eu-central-1",
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-        )
-        if DYNAMODB_PRODUCTION
-        else boto3.client(
-            "sqs",
-            endpoint_url=SQS_LOCAL_URL,
-            region_name="eu-central-1",
-            aws_access_key_id="x",
-            aws_secret_access_key="x",
-        )
-    )
+    TABLE_NAME = TABLE_NAME_PREFIX + "shopeneo_jobs"
 
     @classmethod
     def create(cls, data):
@@ -163,11 +191,14 @@ class JobsPersistence(Persistence):
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         item = {
             "id": {"S": record_id},
+            "user_id": {"S": data["user_id"]},
             "process": {"S": json.dumps(data["process"])},
-            "current_status": {"S": str(data.get("current_status", "queued"))},
+            "batch_request_id": {
+                "S": data.get("batch_request_id", "null")
+            },  # .get and default value is needed because services don't use SH batch
+            "previous_batch_request_ids": {"S": json.dumps([])},
             "created": {"S": timestamp},
             "last_updated": {"S": timestamp},
-            "should_be_cancelled": {"BOOL": data.get("should_be_cancelled", False)},
             "error_msg": {"S": str(data.get("error_msg"))},
             "error_code": {"S": str(data.get("error_code"))},
             "http_code": {"N": data.get("http_code", "200")},
@@ -177,22 +208,15 @@ class JobsPersistence(Persistence):
             item["title"] = {"S": str(data.get("title"))}
         if data.get("description"):
             item["description"] = {"S": str(data.get("description"))}
-        if data.get("variables"):
-            item["variables"] = {"S": json.dumps(data.get("variables"))}
         if data.get("plan"):
             item["plan"] = {"S": str(data.get("plan"))}
         if data.get("budget"):
             item["budget"] = {"S": str(data.get("budget"))}
-        if data.get("auth_token"):
-            item["auth_token"] = {"S": str(data.get("auth_token"))}
 
         cls.dynamodb.put_item(
             TableName=cls.TABLE_NAME,
             Item=item,
         )
-
-        if data.get("current_status", "queued") == "queued":
-            cls._alert_workers(record_id)
         return record_id
 
     @classmethod
@@ -200,46 +224,14 @@ class JobsPersistence(Persistence):
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         cls.update_key(job_id, "last_updated", timestamp)
         cls.update_key(job_id, "current_status", new_value)
-        cls._alert_workers(job_id)
-
-    @classmethod
-    def update_auth_token(cls, job_id, new_value):
-        cls.update_key(job_id, "auth_token", new_value)
-
-    @classmethod
-    def set_should_be_cancelled(cls, job_id):
-        cls.update_key(job_id, "should_be_cancelled", True)
-        cls._alert_workers(job_id)
 
     @classmethod
     def delete(cls, job_id):
         cls.dynamodb.delete_item(TableName=cls.TABLE_NAME, Key={"id": {"S": job_id}})
-        cls._alert_workers(job_id)
-
-    @classmethod
-    def _alert_workers(cls, job_id):
-        # alert workers about the change:
-        queue_url = cls.sqs.get_queue_url(QueueName=cls.SQS_QUEUE_NAME)["QueueUrl"]
-        cls.sqs.send_message(QueueUrl=queue_url, MessageBody=job_id)
-
-    @classmethod
-    def ensure_queue_exists(cls):
-        try:
-            cls.sqs.create_queue(
-                QueueName=cls.SQS_QUEUE_NAME,
-                Attributes={
-                    "DelaySeconds": "0",
-                    "MessageRetentionPeriod": "60",
-                    "ReceiveMessageWaitTimeSeconds": "20",
-                },
-            )
-            log(INFO, "SQS queue created.")
-        except ClientError:
-            log(INFO, "SQS queue already exists.")
 
 
 class ProcessGraphsPersistence(Persistence):
-    TABLE_NAME = "shopeneo_process_graphs"
+    TABLE_NAME = TABLE_NAME_PREFIX + "shopeneo_process_graphs"
 
     @classmethod
     def create(cls, data, record_id):
@@ -248,6 +240,7 @@ class ProcessGraphsPersistence(Persistence):
         """
         item = {
             "id": {"S": record_id},
+            "user_id": {"S": data["user_id"]},
             "process_graph": {"S": json.dumps(data.get("process_graph"))},
         }
         if data.get("summary"):
@@ -279,7 +272,7 @@ class ProcessGraphsPersistence(Persistence):
 
 
 class ServicesPersistence(Persistence):
-    TABLE_NAME = "shopeneo_services"
+    TABLE_NAME = TABLE_NAME_PREFIX + "shopeneo_services"
 
     @classmethod
     def create(cls, data):
@@ -290,6 +283,7 @@ class ServicesPersistence(Persistence):
         timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         item = {
             "id": {"S": record_id},
+            "user_id": {"S": data["user_id"]},
             "service_type": {"S": str(data.get("type"))},
             "process": {"S": json.dumps(data.get("process"))},
             "enabled": {"BOOL": data.get("enabled", True)},
@@ -311,15 +305,19 @@ if __name__ == "__main__":
 
     # To create tables, run:
     #   $ pipenv shell
-    #   <shell> $ DYNAMODB_PRODUCTION=yes ./dynamodb.py
+    #   <shell> $ DEPLOYMENT_TYPE="production" ./dynamodb.py
     #
     # Currently it is not posible to create tables from the Lambda because the
     # boto3 version included is too old, and we can't upload newer one (creating
     # tables doesn't work if we do that)
 
-    log(INFO, "Initializing DynamoDB (url: {}, production: {})...".format(DYNAMODB_LOCAL_URL, DYNAMODB_PRODUCTION))
+    log(
+        INFO,
+        "Initializing DynamoDB (url: {}, production: {})...".format(
+            DYNAMODB_LOCAL_URL, DEPLOYMENT_TYPE == DeploymentTypes.PRODUCTION
+        ),
+    )
     JobsPersistence.ensure_table_exists()
-    JobsPersistence.ensure_queue_exists()
     ProcessGraphsPersistence.ensure_table_exists()
     ServicesPersistence.ensure_table_exists()
     log(INFO, "DynamoDB initialized.")

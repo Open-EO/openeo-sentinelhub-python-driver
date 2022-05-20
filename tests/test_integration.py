@@ -1,20 +1,4 @@
-import base64
-import glob
-import json
-import os
-import sys
-import time
-
-import pytest
-import requests
-import numpy as np
-
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rest"))
-from app import app
-from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
-
-
-FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), "fixtures")
+from setup_tests import *
 
 
 @pytest.fixture
@@ -42,15 +26,27 @@ def example_process_graph():
         "loadco1": {
             "process_id": "load_collection",
             "arguments": {
-                "id": "S2L1C",
+                "id": "sentinel-2-l1c",
                 "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
                 "temporal_extent": ["2019-08-16", "2019-08-18"],
+                "bands": ["B01", "B02"],
             },
         },
-        "ndvi1": {"process_id": "ndvi", "arguments": {"data": {"from_node": "loadco1"}}},
+        "mean1": {
+            "process_id": "reduce_dimension",
+            "arguments": {
+                "data": {"from_node": "loadco1"},
+                "dimension": "t",
+                "reducer": {
+                    "process_graph": {
+                        "1": {"process_id": "mean", "arguments": {"data": {"from_parameter": "data"}}, "result": True}
+                    }
+                },
+            },
+        },
         "result1": {
             "process_id": "save_result",
-            "arguments": {"data": {"from_node": "ndvi1"}, "format": "gtiff"},
+            "arguments": {"data": {"from_node": "mean1"}, "format": "gtiff"},
             "result": True,
         },
     }
@@ -62,7 +58,7 @@ def example_process_graph_with_variables():
         "loadco1": {
             "process_id": "load_collection",
             "arguments": {
-                "id": "S2L1C",
+                "id": "sentinel-2-l1c",
                 "spatial_extent": {
                     "west": {"variable_id": "spatial_extent_west"},
                     "east": {"variable_id": "spatial_extent_east"},
@@ -83,8 +79,47 @@ def example_process_graph_with_variables():
 
 
 @pytest.fixture
-def service_factory(app_client):
-    def wrapped(process_graph, title="MyService", service_type="xyz"):
+def get_example_process_graph_with_bands_and_collection():
+    def wrapped(bands, collection_id):
+        return {
+            "loadco1": {
+                "process_id": "load_collection",
+                "arguments": {
+                    "id": collection_id,
+                    "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+                    "temporal_extent": ["2017-12-31", "2018-01-07"],
+                    "bands": bands,
+                },
+            },
+            "mean1": {
+                "process_id": "reduce_dimension",
+                "arguments": {
+                    "data": {"from_node": "loadco1"},
+                    "dimension": "t",
+                    "reducer": {
+                        "process_graph": {
+                            "1": {
+                                "process_id": "mean",
+                                "arguments": {"data": {"from_parameter": "data"}},
+                                "result": True,
+                            }
+                        }
+                    },
+                },
+            },
+            "result1": {
+                "process_id": "save_result",
+                "arguments": {"data": {"from_node": "mean1"}, "format": "gtiff"},
+                "result": True,
+            },
+        }
+
+    return wrapped
+
+
+@pytest.fixture
+def service_factory(app_client, example_authorization_header_with_oidc):
+    def wrapped(process_graph, title="MyService", service_type="xyz", tile_size=None):
         data = {
             "title": title,
             "process": {
@@ -92,7 +127,14 @@ def service_factory(app_client):
             },
             "type": service_type,
         }
-        r = app_client.post("/services", data=json.dumps(data), content_type="application/json")
+        if tile_size is not None:
+            data["configuration"] = {"tile_size": tile_size}
+        r = app_client.post(
+            "/services",
+            data=json.dumps(data),
+            content_type="application/json",
+            headers=example_authorization_header_with_oidc,
+        )
         assert r.status_code == 201, r.data
         service_id = r.headers["OpenEO-Identifier"]
         return service_id
@@ -102,10 +144,10 @@ def service_factory(app_client):
 
 @pytest.fixture
 def authorization_header(app_client):
-    SH_CLIENT_ID = os.environ.get("TESTS_SH_CLIENT_ID", None)
-    SH_CLIENT_SECRET = os.environ.get("TESTS_SH_CLIENT_SECRET", None)
+    SH_CLIENT_ID = os.environ.get("SH_CLIENT_ID", None)
+    SH_CLIENT_SECRET = os.environ.get("SH_CLIENT_SECRET", None)
     if not SH_CLIENT_ID or not SH_CLIENT_SECRET:
-        raise Exception("This test needs TESTS_SH_CLIENT_ID and TESTS_SH_CLIENT_SECRET env vars to be set.")
+        raise Exception("This test needs SH_CLIENT_ID and SH_CLIENT_SECRET env vars to be set.")
 
     r = app_client.get(
         "/credentials/basic",
@@ -122,10 +164,10 @@ def authorization_header(app_client):
 @pytest.fixture
 def authorization_header_base64(app_client):
     # same as authorization_header fixture, except that client_secret is base64 encoded:
-    SH_CLIENT_ID = os.environ.get("TESTS_SH_CLIENT_ID", None)
-    SH_CLIENT_SECRET = os.environ.get("TESTS_SH_CLIENT_SECRET", None)
+    SH_CLIENT_ID = os.environ.get("SH_CLIENT_ID", None)
+    SH_CLIENT_SECRET = os.environ.get("SH_CLIENT_SECRET", None)
     if not SH_CLIENT_ID or not SH_CLIENT_SECRET:
-        raise Exception("This test needs TESTS_SH_CLIENT_ID and TESTS_SH_CLIENT_SECRET env vars to be set.")
+        raise Exception("This test needs SH_CLIENT_ID and SH_CLIENT_SECRET env vars to be set.")
 
     secret = base64.b64encode(bytes(SH_CLIENT_SECRET, "ascii")).decode("ascii").rstrip()
     r = app_client.get(
@@ -139,17 +181,9 @@ def authorization_header_base64(app_client):
     return f'Bearer basic//{j["access_token"]}'
 
 
-def setup_function(function):
-    ProcessGraphsPersistence.ensure_table_exists()
-    JobsPersistence.ensure_table_exists()
-    JobsPersistence.ensure_queue_exists()
-    ServicesPersistence.ensure_table_exists()
-
-
-def teardown_function(function):
-    ProcessGraphsPersistence.clear_table()
-    JobsPersistence.clear_table()
-    ServicesPersistence.clear_table()
+@pytest.fixture
+def example_authorization_header_with_oidc(oidc_provider_id="egi"):
+    return {"Authorization": f"Bearer oidc/{oidc_provider_id}/<token>"}
 
 
 ###################################
@@ -188,36 +222,75 @@ def test_root(app_client):
     assert expected_endpoint in actual["endpoints"]
 
 
-def test_manage_batch_jobs(app_client):
+@with_mocked_auth
+def test_manage_batch_jobs(app_client, example_authorization_header_with_oidc):
     """
     - test POST "/jobs"
     - test /jobs/job_id endpoints
     """
 
     bbox = {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2}
+    # PROCESS GRAPH CURRENTLY NOT SUPPORTED
+    # data = {
+    #     "process": {
+    #         "process_graph": {
+    #             "loadco1": {
+    #                 "process_id": "load_collection",
+    #                 "arguments": {
+    #                     "id": "S2L1C",
+    #                     "spatial_extent": bbox,
+    #                     "temporal_extent": ["2017-01-01", "2017-02-01"],
+    #                 },
+    #                 "result": True,
+    #             },
+    #         },
+    #     },
+    # }
     data = {
         "process": {
             "process_graph": {
                 "loadco1": {
                     "process_id": "load_collection",
                     "arguments": {
-                        "id": "S2L1C",
+                        "id": "sentinel-2-l1c",
                         "spatial_extent": bbox,
-                        "temporal_extent": ["2017-01-01", "2017-02-01"],
+                        "temporal_extent": ["2019-08-16", "2019-08-18"],
+                        "bands": ["B01", "B02"],
                     },
+                },
+                "mean1": {
+                    "process_id": "reduce_dimension",
+                    "arguments": {
+                        "data": {"from_node": "loadco1"},
+                        "dimension": "t",
+                        "reducer": {
+                            "process_graph": {
+                                "1": {
+                                    "process_id": "mean",
+                                    "arguments": {"data": {"from_parameter": "data"}},
+                                    "result": True,
+                                }
+                            }
+                        },
+                    },
+                },
+                "result1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "mean1"}, "format": "gtiff"},
                     "result": True,
                 },
-            },
+            }
         },
     }
 
-    r = app_client.post("/jobs", data=json.dumps(data), content_type="application/json")
-
-    assert r.status_code == 201
+    r = app_client.post(
+        "/jobs", data=json.dumps(data), headers=example_authorization_header_with_oidc, content_type="application/json"
+    )
+    assert r.status_code == 201, r.data
 
     record_id = r.headers["OpenEO-Identifier"]
 
-    r = app_client.get("/jobs/{}".format(record_id))
+    r = app_client.get("/jobs/{}".format(record_id), headers=example_authorization_header_with_oidc)
     actual = json.loads(r.data.decode("utf-8"))
 
     assert r.status_code == 200
@@ -232,38 +305,80 @@ def test_manage_batch_jobs(app_client):
                 "loadco1": {
                     "process_id": "load_collection",
                     "arguments": {
-                        "id": "S2L1C",
+                        "id": "sentinel-2-l1c",
                         "spatial_extent": bbox2,
                         "temporal_extent": ["2017-01-01", "2017-03-01"],
+                        "bands": ["B01", "B02"],
                     },
+                },
+                "mean1": {
+                    "process_id": "reduce_dimension",
+                    "arguments": {
+                        "data": {"from_node": "loadco1"},
+                        "dimension": "t",
+                        "reducer": {
+                            "process_graph": {
+                                "1": {
+                                    "process_id": "mean",
+                                    "arguments": {"data": {"from_parameter": "data"}},
+                                    "result": True,
+                                }
+                            }
+                        },
+                    },
+                },
+                "result1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "mean1"}, "format": "gtiff"},
                     "result": True,
                 },
-            },
-        },
+            }
+        }
+        # PROCESS GRAPH CURRENTLY NOT SUPPORTED
+        # {
+        #     "process_graph": {
+        #         "loadco1": {
+        #             "process_id": "load_collection",
+        #             "arguments": {
+        #                 "id": "S2L1C",
+        #                 "spatial_extent": bbox2,
+        #                 "temporal_extent": ["2017-01-01", "2017-03-01"],
+        #             },
+        #             "result": True,
+        #         },
+        #     },
+        # }
+        ,
         "title": "Load collection test",
     }
 
-    r = app_client.patch("/jobs/{}".format(record_id), data=json.dumps(data2), content_type="application/json")
+    r = app_client.patch(
+        "/jobs/{}".format(record_id),
+        data=json.dumps(data2),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
 
-    assert r.status_code == 204
+    assert r.status_code == 204, r.data
 
-    r = app_client.get("/jobs/{}".format(record_id))
+    r = app_client.get("/jobs/{}".format(record_id), headers=example_authorization_header_with_oidc)
     actual = json.loads(r.data.decode("utf-8"))
 
     assert r.status_code == 200
     assert actual["process"]["process_graph"] == data2["process"]["process_graph"]
     assert actual["title"] == data2["title"]
 
-    r = app_client.delete("/jobs/{}".format(record_id))
+    r = app_client.delete("/jobs/{}".format(record_id), headers=example_authorization_header_with_oidc)
 
-    assert r.status_code == 204
+    assert r.status_code == 204, r.data
 
-    r = app_client.get("/jobs/{}".format(record_id))
+    r = app_client.get("/jobs/{}".format(record_id), headers=example_authorization_header_with_oidc)
 
     assert r.status_code == 404
 
 
-def test_process_batch_job(app_client, example_process_graph, authorization_header):
+@with_mocked_auth
+def test_process_batch_job(app_client, example_process_graph, example_authorization_header_with_oidc):
     """
     - test /jobs/job_id/results endpoints
     """
@@ -272,45 +387,43 @@ def test_process_batch_job(app_client, example_process_graph, authorization_head
             "process_graph": example_process_graph,
         }
     }
-    r = app_client.post("/jobs", data=json.dumps(data), content_type="application/json")
-    assert r.status_code == 201
+    r = app_client.post(
+        "/jobs", data=json.dumps(data), headers=example_authorization_header_with_oidc, content_type="application/json"
+    )
+    assert r.status_code == 201, r.data
     job_id = r.headers["OpenEO-Identifier"]
 
-    r = app_client.delete(f"/jobs/{job_id}/results")
-    assert r.status_code == 204
+    r = app_client.delete(f"/jobs/{job_id}/results", headers=example_authorization_header_with_oidc)
+    assert r.status_code == 204, r.data
 
     # without authorization header, this call fails:
     r = app_client.post(f"/jobs/{job_id}/results")
-    assert r.status_code == 401
+    assert r.status_code == 401, r.data
 
-    r = app_client.post(f"/jobs/{job_id}/results", headers={"Authorization": authorization_header})
-    assert r.status_code == 202
-
-    r = app_client.post(f"/jobs/{job_id}/results", headers={"Authorization": authorization_header})
-    actual = json.loads(r.data.decode("utf-8"))
-    assert r.status_code == 400
-    assert actual["code"] == "JobLocked"
+    r = app_client.post(f"/jobs/{job_id}/results", headers=example_authorization_header_with_oidc)
+    assert r.status_code == 202, r.data
 
     # it might take some time before the job is accepted - keep trying for 5s:
     for _ in range(10):
-        r = app_client.get(f"/jobs/{job_id}")
+        r = app_client.get(f"/jobs/{job_id}", headers=example_authorization_header_with_oidc)
         actual = json.loads(r.data.decode("utf-8"))
-        assert r.status_code == 200
+        assert r.status_code == 200, r.data
         if actual["status"] != "created":
             break
         time.sleep(0.5)
     assert actual["status"] in ["queued", "running", "error", "finished"]
 
-    r = app_client.get(f"/jobs/{job_id}/results")
+    r = app_client.get(f"/jobs/{job_id}/results", headers=example_authorization_header_with_oidc)
     actual = json.loads(r.data.decode("utf-8"))
-    assert r.status_code == 400
+    assert r.status_code == 400, r.data
     assert actual["code"] == "JobNotFinished"
 
-    r = app_client.delete(f"/jobs/{job_id}/results")
-    assert r.status_code == 204
+    r = app_client.delete(f"/jobs/{job_id}/results", headers=example_authorization_header_with_oidc)
+    assert r.status_code == 204, r.data
 
 
-def test_result_not_encoded_secret(app_client, example_process_graph, authorization_header):
+@with_mocked_auth
+def test_result_not_encoded_secret(app_client, example_process_graph, example_authorization_header_with_oidc):
     """
     - test /result endpoint
     """
@@ -327,7 +440,7 @@ def test_result_not_encoded_secret(app_client, example_process_graph, authorizat
         "/result",
         data=json.dumps(data),
         content_type="application/json",
-        headers={"Authorization": authorization_header},
+        headers=example_authorization_header_with_oidc,
     )
     assert r.status_code == 200
 
@@ -354,14 +467,15 @@ def test_result_base64_encoded_secret(app_client, example_process_graph, authori
     assert r.status_code == 200
 
 
-def test_services_crud(app_client, example_process_graph):
+@with_mocked_auth
+def test_services_crud(app_client, example_process_graph, example_authorization_header_with_oidc):
     """
     - test /services endpoint
     """
-    r = app_client.get("/services")
+    r = app_client.get("/services", headers=example_authorization_header_with_oidc)
     expected = []
     actual = json.loads(r.data.decode("utf-8")).get("services")
-    assert r.status_code == 200
+    assert r.status_code == 200, r.data
     assert actual == expected
 
     data = {
@@ -371,11 +485,16 @@ def test_services_crud(app_client, example_process_graph):
         },
         "type": "xyz",
     }
-    r = app_client.post("/services", data=json.dumps(data), content_type="application/json")
+    r = app_client.post(
+        "/services",
+        data=json.dumps(data),
+        content_type="application/json",
+        headers=example_authorization_header_with_oidc,
+    )
     assert r.status_code == 201
     service_id = r.headers["OpenEO-Identifier"]
 
-    r = app_client.get("/services")
+    r = app_client.get("/services", headers=example_authorization_header_with_oidc)
     assert r.status_code == 200
     services = json.loads(r.data.decode("utf-8")).get("services")
     assert len(services) == 1
@@ -396,19 +515,22 @@ def test_services_crud(app_client, example_process_graph):
         "title": "MyService2",
     }
     r = app_client.patch(
-        "/services/{}".format(service_id), data=json.dumps(patch_data), content_type="application/json"
+        "/services/{}".format(service_id),
+        data=json.dumps(patch_data),
+        content_type="application/json",
+        headers=example_authorization_header_with_oidc,
     )
     assert r.status_code == 204
 
     expected.update(patch_data)
 
-    r = app_client.get("/services")
+    r = app_client.get("/services", headers=example_authorization_header_with_oidc)
     assert r.status_code == 200
     services = json.loads(r.data.decode("utf-8")).get("services")
     assert len(services) == 1
     assert services[0] == expected
 
-    r = app_client.get("/services/{}".format(service_id))
+    r = app_client.get("/services/{}".format(service_id), headers=example_authorization_header_with_oidc)
     assert r.status_code == 200
     actual = json.loads(r.data.decode("utf-8"))
     # get record supports additional fields:
@@ -424,13 +546,13 @@ def test_services_crud(app_client, example_process_graph):
     assert actual == expected
 
     # delete service and make sure it is deleted:
-    r = app_client.delete("/services/{}".format(service_id))
+    r = app_client.delete("/services/{}".format(service_id), headers=example_authorization_header_with_oidc)
     assert r.status_code == 204
 
-    r = app_client.get("/services/{}".format(service_id))
+    r = app_client.get("/services/{}".format(service_id), headers=example_authorization_header_with_oidc)
     assert r.status_code == 404
 
-    r = app_client.get("/services")
+    r = app_client.get("/services", headers=example_authorization_header_with_oidc)
     expected = []
     actual = json.loads(r.data.decode("utf-8")).get("services")
     assert r.status_code == 200
@@ -450,7 +572,7 @@ def test_reduce(app_client, get_expected_data):
                 "loadco1": {
                     "process_id": "load_collection",
                     "arguments": {
-                        "id": "S2L1C",
+                        "id": "sentinel-2-l1c",
                         "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
                         "temporal_extent": ["2019-08-16", "2019-08-25"],
                     },
@@ -509,27 +631,32 @@ def test_xyz_service(app_client, service_factory, example_process_graph_with_var
     assert r.data == expected_data
 
 
-def test_xyz_service_2(app_client, service_factory, get_expected_data, authorization_header):
+# @responses.activate
+@with_mocked_auth
+@pytest.mark.parametrize(
+    "tile_size",
+    [None, 256, 512],
+)
+def test_xyz_service_2(app_client, service_factory, get_expected_data, authorization_header, tile_size):
     process_graph = {
         "loadco1": {
             "process_id": "load_collection",
             "arguments": {
-                "id": "S2L1C",
+                "id": "sentinel-2-l1c",
                 "spatial_extent": {
-                    "west": {"variable_id": "spatial_extent_west"},
-                    "east": {"variable_id": "spatial_extent_east"},
-                    "north": {"variable_id": "spatial_extent_north"},
-                    "south": {"variable_id": "spatial_extent_south"},
+                    "west": {"from_parameter": "spatial_extent_west"},
+                    "east": {"from_parameter": "spatial_extent_east"},
+                    "north": {"from_parameter": "spatial_extent_north"},
+                    "south": {"from_parameter": "spatial_extent_south"},
                 },
                 "temporal_extent": ["2019-08-01", "2019-08-18"],
-                "options": {"width": {"variable_id": "tile_size"}, "height": {"variable_id": "tile_size"}},
+                "bands": ["B01", "B02", "B03"],
             },
         },
-        "ndvi1": {"process_id": "ndvi", "arguments": {"data": {"from_node": "loadco1"}}},
         "reduce1": {
             "process_id": "reduce_dimension",
             "arguments": {
-                "data": {"from_node": "ndvi1"},
+                "data": {"from_node": "loadco1"},
                 "reducer": {
                     "process_graph": {
                         "2": {"process_id": "mean", "arguments": {"data": {"from_parameter": "data"}}, "result": True}
@@ -555,26 +682,43 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
         },
         "result1": {
             "process_id": "save_result",
-            "arguments": {"data": {"from_node": "linear1"}, "format": "JPEG", "options": {"datatype": "byte"}},
+            "arguments": {"data": {"from_node": "linear1"}, "format": "jpeg"},
             "result": True,
         },
     }
 
-    service_id = service_factory(process_graph, title="Test XYZ service", service_type="xyz")
+    service_id = service_factory(process_graph, title="Test XYZ service", service_type="xyz", tile_size=tile_size)
 
     zoom, tx, ty = 14, 8660, 5908
 
-    r = app_client.get(f"/service/xyz/{service_id}/{int(zoom)}/{int(tx)}/{int(ty)}")
-    assert r.status_code == 401, r.data
+    # AUTHENTICATION CURRENTLY NOT IMPLEMENTED
+    # r = app_client.get(f"/service/xyz/{service_id}/{int(zoom)}/{int(tx)}/{int(ty)}")
+    # assert r.status_code == 401, r.data
+
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/oauth/token",
+        body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
+    )
+    responses.add(
+        responses.POST,
+        re.compile(".*"),
+    )
 
     r = app_client.get(
         f"/service/xyz/{service_id}/{int(zoom)}/{int(tx)}/{int(ty)}", headers={"Authorization": authorization_header}
     )
     assert r.status_code == 200, r.data
-    expected_data = get_expected_data("tile256x256ndvi.jpeg")
-    assert r.data == expected_data, "File is not the same!"
+    # NDVI process currently not implemented.
+    # expected_data = get_expected_data("tile256x256ndvi.jpeg")
+    # assert r.data == expected_data, "File is not the same!"
+
+    payload = json.loads(responses.calls[len(responses.calls) - 1].request.body)
+    assert payload["output"]["width"] == tile_size if tile_size is not None else 256
+    assert payload["output"]["height"] == tile_size if tile_size is not None else 256
 
 
+@pytest.mark.skip("Synchronous job endpoint does not support the testing process graphs currently.")
 @pytest.mark.parametrize(
     "value,double_value,expected_status_code",
     [
@@ -678,6 +822,7 @@ def _get_test_process_graphs_filenames():
         yield f
 
 
+@pytest.mark.skip("Synchronous job endpoint does not support the testing process graphs currently.")
 @pytest.mark.parametrize("process_graph_filename", _get_test_process_graphs_filenames())
 def test_run_test_process_graphs(app_client, process_graph_filename, authorization_header):
     """
@@ -701,12 +846,13 @@ def test_run_test_process_graphs(app_client, process_graph_filename, authorizati
     assert r.status_code == 200, r.data
 
 
-def test_process_graph_api(app_client, example_process_graph):
+@with_mocked_auth
+def test_process_graph_api(app_client, example_process_graph, example_authorization_header_with_oidc):
     """
     Get /process_graphs/ (must be empty), test CRUD operations.
     """
     # get a list of process graphs, should be empty:
-    r = app_client.get("/process_graphs")
+    r = app_client.get("/process_graphs", headers=example_authorization_header_with_oidc)
     assert r.status_code == 200, r.data
     expected = []
     actual = json.loads(r.data.decode("utf-8")).get("processes")
@@ -718,7 +864,12 @@ def test_process_graph_api(app_client, example_process_graph):
         "summary": "invalid id",
         "process_graph": example_process_graph,
     }
-    r = app_client.put(f"/process_graphs/{process_graph_id}", data=json.dumps(data), content_type="application/json")
+    r = app_client.put(
+        f"/process_graphs/{process_graph_id}",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
     assert r.status_code == 400, r.data
 
     # create a process graph:
@@ -727,11 +878,16 @@ def test_process_graph_api(app_client, example_process_graph):
         "summary": "test",
         "process_graph": example_process_graph,
     }
-    r = app_client.put(f"/process_graphs/{process_graph_id}", data=json.dumps(data), content_type="application/json")
+    r = app_client.put(
+        f"/process_graphs/{process_graph_id}",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
     assert r.status_code == 200, r.data
 
     # get a list of process graphs again:
-    r = app_client.get("/process_graphs")
+    r = app_client.get("/process_graphs", headers=example_authorization_header_with_oidc)
     assert r.status_code == 200, r.data
     expected = [
         {
@@ -743,7 +899,7 @@ def test_process_graph_api(app_client, example_process_graph):
     assert actual == expected
 
     # get the process graph:
-    r = app_client.get("/process_graphs/{}".format(process_graph_id))
+    r = app_client.get("/process_graphs/{}".format(process_graph_id), headers=example_authorization_header_with_oidc)
     assert r.status_code == 200, r.data
     expected = {
         "id": process_graph_id,
@@ -761,12 +917,15 @@ def test_process_graph_api(app_client, example_process_graph):
         "process_graph": example_process_graph,
     }
     r = app_client.put(
-        "/process_graphs/{}".format(process_graph_id), data=json.dumps(data), content_type="application/json"
+        "/process_graphs/{}".format(process_graph_id),
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
     )
     assert r.status_code == 200, r.data
 
     # get the process graph again:
-    r = app_client.get("/process_graphs/{}".format(process_graph_id))
+    r = app_client.get("/process_graphs/{}".format(process_graph_id), headers=example_authorization_header_with_oidc)
     assert r.status_code == 200, r.data
     expected = {
         "id": process_graph_id,
@@ -778,19 +937,20 @@ def test_process_graph_api(app_client, example_process_graph):
     assert actual == expected
 
     # delete it:
-    r = app_client.delete("/process_graphs/{}".format(process_graph_id))
+    r = app_client.delete("/process_graphs/{}".format(process_graph_id), headers=example_authorization_header_with_oidc)
     assert r.status_code == 204, r.data
 
     # make sure the record is removed:
-    r = app_client.get("/process_graphs/{}".format(process_graph_id))
+    r = app_client.get("/process_graphs/{}".format(process_graph_id), headers=example_authorization_header_with_oidc)
     assert r.status_code == 404
-    r = app_client.get("/process_graphs")
+    r = app_client.get("/process_graphs", headers=example_authorization_header_with_oidc)
     assert r.status_code == 200, r.data
     expected = []
     actual = json.loads(r.data.decode("utf-8")).get("processes")
     assert actual == expected
 
 
+@pytest.mark.skip("JSON output format currently not supported.")
 def test_batch_job_json_output(app_client, authorization_header):
     """
     - test /jobs/job_id/results endpoints
@@ -865,3 +1025,587 @@ def test_batch_job_json_output(app_client, authorization_header):
         "name": None,
     }
     assert result == expected_result
+
+
+def test_collections(app_client):
+
+    mocked_collections = load_collections_fixtures("fixtures/collection_information/", "sentinel-2-l1c")
+    collections.set_collections(mocked_collections)
+
+    # get a list of all collections:
+    r = app_client.get("/collections")
+    assert r.status_code == 200, r.data
+    actual = json.loads(r.data.decode("utf-8"))
+    assert len(actual["collections"]) == 1
+
+    # use valid collection id:
+    collection_id = "sentinel-2-l1c"
+    r = app_client.get(f"/collections/{collection_id}")
+    assert r.status_code == 200, r.data
+    expected = mocked_collections[collection_id]
+    actual = json.loads(r.data.decode("utf-8"))
+    assert actual == expected
+
+    # Use invalid collection id:
+    collection_id = "invalid_collection_id"
+    r = app_client.get(f"/collections/{collection_id}")
+    assert r.status_code == 404, r.data
+    expected = "CollectionNotFound"
+    actual = json.loads(r.data.decode("utf-8")).get("code")
+    assert actual == expected
+
+
+@responses.activate
+@pytest.mark.parametrize(
+    "collection_id,collection_type,request_url",
+    [
+        ("landsat-7-etm+-l2", "landsat-etm-l2", "https://services-uswest2.sentinel-hub.com"),
+        ("corine-land-cover", "byoc-cbdba844-f86d-41dc-95ad-b3f7f12535e9", "https://creodias.sentinel-hub.com"),
+        ("sentinel-2-l1c", "sentinel-2-l1c", "https://services.sentinel-hub.com"),
+    ],
+)
+def test_fetching_correct_collection_type(app_client, collection_id, collection_type, request_url):
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/oauth/token",
+        body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
+    )
+    responses.add(
+        responses.POST,
+        re.compile(".*"),
+    )
+
+    process_graph = {
+        "loadco1": {
+            "process_id": "load_collection",
+            "arguments": {
+                "id": collection_id,
+                "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+                "temporal_extent": ["2019-08-16", "2019-08-18"],
+                "bands": collections.get_collection(collection_id)["cube:dimensions"]["bands"]["values"],
+            },
+        },
+        "mean1": {
+            "process_id": "reduce_dimension",
+            "arguments": {
+                "data": {"from_node": "loadco1"},
+                "dimension": "t",
+                "reducer": {
+                    "process_graph": {
+                        "1": {"process_id": "mean", "arguments": {"data": {"from_parameter": "data"}}, "result": True}
+                    }
+                },
+            },
+        },
+        "result1": {
+            "process_id": "save_result",
+            "arguments": {"data": {"from_node": "mean1"}, "format": "gtiff"},
+            "result": True,
+        },
+    }
+
+    r = app_client.post(
+        "/result",
+        data=json.dumps({"process": {"process_graph": process_graph}}),
+        content_type="application/json",
+    )
+    if len(responses.calls) == 2:
+        assert responses.calls[1].request.url == f"{request_url}/api/v1/process"
+        assert json.loads(responses.calls[1].request.body)["input"]["data"][0]["type"] == collection_type
+    if len(responses.calls) == 1:
+        assert responses.calls[0].request.url == f"{request_url}/api/v1/process"
+        assert json.loads(responses.calls[0].request.body)["input"]["data"][0]["type"] == collection_type
+
+
+@with_mocked_auth
+@pytest.mark.parametrize(
+    "collection_id,bands,should_raise_error",
+    [
+        ("landsat-7-etm+-l2", ["B01", "B02", "B03"], False),
+        ("landsat-7-etm+-l2", ["B01", "Non-existent band", "B03"], True),
+        ("corine-land-cover", ["CLC"], False),
+        ("corine-land-cover", ["Non-existent band"], True),
+        ("corine-land-cover", None, False),
+        (
+            "sentinel-2-l1c",
+            [
+                "B01",
+                "B02",
+                "B03",
+                "B04",
+                "B05",
+                "B06",
+                "B07",
+                "B08",
+                "B8A",
+                "B09",
+                "B10",
+                "B11",
+                "B12",
+                "CLP",
+                "CLM",
+                "sunAzimuthAngles",
+                "sunZenithAngles",
+                "viewAzimuthMean",
+                "viewZenithMean",
+                "dataMask",
+                "Non-existent band",
+            ],
+            True,
+        ),
+    ],
+)
+def test_validate_bands(
+    app_client,
+    get_example_process_graph_with_bands_and_collection,
+    collection_id,
+    bands,
+    should_raise_error,
+    example_authorization_header_with_oidc,
+):
+    process_graph = get_example_process_graph_with_bands_and_collection(bands, collection_id)
+    payload = json.dumps({"process": {"process_graph": process_graph}})
+
+    r = app_client.post(
+        "/result",
+        data=payload,
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
+
+    if should_raise_error:
+        response_data = json.loads(r.data.decode("utf-8"))
+        assert r.status_code == 400, r.data
+        assert (
+            f"Invalid process graph: Invalid process graph: 'non-existent band' is not a valid band name for collection '{collection_id}'"
+            in response_data["message"]["process"]["process_graph"][0]
+        )
+    else:
+        assert r.status_code == 200, r.data
+
+    r = app_client.post(
+        "/jobs", data=payload, headers=example_authorization_header_with_oidc, content_type="application/json"
+    )
+
+    if should_raise_error:
+        response_data = r.data.decode("utf-8")
+        assert r.status_code == 400, r.data
+        assert (
+            f"Invalid process graph: Invalid process graph: 'non-existent band' is not a valid band name for collection '{collection_id}'"
+            in response_data
+        )
+    else:
+        assert r.status_code == 201, r.data
+
+
+@with_mocked_auth
+@pytest.mark.parametrize(
+    "bands,collection_id,spatial_extent,file_format,options,backend_estimate,expected_costs,n_tiles,tile_width,tile_height,expected_file_size",
+    [
+        (
+            ["B01"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "gtiff",
+            None,
+            30,
+            36,
+            2,
+            2004,
+            2004,
+            2 * 2004 * 2004 * 8 * 4,  # n_tiles * tile_width * tile_height * n_output_bands * n_bytes
+        ),
+        (
+            ["CLC"],
+            "corine-land-cover",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "png",
+            None,
+            30,
+            36,
+            2,
+            2004,
+            2004,
+            2 * 2004 * 2004 * 4 * 1,
+        ),
+        (
+            ["B01"],
+            "landsat-7-etm+-l2",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "jpeg",
+            None,
+            30,
+            11.25,
+            2,
+            2004,
+            2004,
+            2 * 2004 * 2004 * 3 * 1,
+        ),
+        (
+            ["B03"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "gtiff",
+            None,
+            30,
+            36,
+            1,
+            2004,
+            2004,
+            1 * 2004 * 2004 * 8 * 4,
+        ),
+        (
+            ["B01"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "png",
+            None,
+            30,
+            36,
+            1,
+            2004,
+            2004,
+            1 * 2004 * 2004 * 4 * 1,
+        ),
+        (
+            ["B01"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "jpeg",
+            None,
+            30,
+            36,
+            1,
+            2004,
+            2004,
+            1 * 2004 * 2004 * 3 * 1,
+        ),
+        (
+            ["B01"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "png",
+            {"datatype": "uint16"},
+            30,
+            36,
+            2,
+            2004,
+            2004,
+            2 * 2004 * 2004 * 4 * 2,
+        ),
+        (
+            ["B01"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "gtiff",
+            {"datatype": "byte"},
+            30,
+            36,
+            2,
+            2004,
+            2004,
+            2 * 2004 * 2004 * 8 * 1,
+        ),
+        (
+            ["B01"],
+            "sentinel-2-l1c",
+            {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+            "gtiff",
+            {"datatype": "uint16"},
+            30,
+            36,
+            2,
+            2004,
+            2004,
+            2 * 2004 * 2004 * 8 * 2,
+        ),
+    ],
+)
+def test_batch_job_estimate(
+    app_client,
+    get_process_graph,
+    example_authorization_header_with_oidc,
+    bands,
+    collection_id,
+    spatial_extent,
+    file_format,
+    options,
+    backend_estimate,
+    expected_costs,
+    n_tiles,
+    tile_width,
+    tile_height,
+    expected_file_size,
+):
+
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/oauth/token",
+        body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
+    )
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/api/v1/batch/process",
+        body=json.dumps({"id": "example", "processRequest": {}, "status": "CREATED"}),
+    )
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/api/v1/batch/process/example/analyse",
+    )
+    responses.add(
+        responses.GET,
+        re.compile("https://services.sentinel-hub.com/api/v1/batch/process/example"),
+        body=json.dumps(
+            {
+                "valueEstimate": backend_estimate,
+                "id": "example",
+                "processRequest": {},
+                "status": "ANALYSIS_DONE",
+                "tileCount": n_tiles,
+                "tileWidthPx": tile_width,
+                "tileHeightPx": tile_height,
+            }
+        ),
+    )
+
+    data = {
+        "process": {
+            "process_graph": get_process_graph(
+                bands=bands,
+                collection_id=collection_id,
+                spatial_extent=spatial_extent,
+                file_format=file_format,
+                options=options,
+            ),
+        }
+    }
+
+    r = app_client.post(
+        "/jobs", data=json.dumps(data), headers=example_authorization_header_with_oidc, content_type="application/json"
+    )
+    assert r.status_code == 201, r.data
+    job_id = r.headers["OpenEO-Identifier"]
+
+    r = app_client.get(f"/jobs/{job_id}/estimate")
+    assert r.status_code == 401, r.data
+
+    r = app_client.get(f"/jobs/{job_id}/estimate", headers=example_authorization_header_with_oidc)
+    assert r.status_code == 200, r.data
+    data = json.loads(r.data.decode("utf-8"))
+    assert data["costs"] == expected_costs
+    assert data["size"] == expected_file_size
+
+
+@responses.activate
+def test_user_workspace(app_client, example_authorization_header_with_oidc, example_process_graph):
+    """
+    Test jobs, services and process graphs are only available to the user who created them
+    """
+    data = {
+        "process": {
+            "process_graph": example_process_graph,
+        }
+    }
+    current_user_index = 0
+    user_ids = ["example-id1", "example-id-2"]
+
+    def request_callback(request):
+        resp_body = {
+            "sub": user_ids[current_user_index],
+            "eduperson_entitlement": [
+                "urn:mace:egi.eu:group:vo.openeo.cloud:role=vm_operator#aai.egi.eu",
+                "urn:mace:egi.eu:group:vo.openeo.cloud:role=member#aai.egi.eu",
+                "urn:mace:egi.eu:group:vo.openeo.cloud:role=early_adopter#aai.egi.eu",
+            ],
+        }
+        return (200, {}, json.dumps(resp_body))
+
+    responses.add(
+        responses.GET,
+        "https://aai.egi.eu/oidc/.well-known/openid-configuration",
+        json={"userinfo_endpoint": "http://dummy_userinfo_endpoint"},
+    )
+    responses.add_callback(responses.GET, "http://dummy_userinfo_endpoint", callback=request_callback)
+    responses.add_passthru(re.compile(".*"))
+
+    # Create a batch job for user 0
+    current_user_index = 0
+    r = app_client.post(
+        "/jobs", data=json.dumps(data), headers=example_authorization_header_with_oidc, content_type="application/json"
+    )
+    assert r.status_code == 201, r.data
+    record_id_1 = r.headers["OpenEO-Identifier"]
+    # Fetch the batch job with user 0
+    r = app_client.get("/jobs/{}".format(record_id_1), headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert r.status_code == 200
+    assert actual["id"] == record_id_1
+    # Fetch the batch job with user 1
+    current_user_index = 1
+    r = app_client.get("/jobs/{}".format(record_id_1), headers=example_authorization_header_with_oidc)
+    assert r.status_code == 404
+    # Fetch all jobs as user 1
+    r = app_client.get("/jobs", headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert actual["jobs"] == []
+    # Fetch all jobs as user 0
+    current_user_index = 0
+    r = app_client.get("/jobs", headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert len(actual["jobs"]) == 1
+    assert actual["jobs"][0]["id"] == record_id_1
+    # Create a batch job for user 1
+    current_user_index = 1
+    r = app_client.post(
+        "/jobs", data=json.dumps(data), headers=example_authorization_header_with_oidc, content_type="application/json"
+    )
+    record_id_2 = r.headers["OpenEO-Identifier"]
+    assert r.status_code == 201, r.data
+    # Fetch all jobs as user 1
+    r = app_client.get("/jobs", headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert len(actual["jobs"]) == 1
+    assert actual["jobs"][0]["id"] == record_id_2
+
+    # Create a service for user 0
+    data = {
+        "title": "Example service",
+        "process": {
+            "process_graph": example_process_graph,
+        },
+        "type": "xyz",
+    }
+    current_user_index = 0
+    r = app_client.post(
+        "/services",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
+    assert r.status_code == 201, r.data
+    record_id_1 = r.headers["OpenEO-Identifier"]
+    # Fetch the batch job with user 0
+    r = app_client.get("/services/{}".format(record_id_1), headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert r.status_code == 200
+    assert actual["id"] == record_id_1
+    # Fetch the batch job with user 1
+    current_user_index = 1
+    r = app_client.get("/services/{}".format(record_id_1), headers=example_authorization_header_with_oidc)
+    assert r.status_code == 404
+    # Fetch all jobs as user 1
+    r = app_client.get("/services", headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert actual["services"] == []
+    # Fetch all jobs as user 0
+    current_user_index = 0
+    r = app_client.get("/services", headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert len(actual["services"]) == 1
+    assert actual["services"][0]["id"] == record_id_1
+    # Create a batch job for user 1
+    current_user_index = 1
+    r = app_client.post(
+        "/services",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
+    record_id_2 = r.headers["OpenEO-Identifier"]
+    assert r.status_code == 201, r.data
+    # Fetch all jobs as user 1
+    r = app_client.get("/services", headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert len(actual["services"]) == 1
+    assert actual["services"][0]["id"] == record_id_2
+
+    # Create a process graph for user 0
+    process_graph_id = "testing_process_graph"
+    data = {
+        "summary": "test",
+        "process_graph": example_process_graph,
+    }
+    current_user_index = 0
+    r = app_client.put(
+        f"/process_graphs/{process_graph_id}",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
+    assert r.status_code == 200, r.data
+    # Fetch all process graphs as user 1
+    current_user_index = 1
+    r = app_client.get("/process_graphs", headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert actual["processes"] == []
+    # Fetch all process graphs as user 0
+    current_user_index = 0
+    r = app_client.get("/process_graphs", headers=example_authorization_header_with_oidc)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert len(actual["processes"]) == 1
+    assert actual["processes"][0]["id"] == process_graph_id
+
+
+@with_mocked_auth
+@pytest.mark.parametrize(
+    "spatial_extent,temporal_extent",
+    [
+        ({"west": 1.32271, "east": 12.33572, "north": 42.07112, "south": 2.06347}, ["2019-08-16", "2019-08-18"]),
+    ],
+)
+def test_sync_jobs_filesize(
+    app_client, example_process_graph, example_authorization_header_with_oidc, spatial_extent, temporal_extent
+):
+    """
+    - Test requests with too large file size are rejected
+    """
+    example_process_graph["loadco1"]["arguments"]["spatial_extent"] = spatial_extent
+    example_process_graph["loadco1"]["arguments"]["temporal_extent"] = temporal_extent
+    data = {
+        "process": {
+            "process_graph": example_process_graph,
+        }
+    }
+
+    r = app_client.post(
+        "/result",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
+    assert r.status_code == ProcessGraphComplexity.http_code, r.data
+    assert ProcessGraphComplexity.error_code in r.data.decode("utf-8")
+
+
+def test_user_token_user(app_client, example_process_graph):
+    """
+    - Test user token is used in request
+    """
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/api/v1/process",
+        match=[matchers.header_matcher({"Authorization": f"Bearer {valid_sh_token}"})],
+    )
+    responses.add(
+        responses.POST,
+        "https://services.sentinel-hub.com/api/v1/batch/process",
+        json={"id": "example", "processRequest": {}, "status": "CREATED"},
+        match=[matchers.header_matcher({"Authorization": f"Bearer {valid_sh_token}"})],
+    )
+
+    data = {
+        "process": {
+            "process_graph": example_process_graph,
+        }
+    }
+    headers = {"Authorization": f"Bearer basic//{valid_sh_token}"}
+
+    r = app_client.post(
+        "/result",
+        data=json.dumps(data),
+        headers=headers,
+        content_type="application/json",
+    )
+    assert r.status_code == 200, r.data
+    r = app_client.post("/jobs", data=json.dumps(data), headers=headers, content_type="application/json")
+    assert r.status_code == 201, r.data
