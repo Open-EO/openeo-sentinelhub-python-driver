@@ -462,6 +462,16 @@ def api_batch_job(job_id):
             # if job["current_status"] in ["queued", "running"]:
             #     return flask.make_response("Could not stop the job properly.", 500)
 
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=S3_LOCAL_URL,
+            region_name="eu-central-1",
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        )
+        res = s3.list_objects_v2(Bucket=RESULTS_S3_BUCKET_NAME, Prefix=f"{job_id}/")
+        for obj in res['Contents']:
+            s3.delete_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=obj['Key'])
         JobsPersistence.delete(job_id)
         return flask.make_response("The job has been successfully deleted.", 204)
 
@@ -840,4 +850,4 @@ if __name__ == "__main__":
         print("Running as HTTPS!")
         app.run(ssl_context="adhoc")
     else:
-        app.run()
+        app.run(debug=True)
