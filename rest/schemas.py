@@ -126,11 +126,9 @@ class ProcessSchemaWithParameters(ProcessSchema):
 
     @validates("process_graph")
     def validate_process_graph(self, graph):
-        parameters = get_all_user_defined_processes()
-        parameters.update(global_parameters_xyz)
         validate_graph_with_known_processes(
             graph,
-            parameters=parameters,
+            parameters=global_parameters_xyz,
         )
 
 

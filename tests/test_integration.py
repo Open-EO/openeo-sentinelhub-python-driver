@@ -491,7 +491,7 @@ def test_services_crud(app_client, example_process_graph, example_authorization_
         content_type="application/json",
         headers=example_authorization_header_with_oidc,
     )
-    assert r.status_code == 201
+    assert r.status_code == 201, r.data
     service_id = r.headers["OpenEO-Identifier"]
 
     r = app_client.get("/services", headers=example_authorization_header_with_oidc)

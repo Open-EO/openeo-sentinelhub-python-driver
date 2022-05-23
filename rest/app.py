@@ -80,11 +80,13 @@ cors = CORS(
     max_age=3600,
 )
 
+
 def get_all_user_defined_processes():
     all_user_defined_processes = dict()
     for record in ProcessGraphsPersistence.query_by_user_id(g.user.user_id):
         all_user_defined_processes[record["id"]] = record["process_graph"]
     return all_user_defined_processes
+
 
 # application performance monitoring:
 HONEYCOMP_APM_API_KEY = os.environ.get("HONEYCOMP_APM_API_KEY")

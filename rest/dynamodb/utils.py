@@ -2,11 +2,13 @@ from flask import g
 
 from .dynamodb import ProcessGraphsPersistence
 
+
 def get_all_user_defined_processes():
     all_user_defined_processes = []
     for record in ProcessGraphsPersistence.query_by_user_id(g.user.user_id):
         all_user_defined_processes.append(record)
     return all_user_defined_processes
+
 
 def get_user_defined_processes_graphs():
     user_defined_processes_graphs = dict()
