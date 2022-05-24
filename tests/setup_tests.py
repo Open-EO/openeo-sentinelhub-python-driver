@@ -136,6 +136,20 @@ def get_process_graph():
     return wrapped
 
 
+@pytest.fixture
+def fahrenheit_to_celsius_process():
+    process_graph = {
+        "subtract1": {"process_id": "subtract", "arguments": {"x": {"from_parameter": "f"}, "y": 32}},
+        "divide1": {
+            "process_id": "divide",
+            "arguments": {"x": {"from_node": "subtract1"}, "y": 1.8},
+            "result": True,
+        },
+    }
+    parameters = [{"name": "f", "description": "Temperature in fahrenheit.", "schema": {"type": "number"}}]
+    return process_graph, parameters
+
+
 def setup_function(function):
     ProcessGraphsPersistence.ensure_table_exists()
     JobsPersistence.ensure_table_exists()

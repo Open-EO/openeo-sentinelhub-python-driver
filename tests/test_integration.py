@@ -847,7 +847,9 @@ def test_run_test_process_graphs(app_client, process_graph_filename, authorizati
 
 
 @with_mocked_auth
-def test_process_graph_api(app_client, example_process_graph, example_authorization_header_with_oidc):
+def test_process_graph_api(
+    app_client, example_process_graph, fahrenheit_to_celsius_process, example_authorization_header_with_oidc
+):
     """
     Get /process_graphs/ (must be empty), test CRUD operations.
     """
@@ -991,6 +993,53 @@ def test_process_graph_api(app_client, example_process_graph, example_authorizat
     r = app_client.get("/process_graphs/{}".format(process_graph_id), headers=example_authorization_header_with_oidc)
     assert r.status_code == 200, r.data
     assert json.loads(r.data.decode("utf-8"))["id"] == process_graph_id
+
+    # Save a user-defined process
+    process_graph_id = "fahrenheit_to_celsius"
+    process_graph, parameters = fahrenheit_to_celsius_process
+    data = {
+        "summary": "Convert fahrenheit_to_celsius",
+        "process_graph": process_graph,
+        "parameters": parameters,
+    }
+    r = app_client.put(
+        f"/process_graphs/{process_graph_id}",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
+    assert r.status_code == 200, r.data
+
+    # Save a user-defined process without known parameters
+    process_graph_id = "fahrenheit_to_celsius"
+    data = {
+        "summary": "Convert fahrenheit_to_celsius",
+        "process_graph": process_graph,
+        "parameters": None,
+    }
+    r = app_client.put(
+        f"/process_graphs/{process_graph_id}",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
+    assert r.status_code == 200, r.data
+
+    # Try to save a user-defined process explicitly stating there are no parameters
+    # " Specifying an empty array is different from (if allowed) null or the property being absent. An empty array means the process has no parameters."
+    process_graph_id = "fahrenheit_to_celsius"
+    data = {
+        "summary": "Convert fahrenheit_to_celsius",
+        "process_graph": process_graph,
+        "parameters": [],
+    }
+    r = app_client.put(
+        f"/process_graphs/{process_graph_id}",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
+    assert r.status_code == 400, r.data
 
 
 @pytest.mark.skip("JSON output format currently not supported.")

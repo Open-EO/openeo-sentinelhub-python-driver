@@ -6,13 +6,13 @@ import os
 import traceback
 
 
-from marshmallow import Schema, fields, validates, ValidationError, validate
+from marshmallow import Schema, fields, validates, ValidationError, validate, validates_schema
 from openeo_pg_parser.validate import validate_process_graph
 from openeo_collections.collections import collections
 from processing.processing import check_process_graph_conversion_validity
 from dynamodb.utils import get_all_user_defined_processes
 from const import global_parameters_xyz
-from utils import get_all_process_definitions
+from utils import get_all_process_definitions, get_parameter_defs_dict
 
 
 def validate_graph_with_known_processes(graph, parameters=None):
@@ -33,6 +33,7 @@ def validate_graph_with_known_processes(graph, parameters=None):
 
     except Exception as e:
         log(INFO, traceback.format_exc())
+        print(traceback.format_exc())
         raise ValidationError("Invalid process graph: " + str(e))
 
 
@@ -47,8 +48,7 @@ def validate_graph_conversion(graph):
         raise ValidationError("Unable to convert process graph to evalscript: " + str(e))
 
 
-def validate_graph(graph):
-    parameters = get_all_user_defined_processes()
+def validate_graph(graph, parameters=None):
     validate_graph_with_known_processes(graph, parameters=parameters)
     validate_graph_conversion(graph)
 
@@ -72,9 +72,10 @@ class PutProcessGraphSchema(Schema):
     examples = fields.List(fields.Dict(allow_none=True), allow_none=True)
     links = fields.List(fields.Dict(allow_none=True), allow_none=True)
 
-    # @validates("process_graph")
-    # def validate_process_graph(self, graph):
-    #     validate_graph(graph)
+    @validates_schema()
+    def validate_object(self, data, **args):
+        parameters = get_parameter_defs_dict(data["process_graph"], data.get("parameters"))
+        validate_graph(data["process_graph"], parameters=parameters)
 
 
 class PatchProcessGraphsSchema(Schema):
