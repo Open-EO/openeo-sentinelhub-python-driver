@@ -51,3 +51,13 @@ def get_undefined_parameters(process_graph, all_parameters=[]):
         elif isinstance(value, dict) or isinstance(value, list):
             return get_undefined_parameters(value, all_parameters)
     return all_parameters
+
+
+def enrich_user_defined_processes_with_parameters(user_defined_processes):
+    for user_defined_process in user_defined_processes:
+        if "parameters" not in user_defined_process or user_defined_process["parameters"] is None:
+            params = get_undefined_parameters(user_defined_process["process_graph"], all_parameters=[])
+            for i in range(len(params)):
+                params[i] = {"name": params[i]}
+            user_defined_process["parameters"] = params
+    return user_defined_processes

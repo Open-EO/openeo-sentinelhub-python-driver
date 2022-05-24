@@ -1701,3 +1701,48 @@ def test_user_token_user(app_client, example_process_graph):
     assert r.status_code == 200, r.data
     r = app_client.post("/jobs", data=json.dumps(data), headers=headers, content_type="application/json")
     assert r.status_code == 201, r.data
+
+
+@with_mocked_auth
+def test_using_user_defined_process(
+    app_client, fahrenheit_to_celsius_process, process_graph_with_udp, example_authorization_header_with_oidc
+):
+    """
+    Save a user-defined process and use it in a job
+    """
+    # Save a user-defined process with unknown parameters
+    process_graph_id = "fahrenheit_to_celsius"
+    process_graph, _ = fahrenheit_to_celsius_process
+    data = {
+        "summary": "Convert fahrenheit_to_celsius",
+        "process_graph": process_graph,
+    }
+    r = app_client.put(
+        f"/process_graphs/{process_graph_id}",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
+    assert r.status_code == 200, r.data
+
+    data = {
+        "process": {
+            "process_graph": process_graph_with_udp,
+        }
+    }
+    r = app_client.post(
+        "/result",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
+    assert r.status_code == 200, r.data
+
+    r = app_client.post(
+        "/jobs", data=json.dumps(data), headers=example_authorization_header_with_oidc, content_type="application/json"
+    )
+    assert r.status_code == 201, r.data
+    job_id = r.headers["OpenEO-Identifier"]
+
+    r = app_client.post(f"/jobs/{job_id}/results", headers=example_authorization_header_with_oidc)
+    assert r.status_code == 202, r.data

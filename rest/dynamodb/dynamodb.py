@@ -277,7 +277,7 @@ class ProcessGraphsPersistence(Persistence):
 
         for key, value in item.items():
             data_type = list(value)[0]
-            if key == "parameters":
+            if key == "parameters" or key == "process_graph":
                 item[key] = json.loads(value[data_type])
             else:
                 item[key] = value[data_type]

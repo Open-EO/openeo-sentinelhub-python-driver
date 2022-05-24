@@ -19,6 +19,7 @@ from processing.const import (
 )
 from openeo_collections.collections import collections
 from openeoerrors import CollectionNotFound, Internal, ProcessParameterInvalid, ProcessGraphComplexity
+from dynamodb.utils import get_user_defined_processes_graphs
 
 
 class Process:
@@ -43,8 +44,12 @@ class Process:
         return BBox(self.bbox, CRS(self.epsg_code))
 
     def get_evalscript(self):
+        user_defined_processes_graphs = get_user_defined_processes_graphs()
         results = convert_from_process_graph(
-            self.process_graph, sample_type=self.sample_type.value, encode_result=False
+            self.process_graph,
+            sample_type=self.sample_type.value,
+            user_defined_processes=user_defined_processes_graphs,
+            encode_result=False,
         )
         evalscript = results[0]["evalscript"]
 

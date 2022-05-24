@@ -132,6 +132,7 @@ def openeo_exception_handler(error):
 @app.errorhandler(Exception)
 def handle_exception(e):
     # pass through HTTP errors
+    print(traceback.format_exc())
     log(INFO, f"Error: {str(e)}")
     if isinstance(e, HTTPException):
         return e
@@ -383,12 +384,7 @@ def api_result():
                 jsonify(id=None, code=error.error_code, message=error.message, links=[]), error.http_code
             )
 
-        try:
-            data, mime_type = process_data_synchronously(job_data["process"])
-        except (OpenEOProcessError, OpenEOError) as error:
-            raise
-        except Exception as error:
-            raise Internal(str(error))
+        data, mime_type = process_data_synchronously(job_data["process"])
 
         response = flask.make_response(data, 200)
         response.mime_type = mime_type
@@ -762,12 +758,7 @@ def api_execute_service(service_id, zoom, tx, ty):
 
     inject_variables_in_process_graph(process_info["process_graph"], variables)
 
-    try:
-        data, mime_type = process_data_synchronously(process_info, width=tile_size, height=tile_size)
-    except (OpenEOProcessError, OpenEOError) as error:
-        raise
-    except Exception as error:
-        raise Internal(str(error))
+    data, mime_type = process_data_synchronously(process_info, width=tile_size, height=tile_size)
 
     response = flask.make_response(data, 200)
     response.mimetype = mime_type

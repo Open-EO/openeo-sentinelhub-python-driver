@@ -12,7 +12,7 @@ from openeo_collections.collections import collections
 from processing.processing import check_process_graph_conversion_validity
 from dynamodb.utils import get_all_user_defined_processes
 from const import global_parameters_xyz
-from utils import get_all_process_definitions, get_parameter_defs_dict
+from utils import get_all_process_definitions, get_parameter_defs_dict, enrich_user_defined_processes_with_parameters
 
 
 def validate_graph_with_known_processes(graph, parameters=None):
@@ -20,6 +20,9 @@ def validate_graph_with_known_processes(graph, parameters=None):
     current_directory = os.path.dirname(path_to_current_file)
     collections_src = collections.get_collections()
     process_definitions = get_all_process_definitions()
+    user_defined_processes = get_all_user_defined_processes()
+    user_defined_processes = enrich_user_defined_processes_with_parameters(user_defined_processes)
+    process_definitions += user_defined_processes
 
     try:
         # validate_graph() changes process graph input, so we need to pass a cloned object:
@@ -45,6 +48,7 @@ def validate_graph_conversion(graph):
             raise ValidationError(f"Invalid node id {invalid_node_id}")
     except Exception as e:
         log(INFO, traceback.format_exc())
+        print(traceback.format_exc())
         raise ValidationError("Unable to convert process graph to evalscript: " + str(e))
 
 

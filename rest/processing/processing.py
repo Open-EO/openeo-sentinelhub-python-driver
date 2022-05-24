@@ -11,7 +11,7 @@ from dynamodb.utils import get_user_defined_processes_graphs
 
 def check_process_graph_conversion_validity(process_graph):
     user_defined_processes_graphs = get_user_defined_processes_graphs()
-    results = convert_from_process_graph(process_graph)
+    results = convert_from_process_graph(process_graph, user_defined_processes=user_defined_processes_graphs)
     return results[0]["invalid_node_id"]
 
 
