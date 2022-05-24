@@ -60,6 +60,7 @@ from openeoerrors import (
     ProcessGraphNotFound,
     SHOpenEOError,
 )
+from authentication.user import User
 from const import openEOBatchJobStatus, optional_process_parameters
 from utils import get_all_process_definitions
 
@@ -741,6 +742,9 @@ def api_execute_service(service_id, zoom, tx, ty):
     record = ServicesPersistence.get_by_id(service_id)
     if record is None or record["service_type"].lower() != "xyz":
         raise ServiceNotFound(service_id)
+
+    # XYZ does not require authentication, however we need user_id to support user-defined processes
+    g.user = User(user_id=record["user_id"])
 
     # https://www.maptiler.com/google-maps-coordinates-tile-bounds-projection/
     tile_size = (json.loads(record.get("configuration")) or {}).get("tile_size", 256)

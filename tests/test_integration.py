@@ -1730,6 +1730,7 @@ def test_using_user_defined_process(
             "process_graph": process_graph_with_udp,
         }
     }
+    # Test synchrounous job
     r = app_client.post(
         "/result",
         data=json.dumps(data),
@@ -1737,7 +1738,7 @@ def test_using_user_defined_process(
         content_type="application/json",
     )
     assert r.status_code == 200, r.data
-
+    # Test batch job
     r = app_client.post(
         "/jobs", data=json.dumps(data), headers=example_authorization_header_with_oidc, content_type="application/json"
     )
@@ -1746,3 +1747,17 @@ def test_using_user_defined_process(
 
     r = app_client.post(f"/jobs/{job_id}/results", headers=example_authorization_header_with_oidc)
     assert r.status_code == 202, r.data
+    # Test XYZ service
+    data["type"] = "xyz"
+    data["configuration"] = {"tile_size": 16}
+    r = app_client.post(
+        "/services",
+        data=json.dumps(data),
+        content_type="application/json",
+        headers=example_authorization_header_with_oidc,
+    )
+    assert r.status_code == 201, r.data
+    service_id = r.headers["OpenEO-Identifier"]
+
+    r = app_client.get("/service/xyz/{}/20/100/100".format(service_id))
+    assert r.status_code == 200
