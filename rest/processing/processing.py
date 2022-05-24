@@ -21,7 +21,14 @@ def get_sh_access_token():
 
 
 def new_process(process, width=None, height=None):
-    return Process(process, width=width, height=height, access_token=get_sh_access_token())
+    user_defined_processes_graphs = get_user_defined_processes_graphs()
+    return Process(
+        process,
+        width=width,
+        height=height,
+        access_token=get_sh_access_token(),
+        user_defined_processes=user_defined_processes_graphs,
+    )
 
 
 def new_sentinel_hub():

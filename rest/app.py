@@ -132,7 +132,6 @@ def openeo_exception_handler(error):
 @app.errorhandler(Exception)
 def handle_exception(e):
     # pass through HTTP errors
-    print(traceback.format_exc())
     log(INFO, f"Error: {str(e)}")
     if isinstance(e, HTTPException):
         return e
@@ -315,7 +314,7 @@ def api_process_graph(process_graph_id, user):
 
         process_item = {
             "id": record["id"],
-            "process_graph": json.loads(record["process_graph"]),
+            "process_graph": record["process_graph"],
         }
         for attr in optional_process_parameters:
             process_item[attr] = record.get(attr)

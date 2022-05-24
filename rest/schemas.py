@@ -36,7 +36,6 @@ def validate_graph_with_known_processes(graph, parameters=None):
 
     except Exception as e:
         log(INFO, traceback.format_exc())
-        print(traceback.format_exc())
         raise ValidationError("Invalid process graph: " + str(e))
 
 
@@ -48,7 +47,6 @@ def validate_graph_conversion(graph):
             raise ValidationError(f"Invalid node id {invalid_node_id}")
     except Exception as e:
         log(INFO, traceback.format_exc())
-        print(traceback.format_exc())
         raise ValidationError("Unable to convert process graph to evalscript: " + str(e))
 
 
