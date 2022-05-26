@@ -844,6 +844,27 @@ def well_known():
 if __name__ == "__main__":
     # if you need to run this app under HTTPS, install pyOpenSSL
     # (`pip install pyOpenSSL`) and replace app.run with this line:
+    s3_client = boto3.client(
+        "s3",
+        endpoint_url=S3_LOCAL_URL,
+        region_name=DATA_AWS_REGION,
+        aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
+    )
+    s3_client.put_bucket_lifecycle_configuration(
+        Bucket=RESULTS_S3_BUCKET_NAME,
+        LifecycleConfiguration={
+            "Rules": [
+                {
+                    "Expiration": {"Days": 30},
+                    "Filter": {"Prefix": ""},
+                    "Status": "Enabled",
+                    "ID": "Remove objects which are older than 30 days from bucket.",
+                }
+            ]
+        },
+    )
+
     if sys.argv[1:] == ["https"]:
         print("Running as HTTPS!")
         app.run(ssl_context="adhoc")
