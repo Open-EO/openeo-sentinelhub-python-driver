@@ -95,6 +95,7 @@ AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", FAKE_AWS_ACCESS_KEY_ID)
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", FAKE_AWS_SECRET_ACCESS_KEY)
 DATA_AWS_ACCESS_KEY_ID = os.environ.get("DATA_AWS_ACCESS_KEY_ID")
 DATA_AWS_SECRET_ACCESS_KEY = os.environ.get("DATA_AWS_SECRET_ACCESS_KEY")
+DATA_AWS_REGION = os.environ.get("DATA_AWS_REGION", "eu-central-1")
 S3_LOCAL_URL = os.environ.get("DATA_AWS_S3_ENDPOINT_URL")
 
 
@@ -495,16 +496,20 @@ def api_batch_job(job_id, user):
         return flask.make_response("Changes to the job applied successfully.", 204)
 
     elif flask.request.method == "DELETE":
-        s3 = boto3.client(
-            "s3",
-            endpoint_url=S3_LOCAL_URL,
-            region_name="eu-central-1",
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-        )
-        res = s3.list_objects_v2(Bucket=RESULTS_S3_BUCKET_NAME, Prefix=f"{job_id}/")
-        for obj in res["Contents"]:
-            s3.delete_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=obj["Key"])
+        batch_request_info = get_batch_request_info(job["batch_request_id"])
+        if openEOBatchJobStatus.from_sentinelhub_batch_job_status(
+            batch_request_info.status, batch_request_info.user_action
+        ) not in [openEOBatchJobStatus.ERROR]:
+            s3 = boto3.client(
+                "s3",
+                endpoint_url=S3_LOCAL_URL,
+                region_name=DATA_AWS_REGION,
+                aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
+            )
+            res = s3.list_objects_v2(Bucket=RESULTS_S3_BUCKET_NAME, Prefix=f"{job_id}/")
+            for obj in res["Contents"]:
+                s3.delete_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=obj["Key"])
 
         JobsPersistence.delete(job_id)
         return flask.make_response("The job has been successfully deleted.", 204)
