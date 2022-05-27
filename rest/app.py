@@ -91,12 +91,10 @@ REQUEST_TIMEOUT = 28
 
 FAKE_AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
 FAKE_AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", FAKE_AWS_ACCESS_KEY_ID)
-AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", FAKE_AWS_SECRET_ACCESS_KEY)
-DATA_AWS_ACCESS_KEY_ID = os.environ.get("DATA_AWS_ACCESS_KEY_ID")
-DATA_AWS_SECRET_ACCESS_KEY = os.environ.get("DATA_AWS_SECRET_ACCESS_KEY")
+
+DATA_AWS_ACCESS_KEY_ID = os.environ.get("DATA_AWS_ACCESS_KEY_ID", FAKE_AWS_ACCESS_KEY_ID)
+DATA_AWS_SECRET_ACCESS_KEY = os.environ.get("DATA_AWS_SECRET_ACCESS_KEY", FAKE_AWS_SECRET_ACCESS_KEY)
 DATA_AWS_REGION = os.environ.get("DATA_AWS_REGION", "eu-central-1")
-S3_LOCAL_URL = os.environ.get("DATA_AWS_S3_ENDPOINT_URL")
 
 
 STAC_VERSION = "0.9.0"
@@ -501,15 +499,16 @@ def api_batch_job(job_id, user):
             batch_request_info.status, batch_request_info.user_action
         ) not in [openEOBatchJobStatus.ERROR]:
             s3 = boto3.client(
-                "s3",
-                endpoint_url=S3_LOCAL_URL,
-                region_name=DATA_AWS_REGION,
-                aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
+                    "s3",
+                    region_name=DATA_AWS_REGION,
+                    aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
+                    aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
             )
-            res = s3.list_objects_v2(Bucket=RESULTS_S3_BUCKET_NAME, Prefix=f"{job_id}/")
-            for obj in res["Contents"]:
-                s3.delete_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=obj["Key"])
+            res = s3.list_objects_v2(Bucket=RESULTS_S3_BUCKET_NAME, Prefix=f"{job['batch_request_id']}/")
+            log(INFO, res)
+            if "Contents" in res:
+                for obj in res["Contents"]:
+                    s3.delete_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=obj["Key"])
 
         JobsPersistence.delete(job_id)
         return flask.make_response("The job has been successfully deleted.", 204)
@@ -547,7 +546,7 @@ def add_job_to_queue(job_id, user):
 
         s3 = boto3.client(
             "s3",
-            region_name="eu-central-1",
+            region_name=DATA_AWS_REGION,
             aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
             aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
         )
@@ -844,27 +843,6 @@ def well_known():
 if __name__ == "__main__":
     # if you need to run this app under HTTPS, install pyOpenSSL
     # (`pip install pyOpenSSL`) and replace app.run with this line:
-    s3_client = boto3.client(
-        "s3",
-        endpoint_url=S3_LOCAL_URL,
-        region_name=DATA_AWS_REGION,
-        aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
-    )
-    s3_client.put_bucket_lifecycle_configuration(
-        Bucket=RESULTS_S3_BUCKET_NAME,
-        LifecycleConfiguration={
-            "Rules": [
-                {
-                    "Expiration": {"Days": 30},
-                    "Filter": {"Prefix": ""},
-                    "Status": "Enabled",
-                    "ID": "Remove objects which are older than 30 days from bucket.",
-                }
-            ]
-        },
-    )
-
     if sys.argv[1:] == ["https"]:
         print("Running as HTTPS!")
         app.run(ssl_context="adhoc")
