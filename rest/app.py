@@ -499,10 +499,10 @@ def api_batch_job(job_id, user):
             batch_request_info.status, batch_request_info.user_action
         ) not in [openEOBatchJobStatus.ERROR]:
             s3 = boto3.client(
-                    "s3",
-                    region_name=DATA_AWS_REGION,
-                    aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
-                    aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
+                "s3",
+                region_name=DATA_AWS_REGION,
+                aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
             )
             res = s3.list_objects_v2(Bucket=RESULTS_S3_BUCKET_NAME, Prefix=f"{job['batch_request_id']}/")
             log(INFO, res)
