@@ -253,9 +253,9 @@ class ProcessGraphsPersistence(Persistence):
             item["parameters"] = {"L": data.get("parameters")}
         if data.get("returns"):
             item["returns"] = {"M": data.get("returns")}
-        if data.get("deprecated"):
+        if data.get("deprecated") is not None:
             item["deprecated"] = {"BOOL": data.get("deprecated")}
-        if data.get("experimental"):
+        if data.get("experimental") is not None:
             item["experimental"] = {"BOOL": data.get("experimental")}
         if data.get("exceptions"):
             item["exceptions"] = {"M": data.get("exceptions")}
