@@ -69,7 +69,7 @@ deploy-testing-rest-lambda:
     - mkdir -p ~/.aws
     - echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
     - echo -e "[default]\naws_access_key_id=$TESTINGZAPPA_AWS_ACCESS_KEY_ID\naws_secret_access_key=$TESTINGZAPPA_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
-    - pip install --upgrade pipenv
+    - pip install pipenv==2021.5.29
   script:
     - chmod +x download-process-definitions.sh
     - ./download-process-definitions.sh
@@ -102,7 +102,7 @@ deploy-production-rest-lambda:
     - mkdir -p ~/.aws
     - echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
     - echo -e "[default]\naws_access_key_id=$PRODZAPPA_AWS_ACCESS_KEY_ID\naws_secret_access_key=$PRODZAPPA_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
-    - pip install --upgrade pipenv
+    - pip install pipenv==2021.5.29
   script:
     - chmod +x download-process-definitions.sh
     - ./download-process-definitions.sh
