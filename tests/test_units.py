@@ -1,5 +1,5 @@
 from setup_tests import *
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from openeoerrors import (
     AuthenticationRequired,
@@ -613,3 +613,32 @@ def test_sentinel_hub_access_token(access_token):
         tiling_grid_resolution=20,
         mimetype=MimeType.PNG,
     )
+
+
+@pytest.mark.parametrize(
+    "collection_id,expected_from_time,expected_to_time",
+    [
+        (
+            "sentinel-2-l1c",
+            datetime(2015, 11, 1, tzinfo=timezone.utc),
+            datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1),
+        ),
+        ("corine-land-cover", datetime(1986, 1, 1, tzinfo=timezone.utc), datetime(2018, 12, 31, tzinfo=timezone.utc)),
+        (
+            "landsat-7-etm+-l2",
+            datetime(1999, 4, 1, tzinfo=timezone.utc),
+            datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1),
+        ),
+        (
+            "mapzen-dem",
+            datetime.now().replace(hour=0, minute=0, second=0, microsecond=0),
+            datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1),
+        ),
+    ],
+)
+def test_get_maximum_temporal_extent(get_process_graph, collection_id, expected_from_time, expected_to_time):
+    process = Process({"process_graph": get_process_graph(collection_id=collection_id)})
+    from_time, to_time = process.get_maximum_temporal_extent_for_collection()
+
+    assert expected_from_time == from_time
+    assert expected_to_time == to_time
