@@ -20,5 +20,27 @@
     "project_name": "sentinelhub-openeo-testing",
     "runtime": "python3.6",
     "s3_bucket": "shopeneoproduction"
+  },
+  "production": {
+    "app_function": "app.app",
+    "aws_region": "eu-central-1",
+    "lambda_description": "Production deploy of Sentinel Hub openEO backend",
+    "environment_variables": {
+      "DEPLOYMENT_TYPE": "production",
+      "AWS_ACCESS_KEY_ID": "@@AWS_ACCESS_KEY_ID@@",
+      "AWS_SECRET_ACCESS_KEY": "@@AWS_SECRET_ACCESS_KEY@@",
+      "DATA_AWS_ACCESS_KEY_ID": "@@AWS_ACCESS_KEY_ID@@",
+      "DATA_AWS_SECRET_ACCESS_KEY": "@@AWS_SECRET_ACCESS_KEY@@",
+      "S3_DATA_BUCKET": "@@S3_DATA_BUCKET@@",
+      "SH_CLIENT_ID": "@@PRODUCTION_SH_CLIENT_ID@@",
+      "SH_CLIENT_SECRET": "@@PRODUCTION_SH_CLIENT_SECRET@@",
+      "BACKEND_VERSION": "@@BACKEND_VERSION@@"
+    },
+    "memory_size": 512,
+    "timeout_seconds": 29,
+    "profile_name": "default",
+    "project_name": "sentinelhub-openeop",
+    "runtime": "python3.6",
+    "s3_bucket": "shopeneoproduction"
   }
 }

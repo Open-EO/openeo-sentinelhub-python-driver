@@ -18,7 +18,13 @@ from processing.const import (
     utm_tiling_grids,
 )
 from openeo_collections.collections import collections
-from openeoerrors import CollectionNotFound, Internal, ProcessParameterInvalid, ProcessGraphComplexity
+from openeoerrors import (
+    CollectionNotFound,
+    Internal,
+    ProcessParameterInvalid,
+    ProcessGraphComplexity,
+    TemporalExtentError,
+)
 
 
 class Process:
@@ -160,28 +166,41 @@ class Process:
             return temporal_interval.total_seconds() / n_seconds_per_day
         return temporal_interval.total_seconds()
 
-    def get_maximum_temporal_extent_for_collection(collection):
-        warnings.warn("get_maximum_temporal_extent_for_collection not implemented yet!")
-        return datetime.now(), datetime.now()
+    def get_maximum_temporal_extent_for_collection(self):
+        load_collection_node = self.get_node_by_process_id("load_collection")
+        openeo_collection = collections.get_collection(load_collection_node["arguments"]["id"])
+        from_time, to_time = openeo_collection.get("extent").get("temporal")["interval"][0]
+
+        if from_time is not None:
+            from_time = parse_time(from_time)
+        else:
+            current_date = datetime.now()
+            from_time = current_date.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        if to_time is not None:
+            to_time = parse_time(to_time)
+        else:
+            current_date = datetime.now()
+            to_time = current_date.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        return from_time, to_time
 
     def get_temporal_extent(self):
         """
         Returns from_time, to_time
         """
         load_collection_node = self.get_node_by_process_id("load_collection")
-        temporal_extent = load_collection_node["arguments"]["temporal_extent"]
+        temporal_extent = load_collection_node["arguments"].get("temporal_extent")
         if temporal_extent is None:
-            from_time, to_time = self.get_maximum_temporal_extent_for_collection(self.collection)
-            return from_time, to_time
+            temporal_extent = self.get_maximum_temporal_extent_for_collection()
 
         interval_start, interval_end = temporal_extent
         if interval_start is None:
-            from_time, _ = self.get_maximum_temporal_extent_for_collection(self.collection)
+            from_time, _ = self.get_maximum_temporal_extent_for_collection()
         else:
             from_time = parse_time(interval_start)
 
         if interval_end is None:
-            _, to_time = self.get_maximum_temporal_extent_for_collection(self.collection)
+            _, to_time = self.get_maximum_temporal_extent_for_collection()
         else:
             to_time = parse_time(interval_end)
 
@@ -189,14 +208,17 @@ class Process:
         if type(from_time) is date:
             from_time = datetime(from_time.year, from_time.month, from_time.day)
         if type(to_time) is date:
-            to_time = datetime(to_time.year, to_time.month, to_time.day) + timedelta(days=1)
+            to_time = datetime(to_time.year, to_time.month, to_time.day)
 
         if from_time.tzinfo is None:
             from_time = from_time.replace(tzinfo=timezone.utc)
         if to_time.tzinfo is None:
             to_time = to_time.replace(tzinfo=timezone.utc)
 
-        to_time = to_time - timedelta(milliseconds=1)  # End of the interval is not inclusive
+        to_time = to_time - timedelta(microseconds=1)  # End of the interval is not inclusive
+        if to_time < from_time:
+            raise TemporalExtentError()
+
         return from_time, to_time
 
     def get_input_bands(self):

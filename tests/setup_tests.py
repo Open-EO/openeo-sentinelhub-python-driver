@@ -102,14 +102,20 @@ set_valid_sh_token()
 @pytest.fixture
 def get_process_graph():
     def wrapped(
-        bands=None, collection_id=None, spatial_extent=None, file_format="gtiff", options=None, featureflags=None
+        bands=None,
+        collection_id=None,
+        spatial_extent=None,
+        temporal_extent=["2017-01-01", "2017-02-01"],
+        file_format="gtiff",
+        options=None,
+        featureflags=None,
     ):
         process_graph = {
             "loadco1": {
                 "process_id": "load_collection",
                 "arguments": {
                     "id": collection_id,
-                    "temporal_extent": ["2017-01-01", "2017-02-01"],
+                    "temporal_extent": temporal_extent,
                     "spatial_extent": spatial_extent,
                 },
             },
