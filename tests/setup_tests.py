@@ -164,7 +164,7 @@ def process_graph_with_udp():
             "arguments": {
                 "id": "sentinel-2-l1c",
                 "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
-                "temporal_extent": ["2019-08-01", "2019-08-02"],
+                "temporal_extent": ["2019-08-03", "2019-08-05"],
                 "bands": ["B01"],
             },
         },
