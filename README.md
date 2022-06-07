@@ -31,7 +31,7 @@ $ pipenv install
 Tables on DynamoDB need to be created manually:
 ```
 $ pipenv shell
-<pipenv> $ python dynamodb.py
+<pipenv> $ python dynamodb/dynamodb.py
 ```
 
 Then the REST API server can be run:
