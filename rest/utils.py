@@ -1,5 +1,6 @@
 import os
 
+
 def get_data_from_bucket(s3, bucket_name, batch_request_id):
     continuation_token = None
     results = []
