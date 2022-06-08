@@ -495,9 +495,7 @@ def api_batch_job(job_id, user):
 
     elif flask.request.method == "DELETE":
         batch_request_info = get_batch_request_info(job["batch_request_id"])
-        if openEOBatchJobStatus.from_sentinelhub_batch_job_status(
-            batch_request_info.status, batch_request_info.user_action
-        ) not in [openEOBatchJobStatus.ERROR]:
+        if batch_request_info.status is BatchRequestStatus.FAILED:
             s3 = boto3.client(
                 "s3",
                 region_name=DATA_AWS_REGION,
