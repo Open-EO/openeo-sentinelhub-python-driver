@@ -503,7 +503,6 @@ def api_batch_job(job_id, user):
                 aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
             )
             res = s3.list_objects_v2(Bucket=RESULTS_S3_BUCKET_NAME, Prefix=f"{job['batch_request_id']}/")
-            log(INFO, res)
             if "Contents" in res:
                 for obj in res["Contents"]:
                     s3.delete_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=obj["Key"])
