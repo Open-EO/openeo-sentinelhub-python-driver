@@ -6,6 +6,7 @@ from sentinelhub import BatchRequestStatus, BatchUserAction, SentinelHubBatch
 
 from processing.process import Process
 from processing.sentinel_hub import SentinelHub
+from const import openEOBatchJobStatus
 
 
 def check_process_graph_conversion_validity(process_graph):
@@ -35,6 +36,12 @@ def create_batch_job(process):
     return new_process(process).create_batch_job()
 
 
+def start_new_batch_job(process):
+    new_batch_request_id = create_batch_job(process)
+    sentinel_hub.start_batch_job(new_batch_request_id)
+    return new_batch_request_id
+
+
 def start_batch_job(batch_request_id, process):
     """
     openEO allows starting a batch job regardless of the status, unless it's already running or queued.
@@ -56,7 +63,9 @@ def start_batch_job(batch_request_id, process):
     sentinel_hub = new_sentinel_hub()
     batch_request_info = sentinel_hub.get_batch_request_info(batch_request_id)
 
-    if batch_request_info.status in [BatchRequestStatus.CREATED, BatchRequestStatus.ANALYSIS_DONE]:
+    if batch_request_info is None:
+        return start_new_batch_job(process)
+    elif batch_request_info.status in [BatchRequestStatus.CREATED, BatchRequestStatus.ANALYSIS_DONE]:
         sentinel_hub.start_batch_job(batch_request_id)
     elif batch_request_info.status == BatchRequestStatus.PARTIAL:
         sentinel_hub.restart_batch_job(batch_request_id)
@@ -68,9 +77,7 @@ def start_batch_job(batch_request_id, process):
         batch_request_info.status == BatchRequestStatus.ANALYSING
         and batch_request_info.user_action == BatchUserAction.ANALYSE
     ):
-        new_batch_request_id = create_batch_job(process)
-        sentinel_hub.start_batch_job(new_batch_request_id)
-        return new_batch_request_id
+        return start_new_batch_job(process)
 
 
 def get_batch_request_info(batch_request_id):
@@ -126,3 +133,17 @@ def get_batch_job_estimate(batch_request_id, process):
     n_pixels = batch_request.tile_count * batch_request.tile_width_px * batch_request.tile_height_px
     estimated_file_size = p.estimate_file_size(n_pixels=n_pixels)
     return estimated_pu, estimated_file_size
+
+
+def get_batch_job_status(batch_request_id):
+    batch_request_info = get_batch_request_info(batch_request_id)
+    if batch_request_info is not None:
+        error = batch_request_info.error if batch_request_info.status == BatchRequestStatus.FAILED else None
+        return (
+            openEOBatchJobStatus.from_sentinelhub_batch_job_status(
+                batch_request_info.status, batch_request_info.user_action
+            ).value,
+            error,
+        )
+    else:
+        return openEOBatchJobStatus.FINISHED, None
