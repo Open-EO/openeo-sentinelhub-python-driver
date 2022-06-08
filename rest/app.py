@@ -20,6 +20,7 @@ from pg_to_evalscript import list_supported_processes
 from werkzeug.exceptions import HTTPException
 
 import globalmaptiles
+from utils import get_data_from_bucket
 from schemas import (
     PutProcessGraphSchema,
     PatchProcessGraphsSchema,
@@ -495,17 +496,16 @@ def api_batch_job(job_id, user):
 
     elif flask.request.method == "DELETE":
         batch_request_info = get_batch_request_info(job["batch_request_id"])
-        if batch_request_info.status is BatchRequestStatus.FAILED:
+        if not batch_request_info.status is BatchRequestStatus.FAILED:
             s3 = boto3.client(
                 "s3",
                 region_name=DATA_AWS_REGION,
                 aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
                 aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
             )
-            res = s3.list_objects_v2(Bucket=RESULTS_S3_BUCKET_NAME, Prefix=f"{job['batch_request_id']}/")
-            if "Contents" in res:
-                for obj in res["Contents"]:
-                    s3.delete_object(Bucket=RESULTS_S3_BUCKET_NAME, Key=obj["Key"])
+            results = get_data_from_bucket(s3, RESULTS_S3_BUCKET_NAME, job["batch_request_id"])
+            object_keys_to_delete = {"Objects": [{"Key": obj["Key"]} for obj in results]}
+            s3.delete_objects(Bucket=RESULTS_S3_BUCKET_NAME, Delete=object_keys_to_delete)
 
         JobsPersistence.delete(job_id)
         return flask.make_response("The job has been successfully deleted.", 204)
@@ -548,22 +548,7 @@ def add_job_to_queue(job_id, user):
             aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
         )
 
-        continuation_token = None
-        results = []
-
-        while True:
-            if continuation_token:
-                log(INFO, f"Fetch from bucket")
-                response = s3.list_objects_v2(
-                    Bucket=RESULTS_S3_BUCKET_NAME, Prefix=job["batch_request_id"], ContinuationToken=continuation_token
-                )
-            else:
-                response = s3.list_objects_v2(Bucket=RESULTS_S3_BUCKET_NAME, Prefix=job["batch_request_id"])
-            results.extend(response["Contents"])
-            if response["IsTruncated"]:
-                continuation_token = response["NextContinuationToken"]
-            else:
-                break
+        results = get_data_from_bucket(s3, RESULTS_S3_BUCKET_NAME, job["batch_request_id"])
 
         assets = {}
         log(INFO, f"Fetched all results: {str(results)}")
