@@ -1,5 +1,7 @@
 import os
+
 from sentinelhub import DownloadRequest, SentinelHubDownloadClient, SentinelHubBatch, SentinelHubSession
+from sentinelhub.exceptions import DownloadFailedException
 from openeoerrors import ProcessGraphComplexity
 
 from processing.const import sh_config
@@ -170,8 +172,7 @@ class SentinelHub:
     def get_batch_request_info(self, batch_request_id):
         try:
             return self.batch.get_request(batch_request_id)
-        except Exception as e:
-            print(e)
+        except DownloadFailedException as e:
             return None
 
     def start_batch_job_analysis(self, batch_request_id):

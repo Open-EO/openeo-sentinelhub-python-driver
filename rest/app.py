@@ -404,7 +404,7 @@ def api_jobs(user):
                     "id": record["id"],
                     "title": record.get("title", None),
                     "description": record.get("description", None),
-                    "status": status,
+                    "status": status.value,
                     "created": record["created"],
                 }
             )
@@ -465,7 +465,7 @@ def api_batch_job(job_id, user):
                 title=job.get("title", None),
                 description=job.get("description", None),
                 process={"process_graph": json.loads(job["process"])["process_graph"]},
-                status=status,
+                status=status.value,
                 error=error,
                 created=job["created"],
                 updated=job["last_updated"],

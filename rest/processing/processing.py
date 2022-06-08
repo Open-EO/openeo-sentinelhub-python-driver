@@ -36,7 +36,7 @@ def create_batch_job(process):
     return new_process(process).create_batch_job()
 
 
-def start_new_batch_job(process):
+def start_new_batch_job(sentinel_hub, process):
     new_batch_request_id = create_batch_job(process)
     sentinel_hub.start_batch_job(new_batch_request_id)
     return new_batch_request_id
@@ -64,7 +64,7 @@ def start_batch_job(batch_request_id, process):
     batch_request_info = sentinel_hub.get_batch_request_info(batch_request_id)
 
     if batch_request_info is None:
-        return start_new_batch_job(process)
+        return start_new_batch_job(sentinel_hub, process)
     elif batch_request_info.status in [BatchRequestStatus.CREATED, BatchRequestStatus.ANALYSIS_DONE]:
         sentinel_hub.start_batch_job(batch_request_id)
     elif batch_request_info.status == BatchRequestStatus.PARTIAL:
@@ -77,7 +77,7 @@ def start_batch_job(batch_request_id, process):
         batch_request_info.status == BatchRequestStatus.ANALYSING
         and batch_request_info.user_action == BatchUserAction.ANALYSE
     ):
-        return start_new_batch_job(process)
+        return start_new_batch_job(sentinel_hub, process)
 
 
 def get_batch_request_info(batch_request_id):
@@ -142,7 +142,7 @@ def get_batch_job_status(batch_request_id):
         return (
             openEOBatchJobStatus.from_sentinelhub_batch_job_status(
                 batch_request_info.status, batch_request_info.user_action
-            ).value,
+            ),
             error,
         )
     else:
