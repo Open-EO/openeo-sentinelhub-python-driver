@@ -146,7 +146,8 @@ def is_geometry_collection(geojson):
 def degree_to_meter(degree):
     return (6378137.0 * math.pi * degree) / 180
 
+
 def convert_degree_resolution_to_meters(degrees):
-    x=degrees[0]
-    y=degrees[1]
+    x = degrees[0]
+    y = degrees[1]
     return [degree_to_meter(x), degree_to_meter(y)]

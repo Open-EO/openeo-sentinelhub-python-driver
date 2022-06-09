@@ -28,6 +28,7 @@ from openeoerrors import (
 
 from processing.utils import convert_degree_resolution_to_meters
 
+
 class Process:
     def __init__(self, process, width=None, height=None, access_token=None):
         self.DEFAULT_EPSG_CODE = 4326
@@ -288,10 +289,10 @@ class Process:
         return (highest_x_resolution, highest_y_resolution)
 
     def get_band_resolution(self, band_summary):
-        band_resolution_tuple =  band_summary.get("openeo:gsd", {})
-        resolution_unit = band_resolution_tuple.get("unit", 'm')
+        band_resolution_tuple = band_summary.get("openeo:gsd", {})
+        resolution_unit = band_resolution_tuple.get("unit", "m")
         resolution = band_resolution_tuple.get("value", self.DEFAULT_RESOLUTION)
-        if resolution_unit == '°':
+        if resolution_unit == "°":
             resolution = convert_degree_resolution_to_meters(resolution)
         return resolution
 
