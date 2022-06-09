@@ -48,7 +48,7 @@ def test_collections(get_process_graph, collection_id):
                 "corine-land-cover",
                 "S2L1C",
                 "mapzen-dem",
-                "sentinel-3-l1b-slstr"
+                "sentinel-3-l1b-slstr",
             ],
         ),
     ],
