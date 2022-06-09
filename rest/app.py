@@ -496,16 +496,15 @@ def api_batch_job(job_id, user):
 
     elif flask.request.method == "DELETE":
         batch_request_info = get_batch_request_info(job["batch_request_id"])
-        if not batch_request_info.status is BatchRequestStatus.FAILED:
-            s3 = boto3.client(
-                "s3",
-                region_name=DATA_AWS_REGION,
-                aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
-            )
-            results = get_data_from_bucket(s3, RESULTS_S3_BUCKET_NAME, job["batch_request_id"])
-            object_keys_to_delete = {"Objects": [{"Key": obj["Key"]} for obj in results]}
-            s3.delete_objects(Bucket=RESULTS_S3_BUCKET_NAME, Delete=object_keys_to_delete)
+        s3 = boto3.client(
+            "s3",
+            region_name=DATA_AWS_REGION,
+            aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
+        )
+        results = get_data_from_bucket(s3, RESULTS_S3_BUCKET_NAME, job["batch_request_id"])
+        object_keys_to_delete = {"Objects": [{"Key": obj["Key"]} for obj in results]}
+        s3.delete_objects(Bucket=RESULTS_S3_BUCKET_NAME, Delete=object_keys_to_delete)
 
         JobsPersistence.delete(job_id)
         return flask.make_response("The job has been successfully deleted.", 204)
