@@ -21,5 +21,7 @@ services:
       SQS_LOCAL_URL: http://sqs:9324
       SH_CLIENT_ID: "${TESTS_SH_CLIENT_ID}"
       SH_CLIENT_SECRET: "${TESTS_SH_CLIENT_SECRET}"
+      DATA_AWS_ACCESS_KEY_ID: "${DATA_AWS_ACCESS_KEY_ID}"
+      DATA_AWS_SECRET_ACCESS_KEY: "${DATA_AWS_SECRET_ACCESS_KEY}"
     command: bash -c "cd /tests/ && pytest -x"
 
