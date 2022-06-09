@@ -26,6 +26,7 @@ from openeoerrors import (
     TemporalExtentError,
 )
 
+from processing.utils import convert_degree_resolution_to_meters
 
 class Process:
     def __init__(self, process, width=None, height=None, access_token=None):
@@ -278,13 +279,21 @@ class Process:
             return self.DEFAULT_RESOLUTION
 
         list_of_resolutions = [
-            band_summary.get("openeo:gsd", {}).get("value", self.DEFAULT_RESOLUTION)
+            self.get_band_resolution(band_summary)
             for band_summary in bands_summaries
             if band_summary["name"] in selected_bands
         ]
         highest_x_resolution = min(list_of_resolutions, key=lambda x: x[0])[0]
         highest_y_resolution = min(list_of_resolutions, key=lambda x: x[1])[1]
         return (highest_x_resolution, highest_y_resolution)
+
+    def get_band_resolution(self, band_summary):
+        band_resolution_tuple =  band_summary.get("openeo:gsd", {})
+        resolution_unit = band_resolution_tuple.get("unit", 'm')
+        resolution = band_resolution_tuple.get("value", self.DEFAULT_RESOLUTION)
+        if resolution_unit == '°':
+            resolution = convert_degree_resolution_to_meters(resolution)
+        return resolution
 
     def get_appropriate_tiling_grid_and_resolution(self):
         global utm_tiling_grids

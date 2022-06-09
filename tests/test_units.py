@@ -426,6 +426,26 @@ def test_inject_variables_in_process_graph():
             },
             [202, 94],
         ),
+        (
+            {
+                "params": {
+                    "collection_id": "sentinel-3-l1b-slstr",
+                    "bands": ["F1"],
+                    "spatial_extent": {"west": 13.491039, "east": 13.527775, "north": 41.931656, "south": 41.909687},  # 3.04Km X 2.4Km bbox
+                }
+            },
+            [3, 2],
+        ),
+            (
+            {
+                "params": {
+                    "collection_id": "sentinel-3-l1b-slstr",
+                    "bands": ["S1"],
+             "spatial_extent": {"west": 13.491039, "east": 13.527775, "north": 41.931656, "south": 41.909687},  # 3.04Km X 2.4Km bbox
+                }
+            },
+            [6, 4],
+        ),
     ],
 )
 def test_dimensions(get_process_graph, fixture, expected_result):

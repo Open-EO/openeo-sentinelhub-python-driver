@@ -1,4 +1,5 @@
 from openeoerrors import UnsupportedGeometry
+import math
 
 
 def iterate(obj):
@@ -140,3 +141,12 @@ def is_geometry_collection(geojson):
         and geojson["type"] in "GeometryCollection"
     ):
         return all(is_polygon_or_multi_polygon(geometry) for geometry in geojson["geometries"])
+
+
+def degree_to_meter(degree):
+    return (6378137.0 * math.pi * degree) / 180
+
+def convert_degree_resolution_to_meters(degrees):
+    x=degrees[0]
+    y=degrees[1]
+    return [degree_to_meter(x), degree_to_meter(y)]
