@@ -1,0 +1,340 @@
+{
+  "type": "Collection",
+  "stac_version": "1.0.0",
+  "stac_extensions": [
+    "https://stac-extensions.github.io/datacube/v1.0.0/schema.json",
+    "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
+    "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
+    "https://stac-extensions.github.io/sar/v1.0.0/schema.json",
+    "https://stac-extensions.github.io/raster/v1.0.0/schema.json"
+  ],
+  "id": "sentinel-1-grd",
+  "datasource_type": "sentinel-1-grd",
+  "title": "Sentinel-1 GRD",
+  "description": "The [Sentinel - 1 radar imaging mission](https://sentinel.esa.int/web/sentinel/missions/sentinel-1) is composed of a constellation of two polar-orbiting satellites providing continous all-weather, day and night imagery for Land and Maritime Monitoring. C-band synthentic aperture radar imaging has the advantage of operating at wavelenghts that are not obstructed by clouds or lack of illumination and therefore can acquire data during day or night under all weather conditions. With 6 days repeat cycle on the entire world and daily acquistions of sea ice zones and Europe's major shipping routes, Sentinel-1 ensures reliable data availability to support emergency services and applications requiring time series observations. Sentinel-1 continues the retired ERS and ENVISAT missions. Level 1 GRD products are available since October 2014.",
+  "keywords": [
+    "sentinel hub",
+    "xcube",
+    "raster",
+    "systematic",
+    "satellite imagery",
+    "SAR",
+    "radar",
+    "backscattering",
+    "polarization",
+    "Copernicus",
+    "maritime monitoring",
+    "land monitoring",
+    "disaster response",
+    "open data",
+    "race challenges",
+    "sentinel"
+  ],
+  "license": "proprietary",
+  "providers": [
+    {
+      "name": "Sentinel Hub",
+      "description": "Global since October 2014",
+      "roles": ["processor"],
+      "url": "https://services.sentinel-hub.com"
+    },
+    {
+      "name": "Sentinel Hub",
+      "description": "Global since October 2014",
+      "roles": ["processor"],
+      "url": "https://eocloud.sentinel-hub.com"
+    },
+    {
+      "name": "Sentinel Hub",
+      "description": "Rolling policy of 48 months for Europe , Rolling policy of 12 months for World",
+      "roles": ["processor"],
+      "url": "https://shservices.mundiwebservices.com"
+    }
+  ],
+  "extent": {
+    "spatial": { "bbox": [[-180, -90, 180, 90]] },
+    "temporal": { "interval": [["2014-10-03T04:14:15Z", null]] }
+  },
+  "links": [
+    {
+      "href": "https://collections.eurodatacube.com/stac/sentinel-1-grd.json",
+      "rel": "self"
+    },
+    {
+      "href": "https://services.sentinel-hub.com/ogc/wmts/113184fa-263a-4bd8-a2d3-0c00fbcef8b5",
+      "rel": "wmts",
+      "wmts:layer": "SAR-URBAN",
+      "wmts:dimensions": { "warnings": true }
+    },
+    {
+      "href": "https://docs.sentinel-hub.com/api/latest/api/process/",
+      "rel": "about",
+      "type": "text/html",
+      "title": "Details about running Evalscripts"
+    },
+    {
+      "href": "https://custom-scripts.sentinel-hub.com/sentinel-1/urban_areas/script.js",
+      "rel": "processing-expression",
+      "type": "application/javascript",
+      "title": "Evalscript to generate SAR urban imagery",
+      "sentinelhub:layer_name": "SAR urban",
+      "sentinelhub:acquisition_mode": "IW",
+      "sentinelhub:polarization": "DV",
+      "sentinelhub:resolution": "HIGH",
+      "sentinelhub:mosaicking_order": "mostRecent",
+      "sentinelhub:upsampling": "BICUBIC"
+    },
+    {
+      "href": "https://custom-scripts.sentinel-hub.com/sentinel-1/sar_false_color_visualization-2/script.js",
+      "rel": "processing-expression",
+      "type": "application/javascript",
+      "title": "Evalscript to generate Enhanced visualization imagery",
+      "sentinelhub:layer_name": "Enhanced visualization",
+      "sentinelhub:acquisition_mode": "IW",
+      "sentinelhub:polarization": "DV",
+      "sentinelhub:resolution": "HIGH",
+      "sentinelhub:mosaicking_order": "mostRecent",
+      "sentinelhub:upsampling": "BICUBIC"
+    },
+    {
+      "href": "https://docs.sentinel-hub.com/api/latest/data/sentinel-1-grd/#attribution-and-use",
+      "rel": "license",
+      "title": "License",
+      "type": "text/html"
+    }
+  ],
+  "cube:dimensions": {
+    "x": {
+      "type": "spatial",
+      "axis": "x",
+      "extent": [-180, 180],
+      "reference_system": 4326
+    },
+    "y": {
+      "type": "spatial",
+      "axis": "y",
+      "extent": [-90, 90],
+      "reference_system": 4326
+    },
+    "t": {
+      "type": "temporal",
+      "extent": ["2014-10-03T04:14:15Z", null],
+      "step": null
+    },
+    "bands": { "type": "bands", "values": ["VV", "VH", "HH", "HV"] }
+  },
+  "sci:citation": "Modified Copernicus Sentinel data [Year]/Sentinel Hub",
+  "summaries": {
+    "constellation": ["sentinel-1"],
+    "instruments": ["c-sar"],
+    "sar:instrument_mode": ["SM", "IW", "EW", "WV"],
+    "sar:frequency_band": ["C"],
+    "sar:center_frequency": [5.405],
+    "sar:product_type": ["GRD"],
+    "sat:orbit_state": ["ascending", "descending"],
+    "sar:resolution": [10, 25, 40],
+    "platform": ["sentinel-1a", "sentinel-1b"],
+    "sar:polarizations": ["SH", "SV", "DH", "DV", "HH", "HV", "VV", "VH"],
+    "raster:bands": [
+      {
+        "name": "VV",
+        "description": "Single co-polarization, vertical transmit/vertical receive",
+        "openeo:gsd": {
+          "value": [
+            [0.00009259259, 0.00009259259],
+            [0.00023148147, 0.00023148147],
+            [0.00037037037, 0.00037037037]
+          ],
+          "unit": "°"
+        }
+      },
+      {
+        "name": "VH",
+        "description": "Dual-band cross-polarization, vertical transmit/horizontal receive",
+        "openeo:gsd": {
+          "value": [
+            [0.00009259259, 0.00009259259],
+            [0.00023148147, 0.00023148147],
+            [0.00037037037, 0.00037037037]
+          ],
+          "unit": "°"
+        }
+      },
+      {
+        "name": "HV",
+        "description": "Dual-band cross-polarization, horizontal transmit/vertical receive",
+        "openeo:gsd": {
+          "value": [
+            [0.00009259259, 0.00009259259],
+            [0.00023148147, 0.00023148147],
+            [0.00037037037, 0.00037037037]
+          ],
+          "unit": "°"
+        }
+      },
+      {
+        "name": "HH",
+        "description": "Single co-polarization, horizontal transmit/horizontal receive",
+        "openeo:gsd": {
+          "value": [
+            [0.00009259259, 0.00009259259],
+            [0.00023148147, 0.00023148147],
+            [0.00037037037, 0.00037037037]
+          ],
+          "unit": "°"
+        }
+      }
+    ],
+    "crs": [
+      "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+      "http://www.opengis.net/def/crs/EPSG/0/2154",
+      "http://www.opengis.net/def/crs/EPSG/0/2180",
+      "http://www.opengis.net/def/crs/EPSG/0/2193",
+      "http://www.opengis.net/def/crs/EPSG/0/3003",
+      "http://www.opengis.net/def/crs/EPSG/0/3004",
+      "http://www.opengis.net/def/crs/EPSG/0/3031",
+      "http://www.opengis.net/def/crs/EPSG/0/3035",
+      "http://www.opengis.net/def/crs/EPSG/0/4326",
+      "http://www.opengis.net/def/crs/EPSG/0/4346",
+      "http://www.opengis.net/def/crs/EPSG/0/4416",
+      "http://www.opengis.net/def/crs/EPSG/0/4765",
+      "http://www.opengis.net/def/crs/EPSG/0/4794",
+      "http://www.opengis.net/def/crs/EPSG/0/4844",
+      "http://www.opengis.net/def/crs/EPSG/0/4857",
+      "http://www.opengis.net/def/crs/EPSG/0/3912",
+      "http://www.opengis.net/def/crs/EPSG/0/3995",
+      "http://www.opengis.net/def/crs/EPSG/0/4026",
+      "http://www.opengis.net/def/crs/EPSG/0/5514",
+      "http://www.opengis.net/def/crs/EPSG/0/28992",
+      "http://www.opengis.net/def/crs/EPSG/0/32601",
+      "http://www.opengis.net/def/crs/EPSG/0/32602",
+      "http://www.opengis.net/def/crs/EPSG/0/32603",
+      "http://www.opengis.net/def/crs/EPSG/0/32604",
+      "http://www.opengis.net/def/crs/EPSG/0/32605",
+      "http://www.opengis.net/def/crs/EPSG/0/32606",
+      "http://www.opengis.net/def/crs/EPSG/0/32607",
+      "http://www.opengis.net/def/crs/EPSG/0/32608",
+      "http://www.opengis.net/def/crs/EPSG/0/32609",
+      "http://www.opengis.net/def/crs/EPSG/0/32610",
+      "http://www.opengis.net/def/crs/EPSG/0/32611",
+      "http://www.opengis.net/def/crs/EPSG/0/32612",
+      "http://www.opengis.net/def/crs/EPSG/0/32613",
+      "http://www.opengis.net/def/crs/EPSG/0/32614",
+      "http://www.opengis.net/def/crs/EPSG/0/32615",
+      "http://www.opengis.net/def/crs/EPSG/0/32616",
+      "http://www.opengis.net/def/crs/EPSG/0/32617",
+      "http://www.opengis.net/def/crs/EPSG/0/32618",
+      "http://www.opengis.net/def/crs/EPSG/0/32619",
+      "http://www.opengis.net/def/crs/EPSG/0/32620",
+      "http://www.opengis.net/def/crs/EPSG/0/32621",
+      "http://www.opengis.net/def/crs/EPSG/0/32622",
+      "http://www.opengis.net/def/crs/EPSG/0/32623",
+      "http://www.opengis.net/def/crs/EPSG/0/32624",
+      "http://www.opengis.net/def/crs/EPSG/0/32625",
+      "http://www.opengis.net/def/crs/EPSG/0/32626",
+      "http://www.opengis.net/def/crs/EPSG/0/32627",
+      "http://www.opengis.net/def/crs/EPSG/0/32628",
+      "http://www.opengis.net/def/crs/EPSG/0/32629",
+      "http://www.opengis.net/def/crs/EPSG/0/32630",
+      "http://www.opengis.net/def/crs/EPSG/0/32631",
+      "http://www.opengis.net/def/crs/EPSG/0/32632",
+      "http://www.opengis.net/def/crs/EPSG/0/32633",
+      "http://www.opengis.net/def/crs/EPSG/0/32634",
+      "http://www.opengis.net/def/crs/EPSG/0/32635",
+      "http://www.opengis.net/def/crs/EPSG/0/32636",
+      "http://www.opengis.net/def/crs/EPSG/0/32637",
+      "http://www.opengis.net/def/crs/EPSG/0/32638",
+      "http://www.opengis.net/def/crs/EPSG/0/32639",
+      "http://www.opengis.net/def/crs/EPSG/0/32640",
+      "http://www.opengis.net/def/crs/EPSG/0/32641",
+      "http://www.opengis.net/def/crs/EPSG/0/32642",
+      "http://www.opengis.net/def/crs/EPSG/0/32643",
+      "http://www.opengis.net/def/crs/EPSG/0/32644",
+      "http://www.opengis.net/def/crs/EPSG/0/32645",
+      "http://www.opengis.net/def/crs/EPSG/0/32646",
+      "http://www.opengis.net/def/crs/EPSG/0/32647",
+      "http://www.opengis.net/def/crs/EPSG/0/32648",
+      "http://www.opengis.net/def/crs/EPSG/0/32649",
+      "http://www.opengis.net/def/crs/EPSG/0/32650",
+      "http://www.opengis.net/def/crs/EPSG/0/32651",
+      "http://www.opengis.net/def/crs/EPSG/0/32652",
+      "http://www.opengis.net/def/crs/EPSG/0/32653",
+      "http://www.opengis.net/def/crs/EPSG/0/32654",
+      "http://www.opengis.net/def/crs/EPSG/0/32655",
+      "http://www.opengis.net/def/crs/EPSG/0/32656",
+      "http://www.opengis.net/def/crs/EPSG/0/32657",
+      "http://www.opengis.net/def/crs/EPSG/0/32658",
+      "http://www.opengis.net/def/crs/EPSG/0/32659",
+      "http://www.opengis.net/def/crs/EPSG/0/32660",
+      "http://www.opengis.net/def/crs/EPSG/0/32701",
+      "http://www.opengis.net/def/crs/EPSG/0/32702",
+      "http://www.opengis.net/def/crs/EPSG/0/32703",
+      "http://www.opengis.net/def/crs/EPSG/0/32704",
+      "http://www.opengis.net/def/crs/EPSG/0/32705",
+      "http://www.opengis.net/def/crs/EPSG/0/32706",
+      "http://www.opengis.net/def/crs/EPSG/0/32707",
+      "http://www.opengis.net/def/crs/EPSG/0/32708",
+      "http://www.opengis.net/def/crs/EPSG/0/32709",
+      "http://www.opengis.net/def/crs/EPSG/0/32710",
+      "http://www.opengis.net/def/crs/EPSG/0/32711",
+      "http://www.opengis.net/def/crs/EPSG/0/32712",
+      "http://www.opengis.net/def/crs/EPSG/0/32713",
+      "http://www.opengis.net/def/crs/EPSG/0/32714",
+      "http://www.opengis.net/def/crs/EPSG/0/32715",
+      "http://www.opengis.net/def/crs/EPSG/0/32716",
+      "http://www.opengis.net/def/crs/EPSG/0/32717",
+      "http://www.opengis.net/def/crs/EPSG/0/32718",
+      "http://www.opengis.net/def/crs/EPSG/0/32719",
+      "http://www.opengis.net/def/crs/EPSG/0/32720",
+      "http://www.opengis.net/def/crs/EPSG/0/32721",
+      "http://www.opengis.net/def/crs/EPSG/0/32722",
+      "http://www.opengis.net/def/crs/EPSG/0/32723",
+      "http://www.opengis.net/def/crs/EPSG/0/32724",
+      "http://www.opengis.net/def/crs/EPSG/0/32725",
+      "http://www.opengis.net/def/crs/EPSG/0/32726",
+      "http://www.opengis.net/def/crs/EPSG/0/32727",
+      "http://www.opengis.net/def/crs/EPSG/0/32728",
+      "http://www.opengis.net/def/crs/EPSG/0/32729",
+      "http://www.opengis.net/def/crs/EPSG/0/32730",
+      "http://www.opengis.net/def/crs/EPSG/0/32731",
+      "http://www.opengis.net/def/crs/EPSG/0/32732",
+      "http://www.opengis.net/def/crs/EPSG/0/32733",
+      "http://www.opengis.net/def/crs/EPSG/0/32734",
+      "http://www.opengis.net/def/crs/EPSG/0/32735",
+      "http://www.opengis.net/def/crs/EPSG/0/32736",
+      "http://www.opengis.net/def/crs/EPSG/0/32737",
+      "http://www.opengis.net/def/crs/EPSG/0/32738",
+      "http://www.opengis.net/def/crs/EPSG/0/32739",
+      "http://www.opengis.net/def/crs/EPSG/0/32740",
+      "http://www.opengis.net/def/crs/EPSG/0/32741",
+      "http://www.opengis.net/def/crs/EPSG/0/32742",
+      "http://www.opengis.net/def/crs/EPSG/0/32743",
+      "http://www.opengis.net/def/crs/EPSG/0/32744",
+      "http://www.opengis.net/def/crs/EPSG/0/32745",
+      "http://www.opengis.net/def/crs/EPSG/0/32746",
+      "http://www.opengis.net/def/crs/EPSG/0/32746",
+      "http://www.opengis.net/def/crs/EPSG/0/32748",
+      "http://www.opengis.net/def/crs/EPSG/0/32749",
+      "http://www.opengis.net/def/crs/EPSG/0/32750",
+      "http://www.opengis.net/def/crs/EPSG/0/32751",
+      "http://www.opengis.net/def/crs/EPSG/0/32752",
+      "http://www.opengis.net/def/crs/EPSG/0/32753",
+      "http://www.opengis.net/def/crs/EPSG/0/32754",
+      "http://www.opengis.net/def/crs/EPSG/0/32755",
+      "http://www.opengis.net/def/crs/EPSG/0/32756",
+      "http://www.opengis.net/def/crs/EPSG/0/32757",
+      "http://www.opengis.net/def/crs/EPSG/0/32758",
+      "http://www.opengis.net/def/crs/EPSG/0/32759",
+      "http://www.opengis.net/def/crs/EPSG/0/32760",
+      "http://www.opengis.net/def/crs/SR-ORG/0/98739"
+    ]
+  },
+  "assets": {
+    "thumbnail": {
+      "href": "https://collections.eurodatacube.com/sentinel-1-grd/sentinel-1-grd.png",
+      "title": "Thumbnail",
+      "type": "image/png",
+      "roles": ["thumbnail"]
+    }
+  }
+}

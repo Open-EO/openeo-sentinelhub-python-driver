@@ -457,6 +457,41 @@ def test_inject_variables_in_process_graph():
             },
             [6, 4],
         ),
+        (
+            {
+                "params": {
+                    "collection_id": "sentinel-1-grd",
+                    "bands": ["VV"],
+                    "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                }
+            },
+            [3361, 15159],
+        ),
+        (
+            {
+                "params": {
+                    "collection_id": "mapzen-dem",
+                    "bands": ["DEM"],
+                    "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                }
+            },
+            [1120, 5053],
+        ),
+                (
+            {
+                "params": {
+                    "collection_id": "mapzen-dem",
+                    "bands": ["DEM"],
+                    "spatial_extent": {
+                        "west": 13.491039,
+                        "east": 13.527775,
+                        "north": 41.931656,
+                        "south": 41.909687,
+                    },  # 3.04Km X 2.4Km bbox
+                }
+            },
+            [100, 77],
+        ),
     ],
 )
 def test_dimensions(get_process_graph, fixture, expected_result):
