@@ -26,9 +26,9 @@ from openeoerrors import (
     TemporalExtentError,
 )
 
-from processing.utils import convert_degree_resolution_to_meters
+from openeo_collections.const import non_optical_collections
 
-non_optical_collections = ["sentinel-1-grd", "dem"]
+from processing.utils import convert_degree_resolution_to_meters
 
 
 class Process:
