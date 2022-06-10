@@ -49,6 +49,7 @@ def test_collections(get_process_graph, collection_id):
                 "S2L1C",
                 "mapzen-dem",
                 "sentinel-3-l1b-slstr",
+                'sentinel-1-grd'
             ],
         ),
     ],
