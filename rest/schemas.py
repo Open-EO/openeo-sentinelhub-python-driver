@@ -6,25 +6,30 @@ import os
 import traceback
 
 
-from marshmallow import Schema, fields, validates, ValidationError, validate
+from marshmallow import Schema, fields, validates, ValidationError, validate, validates_schema
 from openeo_pg_parser.validate import validate_process_graph
 from openeo_collections.collections import collections
 from processing.processing import check_process_graph_conversion_validity
+from dynamodb.utils import get_all_user_defined_processes
 from const import global_parameters_xyz
+from utils import get_all_process_definitions, get_parameter_defs_dict, enrich_user_defined_processes_with_parameters
 
 
 def validate_graph_with_known_processes(graph, parameters=None):
     path_to_current_file = os.path.realpath(__file__)
     current_directory = os.path.dirname(path_to_current_file)
     collections_src = collections.get_collections()
-    path_to_process_definitions = os.path.join(current_directory, "process_definitions")
+    process_definitions = get_all_process_definitions()
+    user_defined_processes = get_all_user_defined_processes()
+    user_defined_processes = enrich_user_defined_processes_with_parameters(user_defined_processes)
+    process_definitions += user_defined_processes
 
     try:
         # validate_graph() changes process graph input, so we need to pass a cloned object:
         process = {"process_graph": copy.deepcopy(graph)}
         # signature of validate_process_graph is changed in latest version on github - return values are switched
         pg_err_msgs, pg_valid = validate_process_graph(
-            process, collections_src, path_to_process_definitions, parameters=parameters
+            process, collections_src, process_definitions, parameters=parameters
         )
         if not pg_valid:
             raise ValidationError("Invalid process graph: " + "".join(pg_err_msgs))
@@ -45,8 +50,8 @@ def validate_graph_conversion(graph):
         raise ValidationError("Unable to convert process graph to evalscript: " + str(e))
 
 
-def validate_graph(graph):
-    validate_graph_with_known_processes(graph)
+def validate_graph(graph, parameters=None):
+    validate_graph_with_known_processes(graph, parameters=parameters)
     validate_graph_conversion(graph)
 
 
@@ -69,9 +74,10 @@ class PutProcessGraphSchema(Schema):
     examples = fields.List(fields.Dict(allow_none=True), allow_none=True)
     links = fields.List(fields.Dict(allow_none=True), allow_none=True)
 
-    @validates("process_graph")
-    def validate_process_graph(self, graph):
-        validate_graph(graph)
+    @validates_schema()
+    def validate_object(self, data, **args):
+        parameters = get_parameter_defs_dict(data["process_graph"], data.get("parameters"))
+        validate_graph(data["process_graph"], parameters=parameters)
 
 
 class PatchProcessGraphsSchema(Schema):

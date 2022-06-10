@@ -249,8 +249,8 @@ class ProcessGraphsPersistence(Persistence):
             item["description"] = {"S": str(data.get("description"))}
         if data.get("categories"):
             item["categories"] = {"L": data.get("categories")}
-        if data.get("parameters"):
-            item["parameters"] = {"L": data.get("parameters")}
+        if "parameters" in data:
+            item["parameters"] = {"S": json.dumps(data["parameters"])}
         if data.get("returns"):
             item["returns"] = {"M": data.get("returns")}
         if data.get("deprecated") is not None:
@@ -269,6 +269,19 @@ class ProcessGraphsPersistence(Persistence):
             Item=item,
         )
         return response
+
+    @staticmethod
+    def prepare_loaded_item(item):
+        if item is None:
+            return None
+
+        for key, value in item.items():
+            data_type = list(value)[0]
+            if key == "parameters" or key == "process_graph":
+                item[key] = json.loads(value[data_type])
+            else:
+                item[key] = value[data_type]
+        return item
 
 
 class ServicesPersistence(Persistence):

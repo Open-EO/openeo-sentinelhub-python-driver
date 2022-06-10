@@ -11,7 +11,7 @@ import traceback
 import requests
 import boto3
 import flask
-from flask import Flask, url_for, jsonify
+from flask import Flask, url_for, jsonify, g
 from flask_cors import CORS
 import beeline
 from beeline.middleware.flask import HoneyMiddleware
@@ -61,7 +61,9 @@ from openeoerrors import (
     ProcessGraphNotFound,
     SHOpenEOError,
 )
+from authentication.user import User
 from const import openEOBatchJobStatus, optional_process_parameters
+from utils import get_all_process_definitions
 
 from openeo_collections.collections import collections
 
@@ -79,6 +81,14 @@ cors = CORS(
     supports_credentials=True,
     max_age=3600,
 )
+
+
+def get_all_user_defined_processes():
+    all_user_defined_processes = dict()
+    for record in ProcessGraphsPersistence.query_by_user_id(g.user.user_id):
+        all_user_defined_processes[record["id"]] = record["process_graph"]
+    return all_user_defined_processes
+
 
 # application performance monitoring:
 HONEYCOMP_APM_API_KEY = os.environ.get("HONEYCOMP_APM_API_KEY")
@@ -305,7 +315,7 @@ def api_process_graph(process_graph_id, user):
 
         process_item = {
             "id": record["id"],
-            "process_graph": json.loads(record["process_graph"]),
+            "process_graph": record["process_graph"],
         }
         for attr in optional_process_parameters:
             process_item[attr] = record.get(attr)
@@ -374,12 +384,7 @@ def api_result():
                 jsonify(id=None, code=error.error_code, message=error.message, links=[]), error.http_code
             )
 
-        try:
-            data, mime_type = process_data_synchronously(job_data["process"])
-        except (OpenEOProcessError, OpenEOError) as error:
-            raise
-        except Exception as error:
-            raise Internal(str(error))
+        data, mime_type = process_data_synchronously(job_data["process"])
 
         response = flask.make_response(data, 200)
         response.mime_type = mime_type
@@ -734,6 +739,9 @@ def api_execute_service(service_id, zoom, tx, ty):
     if record is None or record["service_type"].lower() != "xyz":
         raise ServiceNotFound(service_id)
 
+    # XYZ does not require authentication, however we need user_id to support user-defined processes
+    g.user = User(user_id=record["user_id"])
+
     # https://www.maptiler.com/google-maps-coordinates-tile-bounds-projection/
     tile_size = (json.loads(record.get("configuration")) or {}).get("tile_size", 256)
     ty = (2 ** zoom - 1) - ty  # convert from Google Tile XYZ to TMS
@@ -749,12 +757,7 @@ def api_execute_service(service_id, zoom, tx, ty):
 
     inject_variables_in_process_graph(process_info["process_graph"], variables)
 
-    try:
-        data, mime_type = process_data_synchronously(process_info, width=tile_size, height=tile_size)
-    except (OpenEOProcessError, OpenEOError) as error:
-        raise
-    except Exception as error:
-        raise Internal(str(error))
+    data, mime_type = process_data_synchronously(process_info, width=tile_size, height=tile_size)
 
     response = flask.make_response(data, 200)
     response.mimetype = mime_type
@@ -763,16 +766,7 @@ def api_execute_service(service_id, zoom, tx, ty):
 
 @app.route("/processes", methods=["GET"])
 def available_processes():
-    files = []
-    processes = []
-
-    for supported_process in list_supported_processes():
-        files.extend(glob.glob(f"process_definitions/{supported_process}.json"))
-
-    for file in files:
-        with open(file) as f:
-            processes.append(json.load(f))
-
+    processes = get_all_process_definitions()
     processes.sort(key=lambda process: process["id"])
 
     return flask.make_response(
