@@ -6,10 +6,12 @@ from sentinelhub import BatchRequestStatus, BatchUserAction, SentinelHubBatch
 
 from processing.process import Process
 from processing.sentinel_hub import SentinelHub
+from dynamodb.utils import get_user_defined_processes_graphs
 
 
 def check_process_graph_conversion_validity(process_graph):
-    results = convert_from_process_graph(process_graph)
+    user_defined_processes_graphs = get_user_defined_processes_graphs()
+    results = convert_from_process_graph(process_graph, user_defined_processes=user_defined_processes_graphs)
     return results[0]["invalid_node_id"]
 
 
@@ -19,7 +21,14 @@ def get_sh_access_token():
 
 
 def new_process(process, width=None, height=None):
-    return Process(process, width=width, height=height, access_token=get_sh_access_token())
+    user_defined_processes_graphs = get_user_defined_processes_graphs()
+    return Process(
+        process,
+        width=width,
+        height=height,
+        access_token=get_sh_access_token(),
+        user_defined_processes=user_defined_processes_graphs,
+    )
 
 
 def new_sentinel_hub():

@@ -30,10 +30,11 @@ from processing.utils import convert_degree_resolution_to_meters
 
 non_optical_collections = ['sentinel-1-grd', 'dem']
 class Process:
-    def __init__(self, process, width=None, height=None, access_token=None):
+    def __init__(self, process, width=None, height=None, access_token=None, user_defined_processes={}):
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_RESOLUTION = (10, 10)
         self.MAXIMUM_SYNC_FILESIZE_BYTES = 5000000
+        self.user_defined_processes = user_defined_processes
         self.sentinel_hub = SentinelHub(access_token=access_token)
 
         self.process_graph = process["process_graph"]
@@ -52,7 +53,10 @@ class Process:
 
     def get_evalscript(self):
         results = convert_from_process_graph(
-            self.process_graph, sample_type=self.sample_type.value, encode_result=False
+            self.process_graph,
+            sample_type=self.sample_type.value,
+            user_defined_processes=self.user_defined_processes,
+            encode_result=False,
         )
         evalscript = results[0]["evalscript"]
 

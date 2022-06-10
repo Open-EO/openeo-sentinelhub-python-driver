@@ -11,7 +11,7 @@ import traceback
 import requests
 import boto3
 import flask
-from flask import Flask, url_for, jsonify
+from flask import Flask, url_for, jsonify, g
 from flask_cors import CORS
 import beeline
 from beeline.middleware.flask import HoneyMiddleware
@@ -20,6 +20,7 @@ from pg_to_evalscript import list_supported_processes
 from werkzeug.exceptions import HTTPException
 
 import globalmaptiles
+from utils import get_data_from_bucket
 from schemas import (
     PutProcessGraphSchema,
     PatchProcessGraphsSchema,
@@ -60,7 +61,9 @@ from openeoerrors import (
     ProcessGraphNotFound,
     SHOpenEOError,
 )
+from authentication.user import User
 from const import openEOBatchJobStatus, optional_process_parameters
+from utils import get_all_process_definitions
 
 from openeo_collections.collections import collections
 
@@ -79,6 +82,14 @@ cors = CORS(
     max_age=3600,
 )
 
+
+def get_all_user_defined_processes():
+    all_user_defined_processes = dict()
+    for record in ProcessGraphsPersistence.query_by_user_id(g.user.user_id):
+        all_user_defined_processes[record["id"]] = record["process_graph"]
+    return all_user_defined_processes
+
+
 # application performance monitoring:
 HONEYCOMP_APM_API_KEY = os.environ.get("HONEYCOMP_APM_API_KEY")
 if HONEYCOMP_APM_API_KEY:
@@ -94,11 +105,10 @@ REQUEST_TIMEOUT = 28
 
 FAKE_AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
 FAKE_AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", FAKE_AWS_ACCESS_KEY_ID)
-AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", FAKE_AWS_SECRET_ACCESS_KEY)
-DATA_AWS_ACCESS_KEY_ID = os.environ.get("DATA_AWS_ACCESS_KEY_ID")
-DATA_AWS_SECRET_ACCESS_KEY = os.environ.get("DATA_AWS_SECRET_ACCESS_KEY")
-S3_LOCAL_URL = os.environ.get("DATA_AWS_S3_ENDPOINT_URL")
+
+DATA_AWS_ACCESS_KEY_ID = os.environ.get("DATA_AWS_ACCESS_KEY_ID", FAKE_AWS_ACCESS_KEY_ID)
+DATA_AWS_SECRET_ACCESS_KEY = os.environ.get("DATA_AWS_SECRET_ACCESS_KEY", FAKE_AWS_SECRET_ACCESS_KEY)
+DATA_AWS_REGION = os.environ.get("DATA_AWS_REGION", "eu-central-1")
 
 
 STAC_VERSION = "0.9.0"
@@ -305,7 +315,7 @@ def api_process_graph(process_graph_id, user):
 
         process_item = {
             "id": record["id"],
-            "process_graph": json.loads(record["process_graph"]),
+            "process_graph": record["process_graph"],
         }
         for attr in optional_process_parameters:
             process_item[attr] = record.get(attr)
@@ -374,12 +384,7 @@ def api_result():
                 jsonify(id=None, code=error.error_code, message=error.message, links=[]), error.http_code
             )
 
-        try:
-            data, mime_type = process_data_synchronously(job_data["process"])
-        except (OpenEOProcessError, OpenEOError) as error:
-            raise
-        except Exception as error:
-            raise Internal(str(error))
+        data, mime_type = process_data_synchronously(job_data["process"])
 
         response = flask.make_response(data, 200)
         response.mime_type = mime_type
@@ -500,6 +505,17 @@ def api_batch_job(job_id, user):
         return flask.make_response("Changes to the job applied successfully.", 204)
 
     elif flask.request.method == "DELETE":
+        batch_request_info = get_batch_request_info(job["batch_request_id"])
+        s3 = boto3.client(
+            "s3",
+            region_name=DATA_AWS_REGION,
+            aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
+        )
+        results = get_data_from_bucket(s3, RESULTS_S3_BUCKET_NAME, job["batch_request_id"])
+        object_keys_to_delete = {"Objects": [{"Key": obj["Key"]} for obj in results]}
+        s3.delete_objects(Bucket=RESULTS_S3_BUCKET_NAME, Delete=object_keys_to_delete)
+
         JobsPersistence.delete(job_id)
         return flask.make_response("The job has been successfully deleted.", 204)
 
@@ -536,27 +552,12 @@ def add_job_to_queue(job_id, user):
 
         s3 = boto3.client(
             "s3",
-            region_name="eu-central-1",
+            region_name=DATA_AWS_REGION,
             aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
             aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
         )
 
-        continuation_token = None
-        results = []
-
-        while True:
-            if continuation_token:
-                log(INFO, f"Fetch from bucket")
-                response = s3.list_objects_v2(
-                    Bucket=RESULTS_S3_BUCKET_NAME, Prefix=job["batch_request_id"], ContinuationToken=continuation_token
-                )
-            else:
-                response = s3.list_objects_v2(Bucket=RESULTS_S3_BUCKET_NAME, Prefix=job["batch_request_id"])
-            results.extend(response["Contents"])
-            if response["IsTruncated"]:
-                continuation_token = response["NextContinuationToken"]
-            else:
-                break
+        results = get_data_from_bucket(s3, RESULTS_S3_BUCKET_NAME, job["batch_request_id"])
 
         assets = {}
         log(INFO, f"Fetched all results: {str(results)}")
@@ -738,6 +739,9 @@ def api_execute_service(service_id, zoom, tx, ty):
     if record is None or record["service_type"].lower() != "xyz":
         raise ServiceNotFound(service_id)
 
+    # XYZ does not require authentication, however we need user_id to support user-defined processes
+    g.user = User(user_id=record["user_id"])
+
     # https://www.maptiler.com/google-maps-coordinates-tile-bounds-projection/
     tile_size = (json.loads(record.get("configuration")) or {}).get("tile_size", 256)
     ty = (2 ** zoom - 1) - ty  # convert from Google Tile XYZ to TMS
@@ -753,12 +757,7 @@ def api_execute_service(service_id, zoom, tx, ty):
 
     inject_variables_in_process_graph(process_info["process_graph"], variables)
 
-    try:
-        data, mime_type = process_data_synchronously(process_info, width=tile_size, height=tile_size)
-    except (OpenEOProcessError, OpenEOError) as error:
-        raise
-    except Exception as error:
-        raise Internal(str(error))
+    data, mime_type = process_data_synchronously(process_info, width=tile_size, height=tile_size)
 
     response = flask.make_response(data, 200)
     response.mimetype = mime_type
@@ -767,16 +766,7 @@ def api_execute_service(service_id, zoom, tx, ty):
 
 @app.route("/processes", methods=["GET"])
 def available_processes():
-    files = []
-    processes = []
-
-    for supported_process in list_supported_processes():
-        files.extend(glob.glob(f"process_definitions/{supported_process}.json"))
-
-    for file in files:
-        with open(file) as f:
-            processes.append(json.load(f))
-
+    processes = get_all_process_definitions()
     processes.sort(key=lambda process: process["id"])
 
     return flask.make_response(
