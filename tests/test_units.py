@@ -471,6 +471,21 @@ def test_inject_variables_in_process_graph():
         (
             {
                 "params": {
+                    "collection_id": "sentinel-1-grd",
+                    "bands": ["VV"],
+                    "spatial_extent": {
+                        "west": 11.207085,
+                        "east": 22.259331,
+                        "north": 43.406606,
+                        "south": 38.326104,
+                    },  # 892Km X 565Km bbox
+                }
+            },
+            [89203, 56544],
+        ),
+        (
+            {
+                "params": {
                     "collection_id": "mapzen-dem",
                     "bands": ["DEM"],
                     "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
