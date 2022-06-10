@@ -20,6 +20,7 @@ from pg_to_evalscript import list_supported_processes
 from werkzeug.exceptions import HTTPException
 
 import globalmaptiles
+from utils import get_data_from_bucket
 from schemas import (
     PutProcessGraphSchema,
     PatchProcessGraphsSchema,
@@ -104,11 +105,10 @@ REQUEST_TIMEOUT = 28
 
 FAKE_AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
 FAKE_AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", FAKE_AWS_ACCESS_KEY_ID)
-AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", FAKE_AWS_SECRET_ACCESS_KEY)
-DATA_AWS_ACCESS_KEY_ID = os.environ.get("DATA_AWS_ACCESS_KEY_ID")
-DATA_AWS_SECRET_ACCESS_KEY = os.environ.get("DATA_AWS_SECRET_ACCESS_KEY")
-S3_LOCAL_URL = os.environ.get("DATA_AWS_S3_ENDPOINT_URL")
+
+DATA_AWS_ACCESS_KEY_ID = os.environ.get("DATA_AWS_ACCESS_KEY_ID", FAKE_AWS_ACCESS_KEY_ID)
+DATA_AWS_SECRET_ACCESS_KEY = os.environ.get("DATA_AWS_SECRET_ACCESS_KEY", FAKE_AWS_SECRET_ACCESS_KEY)
+DATA_AWS_REGION = os.environ.get("DATA_AWS_REGION", "eu-central-1")
 
 
 STAC_VERSION = "0.9.0"
@@ -505,6 +505,17 @@ def api_batch_job(job_id, user):
         return flask.make_response("Changes to the job applied successfully.", 204)
 
     elif flask.request.method == "DELETE":
+        batch_request_info = get_batch_request_info(job["batch_request_id"])
+        s3 = boto3.client(
+            "s3",
+            region_name=DATA_AWS_REGION,
+            aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
+        )
+        results = get_data_from_bucket(s3, RESULTS_S3_BUCKET_NAME, job["batch_request_id"])
+        object_keys_to_delete = {"Objects": [{"Key": obj["Key"]} for obj in results]}
+        s3.delete_objects(Bucket=RESULTS_S3_BUCKET_NAME, Delete=object_keys_to_delete)
+
         JobsPersistence.delete(job_id)
         return flask.make_response("The job has been successfully deleted.", 204)
 
@@ -541,27 +552,12 @@ def add_job_to_queue(job_id, user):
 
         s3 = boto3.client(
             "s3",
-            region_name="eu-central-1",
+            region_name=DATA_AWS_REGION,
             aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
             aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
         )
 
-        continuation_token = None
-        results = []
-
-        while True:
-            if continuation_token:
-                log(INFO, f"Fetch from bucket")
-                response = s3.list_objects_v2(
-                    Bucket=RESULTS_S3_BUCKET_NAME, Prefix=job["batch_request_id"], ContinuationToken=continuation_token
-                )
-            else:
-                response = s3.list_objects_v2(Bucket=RESULTS_S3_BUCKET_NAME, Prefix=job["batch_request_id"])
-            results.extend(response["Contents"])
-            if response["IsTruncated"]:
-                continuation_token = response["NextContinuationToken"]
-            else:
-                break
+        results = get_data_from_bucket(s3, RESULTS_S3_BUCKET_NAME, job["batch_request_id"])
 
         assets = {}
         log(INFO, f"Fetched all results: {str(results)}")
