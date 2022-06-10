@@ -477,7 +477,7 @@ def test_inject_variables_in_process_graph():
             },
             [1120, 5053],
         ),
-                (
+        (
             {
                 "params": {
                     "collection_id": "mapzen-dem",

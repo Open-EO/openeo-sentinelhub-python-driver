@@ -28,7 +28,9 @@ from openeoerrors import (
 
 from processing.utils import convert_degree_resolution_to_meters
 
-non_optical_collections = ['sentinel-1-grd', 'dem']
+non_optical_collections = ["sentinel-1-grd", "dem"]
+
+
 class Process:
     def __init__(self, process, width=None, height=None, access_token=None, user_defined_processes={}):
         self.DEFAULT_EPSG_CODE = 4326
@@ -280,8 +282,7 @@ class Process:
         if selected_bands is None:
             selected_bands = collection["cube:dimensions"]["bands"]["values"]
 
-
-        bands_summaries = collection.get("summaries", {}).get("eo:bands" if is_optical_collection  else "raster:bands")
+        bands_summaries = collection.get("summaries", {}).get("eo:bands" if is_optical_collection else "raster:bands")
         if bands_summaries is None:
             return self.DEFAULT_RESOLUTION
 
@@ -302,16 +303,15 @@ class Process:
         # Some bands can have multiple resolutions, like sentinel-1-gdr where we have high and medium https://docs.sentinel-hub.com/api/latest/data/sentinel-1-grd/#resolution-pixel-spacing
         # By default we will use highest resolution
         if isinstance(resolution[0], list):
-            # Get coord list where x,y resolution is the highest. 
+            # Get coord list where x,y resolution is the highest.
             # We can assume that x and y are not always equal, so we sum x and y and get the list with the lowest sum
             highest_resolution = min(resolution, key=lambda coord: coord[0] + coord[1])
-            resolution = highest_resolution   
+            resolution = highest_resolution
 
         if resolution_unit == "°":
-            # assumes that wgs84 is used  
+            # assumes that wgs84 is used
             resolution = convert_degree_resolution_to_meters(resolution)
 
-          
         return resolution
 
     def get_appropriate_tiling_grid_and_resolution(self):
