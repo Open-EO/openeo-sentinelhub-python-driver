@@ -500,7 +500,6 @@ def api_batch_job(job_id, user):
         return flask.make_response("Changes to the job applied successfully.", 204)
 
     elif flask.request.method == "DELETE":
-        batch_request_info = get_batch_request_info(job["batch_request_id"])
         s3 = boto3.client(
             "s3",
             region_name=DATA_AWS_REGION,
