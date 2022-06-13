@@ -144,6 +144,56 @@ def get_process_graph():
     return wrapped
 
 
+@pytest.fixture
+def fahrenheit_to_celsius_process():
+    process_graph = {
+        "subtract1": {"process_id": "subtract", "arguments": {"x": {"from_parameter": "f"}, "y": 32}},
+        "divide1": {
+            "process_id": "divide",
+            "arguments": {"x": {"from_node": "subtract1"}, "y": 1.8},
+            "result": True,
+        },
+    }
+    parameters = [{"name": "f", "description": "Temperature in fahrenheit.", "schema": {"type": "number"}}]
+    return process_graph, parameters
+
+
+@pytest.fixture
+def process_graph_with_udp():
+    return {
+        "loadco1": {
+            "process_id": "load_collection",
+            "arguments": {
+                "id": "sentinel-2-l1c",
+                "spatial_extent": {"west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347},
+                "temporal_extent": ["2019-08-03", "2019-08-05"],
+                "bands": ["B01"],
+            },
+        },
+        "apply": {
+            "process_id": "apply",
+            "arguments": {
+                "data": {"from_node": "loadco1"},
+                "process": {
+                    "process_graph": {
+                        "converttocelsius": {
+                            "process_id": "fahrenheit_to_celsius",
+                            "arguments": {"f": {"from_parameter": "x"}},
+                            "result": True,
+                        }
+                    }
+                },
+            },
+            "result": True,
+        },
+        "result1": {
+            "process_id": "save_result",
+            "arguments": {"data": {"from_node": "apply"}, "format": "jpeg"},
+            "result": True,
+        },
+    }
+
+
 def setup_function(function):
     ProcessGraphsPersistence.ensure_table_exists()
     JobsPersistence.ensure_table_exists()
