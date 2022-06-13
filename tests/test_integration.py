@@ -1703,6 +1703,63 @@ def test_user_token_user(app_client, example_process_graph):
     assert r.status_code == 201, r.data
 
 
+def test_job_with_deleted_batch_request(app_client, example_process_graph):
+    data = {
+        "process": {
+            "process_graph": example_process_graph,
+        }
+    }
+    headers = {"Authorization": f"Bearer basic//{valid_sh_token}"}
+
+    r = app_client.post(
+        "/jobs",
+        data=json.dumps(data),
+        headers=headers,
+        content_type="application/json",
+    )
+    assert r.status_code == 201, r.data
+
+    record_id = r.headers["OpenEO-Identifier"]
+
+    job_data = JobsPersistence.get_by_id(record_id)
+    batch_request_id = job_data["batch_request_id"]
+    sentinel_hub = SentinelHub(access_token=valid_sh_token)
+    sentinel_hub.delete_batch_job(batch_request_id)
+
+    r = app_client.get("/jobs", headers=headers)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert r.status_code == 200, r.data
+    assert len(actual["jobs"]) == 1
+    assert actual["jobs"][0]["id"] == record_id
+    assert actual["jobs"][0]["status"] == "finished"
+
+    r = app_client.patch(
+        "/jobs/{}".format(record_id),
+        data=json.dumps({"description": "some description"}),
+        headers=headers,
+        content_type="application/json",
+    )
+    assert r.status_code == 204, r.data
+
+    r = app_client.get("/jobs/{}".format(record_id), headers=headers)
+    actual = json.loads(r.data.decode("utf-8"))
+
+    assert r.status_code == 200, r.data
+    assert actual["status"] == "finished"
+    assert actual["description"] == "some description"
+
+    r = app_client.get(f"/jobs/{record_id}/results", headers=headers)
+    actual = json.loads(r.data.decode("utf-8"))
+    assert r.status_code == 200, r.data
+    assert len(actual["assets"]) == 1  # Batch saves the JSON with request info upon creation
+
+    r = app_client.post(f"/jobs/{record_id}/results", headers=headers)
+    assert r.status_code == 202, r.data
+
+    r = app_client.delete(f"/jobs/{record_id}/results", headers=headers)
+    assert r.status_code == 204, r.data
+
+
 @with_mocked_auth
 def test_using_user_defined_process(
     app_client, fahrenheit_to_celsius_process, process_graph_with_udp, example_authorization_header_with_oidc
