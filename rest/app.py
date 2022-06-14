@@ -20,7 +20,7 @@ from pg_to_evalscript import list_supported_processes
 from werkzeug.exceptions import HTTPException
 
 import globalmaptiles
-from utils import get_data_from_bucket
+from utils import get_data_from_bucket, convert_timestamp_to_simpler_format
 from schemas import (
     PutProcessGraphSchema,
     PatchProcessGraphsSchema,
@@ -410,7 +410,7 @@ def api_jobs(user):
                     "title": record.get("title", None),
                     "description": record.get("description", None),
                     "status": status.value,
-                    "created": record["created"],
+                    "created": convert_timestamp_to_simpler_format(record["created"]),
                 }
             )
             link_to_job = {
@@ -472,8 +472,8 @@ def api_batch_job(job_id, user):
                 process={"process_graph": json.loads(job["process"])["process_graph"]},
                 status=status.value,
                 error=error,
-                created=job["created"],
-                updated=job["last_updated"],
+                created=convert_timestamp_to_simpler_format(job["created"]),
+                updated=convert_timestamp_to_simpler_format(job["last_updated"]),
             ),
             200,
         )
@@ -688,7 +688,7 @@ def api_service(service_id, user):
             "type": record["service_type"],
             "enabled": record.get("enabled", True),
             "attributes": {},
-            "created": record["created"],
+            "created": convert_timestamp_to_simpler_format(record["created"]),
             "costs": 0,
             "budget": record.get("budget", None),
         }
