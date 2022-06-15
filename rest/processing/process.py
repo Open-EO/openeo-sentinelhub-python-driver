@@ -280,9 +280,8 @@ class Process:
         if selected_bands is None:
             selected_bands = collection["cube:dimensions"]["bands"]["values"]
 
-          
-        bands_summaries = None   
-        for key in ["eo:bands","raster:bands"]:
+        bands_summaries = None
+        for key in ["eo:bands", "raster:bands"]:
             bands_summaries = summaries.get(key, bands_summaries)
 
         if bands_summaries is None:
