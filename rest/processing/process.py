@@ -26,8 +26,6 @@ from openeoerrors import (
     TemporalExtentError,
 )
 
-from openeo_collections.const import non_optical_collections
-
 from processing.utils import convert_degree_resolution_to_meters
 
 
@@ -276,13 +274,17 @@ class Process:
     def get_highest_resolution(self):
         load_collection_node = self.get_node_by_process_id("load_collection")
         collection = collections.get_collection(load_collection_node["arguments"]["id"])
-        is_optical_collection = collection.get("datasource_type") not in non_optical_collections
         selected_bands = self.get_input_bands()
+        summaries = collection.get("summaries", {})
 
         if selected_bands is None:
             selected_bands = collection["cube:dimensions"]["bands"]["values"]
 
-        bands_summaries = collection.get("summaries", {}).get("eo:bands" if is_optical_collection else "raster:bands")
+          
+        bands_summaries = None   
+        for key in ["eo:bands","raster:bands"]:
+            bands_summaries = summaries.get(key, bands_summaries)
+
         if bands_summaries is None:
             return self.DEFAULT_RESOLUTION
 
