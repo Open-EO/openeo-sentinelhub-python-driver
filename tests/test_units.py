@@ -49,6 +49,8 @@ def test_collections(get_process_graph, collection_id):
                 "corine-land-cover",
                 "S2L1C",
                 "mapzen-dem",
+                "sentinel-3-l1b-slstr",
+                "sentinel-1-grd",
             ],
         ),
     ],
@@ -426,6 +428,86 @@ def test_inject_variables_in_process_graph():
                 }
             },
             [202, 94],
+        ),
+        (
+            {
+                "params": {
+                    "collection_id": "sentinel-3-l1b-slstr",
+                    "bands": ["F1"],
+                    "spatial_extent": {
+                        "west": 13.491039,
+                        "east": 13.527775,
+                        "north": 41.931656,
+                        "south": 41.909687,
+                    },  # 3.04Km X 2.4Km bbox
+                }
+            },
+            [3, 2],
+        ),
+        (
+            {
+                "params": {
+                    "collection_id": "sentinel-3-l1b-slstr",
+                    "bands": ["S1"],
+                    "spatial_extent": {
+                        "west": 13.491039,
+                        "east": 13.527775,
+                        "north": 41.931656,
+                        "south": 41.909687,
+                    },  # 3.04Km X 2.4Km bbox
+                }
+            },
+            [6, 4],
+        ),
+        (
+            {
+                "params": {
+                    "collection_id": "sentinel-1-grd",
+                    "bands": ["VV"],
+                    "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                }
+            },
+            [3361, 15159],
+        ),
+        (
+            {
+                "params": {
+                    "collection_id": "sentinel-1-grd",
+                    "bands": ["VV"],
+                    "spatial_extent": {
+                        "west": 11.207085,
+                        "east": 22.259331,
+                        "north": 43.406606,
+                        "south": 38.326104,
+                    },  # 892Km X 565Km bbox
+                }
+            },
+            [89203, 56544],
+        ),
+        (
+            {
+                "params": {
+                    "collection_id": "mapzen-dem",
+                    "bands": ["DEM"],
+                    "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                }
+            },
+            [1120, 5053],
+        ),
+        (
+            {
+                "params": {
+                    "collection_id": "mapzen-dem",
+                    "bands": ["DEM"],
+                    "spatial_extent": {
+                        "west": 13.491039,
+                        "east": 13.527775,
+                        "north": 41.931656,
+                        "south": 41.909687,
+                    },  # 3.04Km X 2.4Km bbox
+                }
+            },
+            [100, 77],
         ),
     ],
 )
