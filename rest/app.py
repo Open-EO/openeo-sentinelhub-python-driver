@@ -63,7 +63,7 @@ from openeoerrors import (
 )
 from authentication.user import User
 from const import openEOBatchJobStatus, optional_process_parameters
-from utils import get_all_process_definitions
+from utils import get_all_process_definitions, get_roles
 
 from openeo_collections.collections import collections
 
@@ -563,9 +563,8 @@ def add_job_to_queue(job_id, user):
                     "Key": object_key,
                 },
             )
-            assets[object_key] = {
-                "href": url,
-            }
+            roles = get_roles(object_key)
+            assets[object_key] = {"href": url, "roles": roles}
 
         return flask.make_response(
             jsonify(

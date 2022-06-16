@@ -87,3 +87,9 @@ def get_data_from_bucket(s3, bucket_name, batch_request_id):
 
 def convert_timestamp_to_simpler_format(datetime_str):
     return parse_time(datetime_str).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def get_roles(object_key):
+    if object_key.lower().endswith(".json"):
+        return ["metadata"]
+    return ["data"]

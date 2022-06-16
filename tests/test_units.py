@@ -14,6 +14,7 @@ from openeoerrors import (
 from processing.utils import inject_variables_in_process_graph, validate_geojson, parse_geojson
 from processing.sentinel_hub import SentinelHub
 from fixtures.geojson_fixtures import GeoJSON_Fixtures
+from utils import get_roles
 
 
 @pytest.mark.parametrize(
@@ -839,3 +840,19 @@ def test_temporal_extent(get_process_graph, fixture, expected_result):
         )
         assert process.from_date == expected_result["from_date"]
         assert process.to_date == expected_result["to_date"]
+
+
+@pytest.mark.parametrize(
+    "filename,expected_roles",
+    [
+        ("1235467/abc.json", ["metadata"]),
+        ("abc.json", ["metadata"]),
+        ("abc.JSON", ["metadata"]),
+        ("1235467/abc.tiff", ["data"]),
+        ("abc.png", ["data"]),
+        ("abc.jpg", ["data"]),
+    ],
+)
+def test_get_roles(filename, expected_roles):
+    roles = get_roles(filename)
+    assert roles == expected_roles
