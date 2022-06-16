@@ -402,7 +402,7 @@ def api_jobs(user):
         links = []
 
         for record in JobsPersistence.query_by_user_id(user.user_id):
-            status, _ = get_batch_job_status(record["batch_request_id"])
+            status, _ = get_batch_job_status(record["batch_request_id"], record["deployment_endpoint"])
 
             jobs.append(
                 {
@@ -441,10 +441,11 @@ def api_jobs(user):
         if invalid_node_id is not None:
             raise ProcessUnsupported(invalid_node_id)
 
-        batch_request_id = create_batch_job(data["process"])
+        batch_request_id, deployment_endpoint = create_batch_job(data["process"])
 
         data["batch_request_id"] = batch_request_id
         data["user_id"] = user.user_id
+        data["deployment_endpoint"] = deployment_endpoint
 
         record_id = JobsPersistence.create(data)
 
@@ -463,7 +464,7 @@ def api_batch_job(job_id, user):
         raise JobNotFound()
 
     if flask.request.method == "GET":
-        status, error = get_batch_job_status(job["batch_request_id"])
+        status, error = get_batch_job_status(job["batch_request_id"], job["deployment_endpoint"])
         return flask.make_response(
             jsonify(
                 id=job_id,
@@ -479,7 +480,7 @@ def api_batch_job(job_id, user):
         )
 
     elif flask.request.method == "PATCH":
-        status, _ = get_batch_job_status(job["batch_request_id"])
+        status, _ = get_batch_job_status(job["batch_request_id"], job["deployment_endpoint"])
 
         if status in [openEOBatchJobStatus.QUEUED, openEOBatchJobStatus.RUNNING]:
             raise JobLocked()
@@ -490,12 +491,13 @@ def api_batch_job(job_id, user):
             # Response procedure for validation will depend on how openeo_pg_parser_python will work
             return flask.make_response(jsonify(id=job_id, code=400, message=errors, links=[]), 400)
 
+        if data.get("process"):
+            new_batch_request_id, deployment_endpoint = modify_batch_job(data["process"])
+            update_batch_request_id(job_id, job, new_batch_request_id)
+            data["deployment_endpoint"] = deployment_endpoint
+
         for key in data:
             JobsPersistence.update_key(job_id, key, data[key])
-
-        if data.get("process"):
-            new_batch_request_id = modify_batch_job(data["process"])
-            update_batch_request_id(job_id, job, new_batch_request_id)
 
         return flask.make_response("Changes to the job applied successfully.", 204)
 
@@ -522,7 +524,9 @@ def add_job_to_queue(job_id, user):
         raise JobNotFound()
 
     if flask.request.method == "POST":
-        new_batch_request_id = start_batch_job(job["batch_request_id"], json.loads(job["process"]))
+        new_batch_request_id = start_batch_job(
+            job["batch_request_id"], json.loads(job["process"]), job["deployment_endpoint"]
+        )
 
         if new_batch_request_id and new_batch_request_id != job["batch_request_id"]:
             update_batch_request_id(job_id, job, new_batch_request_id)
@@ -530,7 +534,7 @@ def add_job_to_queue(job_id, user):
         return flask.make_response("The creation of the resource has been queued successfully.", 202)
 
     elif flask.request.method == "GET":
-        status, error = get_batch_job_status(job["batch_request_id"])
+        status, error = get_batch_job_status(job["batch_request_id"], job["deployment_endpoint"])
 
         if status not in [
             openEOBatchJobStatus.FINISHED,
@@ -581,7 +585,9 @@ def add_job_to_queue(job_id, user):
         )
 
     elif flask.request.method == "DELETE":
-        new_batch_request_id = cancel_batch_job(job["batch_request_id"], json.loads(job["process"]))
+        new_batch_request_id = cancel_batch_job(
+            job["batch_request_id"], json.loads(job["process"]), job["deployment_endpoint"]
+        )
         if new_batch_request_id:
             JobsPersistence.update_key(job_id, "batch_request_id", new_batch_request_id)
             JobsPersistence.update_key(
@@ -599,7 +605,9 @@ def estimate_job_cost(job_id):
     if job is None:
         raise JobNotFound()
 
-    estimated_pu, estimated_file_size = get_batch_job_estimate(job["batch_request_id"], json.loads(job["process"]))
+    estimated_pu, estimated_file_size = get_batch_job_estimate(
+        job["batch_request_id"], json.loads(job["process"]), job["deployment_endpoint"]
+    )
     return flask.make_response(
         jsonify(costs=estimated_pu, size=estimated_file_size),
         200,

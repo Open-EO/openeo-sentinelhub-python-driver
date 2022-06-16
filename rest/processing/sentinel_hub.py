@@ -8,7 +8,7 @@ from processing.const import sh_config
 
 
 class SentinelHub:
-    def __init__(self, access_token=None):
+    def __init__(self, access_token=None, service_base_url=None):
         self.config = sh_config
         self.S3_BUCKET_NAME = os.environ.get("RESULTS_S3_BUCKET_NAME", "com.sinergise.openeo.results")
         self.batch = SentinelHubBatch(config=self.config)
@@ -18,6 +18,10 @@ class SentinelHub:
             # This is an ugly hack to set custom access token
             self.batch.client.session = SentinelHubSession(config=self.config)
             self.batch.client.session._token = {"access_token": access_token, "expires_at": 99999999999999}
+
+        if service_base_url is not None:
+            self.config.sh_base_url = service_base_url
+            self.batch.service_url = self.batch._get_service_url(service_base_url)
 
     def create_processing_request(
         self,
@@ -178,3 +182,10 @@ class SentinelHub:
     def start_batch_job_analysis(self, batch_request_id):
         batch_request = self.batch.get_request(batch_request_id)
         self.batch.start_analysis(batch_request)
+
+    def get_utm_tiling_grids(self):
+        tiling_grids = []
+        for tiling_grid in self.batch.iter_tiling_grids():
+            if tiling_grid["properties"]["unit"] == "METRE":
+                tiling_grids.append(tiling_grid)
+        return tiling_grids
