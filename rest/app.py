@@ -819,9 +819,11 @@ def well_known():
         jsonify(versions=[{"api_version": "1.0.0", "production": False, "url": flask.request.url_root}]), 200
     )
 
+
 @app.route("/health", methods=["GET"])
 def return_health():
-    return flask.make_response({"status": "OK"}, 200) 
+    return flask.make_response({"status": "OK"}, 200)
+
 
 if __name__ == "__main__":
     # if you need to run this app under HTTPS, install pyOpenSSL
