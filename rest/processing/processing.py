@@ -8,6 +8,7 @@ from processing.process import Process
 from processing.sentinel_hub import SentinelHub
 from dynamodb.utils import get_user_defined_processes_graphs
 from const import openEOBatchJobStatus
+from openeoerrors import Timeout
 
 
 def check_process_graph_conversion_validity(process_graph):
@@ -119,13 +120,19 @@ def get_batch_job_estimate(batch_request_id, process, deployment_endpoint):
 
     if batch_request.value_estimate is None:
         analysis_sleep_time_s = 5
+        total_sleep_time = 0
+        MAX_TOTAL_TIME = 29
         sentinel_hub.start_batch_job_analysis(batch_request_id)
 
     while batch_request.value_estimate is None and batch_request.status in [
         BatchRequestStatus.CREATED,
         BatchRequestStatus.ANALYSING,
     ]:
+        if total_sleep_time + analysis_sleep_time_s > MAX_TOTAL_TIME:
+            raise Timeout()
+
         time.sleep(analysis_sleep_time_s)
+        total_sleep_time += analysis_sleep_time_s
         batch_request = sentinel_hub.get_batch_request_info(batch_request_id)
 
     default_temporal_interval = 3
