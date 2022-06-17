@@ -1432,21 +1432,26 @@ def test_batch_job_estimate(
 
     responses.add(
         responses.POST,
-        "https://services.sentinel-hub.com/oauth/token",
+        re.compile("https://(services|creodias)(-uswest2)?.sentinel-hub.com/oauth/token"),
         body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
     )
     responses.add(
         responses.POST,
-        "https://services.sentinel-hub.com/api/v1/batch/process",
+        re.compile("https://(services|creodias)(-uswest2)?.sentinel-hub.com/api/v1/batch/process"),
         body=json.dumps({"id": "example", "processRequest": {}, "status": "CREATED"}),
     )
     responses.add(
+        responses.GET,
+        re.compile("https://(services|creodias)(-uswest2)?.sentinel-hub.com/api/v1/batch/tilinggrids"),
+        body=json.dumps(tilinggrids_response),
+    )
+    responses.add(
         responses.POST,
-        "https://services.sentinel-hub.com/api/v1/batch/process/example/analyse",
+        re.compile("https://(services|creodias)(-uswest2)?.sentinel-hub.com/api/v1/batch/process/example/analyse"),
     )
     responses.add(
         responses.GET,
-        re.compile("https://services.sentinel-hub.com/api/v1/batch/process/example"),
+        re.compile("https://(services|creodias)(-uswest2)?.sentinel-hub.com/api/v1/batch/process/example"),
         body=json.dumps(
             {
                 "valueEstimate": backend_estimate,

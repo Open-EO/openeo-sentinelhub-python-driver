@@ -527,7 +527,7 @@ def add_job_to_queue(job_id, user):
             return flask.make_response(jsonify(id=job_id, code=424, level="error", message=error, links=[]), 424)
 
         bucket = get_bucket(job["deployment_endpoint"])
-        results = get_data_from_bucket(prefix=job["batch_request_id"])
+        results = bucket.get_data_from_bucket(prefix=job["batch_request_id"])
 
         assets = {}
         log(INFO, f"Fetched all results: {str(results)}")

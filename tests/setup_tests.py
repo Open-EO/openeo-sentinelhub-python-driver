@@ -28,6 +28,8 @@ from openeoerrors import ProcessGraphComplexity
 
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), "fixtures")
 
+from fixtures.tilinggrids import tilinggrids_response
+
 
 def load_collections_fixtures(folder, wildcard="*"):
     collections = {}
