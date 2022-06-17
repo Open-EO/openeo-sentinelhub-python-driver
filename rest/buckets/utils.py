@@ -3,7 +3,7 @@ import warnings
 
 from const import SentinelhubDeployments
 from utils import get_env_var
-from .results_bucket import ResultsBucket
+from .results_bucket import ResultsBucket, CreodiasResultsBucket
 
 
 BUCKET_NAMES = {
@@ -43,4 +43,6 @@ def get_bucket(deployment_endpoint):
     endpoint_url = BUCKET_ENDPOINT_URLS[deployment_endpoint]
     access_key_id = BUCKET_ACCESS_KEY_IDS[deployment_endpoint]
     secret_access_key = BUCKET_SECRET_ACCESS_KEYS[deployment_endpoint]
+    if deployment_endpoint == SentinelhubDeployments.CREODIAS:
+        return CreodiasResultsBucket(bucket_name, region_name, endpoint_url, access_key_id, secret_access_key)
     return ResultsBucket(bucket_name, region_name, endpoint_url, access_key_id, secret_access_key)

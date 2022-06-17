@@ -9,6 +9,7 @@ import uuid
 import datetime
 from enum import Enum
 
+from const import SentinelhubDeployments
 
 logging.basicConfig(level=logging.INFO)
 
@@ -203,7 +204,7 @@ class JobsPersistence(Persistence):
             "error_code": {"S": str(data.get("error_code"))},
             "http_code": {"N": data.get("http_code", "200")},
             "results": {"S": json.dumps(data.get("results"))},
-            "deployment_endpoint": {"S": data.get("deployment_endpoint", "https://services.sentinel-hub.com")},
+            "deployment_endpoint": {"S": data.get("deployment_endpoint", SentinelhubDeployments.MAIN)},
         }
         if data.get("title"):
             item["title"] = {"S": str(data.get("title"))}

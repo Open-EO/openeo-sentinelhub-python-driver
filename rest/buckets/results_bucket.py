@@ -23,7 +23,8 @@ class ResultsBucket:
                 )
             else:
                 response = self.client.list_objects_v2(Bucket=self.bucket_name, Prefix=prefix)
-            results.extend(response["Contents"])
+            if response.get("Contents"):
+                results.extend(response["Contents"])
             if response["IsTruncated"]:
                 continuation_token = response["NextContinuationToken"]
             else:
@@ -31,7 +32,8 @@ class ResultsBucket:
 
         return results
 
-    def delete_objects(self, object_keys_to_delete):
+    def delete_objects(self, objects_to_delete):
+        object_keys_to_delete = {"Objects": [{"Key": obj["Key"]} for obj in objects_to_delete]}
         self.client.delete_objects(Bucket=self.bucket_name, Delete=object_keys_to_delete)
 
     def generate_presigned_url(self, object_key=None):
@@ -42,3 +44,11 @@ class ResultsBucket:
                 "Key": object_key,
             },
         )
+
+
+class CreodiasResultsBucket(ResultsBucket):
+    def __init__(self, bucket_name, region_name, endpoint_url, access_key_id, secret_access_key):
+        super().__init__(bucket_name, region_name, endpoint_url, access_key_id, secret_access_key)
+        self.bucket_name = self.bucket_name[
+            self.bucket_name.find(":") + 1 :
+        ]  # Bucket name is in format <project-id>:<bucket-name>, but boto3 requires only <bucket-name> part

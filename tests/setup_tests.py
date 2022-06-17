@@ -24,6 +24,7 @@ from processing.process import Process
 from processing.sentinel_hub import SentinelHub
 from processing.processing import delete_batch_job
 from openeoerrors import ProcessGraphComplexity
+from buckets import get_bucket
 
 
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), "fixtures")

@@ -490,8 +490,7 @@ def api_batch_job(job_id, user):
     elif flask.request.method == "DELETE":
         bucket = get_bucket(job["deployment_endpoint"])
         results = bucket.get_data_from_bucket(prefix=job["batch_request_id"])
-        object_keys_to_delete = {"Objects": [{"Key": obj["Key"]} for obj in results]}
-        bucket.delete_objects(object_keys_to_delete)
+        bucket.delete_objects(results)
 
         JobsPersistence.delete(job_id)
         return flask.make_response("The job has been successfully deleted.", 204)
