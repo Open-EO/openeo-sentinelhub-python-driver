@@ -20,7 +20,6 @@ from pg_to_evalscript import list_supported_processes
 from werkzeug.exceptions import HTTPException
 
 import globalmaptiles
-from utils import get_data_from_bucket
 from schemas import (
     PutProcessGraphSchema,
     PatchProcessGraphsSchema,
@@ -64,6 +63,7 @@ from openeoerrors import (
 from authentication.user import User
 from const import openEOBatchJobStatus, optional_process_parameters
 from utils import get_all_process_definitions
+from buckets import get_bucket
 
 from openeo_collections.collections import collections
 
@@ -95,20 +95,6 @@ HONEYCOMP_APM_API_KEY = os.environ.get("HONEYCOMP_APM_API_KEY")
 if HONEYCOMP_APM_API_KEY:
     beeline.init(writekey=HONEYCOMP_APM_API_KEY, dataset="OpenEO - rest", service_name="OpenEO")
     HoneyMiddleware(app, db_events=False)  # db_events: we do not use SQLAlchemy
-
-
-RESULTS_S3_BUCKET_NAME = os.environ.get("RESULTS_S3_BUCKET_NAME", "com.sinergise.openeo.results")
-# Zappa allows setting AWS Lambda timeout, but there is CloudFront before Lambda with a default
-# timeout of 30 (more like 29) seconds. If we wish to react in time, we need to return in less
-# than that.
-REQUEST_TIMEOUT = 28
-
-FAKE_AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
-FAKE_AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-
-DATA_AWS_ACCESS_KEY_ID = os.environ.get("DATA_AWS_ACCESS_KEY_ID", FAKE_AWS_ACCESS_KEY_ID)
-DATA_AWS_SECRET_ACCESS_KEY = os.environ.get("DATA_AWS_SECRET_ACCESS_KEY", FAKE_AWS_SECRET_ACCESS_KEY)
-DATA_AWS_REGION = os.environ.get("DATA_AWS_REGION", "eu-central-1")
 
 
 STAC_VERSION = "0.9.0"
@@ -502,15 +488,10 @@ def api_batch_job(job_id, user):
         return flask.make_response("Changes to the job applied successfully.", 204)
 
     elif flask.request.method == "DELETE":
-        s3 = boto3.client(
-            "s3",
-            region_name=DATA_AWS_REGION,
-            aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
-        )
-        results = get_data_from_bucket(s3, RESULTS_S3_BUCKET_NAME, job["batch_request_id"])
+        bucket = get_bucket(job["deployment_endpoint"])
+        results = bucket.get_data_from_bucket(prefix=job["batch_request_id"])
         object_keys_to_delete = {"Objects": [{"Key": obj["Key"]} for obj in results]}
-        s3.delete_objects(Bucket=RESULTS_S3_BUCKET_NAME, Delete=object_keys_to_delete)
+        bucket.delete_objects(object_keys_to_delete)
 
         JobsPersistence.delete(job_id)
         return flask.make_response("The job has been successfully deleted.", 204)
@@ -545,14 +526,8 @@ def add_job_to_queue(job_id, user):
         if status == openEOBatchJobStatus.ERROR:
             return flask.make_response(jsonify(id=job_id, code=424, level="error", message=error, links=[]), 424)
 
-        s3 = boto3.client(
-            "s3",
-            region_name=DATA_AWS_REGION,
-            aws_access_key_id=DATA_AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=DATA_AWS_SECRET_ACCESS_KEY,
-        )
-
-        results = get_data_from_bucket(s3, RESULTS_S3_BUCKET_NAME, job["batch_request_id"])
+        bucket = get_bucket(job["deployment_endpoint"])
+        results = get_data_from_bucket(prefix=job["batch_request_id"])
 
         assets = {}
         log(INFO, f"Fetched all results: {str(results)}")
@@ -560,13 +535,7 @@ def add_job_to_queue(job_id, user):
         for result in results:
             # create signed url:
             object_key = result["Key"]
-            url = s3.generate_presigned_url(
-                ClientMethod="get_object",
-                Params={
-                    "Bucket": RESULTS_S3_BUCKET_NAME,
-                    "Key": object_key,
-                },
-            )
+            url = bucket.generate_presigned_url(object_key=object_key)
             assets[object_key] = {
                 "href": url,
             }

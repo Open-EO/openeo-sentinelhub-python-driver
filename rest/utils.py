@@ -63,21 +63,10 @@ def enrich_user_defined_processes_with_parameters(user_defined_processes):
     return user_defined_processes
 
 
-def get_data_from_bucket(s3, bucket_name, batch_request_id):
-    continuation_token = None
-    results = []
-
-    while True:
-        if continuation_token:
-            response = s3.list_objects_v2(
-                Bucket=bucket_name, Prefix=batch_request_id, ContinuationToken=continuation_token
-            )
-        else:
-            response = s3.list_objects_v2(Bucket=bucket_name, Prefix=batch_request_id)
-        results.extend(response["Contents"])
-        if response["IsTruncated"]:
-            continuation_token = response["NextContinuationToken"]
-        else:
-            break
-
-    return results
+def get_env_var(varname, required=True):
+    envvar = os.environ.get(varname)
+    if envvar is None and required:
+        raise Exception(f"Environment variable '{varname}' must be defined!")
+    elif envvar is None:
+        warnings.warn(f"Environment variable '{varname}' is not defined!")
+    return envvar

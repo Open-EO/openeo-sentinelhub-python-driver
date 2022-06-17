@@ -5,12 +5,13 @@ from sentinelhub.exceptions import DownloadFailedException
 from openeoerrors import ProcessGraphComplexity
 
 from processing.const import sh_config
+from buckets import BUCKET_NAMES
 
 
 class SentinelHub:
     def __init__(self, access_token=None, service_base_url=None):
         self.config = sh_config
-        self.S3_BUCKET_NAME = os.environ.get("RESULTS_S3_BUCKET_NAME", "com.sinergise.openeo.results")
+        self.S3_BUCKET_NAME = BUCKET_NAMES.get(service_base_url)
         self.batch = SentinelHubBatch(config=self.config)
         self.access_token = access_token
 
