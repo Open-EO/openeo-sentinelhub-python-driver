@@ -65,13 +65,13 @@ def enrich_user_defined_processes_with_parameters(user_defined_processes):
     return user_defined_processes
 
 
-def get_env_var(varname, required=True):
-    envvar = os.environ.get(varname)
-    if envvar is None and required:
-        raise Exception(f"Environment variable '{varname}' must be defined!")
-    elif envvar is None:
-        warnings.warn(f"Environment variable '{varname}' is not defined!")
-    return envvar
+def get_env_var(var_name, required=True):
+    env_var = os.environ.get(var_name)
+    if env_var is None and required:
+        raise Exception(f"Environment variable '{var_name}' must be defined!")
+    elif env_var is None:
+        warnings.warn(f"Environment variable '{var_name}' is not defined!")
+    return env_var
 
 
 def get_data_from_bucket(s3, bucket_name, batch_request_id):

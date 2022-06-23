@@ -20,7 +20,7 @@ BUCKET_REGION_NAMES = {
 
 BUCKET_ENDPOINT_URLS = {
     SentinelhubDeployments.MAIN: None,
-    SentinelhubDeployments.CREODIAS: "http://data.cloudferro.com",
+    SentinelhubDeployments.CREODIAS: "https://s3.waw2-1.cloudferro.com",
     SentinelhubDeployments.USWEST: None,
 }
 

@@ -1830,9 +1830,7 @@ def test_using_user_defined_process(
     "collection_id,expected_deployment_endpoint,expected_bucket_name",
     [
         ("sentinel-2-l1c", "https://services.sentinel-hub.com", "com.sinergise.openeo.results"),
-        # (
-        #     "corine-land-cover", "https://creodias.sentinel-hub.com", "com.sinergise.openeo.results"
-        # ),
+        ("corine-land-cover", "https://creodias.sentinel-hub.com", "com.sinergise.openeo.results"),
         ("landsat-7-etm+-l2", "https://services-uswest2.sentinel-hub.com", "com.sinergise.openeo.results.uswest2"),
     ],
 )
