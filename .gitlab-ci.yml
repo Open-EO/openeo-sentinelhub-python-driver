@@ -15,7 +15,7 @@ linting:
   script:
     - pip install --upgrade black==22.3.0
     # make sure that the *same* version is used in Pipfiles to avoid incompatibilities:
-    - grep 'black = "==20.3.0"' rest/Pipfile
+    - grep 'black = "==22.3.0"' rest/Pipfile
     # check the files for correct formatting:
     - black -l 120 --check . || exit 1
 
