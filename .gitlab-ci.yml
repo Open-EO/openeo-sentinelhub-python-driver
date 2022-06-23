@@ -13,9 +13,9 @@ linting:
   stage: test
   image: python:3.9.13
   script:
-    - pip install --upgrade black==20.8b1
+    - pip install --upgrade black==22.3.0
     # make sure that the *same* version is used in Pipfiles to avoid incompatibilities:
-    - grep 'black = "==20.8b1"' rest/Pipfile
+    - grep 'black = "==20.3.0"' rest/Pipfile
     # check the files for correct formatting:
     - black -l 120 --check . || exit 1
 
