@@ -88,9 +88,9 @@ deploy-testing-rest-lambda:
     - sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN/g" zappa_settings.json
     - sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS/g" zappa_settings.json
     - sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST/g" zappa_settings.json
-    - sed -i "s/@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN@@/$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN/g" zappa_settings.json
+    - sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN@@#$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN#g" zappa_settings.json
     - sed -i "s/@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS@@/$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS/g" zappa_settings.json
-    - sed -i "s/@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST@@/$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST/g" zappa_settings.json
+    - sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST@@#$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST#g" zappa_settings.json
     - pipenv run zappa deploy testing || pipenv run zappa update testing
     # ensure tables are created:
     - export AWS_ACCESS_KEY_ID="$TESTING_AWS_ACCESS_KEY_ID"
@@ -129,9 +129,9 @@ deploy-production-rest-lambda:
     - sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN/g" zappa_settings.json
     - sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS/g" zappa_settings.json
     - sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST/g" zappa_settings.json
-    - sed -i "s/@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN@@/$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN/g" zappa_settings.json
+    - sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN@@#$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN#g" zappa_settings.json
     - sed -i "s/@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS@@/$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS/g" zappa_settings.json
-    - sed -i "s/@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST@@/$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST/g" zappa_settings.json
+    - sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST@@#$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST#g" zappa_settings.json
     - pipenv run zappa deploy production || pipenv run zappa update production
     # ensure tables are created:
     - export AWS_ACCESS_KEY_ID="$PRODDATA_AWS_ACCESS_KEY_ID"
