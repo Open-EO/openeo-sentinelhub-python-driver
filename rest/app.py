@@ -552,7 +552,7 @@ def add_job_to_queue(job_id, user):
         )
 
     elif flask.request.method == "DELETE":
-        new_batch_request_id = cancel_batch_job(
+        new_batch_request_id, _ = cancel_batch_job(
             job["batch_request_id"], json.loads(job["process"]), job["deployment_endpoint"]
         )
         if new_batch_request_id:

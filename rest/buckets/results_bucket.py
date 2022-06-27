@@ -33,6 +33,8 @@ class ResultsBucket:
         return results
 
     def delete_objects(self, objects_to_delete):
+        if len(objects_to_delete) == 0:
+            return
         object_keys_to_delete = {"Objects": [{"Key": obj["Key"]} for obj in objects_to_delete]}
         self.client.delete_objects(Bucket=self.bucket_name, Delete=object_keys_to_delete)
 
