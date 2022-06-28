@@ -1,8 +1,10 @@
 import os
+import json
 
-from sentinelhub import DownloadRequest, SentinelHubDownloadClient, SentinelHubBatch, SentinelHubSession
+from sentinelhub import SentinelHubBatch, SentinelHubSession
 from sentinelhub.exceptions import DownloadFailedException
 from openeoerrors import ProcessGraphComplexity
+import requests
 
 from processing.const import sh_config
 
@@ -51,20 +53,14 @@ class SentinelHub:
         headers = {"content-type": "application/json"}
         if self.access_token is not None:
             headers["Authorization"] = f"Bearer {self.access_token}"
+        else:
+            access_token = SentinelHubSession(config=self.config)._token["access_token"]  # Fetches the token
+            headers["Authorization"] = f"Bearer {access_token}"
 
-        download_request = DownloadRequest(
-            request_type="POST",
-            url=f"{collection.service_url}/api/v1/process",
-            post_values=request_raw_dict,
-            data_type=mimetype,
-            headers=headers,
-            use_session=True,
+        r = requests.post(
+            f"{collection.service_url}/api/v1/process", data=json.dumps(request_raw_dict), headers=headers
         )
-
-        download_request.raise_if_invalid()
-
-        client = SentinelHubDownloadClient(config=self.config)
-        return client.download(download_request, decode_data=False)
+        return r.content
 
     def get_request_dictionary(
         self,
