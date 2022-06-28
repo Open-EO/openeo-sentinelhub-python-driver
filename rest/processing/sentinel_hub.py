@@ -7,6 +7,7 @@ from openeoerrors import ProcessGraphComplexity
 import requests
 
 from processing.const import sh_config
+from processing.processing_api_request import ProcessingAPIRequest
 
 
 class SentinelHub:
@@ -50,17 +51,12 @@ class SentinelHub:
             mimetype=mimetype,
         )
 
-        headers = {"content-type": "application/json"}
-        if self.access_token is not None:
-            headers["Authorization"] = f"Bearer {self.access_token}"
-        else:
-            access_token = SentinelHubSession(config=self.config)._token["access_token"]  # Fetches the token
-            headers["Authorization"] = f"Bearer {access_token}"
-
-        r = requests.post(
-            f"{collection.service_url}/api/v1/process", data=json.dumps(request_raw_dict), headers=headers
-        )
-        return r.content
+        return ProcessingAPIRequest(
+            f"{collection.service_url}/api/v1/process",
+            request_raw_dict,
+            access_token=self.access_token,
+            config=self.config,
+        ).fetch()
 
     def get_request_dictionary(
         self,
