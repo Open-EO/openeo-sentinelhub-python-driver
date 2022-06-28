@@ -958,7 +958,6 @@ class OrderedRegistry(FirstMatchRegistry):
         return response, []
 
 
-@responses.activate(registry=OrderedRegistry)
 @pytest.mark.parametrize(
     "endpoint,access_token,api_responses,min_exec_time,should_raise_error,expected_error",
     [
@@ -1004,40 +1003,44 @@ class OrderedRegistry(FirstMatchRegistry):
 def test_processing_api_request(
     endpoint, access_token, api_responses, min_exec_time, should_raise_error, expected_error
 ):
-    example_token = "example"
-    MAX_RETRIES = 3
-    url = f"{endpoint}/api/v1/process"
+    @responses.activate(registry=OrderedRegistry)
+    def run(endpoint, access_token, api_responses, min_exec_time, should_raise_error, expected_error):
+        example_token = "example"
+        MAX_RETRIES = 3
+        url = f"{endpoint}/api/v1/process"
 
-    if not access_token:
-        responses.add(
-            responses.POST,
-            "https://services.sentinel-hub.com/oauth/token",
-            body=json.dumps({"access_token": example_token, "expires_at": 2147483647}),
-        )
+        if not access_token:
+            responses.add(
+                responses.POST,
+                "https://services.sentinel-hub.com/oauth/token",
+                body=json.dumps({"access_token": example_token, "expires_at": 2147483647}),
+            )
 
-    for response in api_responses:
-        responses.add(
-            responses.POST,
-            url,
-            status=response["status"],
-            headers=response.get("headers"),
-            match=[
-                matchers.header_matcher(
-                    {"Authorization": f"Bearer {access_token if access_token is not None else example_token}"}
-                )
-            ],
-        )
+        for response in api_responses:
+            responses.add(
+                responses.POST,
+                url,
+                status=response["status"],
+                headers=response.get("headers"),
+                match=[
+                    matchers.header_matcher(
+                        {"Authorization": f"Bearer {access_token if access_token is not None else example_token}"}
+                    )
+                ],
+            )
 
-    try:
-        start_time = time.time()
-        r = ProcessingAPIRequest(
-            url, {}, access_token=access_token, config=sh_config, max_retries=MAX_RETRIES
-        ).make_request()
-        end_time = time.time()
-        r.raise_for_status()
-        assert r.status_code == 200, r.content
-        assert end_time - start_time > min_exec_time
-    except Exception as e:
-        if not should_raise_error:
-            raise
-        assert expected_error in str(e)
+        try:
+            start_time = time.time()
+            r = ProcessingAPIRequest(
+                url, {}, access_token=access_token, config=sh_config, max_retries=MAX_RETRIES
+            ).make_request()
+            end_time = time.time()
+            r.raise_for_status()
+            assert r.status_code == 200, r.content
+            assert end_time - start_time > min_exec_time
+        except Exception as e:
+            if not should_raise_error:
+                raise
+            assert expected_error in str(e)
+
+    run(endpoint, access_token, api_responses, min_exec_time, should_raise_error, expected_error)
