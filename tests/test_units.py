@@ -13,6 +13,7 @@ from openeoerrors import (
 )
 from processing.utils import inject_variables_in_process_graph, validate_geojson, parse_geojson
 from processing.sentinel_hub import SentinelHub
+from processing.processing_api_request import ProcessingAPIRequest
 from fixtures.geojson_fixtures import GeoJSON_Fixtures
 from utils import get_roles
 
@@ -938,3 +939,105 @@ def test_temporal_extent(get_process_graph, fixture, expected_result):
 def test_get_roles(filename, expected_roles):
     roles = get_roles(filename)
     assert roles == expected_roles
+
+
+class OrderedRegistry(FirstMatchRegistry):
+    def find(self, request):
+
+        if not self.registered:
+            return None, ["No more registered responses"]
+
+        response = self.registered.pop(0)
+        match_result, reason = response.matches(request)
+        if not match_result:
+            self.reset()
+            self.add(response)
+            reason = "Next 'Response' in the order doesn't match " f"due to the following reason: {reason}."
+            return None, [reason]
+
+        return response, []
+
+
+@responses.activate(registry=OrderedRegistry)
+@pytest.mark.parametrize(
+    "endpoint,access_token,api_responses,min_exec_time,should_raise_error,expected_error",
+    [
+        ("https://services.sentinel-hub.com", None, [{"status": 200}], 0, False, None),
+        ("https://services.sentinel-hub.com", None, [{"status": 429}], 0, True, "Too Many Requests"),
+        ("https://services.sentinel-hub.com", "some-token", [{"status": 200}], 0, False, None),
+        ("https://services.sentinel-hub.com", "some-token", [{"status": 429}], 0, True, "Too Many Requests"),
+        (
+            "https://services-uswest2.sentinel-hub.com",
+            None,
+            [
+                {"status": 429, "headers": {"retry-after": "2"}},
+                {"status": 429, "headers": {"retry-after": "7"}},
+                {"status": 200},
+            ],
+            9,
+            False,
+            None,
+        ),
+        (
+            "https://services-uswest2.sentinel-hub.com",
+            None,
+            [
+                {"status": 429, "headers": {"retry-after": "2"}},
+                {"status": 429, "headers": {"retry-after": "2"}},
+                {"status": 429, "headers": {"retry-after": "2"}},
+                {"status": 429, "headers": {"retry-after": "2"}},
+            ],
+            0,
+            True,
+            "Out of retries.",
+        ),
+        (
+            "https://services-uswest2.sentinel-hub.com",
+            None,
+            [{"status": 429, "headers": {"retry-after": "2"}}, {"status": 500}],
+            0,
+            True,
+            "Internal Server Error",
+        ),
+    ],
+)
+def test_processing_api_request(
+    endpoint, access_token, api_responses, min_exec_time, should_raise_error, expected_error
+):
+    example_token = "example"
+    MAX_RETRIES = 3
+    url = f"{endpoint}/api/v1/process"
+
+    if not access_token:
+        responses.add(
+            responses.POST,
+            "https://services.sentinel-hub.com/oauth/token",
+            body=json.dumps({"access_token": example_token, "expires_at": 2147483647}),
+        )
+
+    for response in api_responses:
+        responses.add(
+            responses.POST,
+            url,
+            status=response["status"],
+            headers=response.get("headers"),
+            match=[
+                matchers.header_matcher(
+                    {"Authorization": f"Bearer {access_token if access_token is not None else example_token}"}
+                )
+            ],
+        )
+
+    try:
+        start_time = time.time()
+        r = ProcessingAPIRequest(
+            url, {}, access_token=access_token, config=sh_config, max_retries=MAX_RETRIES
+        ).make_request()
+        end_time = time.time()
+        r.raise_for_status()
+        assert r.status_code == 200, r.content
+        assert end_time - start_time > min_exec_time
+    except Exception as e:
+        if not should_raise_error:
+            raise
+        assert expected_error in str(e)
