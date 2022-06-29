@@ -74,3 +74,17 @@ class PartiallyImplementedSpatialProcess:
             if not self.is_node_id_ancestor(node_id, dependent):
                 return False
         return True
+
+    def get_last_occurrence(self):
+        """
+        Get node id of node with the partially implemented spatial process that runs last
+        """
+        all_occurrences = self.get_all_occurrences_of_process_id(self.process_graph, self.process_id)
+        indices = [self.execution_order.index(occurrence["node_id"]) for occurrence in all_occurrences]
+        return all_occurrences[max(indices)]["node_id"]
+
+    def get_spatial_info(self):
+        """
+        Returns extent, geometry.
+        """
+        return None, None

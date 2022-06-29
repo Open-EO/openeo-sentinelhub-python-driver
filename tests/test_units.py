@@ -1031,7 +1031,7 @@ def test_processing_api_request(
 
 
 @pytest.mark.parametrize(
-   "process_graph,expected_is_usage_valid,expected_error",
+    "process_graph,expected_is_usage_valid,expected_error",
     [
         (
             {
