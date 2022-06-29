@@ -11,7 +11,7 @@ import pytest
 import requests
 import responses
 from responses import matchers
-from responses.registries import FirstMatchRegistry
+from responses.registries import OrderedRegistry
 import numpy as np
 from sentinelhub import BBox, DataCollection, MimeType, CRS
 

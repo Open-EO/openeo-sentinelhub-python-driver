@@ -941,23 +941,6 @@ def test_get_roles(filename, expected_roles):
     assert roles == expected_roles
 
 
-class OrderedRegistry(FirstMatchRegistry):
-    def find(self, request):
-
-        if not self.registered:
-            return None, ["No more registered responses"]
-
-        response = self.registered.pop(0)
-        match_result, reason = response.matches(request)
-        if not match_result:
-            self.reset()
-            self.add(response)
-            reason = "Next 'Response' in the order doesn't match " f"due to the following reason: {reason}."
-            return None, [reason]
-
-        return response, []
-
-
 @pytest.mark.parametrize(
     "endpoint,access_token,api_responses,min_exec_time,should_raise_error,expected_error",
     [
