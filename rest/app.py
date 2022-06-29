@@ -20,7 +20,7 @@ from pg_to_evalscript import list_supported_processes
 from werkzeug.exceptions import HTTPException
 
 import globalmaptiles
-from utils import get_data_from_bucket
+from utils import get_data_from_bucket, convert_timestamp_to_simpler_format
 from schemas import (
     PutProcessGraphSchema,
     PatchProcessGraphsSchema,
@@ -37,11 +37,11 @@ from processing.processing import (
     process_data_synchronously,
     create_batch_job,
     start_batch_job,
-    get_batch_request_info,
     cancel_batch_job,
     delete_batch_job,
     modify_batch_job,
     get_batch_job_estimate,
+    get_batch_job_status,
 )
 from processing.utils import inject_variables_in_process_graph
 from processing.openeo_process_errors import OpenEOProcessError
@@ -63,7 +63,7 @@ from openeoerrors import (
 )
 from authentication.user import User
 from const import openEOBatchJobStatus, optional_process_parameters
-from utils import get_all_process_definitions
+from utils import get_all_process_definitions, get_roles
 
 from openeo_collections.collections import collections
 
@@ -402,16 +402,15 @@ def api_jobs(user):
         links = []
 
         for record in JobsPersistence.query_by_user_id(user.user_id):
-            batch_request_info = get_batch_request_info(record["batch_request_id"])
+            status, _ = get_batch_job_status(record["batch_request_id"])
+
             jobs.append(
                 {
                     "id": record["id"],
                     "title": record.get("title", None),
                     "description": record.get("description", None),
-                    "status": openEOBatchJobStatus.from_sentinelhub_batch_job_status(
-                        batch_request_info.status, batch_request_info.user_action
-                    ).value,
-                    "created": record["created"],
+                    "status": status.value,
+                    "created": convert_timestamp_to_simpler_format(record["created"]),
                 }
             )
             link_to_job = {
@@ -464,29 +463,25 @@ def api_batch_job(job_id, user):
         raise JobNotFound()
 
     if flask.request.method == "GET":
-        batch_request_info = get_batch_request_info(job["batch_request_id"])
+        status, error = get_batch_job_status(job["batch_request_id"])
         return flask.make_response(
             jsonify(
                 id=job_id,
                 title=job.get("title", None),
                 description=job.get("description", None),
                 process={"process_graph": json.loads(job["process"])["process_graph"]},
-                status=openEOBatchJobStatus.from_sentinelhub_batch_job_status(
-                    batch_request_info.status, batch_request_info.user_action
-                ).value,
-                error=batch_request_info.error if batch_request_info.status == BatchRequestStatus.FAILED else None,
-                created=job["created"],
-                updated=job["last_updated"],
+                status=status.value,
+                error=error,
+                created=convert_timestamp_to_simpler_format(job["created"]),
+                updated=convert_timestamp_to_simpler_format(job["last_updated"]),
             ),
             200,
         )
 
     elif flask.request.method == "PATCH":
-        batch_request_info = get_batch_request_info(job["batch_request_id"])
+        status, _ = get_batch_job_status(job["batch_request_id"])
 
-        if openEOBatchJobStatus.from_sentinelhub_batch_job_status(
-            batch_request_info.status, batch_request_info.user_action
-        ) in [openEOBatchJobStatus.QUEUED, openEOBatchJobStatus.RUNNING]:
+        if status in [openEOBatchJobStatus.QUEUED, openEOBatchJobStatus.RUNNING]:
             raise JobLocked()
 
         data = flask.request.get_json()
@@ -505,7 +500,6 @@ def api_batch_job(job_id, user):
         return flask.make_response("Changes to the job applied successfully.", 204)
 
     elif flask.request.method == "DELETE":
-        batch_request_info = get_batch_request_info(job["batch_request_id"])
         s3 = boto3.client(
             "s3",
             region_name=DATA_AWS_REGION,
@@ -536,19 +530,16 @@ def add_job_to_queue(job_id, user):
         return flask.make_response("The creation of the resource has been queued successfully.", 202)
 
     elif flask.request.method == "GET":
-        batch_request_info = get_batch_request_info(job["batch_request_id"])
+        status, error = get_batch_job_status(job["batch_request_id"])
 
-        if batch_request_info.status not in [
-            BatchRequestStatus.DONE,
-            BatchRequestStatus.FAILED,
-            BatchRequestStatus.PARTIAL,
+        if status not in [
+            openEOBatchJobStatus.FINISHED,
+            openEOBatchJobStatus.ERROR,
         ]:
             raise JobNotFinished()
 
-        if batch_request_info.status == BatchRequestStatus.FAILED:
-            return flask.make_response(
-                jsonify(id=job_id, code=424, level="error", message=batch_request_info.error, links=[]), 424
-            )
+        if status == openEOBatchJobStatus.ERROR:
+            return flask.make_response(jsonify(id=job_id, code=424, level="error", message=error, links=[]), 424)
 
         s3 = boto3.client(
             "s3",
@@ -572,9 +563,8 @@ def add_job_to_queue(job_id, user):
                     "Key": object_key,
                 },
             )
-            assets[object_key] = {
-                "href": url,
-            }
+            roles = get_roles(object_key)
+            assets[object_key] = {"href": url, "roles": roles}
 
         return flask.make_response(
             jsonify(
@@ -697,7 +687,7 @@ def api_service(service_id, user):
             "type": record["service_type"],
             "enabled": record.get("enabled", True),
             "attributes": {},
-            "created": record["created"],
+            "created": convert_timestamp_to_simpler_format(record["created"]),
             "costs": 0,
             "budget": record.get("budget", None),
         }
@@ -818,6 +808,11 @@ def well_known():
     return flask.make_response(
         jsonify(versions=[{"api_version": "1.0.0", "production": False, "url": flask.request.url_root}]), 200
     )
+
+
+@app.route("/health", methods=["GET"])
+def return_health():
+    return flask.make_response({"status": "OK"}, 200)
 
 
 if __name__ == "__main__":

@@ -14,6 +14,7 @@ from openeoerrors import (
 from processing.utils import inject_variables_in_process_graph, validate_geojson, parse_geojson
 from processing.sentinel_hub import SentinelHub
 from fixtures.geojson_fixtures import GeoJSON_Fixtures
+from utils import get_roles
 
 
 @pytest.mark.parametrize(
@@ -48,6 +49,8 @@ def test_collections(get_process_graph, collection_id):
                 "corine-land-cover",
                 "S2L1C",
                 "mapzen-dem",
+                "sentinel-3-l1b-slstr",
+                "sentinel-1-grd",
             ],
         ),
     ],
@@ -425,6 +428,86 @@ def test_inject_variables_in_process_graph():
                 }
             },
             [202, 94],
+        ),
+        (
+            {
+                "params": {
+                    "collection_id": "sentinel-3-l1b-slstr",
+                    "bands": ["F1"],
+                    "spatial_extent": {
+                        "west": 13.491039,
+                        "east": 13.527775,
+                        "north": 41.931656,
+                        "south": 41.909687,
+                    },  # 3.04Km X 2.4Km bbox
+                }
+            },
+            [3, 2],
+        ),
+        (
+            {
+                "params": {
+                    "collection_id": "sentinel-3-l1b-slstr",
+                    "bands": ["S1"],
+                    "spatial_extent": {
+                        "west": 13.491039,
+                        "east": 13.527775,
+                        "north": 41.931656,
+                        "south": 41.909687,
+                    },  # 3.04Km X 2.4Km bbox
+                }
+            },
+            [6, 4],
+        ),
+        (
+            {
+                "params": {
+                    "collection_id": "sentinel-1-grd",
+                    "bands": ["VV"],
+                    "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                }
+            },
+            [3361, 15159],
+        ),
+        (
+            {
+                "params": {
+                    "collection_id": "sentinel-1-grd",
+                    "bands": ["VV"],
+                    "spatial_extent": {
+                        "west": 11.207085,
+                        "east": 22.259331,
+                        "north": 43.406606,
+                        "south": 38.326104,
+                    },  # 892Km X 565Km bbox
+                }
+            },
+            [89203, 56544],
+        ),
+        (
+            {
+                "params": {
+                    "collection_id": "mapzen-dem",
+                    "bands": ["DEM"],
+                    "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                }
+            },
+            [1120, 5053],
+        ),
+        (
+            {
+                "params": {
+                    "collection_id": "mapzen-dem",
+                    "bands": ["DEM"],
+                    "spatial_extent": {
+                        "west": 13.491039,
+                        "east": 13.527775,
+                        "north": 41.931656,
+                        "south": 41.909687,
+                    },  # 3.04Km X 2.4Km bbox
+                }
+            },
+            [100, 77],
         ),
     ],
 )
@@ -839,3 +922,19 @@ def test_temporal_extent(get_process_graph, fixture, expected_result):
         )
         assert process.from_date == expected_result["from_date"]
         assert process.to_date == expected_result["to_date"]
+
+
+@pytest.mark.parametrize(
+    "filename,expected_roles",
+    [
+        ("1235467/abc.json", ["metadata"]),
+        ("abc.json", ["metadata"]),
+        ("abc.JSON", ["metadata"]),
+        ("1235467/abc.tiff", ["data"]),
+        ("abc.png", ["data"]),
+        ("abc.jpg", ["data"]),
+    ],
+)
+def test_get_roles(filename, expected_roles):
+    roles = get_roles(filename)
+    assert roles == expected_roles
