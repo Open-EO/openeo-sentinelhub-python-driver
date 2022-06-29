@@ -50,3 +50,9 @@ optional_process_parameters = [
     "examples",
     "links",
 ]
+
+
+class SentinelhubDeployments:
+    MAIN = "https://services.sentinel-hub.com"
+    USWEST = "https://services-uswest2.sentinel-hub.com"
+    CREODIAS = "https://creodias.sentinel-hub.com"

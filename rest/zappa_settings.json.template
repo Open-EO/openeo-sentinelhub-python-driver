@@ -18,7 +18,7 @@
     "timeout_seconds": 180,
     "profile_name": "default",
     "project_name": "sentinelhub-openeo-testing",
-    "runtime": "python3.6",
+    "runtime": "python3.9",
     "s3_bucket": "shopeneoproduction"
   },
   "production": {
@@ -40,7 +40,7 @@
     "timeout_seconds": 29,
     "profile_name": "default",
     "project_name": "sentinelhub-openeop",
-    "runtime": "python3.6",
+    "runtime": "python3.9",
     "s3_bucket": "shopeneoproduction"
   }
 }
