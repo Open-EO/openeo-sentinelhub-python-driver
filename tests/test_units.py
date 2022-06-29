@@ -13,6 +13,7 @@ from openeoerrors import (
 )
 from processing.utils import inject_variables_in_process_graph, validate_geojson, parse_geojson
 from processing.sentinel_hub import SentinelHub
+from processing.partially_supported_processes import FilterBBox
 from fixtures.geojson_fixtures import GeoJSON_Fixtures
 from utils import get_roles
 
@@ -938,3 +939,74 @@ def test_temporal_extent(get_process_graph, fixture, expected_result):
 def test_get_roles(filename, expected_roles):
     roles = get_roles(filename)
     assert roles == expected_roles
+
+
+@pytest.mark.parametrize(
+    "process_graph,expected_is_usage_valid,expected_error",
+    [
+        (
+            {
+                "loadco1": {
+                    "process_id": "load_collection",
+                    "arguments": {
+                        "id": "S2L1C",
+                        "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                        "temporal_extent": ["2017-01-01", "2017-02-01"],
+                        "bands": ["B01", "B02"],
+                    },
+                },
+                "filterbbox1": {
+                    "process_id": "filter_bbox",
+                    "arguments": {
+                        "data": {"from_node": "loadco1"},
+                        "extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                    },
+                },
+                "saveres1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "filterbbox1"}, "format": "gtiff"},
+                    "result": True,
+                },
+            },
+            True,
+            None,
+        ),
+        (
+            {
+                "loadco1": {
+                    "process_id": "load_collection",
+                    "arguments": {
+                        "id": "S2L1C",
+                        "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                        "temporal_extent": ["2017-01-01", "2017-02-01"],
+                        "bands": ["B01", "B02"],
+                    },
+                },
+                "filterbbox1": {
+                    "process_id": "filter_bbox",
+                    "arguments": {
+                        "data": {"from_node": "loadco1"},
+                        "extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                    },
+                },
+                "mercubes1": {
+                    "process_id": "merge_cubes",
+                    "arguments": {"cube1": {"from_node": "loadco1"}, "cube2": {"from_node": "filterbbox1"}},
+                },
+                "saveres1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "mercubes1"}, "format": "gtiff"},
+                    "result": True,
+                },
+            },
+            False,
+            "Process must be part of the main processing chain.",
+        ),
+    ],
+)
+def test_filter_bbox_process(process_graph, expected_is_usage_valid, expected_error):
+    filter_bbox = FilterBBox(process_graph)
+    is_usage_valid, error = filter_bbox.is_usage_valid()
+    assert is_usage_valid == expected_is_usage_valid
+    if not expected_is_usage_valid:
+        assert expected_error in error.message
