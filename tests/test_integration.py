@@ -442,7 +442,7 @@ def test_result_not_encoded_secret(app_client, example_process_graph, example_au
         content_type="application/json",
         headers=example_authorization_header_with_oidc,
     )
-    assert r.status_code == 200
+    assert r.status_code == 200, r.data
 
 
 def test_result_base64_encoded_secret(app_client, example_process_graph, authorization_header_base64):
