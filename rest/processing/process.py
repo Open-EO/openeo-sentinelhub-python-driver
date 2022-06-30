@@ -35,7 +35,11 @@ class Process:
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_RESOLUTION = (10, 10)
         self.MAXIMUM_SYNC_FILESIZE_BYTES = 5000000
-        self.user_defined_processes = user_defined_processes
+        partially_supported_processes_as_udp = {
+            partially_supported_process.process_id: {} for partially_supported_process in partially_supported_processes
+        }
+        partially_supported_processes_as_udp.update(user_defined_processes)
+        self.user_defined_processes = partially_supported_processes_as_udp
         self.sentinel_hub = SentinelHub(access_token=access_token)
 
         self.process_graph = process["process_graph"]

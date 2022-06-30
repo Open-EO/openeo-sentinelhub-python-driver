@@ -1161,3 +1161,57 @@ def test_filter_bbox_process(process_graph, expected_is_usage_valid, expected_er
         expected_geometry
     ), f"Expected {mapping(expected_geometry)} does not match {mapping(geometry)}"
     assert crs == expected_crs
+
+
+@pytest.mark.parametrize(
+    "process_graph,expected_bbox,expected_crs,expected_geometry",
+    [
+        (
+            {
+                "loadco1": {
+                    "process_id": "load_collection",
+                    "arguments": {
+                        "id": "sentinel-2-l1c",
+                        "spatial_extent": {"west": 15.1, "east": 19.6, "north": 48.4, "south": 46.2},
+                        "temporal_extent": ["2017-01-01", "2017-02-01"],
+                        "bands": ["B01", "B02"],
+                    },
+                },
+                "filterbbox1": {
+                    "process_id": "filter_bbox",
+                    "arguments": {
+                        "data": {"from_node": "loadco1"},
+                        "extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                    },
+                },
+                "filterbbox2": {
+                    "process_id": "filter_bbox",
+                    "arguments": {
+                        "data": {"from_node": "filterbbox1"},
+                        "extent": {"west": 13.5, "east": 16.5, "north": 48.5, "south": 47.5},
+                    },
+                },
+                "saveres1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "filterbbox2"}, "format": "gtiff"},
+                    "result": True,
+                },
+            },
+            (16.1, 47.5, 16.5, 48.4),
+            4326,
+            shape(
+                {
+                    "type": "Polygon",
+                    "coordinates": [[[16.1, 47.5], [16.5, 47.5], [16.5, 48.4], [16.1, 48.4], [16.1, 47.5]]],
+                }
+            ),
+        ),
+    ],
+)
+def test_get_bounds(process_graph, expected_bbox, expected_crs, expected_geometry):
+    process = Process({"process_graph": process_graph})
+    assert process.bbox == expected_bbox
+    assert process.epsg_code == expected_crs
+    assert shape(process.geometry).equals(
+        expected_geometry
+    ), f"Expected {mapping(expected_geometry)} does not match {mapping(process.geometry)}"
