@@ -1,3 +1,4 @@
+from pyproj import CRS, Transformer
 from pg_to_evalscript.process_graph_utils import get_dependencies, get_dependents, get_execution_order
 
 from openeoerrors import PartiallySupportedProcessInvalid
@@ -11,11 +12,14 @@ class PartiallyImplementedSpatialProcess:
         self.dependents = get_dependents(self.dependencies)
         self.execution_order = get_execution_order(self.dependencies, self.dependents)
 
-    def get_all_occurrences_of_process_id(self, process_graph, process_id, level=0, all_occurrences=[]):
+    def get_all_occurrences_of_process_id(self, process_graph, process_id, level=0, all_occurrences=None):
         """
         Iterates over the process graph to find all nodes with `process_id` process.
         Returns the list of node ids and nesting levels of occurrences.
         """
+        if all_occurrences is None:
+            all_occurrences = []
+
         for node_id, node in process_graph.items():
             if node["process_id"] == process_id:
                 all_occurrences.append({"node_id": node_id, "level": level})
@@ -35,6 +39,11 @@ class PartiallyImplementedSpatialProcess:
         Returns is_valid (bool) and a associated error object if is_valid is False.
         """
         all_occurrences = self.get_all_occurrences_of_process_id(self.process_graph, self.process_id)
+
+        if len(all_occurrences) > 1:
+            # Temporarily only allow a single occurrence of the process
+            # If we wanted to support multiple, we'd have to join multiple BBoxes with potentially different CRS together
+            return False, PartiallySupportedProcessInvalid(self.process_id, "Process can only be used once.")
 
         for occurrence in all_occurrences:
             if occurrence["level"] > 0:
@@ -75,16 +84,15 @@ class PartiallyImplementedSpatialProcess:
                 return False
         return True
 
-    def get_last_occurrence(self):
+    def get_last_occurrence(self, all_occurrences):
         """
         Get node id of node with the partially implemented spatial process that runs last
         """
-        all_occurrences = self.get_all_occurrences_of_process_id(self.process_graph, self.process_id)
         indices = [self.execution_order.index(occurrence["node_id"]) for occurrence in all_occurrences]
-        return all_occurrences[max(indices)]["node_id"]
+        return self.execution_order[max(indices)]
 
     def get_spatial_info(self):
         """
-        Returns extent, geometry.
+        Returns shapely geometry object in CRS 4326, original CRS.
         """
         return None, None

@@ -1,5 +1,9 @@
-from openeoerrors import UnsupportedGeometry
 import math
+
+from pyproj import CRS, Transformer
+from shapely.geometry import shape
+
+from openeoerrors import UnsupportedGeometry
 
 
 def iterate(obj):
@@ -151,3 +155,29 @@ def convert_degree_resolution_to_meters(degrees):
     x = degrees[0]
     y = degrees[1]
     return [degree_to_meter(x), degree_to_meter(y)]
+
+
+def convert_extent_to_epsg4326(extent):
+    crs = extent.get("crs", 4326)
+
+    if crs == 4326:
+        return extent
+
+    crs = CRS.from_epsg(crs)
+    crs_4326 = CRS.from_epsg(4326)
+    transformer = Transformer.from_crs(crs, crs_4326, always_xy=True)
+    east, north = transformer.transform(spatial_extent["east"], spatial_extent["north"])
+    west, south = transformer.transform(spatial_extent["west"], spatial_extent["south"])
+
+    return {"crs": 4326, "east": east, "north": north, "west": west, "south": south}
+
+
+def convert_extent_to_geojson(extent):
+    east = extent["east"]
+    north = extent["north"]
+    west = extent["west"]
+    south = extent["south"]
+    return {
+        "type": "Polygon",
+        "coordinates": [[[west, south], [east, south], [east, north], [west, north], [west, south]]],
+    }

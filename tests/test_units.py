@@ -1044,7 +1044,7 @@ def test_processing_api_request(
                         "bands": ["B01", "B02"],
                     },
                 },
-                "filterbbox1": {
+                "filterbbox2": {
                     "process_id": "filter_bbox",
                     "arguments": {
                         "data": {"from_node": "loadco1"},
@@ -1053,7 +1053,7 @@ def test_processing_api_request(
                 },
                 "saveres1": {
                     "process_id": "save_result",
-                    "arguments": {"data": {"from_node": "filterbbox1"}, "format": "gtiff"},
+                    "arguments": {"data": {"from_node": "filterbbox2"}, "format": "gtiff"},
                     "result": True,
                 },
             },
