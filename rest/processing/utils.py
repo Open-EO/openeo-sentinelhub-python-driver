@@ -162,13 +162,22 @@ def convert_extent_to_epsg4326(extent):
     if crs == 4326:
         return extent
 
+    # crs = CRS.from_epsg(crs)
+    # crs_4326 = CRS.from_epsg(4326)
+    # transformer = Transformer.from_crs(crs, crs_4326, always_xy=True)
+    # east, north = transformer.transform(spatial_extent["east"], spatial_extent["north"])
+    # west, south = transformer.transform(spatial_extent["west"], spatial_extent["south"])
+    east, north = convert_to_epsg4326(crs, spatial_extent["east"], spatial_extent["north"])
+    west, south = convert_to_epsg4326(crs, spatial_extent["west"], spatial_extent["south"])
+
+    return {"crs": 4326, "east": east, "north": north, "west": west, "south": south}
+
+
+def convert_to_epsg4326(crs, x, y):
     crs = CRS.from_epsg(crs)
     crs_4326 = CRS.from_epsg(4326)
     transformer = Transformer.from_crs(crs, crs_4326, always_xy=True)
-    east, north = transformer.transform(spatial_extent["east"], spatial_extent["north"])
-    west, south = transformer.transform(spatial_extent["west"], spatial_extent["south"])
-
-    return {"crs": 4326, "east": east, "north": north, "west": west, "south": south}
+    return transformer.transform(x, y)
 
 
 def convert_extent_to_geojson(extent):
@@ -176,6 +185,10 @@ def convert_extent_to_geojson(extent):
     north = extent["north"]
     west = extent["west"]
     south = extent["south"]
+    return construct_geojson(west, south, east, north)
+
+
+def construct_geojson(west, south, east, north):
     return {
         "type": "Polygon",
         "coordinates": [[[west, south], [east, south], [east, north], [west, north], [west, south]]],

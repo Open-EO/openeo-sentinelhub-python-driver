@@ -7,11 +7,17 @@ from processing.utils import convert_extent_to_epsg4326, convert_extent_to_geojs
 
 
 class FilterBBox(PartiallyImplementedSpatialProcess):
+    process_id = "filter_bbox"
+
     def __init__(self, process_graph):
-        super().__init__(process_graph, "filter_bbox")
+        super().__init__(process_graph, FilterBBox.process_id)
 
     def get_spatial_info(self):
         all_occurrences = self.get_all_occurrences_of_process_id(self.process_graph, self.process_id)
+
+        if len(all_occurrences) == 0:
+            return None, None
+
         last_occurrence_node_id = self.get_last_occurrence(all_occurrences)
         final_crs = self.process_graph[last_occurrence_node_id]["arguments"]["extent"].get("crs", 4326)
         final_geometry = None
