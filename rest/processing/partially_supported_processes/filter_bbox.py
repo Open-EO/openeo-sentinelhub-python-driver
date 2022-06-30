@@ -1,3 +1,5 @@
+from shapely.geometry import shape
+
 from processing.partially_supported_processes._partially_implemented_spatial_process import (
     PartiallyImplementedSpatialProcess,
 )

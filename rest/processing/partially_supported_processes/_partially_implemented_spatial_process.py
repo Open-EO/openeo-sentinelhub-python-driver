@@ -40,11 +40,6 @@ class PartiallyImplementedSpatialProcess:
         """
         all_occurrences = self.get_all_occurrences_of_process_id(self.process_graph, self.process_id)
 
-        if len(all_occurrences) > 1:
-            # Temporarily only allow a single occurrence of the process
-            # If we wanted to support multiple, we'd have to join multiple BBoxes with potentially different CRS together
-            return False, PartiallySupportedProcessInvalid(self.process_id, "Process can only be used once.")
-
         for occurrence in all_occurrences:
             if occurrence["level"] > 0:
                 return False, PartiallySupportedProcessInvalid(

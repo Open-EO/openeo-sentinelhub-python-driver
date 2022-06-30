@@ -1,7 +1,6 @@
 import math
 
 from pyproj import CRS, Transformer
-from shapely.geometry import shape
 
 from openeoerrors import UnsupportedGeometry
 

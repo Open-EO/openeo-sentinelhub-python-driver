@@ -1,6 +1,8 @@
 from setup_tests import *
 from datetime import datetime, timedelta, timezone
 
+from shapely.geometry import shape, mapping
+
 from openeoerrors import (
     AuthenticationRequired,
     AuthenticationSchemeInvalid,
@@ -1031,7 +1033,7 @@ def test_processing_api_request(
 
 
 @pytest.mark.parametrize(
-    "process_graph,expected_is_usage_valid,expected_error",
+    "process_graph,expected_is_usage_valid,expected_error,expected_geometry,expected_crs",
     [
         (
             {
@@ -1059,6 +1061,13 @@ def test_processing_api_request(
             },
             True,
             None,
+            shape(
+                {
+                    "type": "Polygon",
+                    "coordinates": [[[16.1, 47.2], [16.6, 47.2], [16.6, 48.6], [16.1, 48.6], [16.1, 47.2]]],
+                }
+            ),
+            4326,
         ),
         (
             {
@@ -1090,12 +1099,65 @@ def test_processing_api_request(
             },
             False,
             "Process must be part of the main processing chain.",
+            shape(
+                {
+                    "type": "Polygon",
+                    "coordinates": [[[16.1, 47.2], [16.6, 47.2], [16.6, 48.6], [16.1, 48.6], [16.1, 47.2]]],
+                }
+            ),
+            4326,
+        ),
+        (
+            {
+                "loadco1": {
+                    "process_id": "load_collection",
+                    "arguments": {
+                        "id": "S2L1C",
+                        "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                        "temporal_extent": ["2017-01-01", "2017-02-01"],
+                        "bands": ["B01", "B02"],
+                    },
+                },
+                "filterbbox1": {
+                    "process_id": "filter_bbox",
+                    "arguments": {
+                        "data": {"from_node": "loadco1"},
+                        "extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                    },
+                },
+                "filterbbox2": {
+                    "process_id": "filter_bbox",
+                    "arguments": {
+                        "data": {"from_node": "filterbbox1"},
+                        "extent": {"west": 13.5, "east": 16.5, "north": 48.5, "south": 47.5},
+                    },
+                },
+                "saveres1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "filterbbox2"}, "format": "gtiff"},
+                    "result": True,
+                },
+            },
+            True,
+            None,
+            shape(
+                {
+                    "type": "Polygon",
+                    "coordinates": [[[16.1, 47.5], [16.5, 47.5], [16.5, 48.5], [16.1, 48.5], [16.1, 47.5]]],
+                }
+            ),
+            4326,
         ),
     ],
 )
-def test_filter_bbox_process(process_graph, expected_is_usage_valid, expected_error):
+def test_filter_bbox_process(process_graph, expected_is_usage_valid, expected_error, expected_geometry, expected_crs):
     filter_bbox = FilterBBox(process_graph)
     is_usage_valid, error = filter_bbox.is_usage_valid()
-    assert is_usage_valid == expected_is_usage_valid
+    assert is_usage_valid == expected_is_usage_valid, error
     if not expected_is_usage_valid:
         assert expected_error in error.message
+    geometry, crs = filter_bbox.get_spatial_info()
+    assert geometry.equals(
+        expected_geometry
+    ), f"Expected {mapping(expected_geometry)} does not match {mapping(geometry)}"
+    assert crs == expected_crs
