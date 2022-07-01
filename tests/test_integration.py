@@ -1818,3 +1818,52 @@ def test_using_user_defined_process(
 
     r = app_client.get("/service/xyz/{}/20/100/100".format(service_id))
     assert r.status_code == 200
+
+
+def test_process_graph_with_partially_defined_processes(app_client, get_expected_data):
+    process_graph = {
+        "process_graph": {
+            "load1": {
+                "process_id": "load_collection",
+                "arguments": {
+                    "id": "sentinel-2-l1c",
+                    "spatial_extent": {
+                        "west": 14.012098111544269,
+                        "east": 14.04114609486048,
+                        "south": 45.99432492799059,
+                        "north": 46.00774118321607,
+                    },
+                    "temporal_extent": ["2022-06-24T00:00:00Z", "2022-07-31T00:00:00Z"],
+                    "bands": ["B01"],
+                    "properties": {},
+                },
+            },
+            "filter2": {
+                "process_id": "filter_bbox",
+                "arguments": {
+                    "data": {"from_node": "load1"},
+                    "extent": {
+                        "west": 14.027422184782331,
+                        "east": 14.028779372020717,
+                        "south": 46.00127415536559,
+                        "north": 46.003586149311445,
+                    },
+                },
+            },
+            "save3": {
+                "process_id": "save_result",
+                "arguments": {"data": {"from_node": "filter2"}, "format": "GTIFF"},
+                "result": True,
+            },
+        }
+    }
+    headers = {"Authorization": f"Bearer basic//{valid_sh_token}"}
+    r = app_client.post(
+        "/result",
+        data=json.dumps({"process": process_graph}),
+        headers=headers,
+        content_type="application/json",
+    )
+    assert r.status_code == 200, r.data
+    expected_data = get_expected_data("partially_defined_process_result.tiff")
+    assert r.data == expected_data
