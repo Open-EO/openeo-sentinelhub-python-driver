@@ -10,7 +10,6 @@ from marshmallow import Schema, fields, validates, ValidationError, validate, va
 from openeo_pg_parser.validate import validate_process_graph
 from openeo_collections.collections import collections
 from processing.processing import check_process_graph_conversion_validity
-from processing.partially_supported_processes import partially_supported_processes
 from dynamodb.utils import get_all_user_defined_processes
 from const import global_parameters_xyz
 from utils import get_all_process_definitions, get_parameter_defs_dict, enrich_user_defined_processes_with_parameters
@@ -21,11 +20,7 @@ def validate_graph_with_known_processes(graph, parameters=None):
     current_directory = os.path.dirname(path_to_current_file)
     collections_src = collections.get_collections()
     process_definitions = get_all_process_definitions()
-    partially_supported_processes_as_udp = [
-        {"process_graph": {}, "id": partially_supported_process.process_id}
-        for partially_supported_process in partially_supported_processes
-    ]
-    user_defined_processes = get_all_user_defined_processes() + partially_supported_processes_as_udp
+    user_defined_processes = get_all_user_defined_processes()
     user_defined_processes = enrich_user_defined_processes_with_parameters(user_defined_processes)
     process_definitions += user_defined_processes
 
