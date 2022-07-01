@@ -32,6 +32,7 @@ from processing.utils import (
     convert_to_epsg4326,
     construct_geojson,
     convert_geometry_crs,
+    remove_partially_supported_processes_from_process_graph,
 )
 
 
@@ -62,8 +63,11 @@ class Process:
         return BBox(self.bbox, CRS(self.epsg_code))
 
     def get_evalscript(self):
+        process_graph = remove_partially_supported_processes_from_process_graph(
+            self.process_graph, partially_supported_processes
+        )
         results = convert_from_process_graph(
-            self.process_graph,
+            process_graph,
             sample_type=self.sample_type.value,
             user_defined_processes=self.user_defined_processes,
             encode_result=False,

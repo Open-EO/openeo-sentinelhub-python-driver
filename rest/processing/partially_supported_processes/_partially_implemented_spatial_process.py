@@ -12,6 +12,9 @@ class PartiallyImplementedSpatialProcess:
         self.dependents = get_dependents(self.dependencies)
         self.execution_order = get_execution_order(self.dependencies, self.dependents)
 
+    def get_all_occurrences(self):
+        return self.get_all_occurrences_of_process_id(self.process_graph, self.process_id)
+
     def get_all_occurrences_of_process_id(self, process_graph, process_id, level=0, all_occurrences=None):
         """
         Iterates over the process graph to find all nodes with `process_id` process.
