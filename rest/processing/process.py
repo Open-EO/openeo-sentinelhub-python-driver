@@ -27,7 +27,12 @@ from openeoerrors import (
     TemporalExtentError,
 )
 from processing.partially_supported_processes import partially_supported_processes
-from processing.utils import convert_degree_resolution_to_meters, convert_to_epsg4326, construct_geojson
+from processing.utils import (
+    convert_degree_resolution_to_meters,
+    convert_to_epsg4326,
+    construct_geojson,
+    convert_geometry_crs,
+)
 
 
 class Process:
@@ -188,6 +193,10 @@ class Process:
             geometry = shape(construct_geojson(west, south, east, north))
 
         final_geometry = partial_processes_geometry.intersection(geometry)
+
+        if partial_processes_crs is not None and partial_processes_crs != 4326:
+            final_geometry = convert_geometry_crs(final_geometry, partial_processes_crs)
+
         return final_geometry.bounds, partial_processes_crs, mapping(final_geometry)
 
     def get_collection_temporal_step(self):

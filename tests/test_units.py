@@ -1206,12 +1206,111 @@ def test_filter_bbox_process(process_graph, expected_is_usage_valid, expected_er
                 }
             ),
         ),
+        (
+            {
+                "loadco1": {
+                    "process_id": "load_collection",
+                    "arguments": {
+                        "id": "sentinel-2-l1c",
+                        "spatial_extent": {
+                            "type": "Polygon",
+                            "coordinates": [[[15.1, 46.2], [19.6, 46.2], [19.6, 48.4], [15.1, 48.4], [15.1, 46.2]]],
+                        },
+                        "temporal_extent": ["2017-01-01", "2017-02-01"],
+                        "bands": ["B01", "B02"],
+                    },
+                },
+                "filterbbox1": {
+                    "process_id": "filter_bbox",
+                    "arguments": {
+                        "data": {"from_node": "loadco1"},
+                        "extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                    },
+                },
+                "filterbbox2": {
+                    "process_id": "filter_bbox",
+                    "arguments": {
+                        "data": {"from_node": "filterbbox1"},
+                        "extent": {"west": 13.5, "east": 16.5, "north": 48.5, "south": 47.5},
+                    },
+                },
+                "saveres1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "filterbbox2"}, "format": "gtiff"},
+                    "result": True,
+                },
+            },
+            (16.1, 47.5, 16.5, 48.4),
+            4326,
+            shape(
+                {
+                    "type": "Polygon",
+                    "coordinates": [[[16.1, 47.5], [16.5, 47.5], [16.5, 48.4], [16.1, 48.4], [16.1, 47.5]]],
+                }
+            ),
+        ),
+        # Same as above, except that coordinates are converted to EPSG3857
+        (
+            {
+                "loadco1": {
+                    "process_id": "load_collection",
+                    "arguments": {
+                        "id": "sentinel-2-l1c",
+                        "spatial_extent": {
+                            "type": "Polygon",
+                            "coordinates": [[[15.1, 46.2], [19.6, 46.2], [19.6, 48.4], [15.1, 48.4], [15.1, 46.2]]],
+                        },
+                        "temporal_extent": ["2017-01-01", "2017-02-01"],
+                        "bands": ["B01", "B02"],
+                    },
+                },
+                "filterbbox1": {
+                    "process_id": "filter_bbox",
+                    "arguments": {
+                        "data": {"from_node": "loadco1"},
+                        "extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                    },
+                },
+                "filterbbox2": {
+                    "process_id": "filter_bbox",
+                    "arguments": {
+                        "data": {"from_node": "filterbbox1"},
+                        "extent": {
+                            "crs": 3857,
+                            "west": 1502813.13,
+                            "east": 1836771.60,
+                            "north": 6190443.81,
+                            "south": 6024072.12,
+                        },
+                    },
+                },
+                "saveres1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "filterbbox2"}, "format": "gtiff"},
+                    "result": True,
+                },
+            },
+            (1792243.80, 6024072.12, 1836771.60, 6173660.45),
+            3857,
+            shape(
+                {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [1792243.8017717046, 6024072.119999999],
+                            [1836771.6000000003, 6024072.119999999],
+                            [1836771.6000000003, 6173660.451962931],
+                            [1792243.8017717046, 6173660.451962931],
+                            [1792243.8017717046, 6024072.119999999],
+                        ]
+                    ],
+                }
+            ),
+        ),
     ],
 )
 def test_get_bounds(process_graph, expected_bbox, expected_crs, expected_geometry):
     process = Process({"process_graph": process_graph})
-    assert process.bbox == expected_bbox
+    assert pytest.approx(process.bbox) == expected_bbox
     assert process.epsg_code == expected_crs
-    assert shape(process.geometry).equals(
-        expected_geometry
-    ), f"Expected {mapping(expected_geometry)} does not match {mapping(process.geometry)}"
+    assert shape(process.geometry).equals(expected_geometry)

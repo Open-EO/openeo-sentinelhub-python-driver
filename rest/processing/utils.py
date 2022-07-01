@@ -1,6 +1,7 @@
 import math
 
 from pyproj import CRS, Transformer
+from shapely.geometry import shape, mapping
 
 from openeoerrors import UnsupportedGeometry
 
@@ -162,13 +163,8 @@ def convert_extent_to_epsg4326(extent):
     if crs == 4326:
         return extent
 
-    # crs = CRS.from_epsg(crs)
-    # crs_4326 = CRS.from_epsg(4326)
-    # transformer = Transformer.from_crs(crs, crs_4326, always_xy=True)
-    # east, north = transformer.transform(spatial_extent["east"], spatial_extent["north"])
-    # west, south = transformer.transform(spatial_extent["west"], spatial_extent["south"])
-    east, north = convert_to_epsg4326(crs, spatial_extent["east"], spatial_extent["north"])
-    west, south = convert_to_epsg4326(crs, spatial_extent["west"], spatial_extent["south"])
+    east, north = convert_to_epsg4326(crs, extent["east"], extent["north"])
+    west, south = convert_to_epsg4326(crs, extent["west"], extent["south"])
 
     return {"crs": 4326, "east": east, "north": north, "west": west, "south": south}
 
@@ -193,3 +189,18 @@ def construct_geojson(west, south, east, north):
         "type": "Polygon",
         "coordinates": [[[west, south], [east, south], [east, north], [west, north], [west, south]]],
     }
+
+
+def convert_geometry_crs(geometry, crs):
+    crs = CRS.from_epsg(crs)
+    crs_4326 = CRS.from_epsg(4326)
+    transformer = Transformer.from_crs(crs_4326, crs, always_xy=True)
+    geojson = mapping(geometry)
+
+    new_coordinates = []
+    for coord in geojson["coordinates"][0]:
+        x, y = transformer.transform(coord[0], coord[1])
+        new_coordinates.append([x, y])
+
+    geojson["coordinates"] = [new_coordinates]
+    return shape(geojson)
