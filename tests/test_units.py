@@ -1156,7 +1156,9 @@ def test_filter_bbox_process(process_graph, expected_is_usage_valid, expected_er
     assert is_usage_valid == expected_is_usage_valid, error
     if not expected_is_usage_valid:
         assert expected_error in error.message
-    geometry, crs = filter_bbox.get_spatial_info()
+    geometry, crs, resolution, resampling_method = filter_bbox.get_spatial_info()
+    assert resolution is None
+    assert resampling_method is None
     assert geometry.equals(
         expected_geometry
     ), f"Expected {mapping(expected_geometry)} does not match {mapping(geometry)}"
@@ -1430,7 +1432,9 @@ def test_filter_spatial_process(
     assert is_usage_valid == expected_is_usage_valid, error
     if not expected_is_usage_valid:
         assert expected_error in error.message
-    geometry, crs = filter_bbox.get_spatial_info()
+    geometry, crs, resolution, resampling_method = filter_bbox.get_spatial_info()
+    assert resolution is None
+    assert resampling_method is None
     assert geometry.equals(
         expected_geometry
     ), f"Expected {mapping(expected_geometry)} does not match {mapping(geometry)}"

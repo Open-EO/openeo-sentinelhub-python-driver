@@ -17,7 +17,7 @@ class FilterSpatial(PartiallyImplementedSpatialProcess):
         all_occurrences = self.get_all_occurrences_of_process_id(self.process_graph, self.process_id)
 
         if len(all_occurrences) == 0:
-            return None, None
+            return None, None, None, None
 
         final_geometry = None
 
@@ -32,4 +32,4 @@ class FilterSpatial(PartiallyImplementedSpatialProcess):
             else:
                 final_geometry = final_geometry.intersection(shape(geometries))
 
-        return final_geometry, None
+        return final_geometry, None, None, None

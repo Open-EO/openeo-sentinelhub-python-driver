@@ -137,7 +137,7 @@ class Process:
         final_crs = 4326
 
         for partially_supported_process in partially_supported_processes:
-            geometry, crs = partially_supported_process(self.process_graph).get_spatial_info()
+            geometry, crs, _, _ = partially_supported_process(self.process_graph).get_spatial_info()
             if not geometry:
                 continue
             if final_geometry is None:
