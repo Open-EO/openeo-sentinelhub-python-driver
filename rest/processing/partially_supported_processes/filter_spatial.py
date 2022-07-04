@@ -3,7 +3,7 @@ from shapely.geometry import shape
 from processing.partially_supported_processes._partially_implemented_spatial_process import (
     PartiallyImplementedSpatialProcess,
 )
-from processing.utils import is_polygon_or_multi_polygon
+from processing.utils import validate_geojson, parse_geojson
 from openeoerrors import UnsupportedGeometry
 
 
@@ -24,8 +24,8 @@ class FilterSpatial(PartiallyImplementedSpatialProcess):
         for occurrence in all_occurrences:
             geometries = self.process_graph[occurrence["node_id"]]["arguments"]["geometries"]
 
-            if not is_polygon_or_multi_polygon(geometries):
-                raise UnsupportedGeometry()
+            validate_geojson(geometries)
+            geometries = parse_geojson(geometries)
 
             if final_geometry is None:
                 final_geometry = shape(geometries)

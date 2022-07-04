@@ -15,7 +15,7 @@ from openeoerrors import (
 )
 from processing.utils import inject_variables_in_process_graph, validate_geojson, parse_geojson
 from processing.sentinel_hub import SentinelHub
-from processing.partially_supported_processes import FilterBBox
+from processing.partially_supported_processes import FilterBBox, FilterSpatial
 from processing.processing_api_request import ProcessingAPIRequest
 from fixtures.geojson_fixtures import GeoJSON_Fixtures
 from utils import get_roles
@@ -1307,6 +1307,60 @@ def test_filter_bbox_process(process_graph, expected_is_usage_valid, expected_er
                 }
             ),
         ),
+        (
+            {
+                "loadco1": {
+                    "process_id": "load_collection",
+                    "arguments": {
+                        "id": "sentinel-2-l1c",
+                        "spatial_extent": {
+                            "type": "Polygon",
+                            "coordinates": [[[15.1, 46.2], [19.6, 46.2], [19.6, 48.4], [15.1, 48.4], [15.1, 46.2]]],
+                        },
+                        "temporal_extent": ["2017-01-01", "2017-02-01"],
+                        "bands": ["B01", "B02"],
+                    },
+                },
+                "filterbbox1": {
+                    "process_id": "filter_bbox",
+                    "arguments": {
+                        "data": {"from_node": "loadco1"},
+                        "extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                    },
+                },
+                "filterspatial": {
+                    "process_id": "filter_spatial",
+                    "arguments": {
+                        "data": {"from_node": "filterbbox1"},
+                        "geometries": {
+                            "type": "Polygon",
+                            "coordinates": [[[16.4, 46.2], [19.6, 46.2], [19.6, 49.4], [16.4, 49.4], [16.4, 46.2]]],
+                        },
+                    },
+                },
+                "saveres1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "filterspatial"}, "format": "gtiff"},
+                    "result": True,
+                },
+            },
+            (16.4, 47.2, 16.6, 48.4),
+            4326,
+            shape(
+                {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [16.4, 47.2],
+                            [16.6, 47.2],
+                            [16.6, 48.4],
+                            [16.4, 48.4],
+                            [16.4, 47.2],
+                        ]
+                    ],
+                }
+            ),
+        ),
     ],
 )
 def test_get_bounds(process_graph, expected_bbox, expected_crs, expected_geometry):
@@ -1314,3 +1368,70 @@ def test_get_bounds(process_graph, expected_bbox, expected_crs, expected_geometr
     assert pytest.approx(process.bbox) == expected_bbox
     assert process.epsg_code == expected_crs
     assert shape(process.geometry).equals(expected_geometry)
+
+
+@pytest.mark.parametrize(
+    "process_graph,expected_is_usage_valid,expected_error,expected_geometry,expected_crs",
+    [
+        (
+            {
+                "loadco1": {
+                    "process_id": "load_collection",
+                    "arguments": {
+                        "id": "sentinel-2-l1c",
+                        "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                        "temporal_extent": ["2017-01-01", "2017-02-01"],
+                        "bands": ["B01", "B02"],
+                    },
+                },
+                "filterspatial1": {
+                    "process_id": "filter_spatial",
+                    "arguments": {
+                        "data": {"from_node": "loadco1"},
+                        "geometries": {
+                            "type": "Polygon",
+                            "coordinates": [[[15.1, 46.7], [19.6, 46.7], [19.6, 48.4], [15.1, 48.4], [15.1, 46.7]]],
+                        },
+                    },
+                },
+                "filterspatial2": {
+                    "process_id": "filter_spatial",
+                    "arguments": {
+                        "data": {"from_node": "filterspatial1"},
+                        "geometries": {
+                            "type": "Polygon",
+                            "coordinates": [[[18.1, 46.2], [19.6, 46.2], [19.6, 49.4], [18.1, 49.4], [18.1, 46.2]]],
+                        },
+                    },
+                },
+                "saveres1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "filterspatial2"}, "format": "gtiff"},
+                    "result": True,
+                },
+            },
+            True,
+            None,
+            shape(
+                {
+                    "type": "Polygon",
+                    "coordinates": [[[18.1, 46.7], [19.6, 46.7], [19.6, 48.4], [18.1, 48.4], [18.1, 46.7]]],
+                }
+            ),
+            None,
+        )
+    ],
+)
+def test_filter_spatial_process(
+    process_graph, expected_is_usage_valid, expected_error, expected_geometry, expected_crs
+):
+    filter_bbox = FilterSpatial(process_graph)
+    is_usage_valid, error = filter_bbox.is_usage_valid()
+    assert is_usage_valid == expected_is_usage_valid, error
+    if not expected_is_usage_valid:
+        assert expected_error in error.message
+    geometry, crs = filter_bbox.get_spatial_info()
+    assert geometry.equals(
+        expected_geometry
+    ), f"Expected {mapping(expected_geometry)} does not match {mapping(geometry)}"
+    assert crs == expected_crs
