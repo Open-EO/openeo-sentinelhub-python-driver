@@ -248,13 +248,7 @@ def remove_partially_supported_processes_from_process_graph(process_graph, parti
 
 
 def convert_projection_to_epsg_code(projection):
-    crs = None
-    for convert in [CRS.from_epsg, CRS.from_wkt, CRS.from_proj4]:
-        try:
-            crs = convert(projection)
-            break
-        except:
-            continue
+    crs = CRS(projection)
     return crs.to_epsg()
 
 

@@ -23,7 +23,7 @@ class ResampleSpatial(PartiallyImplementedSpatialProcess):
             raise ProcessParameterInvalid(
                 "method",
                 "resample_spatial",
-                f"Method {method} not among supported resampling methods: ['near','bilinear','cubic']",
+                f"Method '{method}' not among supported resampling methods: ['near','bilinear','cubic']",
             )
         return methods_mapping[method]
 
@@ -44,7 +44,7 @@ class ResampleSpatial(PartiallyImplementedSpatialProcess):
             raise ProcessParameterInvalid(
                 "projection",
                 "resample_spatial",
-                "'projection' is not a valid EPSG code, WKT string or PROJ definition.",
+                "projection is not a valid EPSG code, WKT string or PROJ definition.",
             )
 
     def get_spatial_info(self):
