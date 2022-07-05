@@ -261,10 +261,11 @@ def get_spatial_info_from_partial_processes(partially_supported_processes, proce
     for partially_supported_process in partially_supported_processes:
         geometry, crs, resolution, resampling_method = partially_supported_process(process_graph).get_spatial_info()
 
-        if final_geometry is None:
-            final_geometry = geometry
-        else:
-            final_geometry = final_geometry.intersection(geometry)
+        if geometry:
+            if final_geometry is None:
+                final_geometry = geometry
+            else:
+                final_geometry = final_geometry.intersection(geometry)
 
         if crs is not None:
             final_crs = crs
