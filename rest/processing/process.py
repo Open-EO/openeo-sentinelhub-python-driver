@@ -25,6 +25,7 @@ from openeoerrors import (
     ProcessParameterInvalid,
     ProcessGraphComplexity,
     TemporalExtentError,
+    BadRequest,
 )
 from processing.partially_supported_processes import partially_supported_processes
 from processing.utils import (
@@ -65,7 +66,6 @@ class Process:
         self.mimetype = self.get_mimetype()
         self.width = width or self.get_dimensions()[0]
         self.height = height or self.get_dimensions()[1]
-        self.tiling_grid_id, self.tiling_grid_resolution = self.get_appropriate_tiling_grid_and_resolution()
         self.sample_type = self.get_sample_type()
         self.evalscript = self.get_evalscript()
 
@@ -366,7 +366,23 @@ class Process:
 
     def get_appropriate_tiling_grid_and_resolution(self):
         global utm_tiling_grids
-        requested_resolution = min(self.get_highest_resolution())
+
+        if self.pisp_resolution:
+            # If desired resolution was explicitly set in partially defined spatial processes.
+            # we must make sure the X and Y resolution are the same and resolution is available among existing tiling grids
+            if self.pisp_resolution[0] != self.pisp_resolution[1]:
+                raise BadRequest("X and Y resolution must be identical in Sentinel Hub batch processing request.")
+            for tiling_grid in utm_tiling_grids:
+                if self.pisp_resolution[0] in tiling_grid["properties"]["resolutions"]:
+                    break
+            else:
+                raise BadRequest(
+                    "Resolution must be one of the supported values in Sentinel Hub batch processing request."
+                )
+            requested_resolution = self.pisp_resolution[0]
+        else:
+            requested_resolution = min(self.get_highest_resolution())
+
         utm_tiling_grids = sorted(
             utm_tiling_grids, key=lambda tg: tg["properties"]["tileWidth"]
         )  # We prefer grids with smaller tiles
@@ -444,6 +460,7 @@ class Process:
         )
 
     def create_batch_job(self):
+        self.tiling_grid_id, self.tiling_grid_resolution = self.get_appropriate_tiling_grid_and_resolution()
         return self.sentinel_hub.create_batch_job(
             bbox=self.bbox,
             epsg_code=self.epsg_code,
