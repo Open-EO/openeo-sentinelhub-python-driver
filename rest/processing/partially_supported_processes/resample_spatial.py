@@ -1,4 +1,4 @@
-from sentinelhub.constants import ResamplingType
+from sentinelhub import ResamplingType
 
 from processing.partially_supported_processes._partially_implemented_spatial_process import (
     PartiallyImplementedSpatialProcess,
@@ -9,7 +9,6 @@ from openeoerrors import ProcessParameterInvalid
 
 class ResampleSpatial(PartiallyImplementedSpatialProcess):
     process_id = "resample_spatial"
-    SUPPPORTED_RESAMPLE_METHODS = [ResamplingType.NEAREST, ResamplingType.BILINEAR, ResamplingType.CUBIC]
 
     def __init__(self, process_graph):
         super().__init__(process_graph, ResampleSpatial.process_id)
@@ -18,7 +17,7 @@ class ResampleSpatial(PartiallyImplementedSpatialProcess):
         methods_mapping = {
             "near": ResamplingType.NEAREST,
             "bilinear": ResamplingType.BILINEAR,
-            "cubic": ResamplingType.CUBIC,
+            "cubic": ResamplingType.BICUBIC,
         }
         if method not in methods_mapping:
             raise ProcessParameterInvalid(
@@ -68,7 +67,7 @@ class ResampleSpatial(PartiallyImplementedSpatialProcess):
                     "At least 'resolution' or 'projection' must be specified.",
                 )
 
-            method = self.self.process_graph[occurrence["node_id"]]["arguments"].get("method", "near")
+            method = self.process_graph[occurrence["node_id"]]["arguments"].get("method", "near")
             method = self.convert_resampling_method_to_sh(method)
 
             if resolution is not None:

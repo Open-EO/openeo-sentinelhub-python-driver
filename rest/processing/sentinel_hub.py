@@ -34,6 +34,7 @@ class SentinelHub:
         width=None,
         height=None,
         mimetype=None,
+        resampling_method=None,
     ):
         if width > 2500 or height > 2500:
             raise ProcessGraphComplexity("Dimensions exceed limit of 2500X2500")
@@ -49,6 +50,7 @@ class SentinelHub:
             width=width,
             height=height,
             mimetype=mimetype,
+            resampling_method=resampling_method,
         )
 
         return ProcessingAPIRequest(
@@ -70,6 +72,7 @@ class SentinelHub:
         width=None,
         height=None,
         mimetype=None,
+        resampling_method=None,
         preview_mode="EXTENDED_PREVIEW",
     ):
         return {
@@ -85,6 +88,7 @@ class SentinelHub:
                             },
                             "previewMode": preview_mode,
                         },
+                        "processing": self.construct_data_processing(resampling_method),
                     }
                 ],
             },
@@ -100,6 +104,13 @@ class SentinelHub:
         if geometry:
             bounds["geometry"] = geometry
         return bounds
+
+    def construct_data_processing(self, resampling_method):
+        processing = dict()
+        if resampling_method:
+            processing["upsampling"] = resampling_method.value
+            processing["downsampling"] = resampling_method.value
+        return processing
 
     def construct_output(self, width, height, mimetype):
         output = {
@@ -123,6 +134,7 @@ class SentinelHub:
         tiling_grid_id=None,
         tiling_grid_resolution=None,
         mimetype=None,
+        resampling_method=None,
     ):
         request_raw_dict = self.get_request_dictionary(
             bbox=bbox,
@@ -133,6 +145,7 @@ class SentinelHub:
             from_date=from_date,
             to_date=to_date,
             mimetype=mimetype,
+            resampling_method=resampling_method,
             preview_mode="DETAIL",
         )
 

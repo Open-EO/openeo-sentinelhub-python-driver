@@ -36,6 +36,7 @@ from processing.utils import (
     is_geojson,
     validate_geojson,
     parse_geojson,
+    get_spatial_info_from_partial_processes,
 )
 
 
@@ -52,6 +53,12 @@ class Process:
         self.sentinel_hub = SentinelHub(access_token=access_token)
 
         self.process_graph = process["process_graph"]
+        (
+            self.pisp_geometry,
+            self.pisp_crs,
+            self.pisp_resolution,
+            self.pisp_resampling_method,
+        ) = get_spatial_info_from_partial_processes(partially_supported_processes, self.process_graph)
         self.bbox, self.epsg_code, self.geometry = self.get_bounds()
         self.collection = self.get_collection()
         self.from_date, self.to_date = self.get_temporal_extent()
@@ -132,24 +139,6 @@ class Process:
         load_collection_node = self.get_node_by_process_id("load_collection")
         return self.id_to_data_collection(load_collection_node["arguments"]["id"])
 
-    def get_bounds_from_partial_processes(self):
-        final_geometry = None
-        final_crs = 4326
-
-        for partially_supported_process in partially_supported_processes:
-            geometry, crs, _, _ = partially_supported_process(self.process_graph).get_spatial_info()
-            if not geometry:
-                continue
-            if final_geometry is None:
-                final_geometry = geometry
-            else:
-                final_geometry = final_geometry.intersection(geometry)
-
-            if crs is not None:
-                final_crs = crs
-
-        return final_geometry, final_crs
-
     def get_bounds_from_load_collection(self):
         """
         Returns bbox, EPSG code, geometry
@@ -183,7 +172,8 @@ class Process:
 
     def get_bounds(self):
         bbox, epsg_code, geometry = self.get_bounds_from_load_collection()
-        partial_processes_geometry, partial_processes_crs = self.get_bounds_from_partial_processes()
+        partial_processes_geometry = self.pisp_geometry
+        partial_processes_crs = self.pisp_crs
 
         if partial_processes_geometry is None:
             return bbox, epsg_code, geometry
@@ -323,7 +313,10 @@ class Process:
         """
         spatial_extent = self.bbox
         bbox = self.convert_to_sh_bbox()
-        resolution = self.get_highest_resolution()
+        if self.pisp_resolution is not None:
+            resolution = tuple(self.pisp_resolution)
+        else:
+            resolution = self.get_highest_resolution()
         width, height = bbox_to_dimensions(bbox, resolution)
         return width, height
 
@@ -447,6 +440,7 @@ class Process:
             width=self.width,
             height=self.height,
             mimetype=self.mimetype,
+            resampling_method=self.pisp_resampling_method,
         )
 
     def create_batch_job(self):
@@ -461,4 +455,5 @@ class Process:
             tiling_grid_id=self.tiling_grid_id,
             tiling_grid_resolution=self.tiling_grid_resolution,
             mimetype=self.mimetype,
+            resampling_method=self.pisp_resampling_method,
         )

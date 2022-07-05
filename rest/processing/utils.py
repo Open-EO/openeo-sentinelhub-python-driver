@@ -4,6 +4,7 @@ import copy
 from pyproj import CRS, Transformer
 from shapely.geometry import shape, mapping
 from pg_to_evalscript.process_graph_utils import get_dependencies, get_dependents
+from sentinelhub import ResamplingType
 
 from openeoerrors import UnsupportedGeometry
 
@@ -255,3 +256,29 @@ def convert_projection_to_epsg_code(projection):
         except:
             continue
     return crs.to_epsg()
+
+
+def get_spatial_info_from_partial_processes(partially_supported_processes, process_graph):
+    final_geometry = None
+    final_crs = 4326
+    final_resolution = None
+    final_resampling_method = ResamplingType.NEAREST
+
+    for partially_supported_process in partially_supported_processes:
+        geometry, crs, resolution, resampling_method = partially_supported_process(process_graph).get_spatial_info()
+
+        if final_geometry is None:
+            final_geometry = geometry
+        else:
+            final_geometry = final_geometry.intersection(geometry)
+
+        if crs is not None:
+            final_crs = crs
+
+        if resolution is not None:
+            final_resolution = resolution
+
+        if resampling_method is not None:
+            final_resampling_method = resampling_method
+
+    return final_geometry, final_crs, final_resolution, final_resampling_method
