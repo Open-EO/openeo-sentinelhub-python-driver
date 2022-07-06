@@ -1838,7 +1838,7 @@ def test_process_graph_with_partially_defined_processes(app_client, get_expected
                         "south": 45.99432492799059,
                         "north": 46.00774118321607,
                     },
-                    "temporal_extent": ["2022-06-24T00:00:00Z", "2022-07-31T00:00:00Z"],
+                    "temporal_extent": ["2022-06-24T00:00:00Z", "2022-07-03T00:00:00Z"],
                     "bands": ["B01"],
                     "properties": {},
                 },
