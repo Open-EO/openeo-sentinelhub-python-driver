@@ -674,7 +674,7 @@ def test_sentinel_hub_access_token(access_token):
     responses.add(
         responses.POST,
         "https://services.sentinel-hub.com/api/v1/batch/process",
-        json={"id": "example", "processRequest": {}, "status": "CREATED"},
+        json={"id": "example", "processRequest": {}, "status": "CREATED", "tileCount": 1},
         match=[
             matchers.header_matcher(
                 {"Authorization": f"Bearer {access_token if access_token is not None else example_token}"}
