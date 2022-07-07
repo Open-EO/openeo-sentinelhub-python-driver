@@ -59,6 +59,7 @@ class Process:
             encode_result=False,
         )
         evalscript = results[0]["evalscript"]
+        evalscript.mosaicking = self.get_appropriate_mosaicking()
 
         if self.get_input_bands() is None:
             load_collection_node = self.get_node_by_process_id("load_collection")
@@ -67,6 +68,17 @@ class Process:
             evalscript.set_input_bands(all_bands)
 
         return evalscript
+
+    def get_appropriate_mosaicking(self):
+        load_collection_node = self.get_node_by_process_id("load_collection")
+        openeo_collection = collections.get_collection(load_collection_node["arguments"]["id"])
+        from_time, to_time = openeo_collection.get("extent").get("temporal")["interval"][0]
+
+        if from_time is None and to_time is None:
+            # Collection has no time extent so it's one of the "timeless" collections as e.g. DEM
+            # Mosaicking: "ORBIT" or "TILE" is not supported.
+            return "SIMPLE"
+        return "ORBIT"
 
     def _create_custom_datacollection(self, collection_type, collection_info, subtype):
         service_url = next(

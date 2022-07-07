@@ -11,6 +11,7 @@ import pytest
 import requests
 import responses
 from responses import matchers
+from responses.registries import OrderedRegistry
 import numpy as np
 from sentinelhub import BBox, DataCollection, MimeType, CRS
 
@@ -23,6 +24,7 @@ from authentication.authentication import AuthenticationProvider, authentication
 from processing.process import Process
 from processing.sentinel_hub import SentinelHub
 from processing.processing import delete_batch_job
+from processing.const import sh_config
 from openeoerrors import ProcessGraphComplexity
 from buckets import get_bucket
 
