@@ -26,9 +26,12 @@ from processing.sentinel_hub import SentinelHub
 from processing.processing import delete_batch_job
 from processing.const import sh_config
 from openeoerrors import ProcessGraphComplexity
+from buckets import get_bucket
 
 
 FIXTURES_FOLDER = os.path.join(os.path.dirname(__file__), "fixtures")
+
+from fixtures.tilinggrids import tilinggrids_response
 
 
 def load_collections_fixtures(folder, wildcard="*"):

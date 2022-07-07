@@ -15,7 +15,6 @@ from processing.const import (
     default_sample_type_for_mimetype,
     supported_sample_types,
     sample_types_to_bytes,
-    utm_tiling_grids,
 )
 from openeo_collections.collections import collections
 from openeoerrors import (
@@ -35,11 +34,12 @@ class Process:
         self.DEFAULT_RESOLUTION = (10, 10)
         self.MAXIMUM_SYNC_FILESIZE_BYTES = 5000000
         self.user_defined_processes = user_defined_processes
-        self.sentinel_hub = SentinelHub(access_token=access_token)
 
         self.process_graph = process["process_graph"]
         self.bbox, self.epsg_code, self.geometry = self.get_bounds()
         self.collection = self.get_collection()
+        self.service_base_url = self.collection.service_url
+        self.sentinel_hub = SentinelHub(access_token=access_token, service_base_url=self.service_base_url)
         self.from_date, self.to_date = self.get_temporal_extent()
         self.mimetype = self.get_mimetype()
         self.width = width or self.get_dimensions()[0]
@@ -328,7 +328,7 @@ class Process:
         return resolution
 
     def get_appropriate_tiling_grid_and_resolution(self):
-        global utm_tiling_grids
+        utm_tiling_grids = self.sentinel_hub.get_utm_tiling_grids()
         requested_resolution = min(self.get_highest_resolution())
         utm_tiling_grids = sorted(
             utm_tiling_grids, key=lambda tg: tg["properties"]["tileWidth"]
@@ -406,15 +406,18 @@ class Process:
         )
 
     def create_batch_job(self):
-        return self.sentinel_hub.create_batch_job(
-            bbox=self.bbox,
-            epsg_code=self.epsg_code,
-            geometry=self.geometry,
-            collection=self.collection,
-            evalscript=self.evalscript.write(),
-            from_date=self.from_date,
-            to_date=self.to_date,
-            tiling_grid_id=self.tiling_grid_id,
-            tiling_grid_resolution=self.tiling_grid_resolution,
-            mimetype=self.mimetype,
+        return (
+            self.sentinel_hub.create_batch_job(
+                bbox=self.bbox,
+                epsg_code=self.epsg_code,
+                geometry=self.geometry,
+                collection=self.collection,
+                evalscript=self.evalscript.write(),
+                from_date=self.from_date,
+                to_date=self.to_date,
+                tiling_grid_id=self.tiling_grid_id,
+                tiling_grid_resolution=self.tiling_grid_resolution,
+                mimetype=self.mimetype,
+            ),
+            self.service_base_url,
         )

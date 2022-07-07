@@ -25,7 +25,7 @@
          "roles": [
             "processor"
          ],
-         "url": "https://docs.sentinel-hub.com/api/latest/data/maxar/world-view/"
+         "url": "https://services.sentinel-hub.com"
       },
       {
          "name": "Maxar",

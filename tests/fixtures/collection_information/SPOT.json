@@ -25,7 +25,7 @@
          "roles": [
             "processor"
          ],
-         "url": "https://docs.sentinel-hub.com/api/latest/data/airbus/spot/"
+         "url": "https://services.sentinel-hub.com"
       },
       {
          "name": "Airbus",
