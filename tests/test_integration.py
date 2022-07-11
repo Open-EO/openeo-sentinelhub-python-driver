@@ -1876,3 +1876,22 @@ def test_job_saving_data(
 
     all_data = bucket.get_data_from_bucket(prefix=batch_request_id)
     assert len(all_data) == 0
+
+
+@with_mocked_auth
+def test_describe_account(app_client, example_authorization_header_with_oidc):
+    r = app_client.get("/me")
+    assert r.status_code == 401, r.data
+
+    r = app_client.get("/me", headers=example_authorization_header_with_oidc)
+    assert r.status_code == 200, r.data
+    data = json.loads(r.data.decode("utf-8"))
+    assert "user_id" in data, data
+    assert data["user_id"] == "example-id"
+    assert "info" in data and "oidc_userinfo" in data["info"]
+
+    r = app_client.get("/me", headers={"Authorization": f"Bearer basic//{valid_sh_token}"})
+    assert r.status_code == 200, r.data
+    data = json.loads(r.data.decode("utf-8"))
+    assert "user_id" in data, data
+    assert "info" in data and "sh_userinfo" in data["info"]
