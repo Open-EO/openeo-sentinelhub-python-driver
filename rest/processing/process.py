@@ -9,7 +9,7 @@ from sentinelhub.geo_utils import bbox_to_dimensions
 from isodate import parse_duration
 from shapely.geometry import shape, mapping
 
-from processing.openeo_process_errors import FormatUnsuitable
+from processing.openeo_process_errors import FormatUnsuitable, NoDataAvailable
 from processing.sentinel_hub import SentinelHub
 from processing.const import (
     SampleType,
@@ -211,6 +211,9 @@ class Process:
             geometry = shape(construct_geojson(west, south, east, north))
 
         final_geometry = partial_processes_geometry.intersection(geometry)
+
+        if final_geometry.is_empty:
+            raise NoDataAvailable("Requested spatial extent is empty.")
 
         if partial_processes_crs is not None and partial_processes_crs != 4326:
             final_geometry = convert_geometry_crs(final_geometry, partial_processes_crs)

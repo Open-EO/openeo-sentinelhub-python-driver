@@ -17,6 +17,7 @@ from processing.utils import inject_variables_in_process_graph, validate_geojson
 from processing.sentinel_hub import SentinelHub
 from processing.partially_supported_processes import FilterBBox
 from processing.processing_api_request import ProcessingAPIRequest
+from processing.openeo_process_errors import NoDataAvailable
 from fixtures.geojson_fixtures import GeoJSON_Fixtures
 from utils import get_roles
 
@@ -1164,7 +1165,7 @@ def test_filter_bbox_process(process_graph, expected_is_usage_valid, expected_er
 
 
 @pytest.mark.parametrize(
-    "process_graph,expected_bbox,expected_crs,expected_geometry",
+    "process_graph,expected_bbox,expected_crs,expected_geometry,error",
     [
         (
             {
@@ -1205,6 +1206,7 @@ def test_filter_bbox_process(process_graph, expected_is_usage_valid, expected_er
                     "coordinates": [[[16.1, 47.5], [16.5, 47.5], [16.5, 48.4], [16.1, 48.4], [16.1, 47.5]]],
                 }
             ),
+            None,
         ),
         (
             {
@@ -1248,6 +1250,7 @@ def test_filter_bbox_process(process_graph, expected_is_usage_valid, expected_er
                     "coordinates": [[[16.1, 47.5], [16.5, 47.5], [16.5, 48.4], [16.1, 48.4], [16.1, 47.5]]],
                 }
             ),
+            None,
         ),
         # Same as above, except that coordinates are converted to EPSG3857
         (
@@ -1306,11 +1309,51 @@ def test_filter_bbox_process(process_graph, expected_is_usage_valid, expected_er
                     ],
                 }
             ),
+            None,
+        ),
+        # Spatial extents in loadco1 and filterbbox1 have no overlap so an error should be raised
+        (
+            {
+                "loadco1": {
+                    "process_id": "load_collection",
+                    "arguments": {
+                        "id": "sentinel-2-l1c",
+                        "spatial_extent": {
+                            "type": "Polygon",
+                            "coordinates": [[[15.1, 46.2], [19.6, 46.2], [19.6, 48.4], [15.1, 48.4], [15.1, 46.2]]],
+                        },
+                        "temporal_extent": ["2017-01-01", "2017-02-01"],
+                        "bands": ["B01", "B02"],
+                    },
+                },
+                "filterbbox1": {
+                    "process_id": "filter_bbox",
+                    "arguments": {
+                        "data": {"from_node": "loadco1"},
+                        "extent": {"west": 46.1, "east": 46.6, "north": 18.6, "south": 17.2},
+                    },
+                },
+                "saveres1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "filterbbox1"}, "format": "gtiff"},
+                    "result": True,
+                },
+            },
+            None,
+            None,
+            None,
+            NoDataAvailable("Requested spatial extent is empty."),
         ),
     ],
 )
-def test_get_bounds(process_graph, expected_bbox, expected_crs, expected_geometry):
-    process = Process({"process_graph": process_graph})
-    assert pytest.approx(process.bbox) == expected_bbox
-    assert process.epsg_code == expected_crs
-    assert shape(process.geometry).equals(expected_geometry)
+def test_get_bounds(process_graph, expected_bbox, expected_crs, expected_geometry, error):
+    try:
+        process = Process({"process_graph": process_graph})
+        assert pytest.approx(process.bbox) == expected_bbox
+        assert process.epsg_code == expected_crs
+        assert shape(process.geometry).equals(expected_geometry)
+    except Exception as e:
+        if error is not None:
+            assert type(e) == type(error) and e.args == error.args
+        else:
+            raise e
