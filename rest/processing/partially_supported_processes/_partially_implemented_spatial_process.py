@@ -8,8 +8,12 @@ class PartiallyImplementedSpatialProcess:
     def __init__(self, process_graph, process_id):
         self.process_id = process_id
         self.process_graph = process_graph
-        self.dependencies = get_dependencies(process_graph)
-        self.dependents = get_dependents(self.dependencies)
+        self.dependencies = get_dependencies(
+            process_graph
+        )  # Mapping of node_ids to the set of nodes they take as input (e.g. load_collection would have an empty set, as it doesn't get input from another node)
+        self.dependents = get_dependents(
+            self.dependencies
+        )  # Mapping of node_ids to the set of nodes that take them as input (e.g. save_result would have an empty set, as it is not an input to any other node)
         self.execution_order = get_execution_order(self.dependencies, self.dependents)
 
     def get_all_occurrences(self):
