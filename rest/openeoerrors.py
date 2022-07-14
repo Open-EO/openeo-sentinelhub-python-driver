@@ -96,6 +96,12 @@ class ProcessParameterInvalid(OpenEOError):
     http_code = 400
 
 
+class Timeout(OpenEOError):
+    error_code = "Timeout"
+    http_code = 408
+    message = "Request timed out."
+
+
 class SHOpenEOError(Exception):
     # Class for exceptions that are not listed in https://openeo.org/documentation/0.4/developers/api/errors.html#openeo-error-codes
     record_id = None
