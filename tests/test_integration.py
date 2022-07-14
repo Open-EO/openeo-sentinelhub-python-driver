@@ -1432,21 +1432,26 @@ def test_batch_job_estimate(
 
     responses.add(
         responses.POST,
-        "https://services.sentinel-hub.com/oauth/token",
+        re.compile("https://(services|creodias)(-uswest2)?.sentinel-hub.com/oauth/token"),
         body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
     )
     responses.add(
         responses.POST,
-        "https://services.sentinel-hub.com/api/v1/batch/process",
+        re.compile("https://(services|creodias)(-uswest2)?.sentinel-hub.com/api/v1/batch/process"),
         body=json.dumps({"id": "example", "processRequest": {}, "status": "CREATED"}),
     )
     responses.add(
+        responses.GET,
+        re.compile("https://(services|creodias)(-uswest2)?.sentinel-hub.com/api/v1/batch/tilinggrids"),
+        body=json.dumps(tilinggrids_response),
+    )
+    responses.add(
         responses.POST,
-        "https://services.sentinel-hub.com/api/v1/batch/process/example/analyse",
+        re.compile("https://(services|creodias)(-uswest2)?.sentinel-hub.com/api/v1/batch/process/example/analyse"),
     )
     responses.add(
         responses.GET,
-        re.compile("https://services.sentinel-hub.com/api/v1/batch/process/example"),
+        re.compile("https://(services|creodias)(-uswest2)?.sentinel-hub.com/api/v1/batch/process/example"),
         body=json.dumps(
             {
                 "valueEstimate": backend_estimate,
@@ -1833,7 +1838,7 @@ def test_process_graph_with_partially_defined_processes(app_client, get_expected
                         "south": 45.99432492799059,
                         "north": 46.00774118321607,
                     },
-                    "temporal_extent": ["2022-06-24T00:00:00Z", "2022-07-31T00:00:00Z"],
+                    "temporal_extent": ["2022-06-24T00:00:00Z", "2022-07-03T00:00:00Z"],
                     "bands": ["B01"],
                     "properties": {},
                 },
@@ -1867,3 +1872,56 @@ def test_process_graph_with_partially_defined_processes(app_client, get_expected
     assert r.status_code == 200, r.data
     expected_data = get_expected_data("partially_defined_process_result.tiff")
     assert r.data == expected_data
+
+
+@with_mocked_auth
+@pytest.mark.parametrize(
+    "collection_id,expected_deployment_endpoint,expected_bucket_name",
+    [
+        ("sentinel-2-l1c", "https://services.sentinel-hub.com", "com.sinergise.openeo.results"),
+        ("corine-land-cover", "https://creodias.sentinel-hub.com", "com.sinergise.openeo.results"),
+        ("landsat-7-etm+-l2", "https://services-uswest2.sentinel-hub.com", "com.sinergise.openeo.results.uswest2"),
+    ],
+)
+def test_job_saving_data(
+    app_client, get_process_graph, collection_id, expected_deployment_endpoint, expected_bucket_name
+):
+    data = {
+        "process": {
+            "process_graph": get_process_graph(
+                collection_id=collection_id,
+            ),
+        }
+    }
+    headers = {"Authorization": f"Bearer basic//{valid_sh_token}"}
+
+    r = app_client.post(
+        "/jobs",
+        data=json.dumps(data),
+        headers=headers,
+        content_type="application/json",
+    )
+    assert r.status_code == 201, r.data
+
+    record_id = r.headers["OpenEO-Identifier"]
+
+    job_data = JobsPersistence.get_by_id(record_id)
+    batch_request_id = job_data["batch_request_id"]
+    deployment_endpoint = job_data["deployment_endpoint"]
+
+    assert deployment_endpoint == expected_deployment_endpoint
+
+    bucket = get_bucket(deployment_endpoint)
+
+    assert bucket.bucket_name == expected_bucket_name
+
+    all_data = bucket.get_data_from_bucket(prefix=batch_request_id)
+    assert len(all_data) == 1 and all_data[0]["Key"].endswith(
+        ".json"
+    )  # Upon creation of the batch request, JSON with metadata is saved to bucket
+
+    bucket.generate_presigned_url(all_data[0]["Key"])
+    bucket.delete_objects(all_data)
+
+    all_data = bucket.get_data_from_bucket(prefix=batch_request_id)
+    assert len(all_data) == 0

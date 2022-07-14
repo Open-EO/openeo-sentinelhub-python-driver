@@ -25,6 +25,7 @@ class ProcessingAPIRequest:
 
     def fetch(self):
         r = self.make_request()
+        r.raise_for_status()
         return r.content
 
     def with_rate_limiting(request_func):

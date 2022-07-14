@@ -208,7 +208,7 @@
          "roles":[
             "processor"
          ],
-         "url":"https://docs.sentinel-hub.com/api/latest/data/planet-scope/"
+         "url":"https://services.sentinel-hub.com"
       },
       {
          "description":"",
