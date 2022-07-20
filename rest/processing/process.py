@@ -33,6 +33,7 @@ from processing.utils import (
     convert_to_epsg4326,
     construct_geojson,
     convert_geometry_crs,
+    convert_bbox_crs,
     remove_partially_supported_processes_from_process_graph,
     is_geojson,
     validate_geojson,
@@ -176,20 +177,27 @@ class Process:
         partial_processes_crs = self.pisp_crs
 
         if partial_processes_geometry is None:
+            if partial_processes_crs != self.DEFAULT_EPSG_CODE:
+                epsg_code = partial_processes_crs
+                if bbox:
+                    bbox = convert_bbox_crs(bbox, self.DEFAULT_EPSG_CODE, partial_processes_crs)
+                if geometry:
+                    geometry = convert_geometry_crs(shape(geometry), partial_processes_crs)
+
             return bbox, epsg_code, geometry
 
         if geometry:
             geometry = shape(geometry)
         elif bbox:
             west, south, east, north = bbox
-            if epsg_code != 4326:
+            if epsg_code != self.DEFAULT_EPSG_CODE:
                 west, south = convert_to_epsg4326(epsg_code, west, south)
                 east, north = convert_to_epsg4326(epsg_code, east, north)
             geometry = shape(construct_geojson(west, south, east, north))
 
         final_geometry = partial_processes_geometry.intersection(geometry)
 
-        if partial_processes_crs is not None and partial_processes_crs != 4326:
+        if partial_processes_crs is not None and partial_processes_crs != self.DEFAULT_EPSG_CODE:
             final_geometry = convert_geometry_crs(final_geometry, partial_processes_crs)
 
         return final_geometry.bounds, partial_processes_crs, mapping(final_geometry)

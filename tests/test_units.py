@@ -1363,13 +1363,46 @@ def test_filter_bbox_process(process_graph, expected_is_usage_valid, expected_er
                 }
             ),
         ),
+        (
+            {
+                "loadco1": {
+                    "process_id": "load_collection",
+                    "arguments": {
+                        "id": "sentinel-2-l1c",
+                        "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                        "temporal_extent": ["2017-01-01", "2017-02-01"],
+                        "bands": ["B01", "B02"],
+                    },
+                },
+                "resamplespatial1": {
+                    "process_id": "resample_spatial",
+                    "arguments": {
+                        "data": {"from_node": "loadco1"},
+                        "resolution": 10,
+                        "projection": 3857,
+                        "method": "cubic",
+                    },
+                },
+                "saveres1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "resamplespatial1"}, "format": "gtiff"},
+                    "result": True,
+                },
+            },
+            (1792243.801771, 5974780.482145, 1847903.547168, 6207260.308175),
+            3857,
+            None,
+        ),
     ],
 )
 def test_get_bounds(process_graph, expected_bbox, expected_crs, expected_geometry):
     process = Process({"process_graph": process_graph})
     assert pytest.approx(process.bbox) == expected_bbox
     assert process.epsg_code == expected_crs
-    assert shape(process.geometry).equals(expected_geometry)
+    if not expected_geometry:
+        assert process.geometry == expected_geometry
+    else:
+        assert shape(process.geometry).equals(expected_geometry)
 
 
 @pytest.mark.parametrize(

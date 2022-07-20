@@ -209,6 +209,16 @@ def convert_geometry_crs(geometry, crs):
     return shape(geojson)
 
 
+def convert_bbox_crs(bbox, crs_from, crs_to):
+    west, south, east, north = bbox
+    crs_from = CRS.from_epsg(crs_from)
+    crs_to = CRS.from_epsg(crs_to)
+    transformer = Transformer.from_crs(crs_from, crs_to, always_xy=True)
+    west, south = transformer.transform(west, south)
+    east, north = transformer.transform(east, north)
+    return (west, south, east, north)
+
+
 def replace_from_node(node, node_id_to_replace, new_node_id):
     for key, value in iterate(node):
         if (
