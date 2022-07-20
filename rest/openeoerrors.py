@@ -131,3 +131,11 @@ class BadRequest(SHOpenEOError):
 
     error_code = "BadRequest"
     http_code = 400
+
+
+class PartiallySupportedProcessInvalid(SHOpenEOError):
+    def __init__(self, process_id, reason):
+        self.message = f"Partially supported process '{process_id}' invalid: {reason}"
+
+    error_code = "PartiallySupportedProcessInvalid"
+    http_code = 400

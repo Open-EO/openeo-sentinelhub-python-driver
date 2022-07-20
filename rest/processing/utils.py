@@ -1,5 +1,11 @@
-from openeoerrors import UnsupportedGeometry
 import math
+import copy
+
+from pyproj import CRS, Transformer
+from shapely.geometry import shape, mapping
+from pg_to_evalscript.process_graph_utils import get_dependencies, get_dependents
+
+from openeoerrors import UnsupportedGeometry
 
 
 def iterate(obj):
@@ -151,3 +157,90 @@ def convert_degree_resolution_to_meters(degrees):
     x = degrees[0]
     y = degrees[1]
     return [degree_to_meter(x), degree_to_meter(y)]
+
+
+def convert_extent_to_epsg4326(extent):
+    crs = extent.get("crs", 4326)
+
+    if crs == 4326:
+        return extent
+
+    east, north = convert_to_epsg4326(crs, extent["east"], extent["north"])
+    west, south = convert_to_epsg4326(crs, extent["west"], extent["south"])
+
+    return {"crs": 4326, "east": east, "north": north, "west": west, "south": south}
+
+
+def convert_to_epsg4326(crs, x, y):
+    crs = CRS.from_epsg(crs)
+    crs_4326 = CRS.from_epsg(4326)
+    transformer = Transformer.from_crs(crs, crs_4326, always_xy=True)
+    return transformer.transform(x, y)
+
+
+def convert_extent_to_geojson(extent):
+    east = extent["east"]
+    north = extent["north"]
+    west = extent["west"]
+    south = extent["south"]
+    return construct_geojson(west, south, east, north)
+
+
+def construct_geojson(west, south, east, north):
+    return {
+        "type": "Polygon",
+        "coordinates": [[[west, south], [east, south], [east, north], [west, north], [west, south]]],
+    }
+
+
+def convert_geometry_crs(geometry, crs):
+    crs = CRS.from_epsg(crs)
+    crs_4326 = CRS.from_epsg(4326)
+    transformer = Transformer.from_crs(crs_4326, crs, always_xy=True)
+    geojson = mapping(geometry)
+
+    new_coordinates = []
+    for coord in geojson["coordinates"][0]:
+        x, y = transformer.transform(coord[0], coord[1])
+        new_coordinates.append([x, y])
+
+    geojson["coordinates"] = [new_coordinates]
+    return shape(geojson)
+
+
+def replace_from_node(node, node_id_to_replace, new_node_id):
+    for key, value in iterate(node):
+        if (
+            isinstance(value, dict)
+            and len(value) == 1
+            and "from_node" in value
+            and value["from_node"] == node_id_to_replace
+        ):
+            value["from_node"] = new_node_id
+        elif isinstance(value, dict) or isinstance(value, list):
+            replace_from_node(value, node_id_to_replace, new_node_id)
+
+
+def remove_node_from_process_graph(process_graph, node_id):
+    dependencies = get_dependencies(process_graph)
+    dependents = get_dependents(dependencies)
+
+    parent_node = dependencies[node_id].pop()
+    for dependent_node_id in dependents[node_id]:
+        # Replace all `from_node` in dependent nodes with the node id of the parent process
+        replace_from_node(process_graph[dependent_node_id], node_id, parent_node)
+
+    del process_graph[node_id]
+
+
+def remove_partially_supported_processes_from_process_graph(process_graph, partially_defined_processes):
+    all_occurrences = []
+    process_graph = copy.deepcopy(process_graph)
+
+    for partially_defined_process in partially_defined_processes:
+        all_occurrences.extend(partially_defined_process(process_graph).get_all_occurrences())
+
+    for occurrence in all_occurrences:
+        remove_node_from_process_graph(process_graph, occurrence["node_id"])
+
+    return process_graph

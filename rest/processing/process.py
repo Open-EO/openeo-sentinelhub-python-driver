@@ -7,8 +7,9 @@ from sentinelhub.time_utils import parse_time
 from pg_to_evalscript import convert_from_process_graph
 from sentinelhub.geo_utils import bbox_to_dimensions
 from isodate import parse_duration
+from shapely.geometry import shape, mapping
 
-from processing.openeo_process_errors import FormatUnsuitable
+from processing.openeo_process_errors import FormatUnsuitable, NoDataAvailable
 from processing.sentinel_hub import SentinelHub
 from processing.const import (
     SampleType,
@@ -24,8 +25,14 @@ from openeoerrors import (
     ProcessGraphComplexity,
     TemporalExtentError,
 )
-
-from processing.utils import convert_degree_resolution_to_meters
+from processing.partially_supported_processes import partially_supported_processes
+from processing.utils import (
+    convert_degree_resolution_to_meters,
+    convert_to_epsg4326,
+    construct_geojson,
+    convert_geometry_crs,
+    remove_partially_supported_processes_from_process_graph,
+)
 
 
 class Process:
@@ -33,6 +40,12 @@ class Process:
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_RESOLUTION = (10, 10)
         self.MAXIMUM_SYNC_FILESIZE_BYTES = 5000000
+        partially_supported_processes_as_udp = {
+            partially_supported_process.process_id: {} for partially_supported_process in partially_supported_processes
+        }
+        partially_supported_processes_as_udp.update(user_defined_processes)
+        self.user_defined_processes = partially_supported_processes_as_udp
+        self.sentinel_hub = SentinelHub(access_token=access_token)
         self.user_defined_processes = user_defined_processes
 
         self.process_graph = process["process_graph"]
@@ -52,8 +65,11 @@ class Process:
         return BBox(self.bbox, CRS(self.epsg_code))
 
     def get_evalscript(self):
+        process_graph = remove_partially_supported_processes_from_process_graph(
+            self.process_graph, partially_supported_processes
+        )
         results = convert_from_process_graph(
-            self.process_graph,
+            process_graph,
             sample_type=self.sample_type.value,
             user_defined_processes=self.user_defined_processes,
             encode_result=False,
@@ -127,7 +143,25 @@ class Process:
         load_collection_node = self.get_node_by_process_id("load_collection")
         return self.id_to_data_collection(load_collection_node["arguments"]["id"])
 
-    def get_bounds(self):
+    def get_bounds_from_partial_processes(self):
+        final_geometry = None
+        final_crs = 4326
+
+        for partially_supported_process in partially_supported_processes:
+            geometry, crs = partially_supported_process(self.process_graph).get_spatial_info()
+            if not geometry:
+                continue
+            if final_geometry is None:
+                final_geometry = geometry
+            else:
+                final_geometry = final_geometry.intersection(geometry)
+
+            if crs is not None:
+                final_crs = crs
+
+        return final_geometry, final_crs
+
+    def get_bounds_from_load_collection(self):
         """
         Returns bbox, EPSG code, geometry
         """
@@ -159,6 +193,32 @@ class Process:
             north = spatial_extent["north"]
             south = spatial_extent["south"]
             return (west, south, east, north), epsg_code, None
+
+    def get_bounds(self):
+        bbox, epsg_code, geometry = self.get_bounds_from_load_collection()
+        partial_processes_geometry, partial_processes_crs = self.get_bounds_from_partial_processes()
+
+        if partial_processes_geometry is None:
+            return bbox, epsg_code, geometry
+
+        if geometry:
+            geometry = shape(geometry)
+        elif bbox:
+            west, south, east, north = bbox
+            if epsg_code != 4326:
+                west, south = convert_to_epsg4326(epsg_code, west, south)
+                east, north = convert_to_epsg4326(epsg_code, east, north)
+            geometry = shape(construct_geojson(west, south, east, north))
+
+        final_geometry = partial_processes_geometry.intersection(geometry)
+
+        if final_geometry.is_empty:
+            raise NoDataAvailable("Requested spatial extent is empty.")
+
+        if partial_processes_crs is not None and partial_processes_crs != 4326:
+            final_geometry = convert_geometry_crs(final_geometry, partial_processes_crs)
+
+        return final_geometry.bounds, partial_processes_crs, mapping(final_geometry)
 
     def get_collection_temporal_step(self):
         load_collection_node = self.get_node_by_process_id("load_collection")
