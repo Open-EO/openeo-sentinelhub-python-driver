@@ -4,6 +4,7 @@ import copy
 from pyproj import CRS, Transformer
 from shapely.geometry import shape, mapping
 from pg_to_evalscript.process_graph_utils import get_dependencies, get_dependents
+from sentinelhub import ResamplingType
 
 from openeoerrors import UnsupportedGeometry
 
@@ -208,6 +209,16 @@ def convert_geometry_crs(geometry, crs):
     return shape(geojson)
 
 
+def convert_bbox_crs(bbox, crs_from, crs_to):
+    west, south, east, north = bbox
+    crs_from = CRS.from_epsg(crs_from)
+    crs_to = CRS.from_epsg(crs_to)
+    transformer = Transformer.from_crs(crs_from, crs_to, always_xy=True)
+    west, south = transformer.transform(west, south)
+    east, north = transformer.transform(east, north)
+    return (west, south, east, north)
+
+
 def replace_from_node(node, node_id_to_replace, new_node_id):
     for key, value in iterate(node):
         if (
@@ -244,3 +255,35 @@ def remove_partially_supported_processes_from_process_graph(process_graph, parti
         remove_node_from_process_graph(process_graph, occurrence["node_id"])
 
     return process_graph
+
+
+def convert_projection_to_epsg_code(projection):
+    crs = CRS(projection)
+    return crs.to_epsg()
+
+
+def get_spatial_info_from_partial_processes(partially_supported_processes, process_graph):
+    final_geometry = None
+    final_crs = 4326
+    final_resolution = None
+    final_resampling_method = ResamplingType.NEAREST
+
+    for partially_supported_process in partially_supported_processes:
+        geometry, crs, resolution, resampling_method = partially_supported_process(process_graph).get_spatial_info()
+
+        if geometry:
+            if final_geometry is None:
+                final_geometry = geometry
+            else:
+                final_geometry = final_geometry.intersection(geometry)
+
+        if crs is not None:
+            final_crs = crs
+
+        if resolution is not None:
+            final_resolution = resolution
+
+        if resampling_method is not None:
+            final_resampling_method = resampling_method
+
+    return final_geometry, final_crs, final_resolution, final_resampling_method

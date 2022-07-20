@@ -1438,7 +1438,7 @@ def test_batch_job_estimate(
     responses.add(
         responses.POST,
         re.compile("https://(services|creodias)(-uswest2)?.sentinel-hub.com/api/v1/batch/process"),
-        body=json.dumps({"id": "example", "processRequest": {}, "status": "CREATED"}),
+        body=json.dumps({"id": "example", "processRequest": {}, "status": "CREATED", "tileCount": n_tiles}),
     )
     responses.add(
         responses.GET,

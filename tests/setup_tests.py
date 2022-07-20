@@ -13,7 +13,7 @@ import responses
 from responses import matchers
 from responses.registries import OrderedRegistry
 import numpy as np
-from sentinelhub import BBox, DataCollection, MimeType, CRS
+from sentinelhub import BBox, DataCollection, MimeType, CRS, ResamplingType
 
 
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rest"))

@@ -24,6 +24,7 @@ from openeoerrors import (
     ProcessParameterInvalid,
     ProcessGraphComplexity,
     TemporalExtentError,
+    BadRequest,
 )
 from processing.partially_supported_processes import partially_supported_processes
 from processing.utils import (
@@ -31,10 +32,12 @@ from processing.utils import (
     convert_to_epsg4326,
     construct_geojson,
     convert_geometry_crs,
+    convert_bbox_crs,
     remove_partially_supported_processes_from_process_graph,
     is_geojson,
     validate_geojson,
     parse_geojson,
+    get_spatial_info_from_partial_processes,
 )
 
 
@@ -52,6 +55,12 @@ class Process:
         self.user_defined_processes = user_defined_processes
 
         self.process_graph = process["process_graph"]
+        (
+            self.pisp_geometry,
+            self.pisp_crs,
+            self.pisp_resolution,
+            self.pisp_resampling_method,
+        ) = get_spatial_info_from_partial_processes(partially_supported_processes, self.process_graph)
         self.bbox, self.epsg_code, self.geometry = self.get_bounds()
         self.collection = self.get_collection()
         self.service_base_url = self.collection.service_url
@@ -60,7 +69,6 @@ class Process:
         self.mimetype = self.get_mimetype()
         self.width = width or self.get_dimensions()[0]
         self.height = height or self.get_dimensions()[1]
-        self.tiling_grid_id, self.tiling_grid_resolution = self.get_appropriate_tiling_grid_and_resolution()
         self.sample_type = self.get_sample_type()
         self.evalscript = self.get_evalscript()
 
@@ -146,24 +154,6 @@ class Process:
         load_collection_node = self.get_node_by_process_id("load_collection")
         return self.id_to_data_collection(load_collection_node["arguments"]["id"])
 
-    def get_bounds_from_partial_processes(self):
-        final_geometry = None
-        final_crs = 4326
-
-        for partially_supported_process in partially_supported_processes:
-            geometry, crs = partially_supported_process(self.process_graph).get_spatial_info()
-            if not geometry:
-                continue
-            if final_geometry is None:
-                final_geometry = geometry
-            else:
-                final_geometry = final_geometry.intersection(geometry)
-
-            if crs is not None:
-                final_crs = crs
-
-        return final_geometry, final_crs
-
     def get_bounds_from_load_collection(self):
         """
         Returns bbox, EPSG code, geometry
@@ -197,16 +187,24 @@ class Process:
 
     def get_bounds(self):
         bbox, epsg_code, geometry = self.get_bounds_from_load_collection()
-        partial_processes_geometry, partial_processes_crs = self.get_bounds_from_partial_processes()
+        partial_processes_geometry = self.pisp_geometry
+        partial_processes_crs = self.pisp_crs
 
         if partial_processes_geometry is None:
+            if partial_processes_crs != self.DEFAULT_EPSG_CODE:
+                epsg_code = partial_processes_crs
+                if bbox:
+                    bbox = convert_bbox_crs(bbox, self.DEFAULT_EPSG_CODE, partial_processes_crs)
+                if geometry:
+                    geometry = convert_geometry_crs(shape(geometry), partial_processes_crs)
+
             return bbox, epsg_code, geometry
 
         if geometry:
             geometry = shape(geometry)
         elif bbox:
             west, south, east, north = bbox
-            if epsg_code != 4326:
+            if epsg_code != self.DEFAULT_EPSG_CODE:
                 west, south = convert_to_epsg4326(epsg_code, west, south)
                 east, north = convert_to_epsg4326(epsg_code, east, north)
             geometry = shape(construct_geojson(west, south, east, north))
@@ -216,7 +214,7 @@ class Process:
         if final_geometry.is_empty:
             raise NoDataAvailable("Requested spatial extent is empty.")
 
-        if partial_processes_crs is not None and partial_processes_crs != 4326:
+        if partial_processes_crs is not None and partial_processes_crs != self.DEFAULT_EPSG_CODE:
             final_geometry = convert_geometry_crs(final_geometry, partial_processes_crs)
 
         return final_geometry.bounds, partial_processes_crs, mapping(final_geometry)
@@ -340,7 +338,10 @@ class Process:
         """
         spatial_extent = self.bbox
         bbox = self.convert_to_sh_bbox()
-        resolution = self.get_highest_resolution()
+        if self.pisp_resolution is not None:
+            resolution = tuple(self.pisp_resolution)
+        else:
+            resolution = self.get_highest_resolution()
         width, height = bbox_to_dimensions(bbox, resolution)
         return width, height
 
@@ -390,7 +391,24 @@ class Process:
 
     def get_appropriate_tiling_grid_and_resolution(self):
         utm_tiling_grids = self.sentinel_hub.get_utm_tiling_grids()
-        requested_resolution = min(self.get_highest_resolution())
+
+        if self.pisp_resolution:
+            # If desired resolution was explicitly set in partially defined spatial processes.
+            # we must make sure the X and Y resolution are the same and resolution is available among existing tiling grids
+            if self.pisp_resolution[0] != self.pisp_resolution[1]:
+                raise BadRequest("X and Y resolution must be identical in Sentinel Hub batch processing request.")
+
+            for tiling_grid in utm_tiling_grids:
+                if self.pisp_resolution[0] in tiling_grid["properties"]["resolutions"]:
+                    break
+            else:
+                raise BadRequest(
+                    "Resolution must be one of the supported values in Sentinel Hub batch processing request."
+                )
+            requested_resolution = self.pisp_resolution[0]
+        else:
+            requested_resolution = min(self.get_highest_resolution())
+
         utm_tiling_grids = sorted(
             utm_tiling_grids, key=lambda tg: tg["properties"]["tileWidth"]
         )  # We prefer grids with smaller tiles
@@ -464,9 +482,11 @@ class Process:
             width=self.width,
             height=self.height,
             mimetype=self.mimetype,
+            resampling_method=self.pisp_resampling_method,
         )
 
     def create_batch_job(self):
+        self.tiling_grid_id, self.tiling_grid_resolution = self.get_appropriate_tiling_grid_and_resolution()
         return (
             self.sentinel_hub.create_batch_job(
                 bbox=self.bbox,
@@ -479,6 +499,7 @@ class Process:
                 tiling_grid_id=self.tiling_grid_id,
                 tiling_grid_resolution=self.tiling_grid_resolution,
                 mimetype=self.mimetype,
+                resampling_method=self.pisp_resampling_method,
             ),
             self.service_base_url,
         )

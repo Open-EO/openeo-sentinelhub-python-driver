@@ -16,7 +16,7 @@ class FilterBBox(PartiallyImplementedSpatialProcess):
         all_occurrences = self.get_all_occurrences_of_process_id(self.process_graph, self.process_id)
 
         if len(all_occurrences) == 0:
-            return None, None
+            return None, None, None, None
 
         last_occurrence_node_id = self.get_last_occurrence(all_occurrences)
         final_crs = self.process_graph[last_occurrence_node_id]["arguments"]["extent"].get("crs", 4326)
@@ -32,4 +32,4 @@ class FilterBBox(PartiallyImplementedSpatialProcess):
                 final_geometry = polygon
             else:
                 final_geometry = final_geometry.intersection(polygon)
-        return final_geometry, final_crs
+        return final_geometry, final_crs, None, None

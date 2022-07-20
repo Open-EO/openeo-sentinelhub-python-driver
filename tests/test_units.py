@@ -15,7 +15,7 @@ from openeoerrors import (
 )
 from processing.utils import inject_variables_in_process_graph, validate_geojson, parse_geojson
 from processing.sentinel_hub import SentinelHub
-from processing.partially_supported_processes import FilterBBox, FilterSpatial
+from processing.partially_supported_processes import FilterBBox, FilterSpatial, ResampleSpatial
 from processing.processing_api_request import ProcessingAPIRequest
 from processing.openeo_process_errors import NoDataAvailable
 from fixtures.geojson_fixtures import GeoJSON_Fixtures
@@ -1157,7 +1157,9 @@ def test_filter_bbox_process(process_graph, expected_is_usage_valid, expected_er
     assert is_usage_valid == expected_is_usage_valid, error
     if not expected_is_usage_valid:
         assert expected_error in error.message
-    geometry, crs = filter_bbox.get_spatial_info()
+    geometry, crs, resolution, resampling_method = filter_bbox.get_spatial_info()
+    assert resolution is None
+    assert resampling_method is None
     assert geometry.equals(
         expected_geometry
     ), f"Expected {mapping(expected_geometry)} does not match {mapping(geometry)}"
@@ -1399,6 +1401,37 @@ def test_filter_bbox_process(process_graph, expected_is_usage_valid, expected_er
             ),
             None,
         ),
+        (
+            {
+                "loadco1": {
+                    "process_id": "load_collection",
+                    "arguments": {
+                        "id": "sentinel-2-l1c",
+                        "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                        "temporal_extent": ["2017-01-01", "2017-02-01"],
+                        "bands": ["B01", "B02"],
+                    },
+                },
+                "resamplespatial1": {
+                    "process_id": "resample_spatial",
+                    "arguments": {
+                        "data": {"from_node": "loadco1"},
+                        "resolution": 10,
+                        "projection": 3857,
+                        "method": "cubic",
+                    },
+                },
+                "saveres1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "resamplespatial1"}, "format": "gtiff"},
+                    "result": True,
+                },
+            },
+            (1792243.801771, 5974780.482145, 1847903.547168, 6207260.308175),
+            3857,
+            None,
+            None,
+        ),
     ],
 )
 def test_get_bounds(process_graph, expected_bbox, expected_crs, expected_geometry, error):
@@ -1406,7 +1439,10 @@ def test_get_bounds(process_graph, expected_bbox, expected_crs, expected_geometr
         process = Process({"process_graph": process_graph})
         assert pytest.approx(process.bbox) == expected_bbox
         assert process.epsg_code == expected_crs
-        assert shape(process.geometry).equals(expected_geometry)
+        if not expected_geometry:
+            assert process.geometry == expected_geometry
+        else:
+            assert shape(process.geometry).equals(expected_geometry)
     except Exception as e:
         if error is not None:
             assert type(e) == type(error) and e.args == error.args
@@ -1474,8 +1510,207 @@ def test_filter_spatial_process(
     assert is_usage_valid == expected_is_usage_valid, error
     if not expected_is_usage_valid:
         assert expected_error in error.message
-    geometry, crs = filter_bbox.get_spatial_info()
+    geometry, crs, resolution, resampling_method = filter_bbox.get_spatial_info()
+    assert resolution is None
+    assert resampling_method is None
     assert geometry.equals(
         expected_geometry
     ), f"Expected {mapping(expected_geometry)} does not match {mapping(geometry)}"
     assert crs == expected_crs
+
+
+@pytest.mark.parametrize(
+    "process_graph,expected_resolution,expected_crs,expected_resampling_method,error",
+    [
+        (
+            {
+                "loadco1": {
+                    "process_id": "load_collection",
+                    "arguments": {
+                        "id": "sentinel-2-l1c",
+                        "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                        "temporal_extent": ["2017-01-01", "2017-02-01"],
+                        "bands": ["B01", "B02"],
+                    },
+                },
+                "resamplespatial1": {
+                    "process_id": "resample_spatial",
+                    "arguments": {
+                        "data": {"from_node": "loadco1"},
+                        "resolution": 10,
+                        "projection": 3857,
+                        "method": "cubic",
+                    },
+                },
+                "saveres1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "resamplespatial1"}, "format": "gtiff"},
+                    "result": True,
+                },
+            },
+            [10, 10],
+            3857,
+            ResamplingType.BICUBIC,
+            None,
+        ),
+        (
+            {
+                "loadco1": {
+                    "process_id": "load_collection",
+                    "arguments": {
+                        "id": "sentinel-2-l1c",
+                        "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                        "temporal_extent": ["2017-01-01", "2017-02-01"],
+                        "bands": ["B01", "B02"],
+                    },
+                },
+                "resamplespatial1": {
+                    "process_id": "resample_spatial",
+                    "arguments": {
+                        "data": {"from_node": "loadco1"},
+                        "resolution": [5, 10],
+                        "projection": "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs",
+                        "method": "bilinear",
+                    },
+                },
+                "saveres1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "resamplespatial1"}, "format": "gtiff"},
+                    "result": True,
+                },
+            },
+            [5, 10],
+            3857,
+            ResamplingType.BILINEAR,
+            None,
+        ),
+        (
+            {
+                "loadco1": {
+                    "process_id": "load_collection",
+                    "arguments": {
+                        "id": "sentinel-2-l1c",
+                        "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                        "temporal_extent": ["2017-01-01", "2017-02-01"],
+                        "bands": ["B01", "B02"],
+                    },
+                },
+                "resamplespatial1": {
+                    "process_id": "resample_spatial",
+                    "arguments": {
+                        "data": {"from_node": "loadco1"},
+                        "resolution": [5, 10],
+                        "projection": 'PROJCS["WGS 84 / Pseudo-Mercator",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]],PROJECTION["Mercator_1SP"],PARAMETER["central_meridian",0],PARAMETER["scale_factor",1],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["X",EAST],AXIS["Y",NORTH],EXTENSION["PROJ4","+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs"],AUTHORITY["EPSG","3857"]]',
+                        "method": "bilinear",
+                    },
+                },
+                "saveres1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "resamplespatial1"}, "format": "gtiff"},
+                    "result": True,
+                },
+            },
+            [5, 10],
+            3857,
+            ResamplingType.BILINEAR,
+            None,
+        ),
+        (
+            {
+                "loadco1": {
+                    "process_id": "load_collection",
+                    "arguments": {
+                        "id": "sentinel-2-l1c",
+                        "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                        "temporal_extent": ["2017-01-01", "2017-02-01"],
+                        "bands": ["B01", "B02"],
+                    },
+                },
+                "resamplespatial1": {
+                    "process_id": "resample_spatial",
+                    "arguments": {
+                        "data": {"from_node": "loadco1"},
+                        "resolution": [5, 10],
+                        "projection": "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs",
+                        "method": "lanczos",
+                    },
+                },
+                "saveres1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "resamplespatial1"}, "format": "gtiff"},
+                    "result": True,
+                },
+            },
+            None,
+            None,
+            None,
+            "Method 'lanczos' not among supported resampling methods: ['near','bilinear','cubic']",
+        ),
+        (
+            {
+                "loadco1": {
+                    "process_id": "load_collection",
+                    "arguments": {
+                        "id": "sentinel-2-l1c",
+                        "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                        "temporal_extent": ["2017-01-01", "2017-02-01"],
+                        "bands": ["B01", "B02"],
+                    },
+                },
+                "resamplespatial1": {
+                    "process_id": "resample_spatial",
+                    "arguments": {"data": {"from_node": "loadco1"}, "method": "near"},
+                },
+                "saveres1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "resamplespatial1"}, "format": "gtiff"},
+                    "result": True,
+                },
+            },
+            None,
+            None,
+            None,
+            "At least 'resolution' or 'projection' must be specified.",
+        ),
+        (
+            {
+                "loadco1": {
+                    "process_id": "load_collection",
+                    "arguments": {
+                        "id": "sentinel-2-l1c",
+                        "spatial_extent": {"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
+                        "temporal_extent": ["2017-01-01", "2017-02-01"],
+                        "bands": ["B01", "B02"],
+                    },
+                },
+                "resamplespatial1": {
+                    "process_id": "resample_spatial",
+                    "arguments": {"data": {"from_node": "loadco1"}, "projection": "invalid", "method": "near"},
+                },
+                "saveres1": {
+                    "process_id": "save_result",
+                    "arguments": {"data": {"from_node": "resamplespatial1"}, "format": "gtiff"},
+                    "result": True,
+                },
+            },
+            None,
+            None,
+            None,
+            "projection is not a valid EPSG code, WKT string or PROJ definition.",
+        ),
+    ],
+)
+def test_resample_spatial_process(process_graph, expected_resolution, expected_crs, expected_resampling_method, error):
+    try:
+        resample_spatial = ResampleSpatial(process_graph)
+        geometry, crs, resolution, resampling_method = resample_spatial.get_spatial_info()
+    except Exception as e:
+        if error:
+            assert error in e.message
+        else:
+            raise e
+    else:
+        assert geometry is None
+        assert crs == expected_crs
+        assert resolution == expected_resolution
+        assert resampling_method == expected_resampling_method

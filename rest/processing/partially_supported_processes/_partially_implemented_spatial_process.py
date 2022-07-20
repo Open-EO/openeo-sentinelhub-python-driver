@@ -19,6 +19,13 @@ class PartiallyImplementedSpatialProcess:
     def get_all_occurrences(self):
         return self.get_all_occurrences_of_process_id(self.process_graph, self.process_id)
 
+    def get_all_occurrences_ordered(self):
+        all_occurrences = self.get_all_occurrences_of_process_id(self.process_graph, self.process_id)
+        for occurrence in all_occurrences:
+            occurrence["index"] = self.execution_order.index(occurrence["node_id"])
+        all_occurrences.sort(key=lambda x: x["index"])
+        return all_occurrences
+
     def get_all_occurrences_of_process_id(self, process_graph, process_id, level=0, all_occurrences=None):
         """
         Iterates over the process graph to find all nodes with `process_id` process.
@@ -95,6 +102,6 @@ class PartiallyImplementedSpatialProcess:
 
     def get_spatial_info(self):
         """
-        Returns shapely geometry object in CRS 4326, original CRS.
+        Returns shapely geometry object in CRS 4326, original CRS, resolution and resampling method
         """
-        return None, None
+        return None, None, None, None
