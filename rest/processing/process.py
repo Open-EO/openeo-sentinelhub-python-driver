@@ -372,6 +372,7 @@ class Process:
             # we must make sure the X and Y resolution are the same and resolution is available among existing tiling grids
             if self.pisp_resolution[0] != self.pisp_resolution[1]:
                 raise BadRequest("X and Y resolution must be identical in Sentinel Hub batch processing request.")
+
             for tiling_grid in utm_tiling_grids:
                 if self.pisp_resolution[0] in tiling_grid["properties"]["resolutions"]:
                     break

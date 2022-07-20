@@ -20,10 +20,11 @@ class ResampleSpatial(PartiallyImplementedSpatialProcess):
             "cubic": ResamplingType.BICUBIC,
         }
         if method not in methods_mapping:
+            methods_string = ",".join(f"'{m}'" for m in methods_mapping)
             raise ProcessParameterInvalid(
                 "method",
                 "resample_spatial",
-                f"Method '{method}' not among supported resampling methods: ['near','bilinear','cubic']",
+                f"Method '{method}' not among supported resampling methods: [{methods_string}]",
             )
         return methods_mapping[method]
 
