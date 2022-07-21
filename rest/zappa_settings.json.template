@@ -23,9 +23,9 @@
     "memory_size": 512,
     "timeout_seconds": 180,
     "profile_name": "default",
-    "project_name": "sentinelhub-openeo-testing",
+    "project_name": "openeo",
     "runtime": "python3.9",
-    "s3_bucket": "shopeneoproduction"
+    "s3_bucket": "openeodevdeploy"
   },
   "production": {
     "app_function": "app.app",
