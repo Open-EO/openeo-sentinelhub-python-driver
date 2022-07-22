@@ -27,7 +27,13 @@
     "runtime": "python3.9",
     "manage_roles": false,
     "role_arn": "arn:aws:iam::127163565383:role/openEO-dev-role",
-    "s3_bucket": "openeodevdeploy"
+    "s3_bucket": "openeodevdeploy",
+    "tags": { 
+      "cost:ou": "frontend",  
+      "cost:contact": "dthiex",
+      "env": "dev",
+      "project": "openEO"
+    }
   },
   "production": {
     "app_function": "app.app",
@@ -57,6 +63,12 @@
     "runtime": "python3.9",
     "manage_roles": false,
     "role_arn": "",
-    "s3_bucket": ""
+    "s3_bucket": "",
+    "tags": { 
+      "cost:ou": "frontend",  
+      "cost:contact": "dthiex",
+      "env": "prod",
+      "project": "openEO"
+    }
   }
 }
