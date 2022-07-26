@@ -82,6 +82,12 @@ cors = CORS(
     max_age=3600,
 )
 
+def create_log(l, method, endpoint, job_id=None):
+    log(
+        level=l,
+        msg=f"[User {g.user.user_id}] @ [{datetime.datetime.utcnow()}] - {method} {endpoint}{f' (Job ID: {job_id})' if job_id is not None else ''}",
+    )
+
 
 def get_all_user_defined_processes():
     all_user_defined_processes = dict()
@@ -265,6 +271,7 @@ def api_service_types():
 @app.route("/process_graphs", methods=["GET"])
 @authentication_provider.with_bearer_auth
 def api_process_graphs(user):
+    create_log(INFO, flask.request.method, flask.request.path)
     process_graphs = []
     links = []
     for record in ProcessGraphsPersistence.query_by_user_id(user.user_id):
@@ -294,6 +301,7 @@ def api_process_graphs(user):
 @app.route("/process_graphs/<process_graph_id>", methods=["GET", "DELETE", "PUT"])
 @authentication_provider.with_bearer_auth
 def api_process_graph(process_graph_id, user):
+    create_log(INFO, flask.request.method, flask.request.path)
     if flask.request.method in ["GET", "HEAD"]:
         record = ProcessGraphsPersistence.get_by_id(process_graph_id)
         if record is None:
@@ -352,6 +360,7 @@ def api_process_graph(process_graph_id, user):
 @app.route("/result", methods=["POST"])
 @authentication_provider.with_bearer_auth
 def api_result():
+    create_log(INFO, flask.request.method, flask.request.path)
     if flask.request.method == "POST":
         job_data = flask.request.get_json()
 
@@ -383,6 +392,7 @@ def api_result():
 @app.route("/jobs", methods=["GET", "POST"])
 @authentication_provider.with_bearer_auth
 def api_jobs(user):
+    create_log(INFO, flask.request.method, flask.request.path)
     if flask.request.method == "GET":
         jobs = []
         links = []
@@ -445,6 +455,7 @@ def api_jobs(user):
 @app.route("/jobs/<job_id>", methods=["GET", "PATCH", "DELETE"])
 @authentication_provider.with_bearer_auth
 def api_batch_job(job_id, user):
+    create_log(INFO, flask.request.method, flask.request.path, job_id)
     job = JobsPersistence.get_by_id(job_id)
     if job is None or job["user_id"] != user.user_id:
         raise JobNotFound()
@@ -499,6 +510,7 @@ def api_batch_job(job_id, user):
 @app.route("/jobs/<job_id>/results", methods=["POST", "GET", "DELETE"])
 @authentication_provider.with_bearer_auth
 def add_job_to_queue(job_id, user):
+    create_log(INFO, flask.request.method, flask.request.path, job_id)
     job = JobsPersistence.get_by_id(job_id)
     if job is None or job["user_id"] != user.user_id:
         raise JobNotFound()
@@ -568,6 +580,7 @@ def add_job_to_queue(job_id, user):
 @app.route("/jobs/<job_id>/estimate", methods=["GET"])
 @authentication_provider.with_bearer_auth
 def estimate_job_cost(job_id):
+    create_log(INFO, flask.request.method, flask.request.path, job_id)
     job = JobsPersistence.get_by_id(job_id)
     if job is None:
         raise JobNotFound()
@@ -584,6 +597,7 @@ def estimate_job_cost(job_id):
 @app.route("/services", methods=["GET", "POST"])
 @authentication_provider.with_bearer_auth
 def api_services(user):
+    create_log(INFO, flask.request.method, flask.request.path)
     if flask.request.method == "GET":
         services = []
         links = []
@@ -647,6 +661,7 @@ def api_services(user):
 @app.route("/services/<service_id>", methods=["GET", "PATCH", "DELETE"])
 @authentication_provider.with_bearer_auth
 def api_service(service_id, user):
+    create_log(INFO, flask.request.method, flask.request.path)
     record = ServicesPersistence.get_by_id(service_id)
     if record is None or record["user_id"] != user.user_id:
         raise ServiceNotFound(service_id)
