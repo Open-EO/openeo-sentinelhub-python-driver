@@ -82,6 +82,7 @@ cors = CORS(
     max_age=3600,
 )
 
+
 def create_log(l, method, endpoint, job_id=None):
     log(
         level=l,
