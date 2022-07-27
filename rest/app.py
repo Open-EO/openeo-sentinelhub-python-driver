@@ -84,14 +84,16 @@ cors = CORS(
 
 
 def create_log(level, method, endpoint, user=None, job_id=None, service_id=None):
-    message = f"[User {user.user_id if user is not None else 'null'}] @ [{datetime.datetime.utcnow()}] - {method} {endpoint}"
-    
+    message = (
+        f"[User {user.user_id if user is not None else 'null'}] @ [{datetime.datetime.utcnow()}] - {method} {endpoint}"
+    )
+
     if job_id is not None:
-        message += f' (Job ID: {job_id})'
+        message += f" (Job ID: {job_id})"
 
     if service_id is not None:
-        message += f' (Service ID: {service_id}'
-    
+        message += f" (Service ID: {service_id}"
+
     log(level=level, msg=message)
 
 
