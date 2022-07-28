@@ -20,6 +20,7 @@ from pg_to_evalscript import list_supported_processes
 from werkzeug.exceptions import HTTPException
 
 import globalmaptiles
+from utils import create_log
 from schemas import (
     PutProcessGraphSchema,
     PatchProcessGraphsSchema,
@@ -81,20 +82,6 @@ cors = CORS(
     supports_credentials=True,
     max_age=3600,
 )
-
-
-def create_log(level, method, endpoint, user=None, job_id=None, service_id=None):
-    message = (
-        f"[User {user.user_id if user is not None else 'null'}] @ [{datetime.datetime.utcnow()}] - {method} {endpoint}"
-    )
-
-    if job_id is not None:
-        message += f" (Job ID: {job_id})"
-
-    if service_id is not None:
-        message += f" (Service ID: {service_id}"
-
-    log(level=level, msg=message)
 
 
 def get_all_user_defined_processes():
