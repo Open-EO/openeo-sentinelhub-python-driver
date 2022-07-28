@@ -7,6 +7,7 @@ from sentinelhub import SentinelHubSession
 from openeoerrors import Internal
 
 from const import SentinelhubDeployments
+from usage_reporting.report_usage import report_usage
 
 
 class ProcessingAPIRequest:
@@ -26,6 +27,10 @@ class ProcessingAPIRequest:
     def fetch(self):
         r = self.make_request()
         r.raise_for_status()
+
+        pu_spent = r.headers["x-processingunits-spent"]
+        report_usage(pu_spent)
+
         return r.content
 
     def with_rate_limiting(request_func):
