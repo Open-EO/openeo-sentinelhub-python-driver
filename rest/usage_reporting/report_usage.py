@@ -70,12 +70,7 @@ def report_usage(pu_spent):
         "state": "FINISHED",
         "status": "SUCCEEDED",
         "orchestrator": "openeo",
-        "metrics": {
-            "processing": {
-                "value": pu_spent,
-                "unit": "shpu"
-            }
-        }
+        "metrics": {"processing": {"value": pu_spent, "unit": "shpu"}},
     }
 
     r = requests.post(reporting_url, data=json.dumps(data), headers=headers)
