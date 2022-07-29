@@ -158,7 +158,7 @@ def test_authentication_provider_oidc(oidc_user_info_response, headers, should_r
             def execute():
                 responses.add(
                     responses.GET,
-                    "https://aai.egi.eu/oidc/.well-known/openid-configuration",
+                    "https://aai.egi.eu/auth/realms/egi/.well-known/openid-configuration",
                     json={"userinfo_endpoint": "http://dummy_userinfo_endpoint"},
                 )
                 responses.add(responses.GET, "http://dummy_userinfo_endpoint", json=oidc_user_info_response)
@@ -171,7 +171,7 @@ def test_authentication_provider_oidc(oidc_user_info_response, headers, should_r
             def execute():
                 responses.add(
                     responses.GET,
-                    "https://aai.egi.eu/oidc/.well-known/openid-configuration",
+                    "https://aai.egi.eu/auth/realms/egi/.well-known/openid-configuration",
                     json={"userinfo_endpoint": "http://dummy_userinfo_endpoint"},
                 )
                 responses.add(responses.GET, "http://dummy_userinfo_endpoint", json=oidc_user_info_response)

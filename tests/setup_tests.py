@@ -55,7 +55,7 @@ def with_mocked_auth(func):
     def decorated_function(*args, **kwargs):
         responses.add(
             responses.GET,
-            "https://aai.egi.eu/oidc/.well-known/openid-configuration",
+            "https://aai.egi.eu/auth/realms/egi/.well-known/openid-configuration",
             json={"userinfo_endpoint": "http://dummy_userinfo_endpoint"},
         )
         responses.add(

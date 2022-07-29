@@ -1519,7 +1519,7 @@ def test_user_workspace(app_client, example_authorization_header_with_oidc, exam
 
     responses.add(
         responses.GET,
-        "https://aai.egi.eu/oidc/.well-known/openid-configuration",
+        "https://aai.egi.eu/auth/realms/egi/.well-known/openid-configuration",
         json={"userinfo_endpoint": "http://dummy_userinfo_endpoint"},
     )
     responses.add_callback(responses.GET, "http://dummy_userinfo_endpoint", callback=request_callback)

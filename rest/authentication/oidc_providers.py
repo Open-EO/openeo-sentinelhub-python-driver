@@ -16,7 +16,7 @@ oidc_providers = [
             }
         ],
         "id": "egi",
-        "issuer": "https://aai.egi.eu/oidc/",
+        "issuer": "https://aai.egi.eu/auth/realms/egi/",
         "scopes": ["openid", "email", "eduperson_entitlement", "eduperson_scoped_affiliation"],
         "title": "EGI Check-in",
     }
