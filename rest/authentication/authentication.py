@@ -11,6 +11,7 @@ from flask import request, g
 import jwt
 from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.backends import default_backend
+from utils import create_log
 
 from openeoerrors import (
     OpenEOError,
@@ -132,6 +133,7 @@ class AuthenticationProvider:
         problems with non-ASCII characters. Anything longer than 50 characters will be treated
         as BASE64-encoded string.
         """
+        create_log(INFO, "POST", 'https://services.sentinel-hub.com/oauth/token')
         username, password = self.parse_credentials_from_header()
         secret = password if len(password) <= 50 else base64.b64decode(bytes(password, "ascii")).decode("ascii")
         r = requests.post(
