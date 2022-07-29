@@ -133,7 +133,7 @@ class AuthenticationProvider:
         problems with non-ASCII characters. Anything longer than 50 characters will be treated
         as BASE64-encoded string.
         """
-        create_log(INFO, "POST", 'https://services.sentinel-hub.com/oauth/token')
+        create_log(INFO, "POST", "https://services.sentinel-hub.com/oauth/token")
         username, password = self.parse_credentials_from_header()
         secret = password if len(password) <= 50 else base64.b64decode(bytes(password, "ascii")).decode("ascii")
         r = requests.post(
