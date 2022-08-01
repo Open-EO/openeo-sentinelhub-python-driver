@@ -3,6 +3,7 @@ import json
 import requests
 from flask import g
 import datetime
+import time
 
 # url
 # https://etl-dev.terrascope.be/resources
@@ -35,6 +36,8 @@ import datetime
 #     - value
 #     - unit (shpu)
 
+reporting_token = {}
+
 
 def reporting_authenticate():
     auth_url = os.environ.get("USAGE_REPORTING_AUTH_URL")
@@ -55,16 +58,18 @@ def reporting_authenticate():
         print(r.status_code, r.text)
 
     j = r.json()
-    return j.get("access_token")
+
+    global reporting_token
+    reporting_token = {"access_token": j.get("access_token"), "valid_until": time.time() - 5 + j.get("expires_in")}
 
 
 def report_usage(pu_spent, job_id=None):
-    reporting_token = reporting_authenticate()
+    if "valid_until" not in reporting_token or reporting_token["valid_until"] <= time.time():
+        reporting_authenticate()
+    
     reporting_url = os.environ.get("USAGE_REPORTING_URL")
-
     iso8601_utc_timestamp = datetime.datetime.utcnow().replace(microsecond=0, tzinfo=datetime.timezone.utc).isoformat()
-    headers = {"content-type": "application/json", "Authorization": f"Bearer {reporting_token}"}
-
+    headers = {"content-type": "application/json", "Authorization": f"Bearer {reporting_token['access_token']}"}
     data = {
         "jobId": job_id if job_id else f"{g.user.user_id}_{iso8601_utc_timestamp}",
         "userId": g.user.user_id,
