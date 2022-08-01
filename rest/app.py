@@ -231,6 +231,12 @@ def oidc_credentials():
     return flask.make_response(jsonify(providers))
 
 
+@app.route("/me", methods=["GET"])
+@authentication_provider.with_bearer_auth
+def describe_account():
+    return flask.make_response(jsonify(g.user.get_user_info()), 200)
+
+
 @app.route("/file_formats", methods=["GET"])
 def api_file_formats():
     output_formats = {}

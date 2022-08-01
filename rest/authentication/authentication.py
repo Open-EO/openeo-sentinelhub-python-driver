@@ -21,7 +21,7 @@ from openeoerrors import (
     TokenInvalid,
 )
 from authentication.oidc_providers import oidc_providers
-from authentication.user import User
+from authentication.user import OIDCUser, SHUser
 
 
 class AuthScheme(Enum):
@@ -61,9 +61,8 @@ class AuthenticationProvider:
         userinfo = userinfo_resp.json()
 
         user_id = userinfo["sub"]
-        entitlement = userinfo["eduperson_entitlement"]
 
-        user = User(user_id, entitlement)
+        user = OIDCUser(user_id, oidc_userinfo=userinfo)
 
         if not user.is_in_group("vo.openeo.cloud"):
             return None
@@ -84,7 +83,7 @@ class AuthenticationProvider:
         except:
             raise TokenInvalid()
 
-        user = User(decoded["sub"], sh_access_token=access_token)
+        user = SHUser(decoded["sub"], sh_access_token=access_token, sh_userinfo=decoded)
         return user
 
     def authenticate_user(self, bearer):
