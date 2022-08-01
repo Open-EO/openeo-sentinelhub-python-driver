@@ -60,8 +60,9 @@ def create_batch_job(process):
 def start_new_batch_job(sentinel_hub, process, job_id):
     new_batch_request_id, deployment_endpoint = create_batch_job(process)
 
-    estimated_pu, _ = get_batch_job_estimate(new_batch_request_id, process, deployment_endpoint)
-    report_usage(estimated_pu, job_id)
+    if "oidc_userinfo" in g.user.get_user_info()["info"]:
+        estimated_pu, _ = get_batch_job_estimate(new_batch_request_id, process, deployment_endpoint)
+        report_usage(estimated_pu, job_id)
 
     sentinel_hub.start_batch_job(new_batch_request_id)
     return new_batch_request_id
@@ -91,8 +92,10 @@ def start_batch_job(batch_request_id, process, deployment_endpoint, job_id):
     if batch_request_info is None:
         return start_new_batch_job(sentinel_hub, process, job_id)
     elif batch_request_info.status in [BatchRequestStatus.CREATED, BatchRequestStatus.ANALYSIS_DONE]:
-        estimated_pu, _ = get_batch_job_estimate(batch_request_id, process, deployment_endpoint)
-        report_usage(estimated_pu, job_id)
+        if "oidc_userinfo" in g.user.get_user_info()["info"]:
+            estimated_pu, _ = get_batch_job_estimate(batch_request_id, process, deployment_endpoint)
+            report_usage(estimated_pu, job_id)
+
         sentinel_hub.start_batch_job(batch_request_id)
     elif batch_request_info.status == BatchRequestStatus.PARTIAL:
         sentinel_hub.restart_batch_job(batch_request_id)

@@ -1,6 +1,7 @@
 import time
 import json
 import functools
+from flask import g
 
 import requests
 from sentinelhub import SentinelHubSession
@@ -28,8 +29,9 @@ class ProcessingAPIRequest:
         r = self.make_request()
         r.raise_for_status()
 
-        pu_spent = r.headers["x-processingunits-spent"]
-        report_usage(pu_spent)
+        if "oidc_userinfo" in g.user.get_user_info()["info"]:
+            pu_spent = r.headers["x-processingunits-spent"]
+            report_usage(pu_spent)
 
         return r.content
 
