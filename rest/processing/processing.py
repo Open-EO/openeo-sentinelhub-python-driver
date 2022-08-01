@@ -153,7 +153,15 @@ def get_batch_job_estimate(batch_request_id, process, deployment_endpoint):
         batch_request = sentinel_hub.get_batch_request_info(batch_request_id)
 
     default_temporal_interval = 3
-    estimate_secure_factor = 2
+
+    # Note that the cost estimate does not take the multiplication factor of 1/3
+    # for batch processing into account.
+    # The actual costs will be 3 times lower than the estimate.
+    # https://docs.sentinel-hub.com/api/latest/api/batch/#cost-estimate
+    actual_pu_to_estimate_ratio = 1/3
+
+    # multiply by 2 to be on the safe side
+    estimate_secure_factor = actual_pu_to_estimate_ratio * 2
 
     p = Process(process, access_token=g.user.sh_access_token)
     temporal_interval = p.get_temporal_interval(in_days=True)
