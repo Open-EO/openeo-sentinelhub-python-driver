@@ -8,36 +8,6 @@ from logging import log, ERROR
 
 from openeoerrors import Internal
 
-# url
-# https://etl-dev.terrascope.be/resources
-
-# example
-# {
-#     "jobId": "TEST",
-#     "userId": "bramjanssen",
-#     "sourceId": "MEP",
-#     "state": "FINISHED",
-#     "status": "SUCCEEDED",
-#     "orchestrator": "openeo",
-#     "metrics": {
-#         "processing": {
-#             "value": 1000,
-#             "unit": "shpu"
-#         }
-#     }
-# }
-
-# REQUIRED FIELDS
-# - jobId
-# - executionId
-# - userId
-# - sourceId
-# - state (one of [ ACCEPTED, RUNNING, FINISHED, KILLED, FAILED, UNDEFINED ])
-# - status (one of [ SUCCEEDED, FAILED, KILLED, UNDEFINED ])
-# - metrics
-#   - processing
-#     - value
-#     - unit (shpu)
 
 reporting_token = {}
 
