@@ -12,6 +12,11 @@ from openeoerrors import Internal
 reporting_token = {}
 
 
+def is_reporting_needed():
+    user_info = g.user.get_user_info()
+    return "info" in user_info and "oidc_userinfo" in user_info["info"]
+
+
 def reporting_authenticate():
     auth_url = os.environ.get("USAGE_REPORTING_AUTH_URL")
     auth_client_id = os.environ.get("USAGE_REPORTING_AUTH_CLIENT_ID")

@@ -29,7 +29,7 @@ class ProcessingAPIRequest:
         r = self.make_request()
         r.raise_for_status()
 
-        if "oidc_userinfo" in g.user.get_user_info()["info"]:
+        if is_reporting_needed():
             pu_spent = r.headers["x-processingunits-spent"]
             report_usage(pu_spent)
 

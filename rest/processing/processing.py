@@ -3,7 +3,7 @@ import time
 from pg_to_evalscript import convert_from_process_graph
 from flask import g
 from sentinelhub import BatchRequestStatus, BatchUserAction, SentinelHubBatch
-from usage_reporting.report_usage import report_usage
+from usage_reporting.report_usage import report_usage, is_reporting_needed
 
 from processing.process import Process
 from processing.sentinel_hub import SentinelHub
@@ -60,7 +60,7 @@ def create_batch_job(process):
 def start_new_batch_job(sentinel_hub, process, job_id):
     new_batch_request_id, deployment_endpoint = create_batch_job(process)
 
-    if "oidc_userinfo" in g.user.get_user_info()["info"]:
+    if is_reporting_needed():
         estimated_pu, _ = get_batch_job_estimate(new_batch_request_id, process, deployment_endpoint)
         report_usage(estimated_pu, job_id)
 
@@ -92,7 +92,7 @@ def start_batch_job(batch_request_id, process, deployment_endpoint, job_id):
     if batch_request_info is None:
         return start_new_batch_job(sentinel_hub, process, job_id)
     elif batch_request_info.status in [BatchRequestStatus.CREATED, BatchRequestStatus.ANALYSIS_DONE]:
-        if "oidc_userinfo" in g.user.get_user_info()["info"]:
+        if is_reporting_needed():
             estimated_pu, _ = get_batch_job_estimate(batch_request_id, process, deployment_endpoint)
             report_usage(estimated_pu, job_id)
 
