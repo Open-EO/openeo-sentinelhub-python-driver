@@ -2,7 +2,7 @@ import os
 import json
 import requests
 from flask import g
-from datetime import datetime
+import datetime
 
 # url
 # https://etl-dev.terrascope.be/resources
@@ -62,10 +62,11 @@ def report_usage(pu_spent, job_id=None):
     reporting_token = reporting_authenticate()
     reporting_url = os.environ.get("USAGE_REPORTING_URL")
 
+    iso8601_utc_timestamp = datetime.datetime.utcnow().replace(microsecond=0, tzinfo=datetime.timezone.utc).isoformat()
     headers = {"content-type": "application/json", "Authorization": f"Bearer {reporting_token}"}
 
     data = {
-        "jobId": job_id if job_id else f"{g.user.user_id}_{datetime.now()}",
+        "jobId": job_id if job_id else f"{g.user.user_id}_{iso8601_utc_timestamp}",
         "userId": g.user.user_id,
         "sourceId": "sentinel-hub-openeo",
         "state": "FINISHED",
