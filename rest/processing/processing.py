@@ -158,7 +158,7 @@ def get_batch_job_estimate(batch_request_id, process, deployment_endpoint):
     # for batch processing into account.
     # The actual costs will be 3 times lower than the estimate.
     # https://docs.sentinel-hub.com/api/latest/api/batch/#cost-estimate
-    actual_pu_to_estimate_ratio = 1/3
+    actual_pu_to_estimate_ratio = 1 / 3
 
     # multiply by 2 to be on the safe side
     estimate_secure_factor = actual_pu_to_estimate_ratio * 2
