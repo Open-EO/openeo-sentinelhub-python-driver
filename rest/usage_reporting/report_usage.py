@@ -54,7 +54,6 @@ def reporting_authenticate():
     )
 
     if r.status_code != 200:
-        print("ERROR AUTHENTICATING for reporting")
         print(r.status_code, r.text)
 
     j = r.json()
@@ -83,5 +82,4 @@ def report_usage(pu_spent, job_id=None):
     r = requests.post(reporting_url, data=json.dumps(data), headers=headers)
 
     if r.status_code != 200:
-        print("ERROR reporting")
         print(r.status_code, r.text)
