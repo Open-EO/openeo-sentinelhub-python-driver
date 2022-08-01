@@ -4,6 +4,9 @@ import requests
 from flask import g
 import datetime
 import time
+from logging import log, ERROR
+
+from openeoerrors import Internal
 
 # url
 # https://etl-dev.terrascope.be/resources
@@ -54,7 +57,8 @@ def reporting_authenticate():
     )
 
     if r.status_code != 200:
-        print(r.status_code, r.text)
+        log(ERROR, f"Error authenticating for usage reporting: {r.text}")
+        raise Internal(f"Problems during usage reporting: {r.text}")
 
     j = r.json()
 
@@ -65,7 +69,7 @@ def reporting_authenticate():
 def report_usage(pu_spent, job_id=None):
     if "valid_until" not in reporting_token or reporting_token["valid_until"] <= time.time():
         reporting_authenticate()
-    
+
     reporting_url = os.environ.get("USAGE_REPORTING_URL")
     iso8601_utc_timestamp = datetime.datetime.utcnow().replace(microsecond=0, tzinfo=datetime.timezone.utc).isoformat()
     headers = {"content-type": "application/json", "Authorization": f"Bearer {reporting_token['access_token']}"}
@@ -82,4 +86,5 @@ def report_usage(pu_spent, job_id=None):
     r = requests.post(reporting_url, data=json.dumps(data), headers=headers)
 
     if r.status_code != 200:
-        print(r.status_code, r.text)
+        log(ERROR, f"Error reporting usage: {r.text}")
+        raise Internal(f"Problems during usage reporting: {r.text}")
