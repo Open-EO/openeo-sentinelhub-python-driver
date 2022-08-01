@@ -8,7 +8,7 @@ from sentinelhub import SentinelHubSession
 from openeoerrors import Internal
 
 from const import SentinelhubDeployments
-from usage_reporting.report_usage import report_usage
+from usage_reporting.report_usage import report_usage, is_reporting_needed
 
 
 class ProcessingAPIRequest:
