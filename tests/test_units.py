@@ -144,7 +144,7 @@ def test_collections_provider(url, directory, expected_collection_ids):
 )
 def test_authentication_provider_oidc(oidc_user_info_response, headers, should_raise_error, error, func):
     authentication_provider = AuthenticationProvider(
-        oidc_providers=[{"id": "egi", "issuer": "https://aai.egi.eu/oidc/"}]
+        oidc_providers=[{"id": "egi", "issuer": "https://aai.egi.eu/auth/realms/egi/"}]
     )
 
     if func is None:
