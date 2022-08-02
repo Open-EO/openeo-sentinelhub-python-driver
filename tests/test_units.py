@@ -46,8 +46,8 @@ def test_collections(get_process_graph, collection_id):
             "../../tests/fixtures/collection_information",
             [
                 "SPOT",
-                "pleiades",
-                "worldview",
+                "PLEIADES",
+                "WORLDVIEW",
                 "PLANETSCOPE",
                 "landsat-7-etm+-l2",
                 "sentinel-2-l1c",
@@ -632,8 +632,8 @@ def test_tiling_grids(
     [
         ("sentinel-2-l1c", None, False, None, "sentinel-2-l1c"),
         ("PLANETSCOPE", None, True, Internal, None),
-        ("worldview", {}, True, Internal, None),
-        ("pleiades", {"byoc_collection_id": "byoc-some-id"}, False, None, "byoc-some-id"),
+        ("WORLDVIEW", {}, True, Internal, None),
+        ("PLEIADES", {"byoc_collection_id": "byoc-some-id"}, False, None, "byoc-some-id"),
     ],
 )
 def test_get_collection(
