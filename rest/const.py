@@ -106,12 +106,12 @@ class OpenEOPBillingPlan(BillingPlan):
 
 
 class SentinelHubBillingPlan(BillingPlan):
-    TRIAL = ("Trial", "", False, "https://www.sentinel-hub.com/pricing/")
-    EXPLORATION = ("Exploration", "", True, "https://www.sentinel-hub.com/pricing/")
-    BASIC = ("Basic", "", True, "https://www.sentinel-hub.com/pricing/")
-    ENTERPRISE = ("Enterprise", "", True, "https://www.sentinel-hub.com/pricing/")
-    ENTERPRISE_S = ("Enterprise S", "", True, "https://www.sentinel-hub.com/pricing/")
-    ENTERPRISE_L = ("Enterprise L", "", True, "https://www.sentinel-hub.com/pricing/")
+    TRIAL = ("trial", "Trial", False, "https://www.sentinel-hub.com/pricing/")
+    EXPLORATION = ("exploration", "Exploration", True, "https://www.sentinel-hub.com/pricing/")
+    BASIC = ("basic", "Basic", True, "https://www.sentinel-hub.com/pricing/")
+    ENTERPRISE = ("enterprise", "Enterprise", True, "https://www.sentinel-hub.com/pricing/")
+    ENTERPRISE_S = ("enterprise-s", "Enterprise S", True, "https://www.sentinel-hub.com/pricing/")
+    ENTERPRISE_L = ("enterprise-l", "Enterprise L", True, "https://www.sentinel-hub.com/pricing/")
 
     @staticmethod
     def get_billing_plan(plan_number):

@@ -61,7 +61,7 @@ from openeoerrors import (
     SHOpenEOError,
 )
 from authentication.user import User
-from const import openEOBatchJobStatus, optional_process_parameters
+from const import openEOBatchJobStatus, optional_process_parameters, SentinelHubBillingPlan
 from utils import get_all_process_definitions, get_data_from_bucket, convert_timestamp_to_simpler_format, get_roles
 from buckets import get_bucket
 
@@ -142,7 +142,14 @@ def api_root():
         "title": "Sentinel Hub OpenEO",
         "description": "Sentinel Hub OpenEO by [Sinergise](https://sinergise.com)",
         "endpoints": get_endpoints(),
-        "billing": {"currency": "processing units"},
+        "billing": {
+            "currency": "processing units",
+            "default_plan": SentinelHubBillingPlan.TRIAL.name,
+            "plans": [
+                {"name": plan.name, "description": plan.description, "paid": plan.is_paid, "url": plan.url}
+                for plan in SentinelHubBillingPlan
+            ],
+        },
         "links": get_links(),
     }
 
