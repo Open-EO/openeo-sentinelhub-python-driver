@@ -10,7 +10,7 @@ oidc_providers = [
                 "id": "sentinel-hub-default-client",
                 "redirect_urls": [
                     "https://editor.openeo.org",
-                    "http://localhost:5000/",
+                    "http://localhost:5000",
                     "http://localhost:5000/callback",
                 ],
             }
