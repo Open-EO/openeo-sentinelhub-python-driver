@@ -6,13 +6,23 @@ from sentinelhub import BatchRequestStatus, BatchUserAction, SentinelHubBatch
 
 from processing.process import Process
 from processing.sentinel_hub import SentinelHub
+from processing.partially_supported_processes import partially_supported_processes
 from dynamodb.utils import get_user_defined_processes_graphs
 from const import openEOBatchJobStatus
 from openeoerrors import Timeout
 
 
 def check_process_graph_conversion_validity(process_graph):
+    for partially_supported_process in partially_supported_processes:
+        is_valid, error = partially_supported_process(process_graph).is_usage_valid()
+        if not is_valid:
+            raise error
+
+    partially_supported_processes_as_udp = {
+        partially_supported_process.process_id: {} for partially_supported_process in partially_supported_processes
+    }
     user_defined_processes_graphs = get_user_defined_processes_graphs()
+    user_defined_processes_graphs.update(partially_supported_processes_as_udp)
     results = convert_from_process_graph(process_graph, user_defined_processes=user_defined_processes_graphs)
     return results[0]["invalid_node_id"]
 
