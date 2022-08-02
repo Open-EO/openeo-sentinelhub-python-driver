@@ -71,6 +71,7 @@ class SHUser(User):
 
     def get_user_info(self):
         user_info = super().get_user_info()
-        user_info["name"] = self.sh_userinfo["name"]
+        if "name" in self.sh_userinfo:
+            user_info["name"] = self.sh_userinfo["name"]
         user_info["info"] = {"sh_userinfo": self.sh_userinfo}
         return user_info
