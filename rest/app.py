@@ -82,6 +82,8 @@ cors = CORS(
     max_age=3600,
 )
 
+import api.orders
+
 
 def get_all_user_defined_processes():
     all_user_defined_processes = dict()

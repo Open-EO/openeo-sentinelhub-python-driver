@@ -232,12 +232,12 @@ class PGValidationSchema(Schema):
         validate_graph(graph)
 
 
-# CORRECT
-# curl -d "{\"process_graph\": {\"smth\": {\"process_id\": \"load_collection\", \"arguments\": {\"id\": {}, \"spatial_extent\": {}}}}}" -H "Content-Type: application/json" -X POST http://127.0.0.1:5000/process_graphs
-# INCORRECT
-# no process_id
-# curl -d "{\"process_graph\": {\"test\": {\"arguments\": {\"id\": \"Sentinel-2\"}}}}" -H "Content-Type: application/json" -X POST http://127.0.0.1:5000/process_graphs
-# process not supported
-# curl -d "{\"process_graph\": {\"test\": {\"process_id\": \"dcgewk\", \"arguments\": {\"id\": \"Sentinel-2\"}}}}" -H "Content-Type: application/json" -X POST http://127.0.0.1:5000/process_graphs
-# no process_graph
-# curl -d "{\"title\": \"failure\"}" -H "Content-Type: application/json" -X POST http://127.0.0.1:5000/process_graphs
+class PostOrdersSchema(Schema):
+    """
+    Request body
+    POST /orders
+    """
+
+    collection_id = fields.Str(required=True)
+    products = fields.List(fields.Str(allow_none=False), required=True)
+    parameters = fields.Dict(required=True)
