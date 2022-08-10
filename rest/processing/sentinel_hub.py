@@ -199,5 +199,9 @@ class SentinelHub:
         return tiling_grids
 
     def create_tpdi_order(self, collection_id, geometry, products, parameters):
-        tpdi_provider = TPDI(collection_id, access_token=self.access_token)
+        tpdi_provider = TPDI(collection_id=collection_id, access_token=self.access_token)
         return tpdi_provider.create_order(geometry, products, parameters)
+
+    def get_all_tpdi_orders(self):
+        tpdi_provider = TPDI(access_token=self.access_token)
+        return tpdi_provider.get_all_orders()

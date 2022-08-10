@@ -42,3 +42,24 @@ sample_types_to_bytes = {
 sh_config = SHConfig()
 sh_config.sh_client_id = os.environ.get("SH_CLIENT_ID")
 sh_config.sh_client_secret = os.environ.get("SH_CLIENT_SECRET")
+
+
+class OpenEOOrderStatus(Enum):
+    ORDERABLE = "orderable"
+    ORDERED = "ordered"
+    SHIPPING = "shipping"
+    DELIVERED = "delivered"
+    UNABLE_TO_DELIVER = "unable_to_deliver"
+    CANCELED = "canceled"
+
+    @staticmethod
+    def from_sentinelhub_order_status(sentinelhub_order_status):
+        conversion_table = {
+            "CREATED": OpenEOOrderStatus.ORDERABLE,
+            "RUNNING": OpenEOOrderStatus.ORDERED,
+            "DONE": OpenEOOrderStatus.DELIVERED,
+            "PARTIAL": OpenEOOrderStatus.UNABLE_TO_DELIVER,
+            "FAILED": OpenEOOrderStatus.UNABLE_TO_DELIVER,
+            "CANCELLED": OpenEOOrderStatus.CANCELED,
+        }
+        return conversion_table.get(sentinelhub_order_status)

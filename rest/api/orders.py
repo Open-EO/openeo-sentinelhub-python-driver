@@ -2,7 +2,7 @@ from .api_setup import *
 
 from schemas import PostOrdersSchema
 from processing.tpdi import TPDI
-from processing.processing import create_tpdi_order
+from processing.processing import create_tpdi_order, get_all_tpdi_orders
 
 app_orders = Blueprint("app_orders", __name__)
 
@@ -11,7 +11,12 @@ app_orders = Blueprint("app_orders", __name__)
 @authentication_provider.with_bearer_auth
 def commercial_data_orders():
     if flask.request.method == "GET":
-        pass
+        orders, links = get_all_tpdi_orders()
+
+        return {
+            "orders": orders,
+            "links": links,
+        }, 200
 
     elif flask.request.method == "POST":
         data = flask.request.get_json()
@@ -22,10 +27,10 @@ def commercial_data_orders():
         if errors:
             raise BadRequest(str(errors))
 
-        order = create_tpdi_order(data["collection_id"], data["bounds"], data["products"], data["parameters"])
+        order_id = create_tpdi_order(data["collection_id"], data["bounds"], data["products"], data["parameters"])
         response = flask.make_response("", 201)
-        response.headers["Location"] = "/orders/{}".format(order["id"])
-        response.headers["OpenEO-Identifier"] = order["id"]
+        response.headers["Location"] = "/orders/{}".format(order_id)
+        response.headers["OpenEO-Identifier"] = order_id
         return response
 
 

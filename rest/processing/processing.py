@@ -178,3 +178,8 @@ def get_batch_job_status(batch_request_id, deployment_endpoint):
 def create_tpdi_order(collection_id, geometry, products, parameters):
     sentinel_hub = new_sentinel_hub()
     return sentinel_hub.create_tpdi_order(collection_id, geometry, products, parameters)
+
+
+def get_all_tpdi_orders():
+    sentinel_hub = new_sentinel_hub()
+    return sentinel_hub.get_all_tpdi_orders()

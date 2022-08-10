@@ -1,26 +1,37 @@
 import requests
 
+from .const import OpenEOOrderStatus
+
 
 class TPDI:
-    def __init__(self, collection_id, access_token=None):
+    def __init__(self, collection_id=None, access_token=None):
         self.access_token = access_token
-        class_types_for_collectionId = {
-            "PLEIADES": TPDIPleiades,
-            "SPOT": TPDISPOT,
-            "PLANETSCOPE": TPDITPLanetscope,
-            "WORLDVIEW": TPDITMaxar,
-        }
-        self.__class__ = class_types_for_collectionId[collection_id]
+        self.auth_headers = {"Authorization": f"Bearer {self.access_token}"}
+
+        if collection_id is not None:
+            class_types_for_collectionId = {
+                "PLEIADES": TPDIPleiades,
+                "SPOT": TPDISPOT,
+                "PLANETSCOPE": TPDITPLanetscope,
+                "WORLDVIEW": TPDITMaxar,
+            }
+            self.__class__ = class_types_for_collectionId[collection_id]
 
     def create_order(self, geometry, products, parameters):
         payload = self.generate_payload(geometry, products, parameters)
         r = requests.post(
             "https://services.sentinel-hub.com/api/v1/dataimport/orders",
             json=payload,
-            headers={"Authorization": f"Bearer {self.access_token}"},
+            headers=self.auth_headers,
         )
         r.raise_for_status()
         return r.json()
+
+    def get_all_orders(self):
+        r = requests.get("https://services.sentinel-hub.com/api/v1/dataimport/orders", headers=self.auth_headers)
+        r.raise_for_status()
+        data = r.json()
+        return self.convert_orders_to_openeo_format(data["data"]), data["links"]
 
     def generate_payload(self, geometry, products, parameters):
         payload = {
@@ -34,6 +45,18 @@ class TPDI:
 
     def get_payload_data(self, parameters):
         raise NotImplementedError
+
+    def convert_orders_to_openeo_format(self, orders_sh):
+        orders = []
+        for order in orders_sh:
+            orders.append(
+                {
+                    "order:id": order["id"],
+                    "order:status": OpenEOOrderStatus.from_sentinelhub_order_status(order["status"]).value,
+                    "order:date": order["created"],
+                }
+            )
+        return orders
 
 
 class TPDIAirbus(TPDI):
