@@ -9,6 +9,7 @@ import requests
 from processing.const import sh_config
 from buckets import BUCKET_NAMES
 from processing.processing_api_request import ProcessingAPIRequest
+from processing.tpdi import TPDI
 
 
 class SentinelHub:
@@ -16,7 +17,6 @@ class SentinelHub:
         self.config = sh_config
         self.S3_BUCKET_NAME = BUCKET_NAMES.get(service_base_url)
         self.batch = SentinelHubBatch(config=self.config)
-        self.access_token = access_token
 
         if access_token is not None:
             # This is an ugly hack to set custom access token
@@ -26,6 +26,8 @@ class SentinelHub:
         if service_base_url is not None:
             self.config.sh_base_url = service_base_url
             self.batch.service_url = self.batch._get_service_url(service_base_url)
+
+        self.access_token = self.batch.client.session.token["access_token"]
 
     def create_processing_request(
         self,
@@ -195,3 +197,7 @@ class SentinelHub:
             if tiling_grid["properties"]["unit"] == "METRE":
                 tiling_grids.append(tiling_grid)
         return tiling_grids
+
+    def create_tpdi_order(self, collection_id, geometry, products, parameters):
+        tpdi_provider = TPDI(collection_id, access_token=self.access_token)
+        return tpdi_provider.create_order(geometry, products, parameters)

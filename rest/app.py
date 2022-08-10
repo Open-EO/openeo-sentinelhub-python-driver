@@ -67,7 +67,11 @@ from buckets import get_bucket
 
 from openeo_collections.collections import collections
 
+from api.orders import app_orders
+
 app = Flask(__name__)
+app.register_blueprint(app_orders)
+
 app.url_map.strict_slashes = False
 
 cors = CORS(
@@ -81,8 +85,6 @@ cors = CORS(
     supports_credentials=True,
     max_age=3600,
 )
-
-import api.orders
 
 
 def get_all_user_defined_processes():

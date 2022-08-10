@@ -12,12 +12,12 @@ class TPDI:
         }
         self.__class__ = class_types_for_collectionId[collection_id]
 
-    def create_tpdi_order(self, geometry, products, parameters):
+    def create_order(self, geometry, products, parameters):
         payload = self.generate_payload(geometry, products, parameters)
         r = requests.post(
             "https://services.sentinel-hub.com/api/v1/dataimport/orders",
-            data=payload,
-            headers={"Authorization": f"Bearer {access_token}"},
+            json=payload,
+            headers={"Authorization": f"Bearer {self.access_token}"},
         )
         r.raise_for_status()
         return r.json()
@@ -26,8 +26,8 @@ class TPDI:
         payload = {
             "input": {
                 "provider": self.provider,
-                "bounds": geometry,
-                "data": self.get_payload_data(products, parameters),
+                "bounds": {"geometry": geometry},
+                "data": [self.get_payload_data(products, parameters)],
             }
         }
         return payload
@@ -36,25 +36,26 @@ class TPDI:
         raise NotImplementedError
 
 
-class TPDIPleiades(TPDI):
+class TPDIAirbus(TPDI):
     provider = "AIRBUS"
 
     def get_payload_data(self, products, parameters):
-        return {"constellation": "PHR", "products": products}
+        return {"constellation": self.constellation, "products": [{"id": product} for product in products]}
 
 
-class TPDISPOT(TPDI):
-    provider = "AIRBUS"
+class TPDIPleiades(TPDIAirbus):
+    constellation = "PHR"
 
-    def get_payload_data(self, products, parameters):
-        return {"constellation": "SPOT", "products": products}
+
+class TPDISPOT(TPDIAirbus):
+    constellation = "SPOT"
 
 
 class TPDITPLanetscope(TPDI):
     provider = "PLANET"
 
-    def generate_payload(self):
-        payload = super().generate_payload()
+    def generate_payload(self, geometry, products, parameters):
+        payload = super().generate_payload(geometry, products, parameters)
         payload["input"]["planetApiKey"] = planetApiKey
 
     def get_payload_data(self, products, parameters):
