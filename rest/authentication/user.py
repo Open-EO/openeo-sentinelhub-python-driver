@@ -4,6 +4,9 @@ class User:
         self.entitlements = [self.convert_entitlement(entitlement) for entitlement in entitlements]
         self.sh_access_token = sh_access_token
 
+    def __str__(self):
+        return f"{self.__class__.__name__}: {self.user_id}"
+
     @staticmethod
     def convert_entitlement(entitlement):
         namespace, rest = entitlement.split(":group:")
