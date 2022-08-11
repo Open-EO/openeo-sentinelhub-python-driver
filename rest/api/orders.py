@@ -2,7 +2,7 @@ from .api_setup import *
 
 from schemas import PostOrdersSchema
 from processing.tpdi import TPDI
-from processing.processing import create_tpdi_order, get_all_tpdi_orders
+from processing.processing import create_tpdi_order, get_all_tpdi_orders, get_tpdi_order
 
 app_orders = Blueprint("app_orders", __name__)
 
@@ -38,7 +38,8 @@ def commercial_data_orders():
 @authentication_provider.with_bearer_auth
 def commercial_data_order(order_id):
     if flask.request.method == "GET":
-        pass
+        order = get_tpdi_order(order_id)
+        return order, 200
 
     elif flask.request.method == "POST":
         pass

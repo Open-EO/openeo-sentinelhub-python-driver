@@ -183,3 +183,8 @@ def create_tpdi_order(collection_id, geometry, products, parameters):
 def get_all_tpdi_orders():
     sentinel_hub = new_sentinel_hub()
     return sentinel_hub.get_all_tpdi_orders()
+
+
+def get_tpdi_order(order_id):
+    sentinel_hub = new_sentinel_hub()
+    return sentinel_hub.get_tpdi_order(order_id)

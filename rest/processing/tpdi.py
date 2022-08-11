@@ -33,6 +33,14 @@ class TPDI:
         data = r.json()
         return self.convert_orders_to_openeo_format(data["data"]), data["links"]
 
+    def get_order(self, order_id):
+        r = requests.get(
+            f"https://services.sentinel-hub.com/api/v1/dataimport/orders/{order_id}", headers=self.auth_headers
+        )
+        r.raise_for_status()
+        order = r.json()
+        return self.convert_order_to_openeo_format(order)
+
     def generate_payload(self, geometry, products, parameters):
         payload = {
             "input": {
@@ -49,14 +57,15 @@ class TPDI:
     def convert_orders_to_openeo_format(self, orders_sh):
         orders = []
         for order in orders_sh:
-            orders.append(
-                {
-                    "order:id": order["id"],
-                    "order:status": OpenEOOrderStatus.from_sentinelhub_order_status(order["status"]).value,
-                    "order:date": order["created"],
-                }
-            )
+            orders.append(self.convert_order_to_openeo_format(order))
         return orders
+
+    def convert_order_to_openeo_format(self, order):
+        return {
+            "order:id": order["id"],
+            "order:status": OpenEOOrderStatus.from_sentinelhub_order_status(order["status"]).value,
+            "order:date": order["created"],
+        }
 
 
 class TPDIAirbus(TPDI):
