@@ -41,6 +41,12 @@ class TPDI:
         order = r.json()
         return self.convert_order_to_openeo_format(order)
 
+    def delete_order(self, order_id):
+        r = requests.delete(
+            f"https://services.sentinel-hub.com/api/v1/dataimport/orders/{order_id}", headers=self.auth_headers
+        )
+        r.raise_for_status()
+
     def generate_payload(self, geometry, products, parameters):
         payload = {
             "input": {

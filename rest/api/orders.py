@@ -2,7 +2,7 @@ from .api_setup import *
 
 from schemas import PostOrdersSchema
 from processing.tpdi import TPDI
-from processing.processing import create_tpdi_order, get_all_tpdi_orders, get_tpdi_order
+from processing.processing import create_tpdi_order, get_all_tpdi_orders, get_tpdi_order, delete_tpdi_order
 
 app_orders = Blueprint("app_orders", __name__)
 
@@ -45,4 +45,5 @@ def commercial_data_order(order_id):
         pass
 
     elif flask.request.method == "DELETE":
-        pass
+        delete_tpdi_order(order_id)
+        return "The order has been successfully deleted.", 204
