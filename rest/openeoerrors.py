@@ -139,3 +139,9 @@ class PartiallySupportedProcessInvalid(SHOpenEOError):
 
     error_code = "PartiallySupportedProcessInvalid"
     http_code = 400
+
+
+class OrderNotFound(SHOpenEOError):
+    error_code = "OrderNotFound"
+    http_code = 404
+    message = "The order does not exist."
