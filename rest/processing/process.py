@@ -42,7 +42,7 @@ from processing.utils import (
 
 
 class Process:
-    def __init__(self, process, width=None, height=None, access_token=None, user_defined_processes={}):
+    def __init__(self, process, width=None, height=None, user=None, user_defined_processes={}):
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_RESOLUTION = (10, 10)
         self.MAXIMUM_SYNC_FILESIZE_BYTES = 5000000
@@ -51,8 +51,8 @@ class Process:
         }
         partially_supported_processes_as_udp.update(user_defined_processes)
         self.user_defined_processes = partially_supported_processes_as_udp
-        self.sentinel_hub = SentinelHub(access_token=access_token)
-        self.user_defined_processes = user_defined_processes
+        # self.sentinel_hub = SentinelHub(access_token=access_token)
+        # self.user_defined_processes = user_defined_processes
 
         self.process_graph = process["process_graph"]
         (
@@ -64,7 +64,7 @@ class Process:
         self.bbox, self.epsg_code, self.geometry = self.get_bounds()
         self.collection = self.get_collection()
         self.service_base_url = self.collection.service_url
-        self.sentinel_hub = SentinelHub(access_token=access_token, service_base_url=self.service_base_url)
+        self.sentinel_hub = SentinelHub(user=user, service_base_url=self.service_base_url)
         self.from_date, self.to_date = self.get_temporal_extent()
         self.mimetype = self.get_mimetype()
         self.width = width or self.get_dimensions()[0]

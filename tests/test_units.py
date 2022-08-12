@@ -683,7 +683,9 @@ def test_sentinel_hub_access_token(access_token):
         ],
     )
 
-    sh = SentinelHub(access_token=access_token)
+    user = SHUser(sh_access_token=access_token)
+
+    sh = SentinelHub(user=user)
     sh.create_processing_request(
         bbox=BBox((1, 2, 3, 4), crs=CRS.WGS84),
         collection=DataCollection.SENTINEL2_L2A,
@@ -694,7 +696,7 @@ def test_sentinel_hub_access_token(access_token):
         height=1,
         mimetype=MimeType.PNG,
     )
-    sh = SentinelHub(access_token=access_token)
+    sh = SentinelHub(user=user)
     sh.create_batch_job(
         collection=DataCollection.SENTINEL2_L2A,
         evalscript="",
@@ -1018,9 +1020,7 @@ def test_processing_api_request(
 
         try:
             start_time = time.time()
-            r = ProcessingAPIRequest(
-                url, {}, access_token=access_token, config=sh_config, max_retries=MAX_RETRIES
-            ).make_request()
+            r = ProcessingAPIRequest(url, {}, user=g.get("user"), max_retries=MAX_RETRIES).make_request()
             end_time = time.time()
             r.raise_for_status()
             assert r.status_code == 200, r.content

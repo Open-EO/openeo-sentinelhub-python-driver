@@ -1,4 +1,3 @@
-import os
 import base64
 import traceback
 from enum import Enum
@@ -8,9 +7,6 @@ from logging import log, INFO, WARN, ERROR
 
 import requests
 from flask import request, g
-import jwt
-from cryptography.x509 import load_pem_x509_certificate
-from cryptography.hazmat.backends import default_backend
 
 from openeoerrors import (
     OpenEOError,
@@ -18,11 +14,11 @@ from openeoerrors import (
     AuthenticationSchemeInvalid,
     Internal,
     CredentialsInvalid,
-    TokenInvalid,
     BillingPlanInvalid,
 )
 from authentication.oidc_providers import oidc_providers
 from authentication.user import OIDCUser, SHUser
+from authentication.utils import decode_sh_access_token
 
 
 class AuthScheme(Enum):
@@ -74,19 +70,7 @@ class AuthenticationProvider:
         return user
 
     def authenticate_user_basic(self, access_token):
-        script_dir = os.path.dirname(__file__)
-        abs_filepath = os.path.join(script_dir, "cert.pem")
-
-        with open(abs_filepath, "rb") as f:
-            cert_str = f.read()
-
-        cert_obj = load_pem_x509_certificate(cert_str, default_backend())
-
-        try:
-            decoded = jwt.decode(access_token, cert_obj.public_key(), algorithms="RS256", options={"verify_aud": False})
-        except:
-            raise TokenInvalid()
-
+        decoded = decode_sh_access_token(access_token)
         try:
             user = SHUser(decoded["sub"], sh_access_token=access_token, sh_userinfo=decoded)
         except BillingPlanInvalid:

@@ -697,11 +697,6 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
 
     responses.add(
         responses.POST,
-        "https://services.sentinel-hub.com/oauth/token",
-        body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
-    )
-    responses.add(
-        responses.POST,
         re.compile(".*"),
     )
 
@@ -1157,16 +1152,6 @@ def test_collections(app_client):
     ],
 )
 def test_fetching_correct_collection_type(app_client, collection_id, collection_type, request_url):
-    responses.add(
-        responses.POST,
-        "https://services.sentinel-hub.com/oauth/token",
-        body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
-    )
-    responses.add(
-        responses.POST,
-        re.compile(".*"),
-    )
-
     process_graph = {
         "loadco1": {
             "process_id": "load_collection",
@@ -1728,7 +1713,8 @@ def test_job_with_deleted_batch_request(app_client, example_process_graph):
 
     job_data = JobsPersistence.get_by_id(record_id)
     batch_request_id = job_data["batch_request_id"]
-    sentinel_hub = SentinelHub(access_token=valid_sh_token)
+    user = SHUser(sh_access_token=valid_sh_token)
+    sentinel_hub = SentinelHub(user=user)
     sentinel_hub.delete_batch_job(batch_request_id)
 
     r = app_client.get("/jobs", headers=headers)

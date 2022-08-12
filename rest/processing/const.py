@@ -1,7 +1,6 @@
-import os
 from enum import Enum
 
-from sentinelhub import MimeType, SentinelHubBatch, SHConfig
+from sentinelhub import MimeType, SentinelHubBatch
 
 
 class SampleType(Enum):
@@ -38,7 +37,3 @@ sample_types_to_bytes = {
     SampleType.UINT16: 2,
     SampleType.FLOAT32: 4,
 }
-
-sh_config = SHConfig()
-sh_config.sh_client_id = os.environ.get("SH_CLIENT_ID")
-sh_config.sh_client_secret = os.environ.get("SH_CLIENT_SECRET")
