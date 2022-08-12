@@ -683,7 +683,7 @@ def test_sentinel_hub_access_token(access_token):
         ],
     )
 
-    user = SHUser(sh_access_token=access_token)
+    user = SHUser(sh_access_token=access_token, sh_userinfo={"d": {"1": {"t": 11000}}}) # sh_userinfo is needed for determining the billing plan 
 
     sh = SentinelHub(user=user)
     sh.create_processing_request(
