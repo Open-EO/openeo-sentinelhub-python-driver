@@ -702,6 +702,11 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
     )
     responses.add(
         responses.POST,
+        "https://services.sentinel-hub.com/oauth/token",
+        body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
+    )
+    responses.add(
+        responses.POST,
         re.compile(".*"),
     )
 

@@ -20,8 +20,11 @@ class SentinelHub:
 
         if access_token is not None:
             # This is an ugly hack to set custom access token
+            self.batch.client.session = SentinelHubSession(
+                _token={"access_token": access_token, "expires_at": 99999999999999}, refresh_before_expiry=None
+            )
+        else:
             self.batch.client.session = SentinelHubSession(config=self.config)
-            self.batch.client.session._token = {"access_token": access_token, "expires_at": 99999999999999}
 
         if service_base_url is not None:
             self.config.sh_base_url = service_base_url
