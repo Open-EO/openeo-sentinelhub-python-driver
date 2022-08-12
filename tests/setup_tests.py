@@ -21,7 +21,7 @@ from app import app
 from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
 from openeo_collections.collections import collections, CollectionsProvider
 from authentication.authentication import AuthenticationProvider, authentication_provider
-from authentication.user import SHUser
+from authentication.user import SHUser, User
 from processing.process import Process
 from processing.sentinel_hub import SentinelHub
 from processing.processing import delete_batch_job
