@@ -23,9 +23,17 @@
     "memory_size": 512,
     "timeout_seconds": 180,
     "profile_name": "default",
-    "project_name": "sentinelhub-openeo-testing",
+    "project_name": "openeo",
     "runtime": "python3.9",
-    "s3_bucket": "shopeneoproduction"
+    "manage_roles": false,
+    "role_arn": "arn:aws:iam::127163565383:role/openEO-dev-role",
+    "s3_bucket": "openeodevdeploy",
+    "tags": { 
+      "cost:ou": "frontend",  
+      "cost:contact": "dthiex",
+      "env": "dev",
+      "project": "openEO"
+    }
   },
   "production": {
     "app_function": "app.app",
@@ -49,10 +57,18 @@
       "RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST": "@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST@@"
     },
     "memory_size": 512,
-    "timeout_seconds": 29,
+    "timeout_seconds": 180,
     "profile_name": "default",
-    "project_name": "sentinelhub-openeop",
+    "project_name": "openeo",
     "runtime": "python3.9",
-    "s3_bucket": "shopeneoproduction"
+    "manage_roles": false,
+    "role_arn": "",
+    "s3_bucket": "",
+    "tags": { 
+      "cost:ou": "frontend",  
+      "cost:contact": "dthiex",
+      "env": "prod",
+      "project": "openEO"
+    }
   }
 }
