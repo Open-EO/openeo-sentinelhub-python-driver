@@ -13,7 +13,7 @@ class User:
     def get_user_info(self):
         return {"user_id": self.user_id}
 
-    def report_usage(self):
+    def report_usage(self, pu_spent, job_id=None):
         pass
 
 
