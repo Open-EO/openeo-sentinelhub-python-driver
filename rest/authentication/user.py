@@ -1,4 +1,5 @@
 import json
+from usage_reporting.report_usage import usageReporting
 
 
 class User:
@@ -11,6 +12,9 @@ class User:
 
     def get_user_info(self):
         return {"user_id": self.user_id}
+
+    def report_usage(self):
+        pass
 
 
 class OIDCUser(User):
@@ -38,6 +42,9 @@ class OIDCUser(User):
         user_info = super().get_user_info()
         user_info["info"] = {"oidc_userinfo": self.oidc_userinfo}
         return user_info
+
+    def report_usage(self, pu_spent, job_id=None):
+        usageReporting.report_usage(self.user_id, pu_spent, job_id)
 
 
 class SHUser(User):
