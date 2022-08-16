@@ -58,3 +58,23 @@ class OpenEOOrderStatus(Enum):
             "CANCELLED": OpenEOOrderStatus.CANCELED,
         }
         return conversion_table.get(sentinelhub_order_status)
+
+
+class CommercialDataCollections(Enum):
+    PLEIADES = "PLEIADES"
+    SPOT = "SPOT"
+    PLANETSCOPE = "PLANETSCOPE"
+    WORLDVIEW = "WORLDVIEW"
+
+    @staticmethod
+    def from_sentinelhub_provider(provider, constellation):
+        if provider == "AIRBUS":
+            if constellation == "PHR":
+                return CommercialDataCollections.PLEIADES
+            elif constellation == "SPOT":
+                return CommercialDataCollections.SPOT
+
+        if provider == "MAXAR":
+            return CommercialDataCollections.WORLDVIEW
+        elif provider == "PLANET":
+            return CommercialDataCollections.PLANETSCOPE

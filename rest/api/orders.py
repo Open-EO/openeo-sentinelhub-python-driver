@@ -16,6 +16,8 @@ app_orders = Blueprint("app_orders", __name__)
 @app_orders.route("/orders", methods=["GET", "POST"])
 @authentication_provider.with_bearer_auth
 def commercial_data_orders():
+    user_id = g.user.user_id
+
     if flask.request.method == "GET":
         orders, links = get_all_tpdi_orders()
 
@@ -33,7 +35,8 @@ def commercial_data_orders():
         if errors:
             raise BadRequest(str(errors))
 
-        order_id = create_tpdi_order(data["collection_id"], data["bounds"], data["products"], data["parameters"])
+        order_id = create_tpdi_order(data["source_collection_id"], data["bounds"], data["items"], data["parameters"])
+
         response = flask.make_response("", 201)
         response.headers["Location"] = "/orders/{}".format(order_id)
         response.headers["OpenEO-Identifier"] = order_id
