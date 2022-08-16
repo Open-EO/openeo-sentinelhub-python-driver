@@ -188,3 +188,8 @@ def get_tpdi_order(order_id):
 def delete_tpdi_order(order_id):
     sentinel_hub = new_sentinel_hub()
     return sentinel_hub.delete_tpdi_order(order_id)
+
+
+def confirm_tpdi_order(order_id):
+    sentinel_hub = new_sentinel_hub()
+    return sentinel_hub.confirm_tpdi_order(order_id)

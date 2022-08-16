@@ -206,3 +206,7 @@ class SentinelHub:
     def delete_tpdi_order(self, order_id):
         tpdi_provider = TPDI(access_token=self.access_token)
         return tpdi_provider.delete_order(order_id)
+
+    def confirm_tpdi_order(self, order_id):
+        tpdi_provider = TPDI(access_token=self.access_token)
+        return tpdi_provider.confirm_order(order_id)

@@ -69,6 +69,14 @@ class TPDI:
         )
         r.raise_for_status()
 
+    @with_error_handling
+    def confirm_order(self, order_id):
+        r = requests.post(
+            f"https://services.sentinel-hub.com/api/v1/dataimport/orders/{order_id}/confirm", headers=self.auth_headers
+        )
+        r.raise_for_status()
+        return r
+
     def generate_payload(self, geometry, products, parameters):
         payload = {
             "input": {
