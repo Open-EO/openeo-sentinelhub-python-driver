@@ -61,7 +61,7 @@ from openeoerrors import (
     SHOpenEOError,
 )
 from authentication.user import User
-from const import openEOBatchJobStatus, optional_process_parameters
+from const import openEOBatchJobStatus, optional_process_parameters, SentinelHubBillingPlan
 from utils import get_all_process_definitions, get_data_from_bucket, convert_timestamp_to_simpler_format, get_roles
 from buckets import get_bucket
 
@@ -146,7 +146,14 @@ def api_root():
         "title": "Sentinel Hub OpenEO",
         "description": "Sentinel Hub OpenEO by [Sinergise](https://sinergise.com)",
         "endpoints": get_endpoints(),
-        "billing": {"currency": "processing units"},
+        "billing": {
+            "currency": "processing units",
+            "default_plan": SentinelHubBillingPlan.TRIAL.name,
+            "plans": [
+                {"name": plan.name, "description": plan.description, "paid": plan.is_paid, "url": plan.url}
+                for plan in SentinelHubBillingPlan
+            ],
+        },
         "links": get_links(),
     }
 
@@ -233,6 +240,12 @@ def api_credentials_basic():
 def oidc_credentials():
     providers = {"providers": authentication_provider.get_oidc_providers()}
     return flask.make_response(jsonify(providers))
+
+
+@app.route("/me", methods=["GET"])
+@authentication_provider.with_bearer_auth
+def describe_account():
+    return flask.make_response(jsonify(g.user.get_user_info()), 200)
 
 
 @app.route("/file_formats", methods=["GET"])

@@ -102,6 +102,12 @@ class Timeout(OpenEOError):
     message = "Request timed out."
 
 
+class BillingPlanInvalid(OpenEOError):
+    error_code = "BillingPlanInvalid"
+    http_code = 400
+    message = "The billing plan is invalid."
+
+
 class SHOpenEOError(Exception):
     # Class for exceptions that are not listed in https://openeo.org/documentation/0.4/developers/api/errors.html#openeo-error-codes
     record_id = None

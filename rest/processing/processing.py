@@ -27,24 +27,19 @@ def check_process_graph_conversion_validity(process_graph):
     return results[0]["invalid_node_id"]
 
 
-def get_sh_access_token():
-    if g.get("user"):
-        return g.user.sh_access_token
-
-
 def new_process(process, width=None, height=None):
     user_defined_processes_graphs = get_user_defined_processes_graphs()
     return Process(
         process,
         width=width,
         height=height,
-        access_token=get_sh_access_token(),
+        user=g.get("user"),
         user_defined_processes=user_defined_processes_graphs,
     )
 
 
 def new_sentinel_hub(deployment_endpoint=None):
-    return SentinelHub(access_token=get_sh_access_token(), service_base_url=deployment_endpoint)
+    return SentinelHub(user=g.get("user"), service_base_url=deployment_endpoint)
 
 
 def process_data_synchronously(process, width=None, height=None):
@@ -148,7 +143,7 @@ def get_batch_job_estimate(batch_request_id, process, deployment_endpoint):
     default_temporal_interval = 3
     estimate_secure_factor = 2
 
-    p = Process(process, access_token=g.user.sh_access_token)
+    p = Process(process, user=g.get("user"))
     temporal_interval = p.get_temporal_interval(in_days=True)
 
     if temporal_interval is None:

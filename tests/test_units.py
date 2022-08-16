@@ -683,7 +683,11 @@ def test_sentinel_hub_access_token(access_token):
         ],
     )
 
-    sh = SentinelHub(access_token=access_token)
+    user = SHUser(
+        sh_access_token=access_token, sh_userinfo={"d": {"1": {"t": 11000}}}
+    )  # sh_userinfo is needed for determining the billing plan
+
+    sh = SentinelHub(user=user)
     sh.create_processing_request(
         bbox=BBox((1, 2, 3, 4), crs=CRS.WGS84),
         collection=DataCollection.SENTINEL2_L2A,
@@ -694,7 +698,7 @@ def test_sentinel_hub_access_token(access_token):
         height=1,
         mimetype=MimeType.PNG,
     )
-    sh = SentinelHub(access_token=access_token)
+    sh = SentinelHub(user=user)
     sh.create_batch_job(
         collection=DataCollection.SENTINEL2_L2A,
         evalscript="",
@@ -995,13 +999,11 @@ def test_processing_api_request(
         example_token = "example"
         MAX_RETRIES = 3
         url = f"{endpoint}/api/v1/process"
-
-        if not access_token:
-            responses.add(
-                responses.POST,
-                "https://services.sentinel-hub.com/oauth/token",
-                body=json.dumps({"access_token": example_token, "expires_at": 2147483647}),
-            )
+        user = (
+            SHUser(sh_access_token=access_token, sh_userinfo={"d": {"1": {"t": 11000}}})
+            if access_token is not None
+            else User()
+        )
 
         for response in api_responses:
             responses.add(
@@ -1011,16 +1013,16 @@ def test_processing_api_request(
                 headers=response.get("headers"),
                 match=[
                     matchers.header_matcher(
-                        {"Authorization": f"Bearer {access_token if access_token is not None else example_token}"}
+                        {
+                            "Authorization": f"Bearer {access_token if access_token is not None else user.session.token['access_token']}"
+                        }
                     )
                 ],
             )
 
         try:
             start_time = time.time()
-            r = ProcessingAPIRequest(
-                url, {}, access_token=access_token, config=sh_config, max_retries=MAX_RETRIES
-            ).make_request()
+            r = ProcessingAPIRequest(url, {}, user=user, max_retries=MAX_RETRIES).make_request()
             end_time = time.time()
             r.raise_for_status()
             assert r.status_code == 200, r.content
