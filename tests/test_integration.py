@@ -1883,9 +1883,9 @@ def test_process_graph_with_partially_defined_processes(app_client, get_expected
 @pytest.mark.parametrize(
     "collection_id,expected_deployment_endpoint,expected_bucket_name",
     [
-        ("sentinel-2-l1c", "https://services.sentinel-hub.com", "com.sinergise.openeo.results"),
+        ("sentinel-2-l1c", "https://services.sentinel-hub.com", "com.sinergise.openeo.results.dev"),
         ("corine-land-cover", "https://creodias.sentinel-hub.com", "com.sinergise.openeo.results"),
-        ("landsat-7-etm+-l2", "https://services-uswest2.sentinel-hub.com", "com.sinergise.openeo.results.uswest2"),
+        ("landsat-7-etm+-l2", "https://services-uswest2.sentinel-hub.com", "com.sinergise.openeo.results.uswest2.dev"),
     ],
 )
 def test_job_saving_data(
