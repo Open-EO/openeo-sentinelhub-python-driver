@@ -8,7 +8,6 @@ from sentinelhub import SentinelHubSession
 from openeoerrors import Internal
 
 from const import SentinelhubDeployments
-from usage_reporting.report_usage import report_usage, is_reporting_needed
 
 
 class ProcessingAPIRequest:
@@ -29,9 +28,7 @@ class ProcessingAPIRequest:
         r = self.make_request()
         r.raise_for_status()
 
-        if is_reporting_needed():
-            pu_spent = r.headers["x-processingunits-spent"]
-            report_usage(pu_spent)
+        g.user.report_usage(r.headers["x-processingunits-spent"])
 
         return r.content
 
