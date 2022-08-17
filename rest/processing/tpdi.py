@@ -79,6 +79,20 @@ class TPDI:
         r.raise_for_status()
         return r
 
+    @with_error_handling
+    def search(self, params):
+        payload = self.generate_search_payload_from_params(params)
+        r = requests.get(
+            "https://services.sentinel-hub.com/api/v1/dataimport/search", json=payload, headers=self.auth_headers
+        )
+        r.raise_for_status()
+        return r.json()
+
+    def generate_search_payload_from_params(self, params):
+        return {
+            "provider": self.provider,
+        }
+
     def generate_payload(self, geometry, items, parameters):
         payload = {
             "input": {

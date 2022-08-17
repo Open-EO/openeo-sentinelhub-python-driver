@@ -69,10 +69,12 @@ from openeo_collections.collections import collections
 
 from api.orders import app_orders
 from api.queryables import app_queryables
+from api.search import app_search
 
 app = Flask(__name__)
 app.register_blueprint(app_orders)
 app.register_blueprint(app_queryables)
+app.register_blueprint(app_search)
 
 app.url_map.strict_slashes = False
 
