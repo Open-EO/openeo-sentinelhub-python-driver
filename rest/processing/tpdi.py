@@ -126,7 +126,7 @@ class TPDIAirbus(TPDI):
     provider = "AIRBUS"
 
     def get_payload_data(self, items, parameters):
-        return {"constellation": self.constellation, "items": [{"id": item} for item in items]}
+        return {"constellation": self.constellation, "products": [{"id": item} for item in items]}
 
     @staticmethod
     def get_items_list_from_order(order):

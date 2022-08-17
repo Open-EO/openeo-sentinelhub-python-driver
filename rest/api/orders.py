@@ -35,11 +35,11 @@ def commercial_data_orders():
         if errors:
             raise BadRequest(str(errors))
 
-        order_id = create_tpdi_order(data["source_collection_id"], data["bounds"], data["items"], data["parameters"])
+        order = create_tpdi_order(data["source_collection_id"], data["bounds"], data["items"], data["parameters"])
 
         response = flask.make_response("", 201)
-        response.headers["Location"] = "/orders/{}".format(order_id)
-        response.headers["OpenEO-Identifier"] = order_id
+        response.headers["Location"] = "/orders/{}".format(order["id"])
+        response.headers["OpenEO-Identifier"] = order["id"]
         return response
 
 
