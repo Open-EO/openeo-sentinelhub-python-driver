@@ -122,7 +122,9 @@ def get_roles(object_key):
 def with_logging(func):
     @wraps(func)
     def decorated_function(*args, **kwargs):
-        logger.debug(f"[{g.get('user') or 'Unathenticated'}] @ [{datetime.datetime.now()}] - {request.method} {request.path} - function args: {args}, function kwargs: {kwargs}, request args: {request.args}")
+        logger.debug(
+            f"[{g.get('user') or 'Unathenticated'}] @ [{datetime.datetime.now()}] - {request.method} {request.path} - function args: {args}, function kwargs: {kwargs}, request args: {request.args}"
+        )
 
         return func(*args, **kwargs)
 
