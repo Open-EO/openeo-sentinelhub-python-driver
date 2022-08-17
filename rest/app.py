@@ -3,6 +3,7 @@ import glob
 import json
 
 from logging import log, INFO, WARN, ERROR, DEBUG, getLogger, exception
+import logging
 import os
 import re
 import sys
@@ -85,7 +86,9 @@ cors = CORS(
     max_age=3600,
 )
 
-HTTPConnection.debuglevel = 1
+LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL")
+if logging._nameToLevel[LOGGING_LEVEL] == DEBUG:
+    HTTPConnection.debuglevel = 1
 requests_log = getLogger("requests.packages.urllib3")
 requests_log.setLevel(DEBUG)
 requests_log.propagate = True
