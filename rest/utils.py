@@ -1,15 +1,20 @@
+import logging
 import os
 import json
 import glob
 import datetime
+from this import d
 
 from sentinelhub.time_utils import parse_time
-from logging import log
+from functools import wraps
+from flask import request, g
 
 from pg_to_evalscript import list_supported_processes
 
 from processing.utils import iterate
 
+logger = logging.getLogger('customLogger')
+logger.setLevel(logging.DEBUG)
 
 def get_abs_file_path(rel_file_path):
     script_dir = os.path.dirname(__file__)
@@ -112,15 +117,11 @@ def get_roles(object_key):
     return ["data"]
 
 
-def create_log(level, method, endpoint, user=None, job_id=None, service_id=None):
-    message = (
-        f"[User {user.user_id if user is not None else 'null'}] @ [{datetime.datetime.utcnow()}] - {method} {endpoint}"
-    )
+def with_logging(func):
+    @wraps(func)
+    def decorated_function(*args, **kwargs):
+        logger.debug(f"[{g.get('user') or 'Unathenticated'}] @ [{datetime.datetime.now()}] - {request.method} {request.path} - function args: {args}, function kwargs: {kwargs}, request args: {request.args}")
 
-    if job_id is not None:
-        message += f" (Job ID: {job_id})"
+        return func(*args, **kwargs)
 
-    if service_id is not None:
-        message += f" (Service ID: {service_id}"
-
-    log(level=level, msg=message)
+    return decorated_function
