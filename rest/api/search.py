@@ -1,6 +1,7 @@
 from .api_setup import *
 
 from openeoerrors import ArgumentUnsupported
+from processing.tpdi import TPDI
 
 app_search = Blueprint("queryables", __name__)
 
@@ -12,9 +13,8 @@ def get_common_queryables():
     intersects = request.args.get("intersects")
     datetime = request.args.get("datetime")
     limit = request.args.get("limit")
-    ids = request.args.get("ids")
 
-    if ids is not None:
+    if request.args.get("ids") is not None:
         raise ArgumentUnsupported("ids")
 
     return None, 200

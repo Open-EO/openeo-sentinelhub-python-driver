@@ -82,7 +82,7 @@ class TPDI:
     @with_error_handling
     def search(self, params):
         payload = self.generate_search_payload_from_params(params)
-        r = requests.get(
+        r = requests.post(
             "https://services.sentinel-hub.com/api/v1/dataimport/search", json=payload, headers=self.auth_headers
         )
         r.raise_for_status()
@@ -91,7 +91,17 @@ class TPDI:
     def generate_search_payload_from_params(self, params):
         return {
             "provider": self.provider,
+            "bounds": self.bounds(params),
+            "data": {"dataFilter": self.get_data_filter(params)},
         }
+
+    def get_bounds(params):
+        bounds = {}
+        if params.get("bbox"):
+            bounds["bbox"]
+        if params.get("geometry"):
+            bounds["geometry"]
+        return bounds
 
     def generate_payload(self, geometry, items, parameters):
         payload = {
@@ -142,6 +152,11 @@ class TPDIAirbus(TPDI):
     def get_payload_data(self, items, parameters):
         return {"constellation": self.constellation, "products": [{"id": item} for item in items]}
 
+    def generate_search_payload_from_params(self, params):
+        payload = super().generate_search_payload_from_params(params)
+        payload["data"]["constellation"] = self.constellation
+        return payload
+
     @staticmethod
     def get_items_list_from_order(order):
         return [item["id"] for item in order["input"]["data"][0]["products"]]
@@ -161,6 +176,7 @@ class TPDITPLanetscope(TPDI):
     def generate_payload(self, geometry, items, parameters):
         payload = super().generate_payload(geometry, items, parameters)
         payload["input"]["planetApiKey"] = planetApiKey
+        return payload
 
     def get_payload_data(self, items, parameters):
         return {
@@ -169,6 +185,13 @@ class TPDITPLanetscope(TPDI):
             "harmonizeTo": parameters["harmonize_to"],
             "itemIds": items,
         }
+
+    def generate_search_payload_from_params(self, params):
+        payload = super().generate_search_payload_from_params(params)
+        payload["planetApiKey"] = planetApiKey
+        payload["itemType"] = params["itemType"]
+        payload["productBundle"] = params["productBundle"]
+        return payload
 
     @staticmethod
     def get_items_list_from_order(order):
@@ -179,7 +202,12 @@ class TPDITMaxar(TPDI):
     provider = "MAXAR"
 
     def get_payload_data(self, items, parameters):
-        return {"itemBands": "4BB", "selectedImages": items}
+        return {"productBands": "4BB", "selectedImages": items}
+
+    def generate_search_payload_from_params(self, params):
+        payload = super().generate_search_payload_from_params(params)
+        payload["productBands"] = params["productBands"]
+        return payload
 
     @staticmethod
     def get_items_list_from_order(order):
