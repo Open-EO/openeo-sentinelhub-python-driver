@@ -78,6 +78,10 @@ class UsageReporting:
             "metrics": {"processing": {"value": pu_spent, "unit": "shpu"}},
         }
 
+        if not self.reporting_check_health:
+            log(ERROR, "Services for usage reporting are not healthy")
+            raise Internal("Services for usage reporting are not healthy")
+
         for try_number in range(max_tries):
             r = requests.post(reporting_url, data=json.dumps(data), headers=headers)
 
