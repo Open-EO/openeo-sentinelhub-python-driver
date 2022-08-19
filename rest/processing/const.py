@@ -78,3 +78,7 @@ class CommercialDataCollections(Enum):
             return CommercialDataCollections.WORLDVIEW
         elif provider == "PLANET":
             return CommercialDataCollections.PLANETSCOPE
+
+    @staticmethod
+    def is_commercial(collection_id):
+        return collection_id in [v.value for v in CommercialDataCollections.__members__.values()]

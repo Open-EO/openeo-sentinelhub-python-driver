@@ -210,3 +210,7 @@ class SentinelHub:
     def confirm_tpdi_order(self, order_id):
         tpdi_provider = TPDI(access_token=self.access_token)
         return tpdi_provider.confirm_order(order_id)
+
+    def search_tpdi_products(self, collection_id=None, bbox=None, intersects=None, datetime=None, limit=None):
+        tpdi_provider = TPDI(collection_id=collection_id, access_token=self.access_token)
+        return tpdi_provider.search(bbox=bbox, intersects=intersects, datetime=datetime, limit=limit)

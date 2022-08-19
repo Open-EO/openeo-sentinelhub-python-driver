@@ -193,3 +193,10 @@ def delete_tpdi_order(order_id):
 def confirm_tpdi_order(order_id):
     sentinel_hub = new_sentinel_hub()
     return sentinel_hub.confirm_tpdi_order(order_id)
+
+
+def search_tpdi_products(collection_id=None, bbox=None, intersects=None, datetime=None, limit=None):
+    sentinel_hub = new_sentinel_hub()
+    return sentinel_hub.search_tpdi_products(
+        collection_id=collection_id, bbox=bbox, intersects=intersects, datetime=datetime, limit=limit
+    )

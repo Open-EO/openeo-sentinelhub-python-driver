@@ -151,11 +151,3 @@ class OrderNotFound(SHOpenEOError):
     error_code = "OrderNotFound"
     http_code = 404
     message = "The order does not exist."
-
-
-class ArgumentUnsupported(SHOpenEOError):
-    def __init__(self, argument):
-        self.message = f"Argument '{argument}' unsupported."
-
-    error_code = "ArgumentUnsupported"
-    http_code = 400

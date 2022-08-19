@@ -2,6 +2,7 @@ from functools import wraps
 from requests import HTTPError
 
 import requests
+from sentinelhub.time_utils import parse_time_interval
 
 from processing.const import OpenEOOrderStatus, CommercialDataCollections
 from openeoerrors import OrderNotFound
@@ -80,27 +81,34 @@ class TPDI:
         return r
 
     @with_error_handling
-    def search(self, params):
-        payload = self.generate_search_payload_from_params(params)
+    def search(self, bbox=None, intersects=None, datetime=None, limit=None):
+        payload = self.generate_search_payload_from_params(bbox=bbox, intersects=intersects, datetime=datetime)
+        from pprint import pprint
+
+        pprint(payload)
         r = requests.post(
             "https://services.sentinel-hub.com/api/v1/dataimport/search", json=payload, headers=self.auth_headers
         )
         r.raise_for_status()
         return r.json()
 
-    def generate_search_payload_from_params(self, params):
+    def generate_search_payload_from_params(self, bbox=None, intersects=None, datetime=None):
         return {
             "provider": self.provider,
-            "bounds": self.bounds(params),
-            "data": {"dataFilter": self.get_data_filter(params)},
+            "bounds": self.get_payload_bounds(bbox, intersects),
+            "data": [{"dataFilter": self.get_data_filter(datetime)}],
         }
 
-    def get_bounds(params):
+    def get_data_filter(self, datetime):
+        from_time, to_time = parse_time_interval(datetime)
+        return {"timeRange": {"from": from_time.isoformat(), "to": to_time.isoformat()}}
+
+    def get_payload_bounds(self, bbox, geometry):
         bounds = {}
-        if params.get("bbox"):
-            bounds["bbox"]
-        if params.get("geometry"):
-            bounds["geometry"]
+        if bbox is not None:
+            bounds["bbox"] = bbox
+        if geometry is not None:
+            bounds["geometry"] = geometry
         return bounds
 
     def generate_payload(self, geometry, items, parameters):
@@ -152,9 +160,9 @@ class TPDIAirbus(TPDI):
     def get_payload_data(self, items, parameters):
         return {"constellation": self.constellation, "products": [{"id": item} for item in items]}
 
-    def generate_search_payload_from_params(self, params):
-        payload = super().generate_search_payload_from_params(params)
-        payload["data"]["constellation"] = self.constellation
+    def generate_search_payload_from_params(self, bbox=None, intersects=None, datetime=None):
+        payload = super().generate_search_payload_from_params(bbox=bbox, intersects=intersects, datetime=datetime)
+        payload["data"][0]["constellation"] = self.constellation
         return payload
 
     @staticmethod
@@ -186,8 +194,8 @@ class TPDITPLanetscope(TPDI):
             "itemIds": items,
         }
 
-    def generate_search_payload_from_params(self, params):
-        payload = super().generate_search_payload_from_params(params)
+    def generate_search_payload_from_params(self, bbox=None, intersects=None, datetime=None):
+        payload = super().generate_search_payload_from_params(bbox=bbox, intersects=intersects, datetime=datetime)
         payload["planetApiKey"] = planetApiKey
         payload["itemType"] = params["itemType"]
         payload["productBundle"] = params["productBundle"]
@@ -204,8 +212,8 @@ class TPDITMaxar(TPDI):
     def get_payload_data(self, items, parameters):
         return {"productBands": "4BB", "selectedImages": items}
 
-    def generate_search_payload_from_params(self, params):
-        payload = super().generate_search_payload_from_params(params)
+    def generate_search_payload_from_params(self, bbox=None, intersects=None, datetime=None):
+        payload = super().generate_search_payload_from_params(bbox=bbox, intersects=intersects, datetime=datetime)
         payload["productBands"] = params["productBands"]
         return payload
 
