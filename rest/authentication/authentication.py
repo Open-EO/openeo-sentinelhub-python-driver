@@ -172,8 +172,6 @@ class AuthenticationProvider:
 
                 if "user" in getfullargspec(func).args:
                     kwargs["user"] = user
-                else:
-                    args += (g.user,)
 
             else:
                 raise AuthenticationRequired()

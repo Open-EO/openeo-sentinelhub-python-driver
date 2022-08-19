@@ -6,16 +6,11 @@ import datetime
 from this import d
 
 from sentinelhub.time_utils import parse_time
-from functools import wraps
-from flask import request, g
+
 
 from pg_to_evalscript import list_supported_processes
 
 from processing.utils import iterate
-
-LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL")
-logger = logging.getLogger("customLogger")
-logger.setLevel(logging._nameToLevel[LOGGING_LEVEL])
 
 
 def get_abs_file_path(rel_file_path):
@@ -117,15 +112,3 @@ def get_roles(object_key):
     if object_key.lower().endswith(".json"):
         return ["metadata"]
     return ["data"]
-
-
-def with_logging(func):
-    @wraps(func)
-    def decorated_function(*args, **kwargs):
-        logger.debug(
-            f"[{g.get('user') or 'Unathenticated'}] @ [{datetime.datetime.now()}] - {request.method} {request.path} - function args: {args}, function kwargs: {kwargs}, request args: {request.args}"
-        )
-
-        return func(*args, **kwargs)
-
-    return decorated_function

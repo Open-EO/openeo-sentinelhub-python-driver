@@ -2,14 +2,14 @@ import datetime
 import glob
 import json
 
-from logging import log, INFO, WARN, ERROR, DEBUG, getLogger, exception
+from logging import log, INFO, WARN, exception
 import logging
 import os
 import re
 import sys
 import time
 import traceback
-from http.client import HTTPConnection
+import uuid
 
 import requests
 import boto3
@@ -23,7 +23,7 @@ from pg_to_evalscript import list_supported_processes
 from werkzeug.exceptions import HTTPException
 
 import globalmaptiles
-from utils import with_logging
+from logs.logging import with_logging
 from schemas import (
     PutProcessGraphSchema,
     PatchProcessGraphsSchema,
@@ -86,13 +86,6 @@ cors = CORS(
     max_age=3600,
 )
 
-LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL")
-if logging._nameToLevel[LOGGING_LEVEL] == DEBUG:
-    HTTPConnection.debuglevel = 1
-requests_log = getLogger("requests.packages.urllib3")
-requests_log.setLevel(DEBUG)
-requests_log.propagate = True
-
 
 def get_all_user_defined_processes():
     all_user_defined_processes = dict()
@@ -120,28 +113,22 @@ def update_batch_request_id(job_id, job, new_batch_request_id):
     )
 
 
+@app.before_request
+def add_uuid_to_request():
+    flask.request.req_id = uuid.uuid4()
+
+
 @app.errorhandler(OpenEOError)
+@with_logging
 def openeo_exception_handler(error):
-    exception(error.message)
     return flask.make_response(
         jsonify(id=error.record_id, code=error.error_code, message=error.message, links=[]), error.http_code
     )
 
 
 @app.errorhandler(Exception)
+@with_logging
 def handle_exception(e):
-    # pass through HTTP errors
-    log(INFO, f"Error: {str(e)}")
-    if isinstance(e, HTTPException):
-        return e
-
-    # now you're handling non-HTTP exceptions only
-    log(INFO, traceback.format_exc())
-
-    if not issubclass(type(e), (OpenEOError, OpenEOProcessError, SHOpenEOError)):
-        e = Internal(str(e))
-
-    exception(e.message)
     return flask.make_response(jsonify(id=e.record_id, code=e.error_code, message=e.message, links=[]), e.http_code)
 
 
@@ -283,10 +270,10 @@ def api_service_types():
 @app.route("/process_graphs", methods=["GET"])
 @authentication_provider.with_bearer_auth
 @with_logging
-def api_process_graphs(user):
+def api_process_graphs():
     process_graphs = []
     links = []
-    for record in ProcessGraphsPersistence.query_by_user_id(user.user_id):
+    for record in ProcessGraphsPersistence.query_by_user_id(g.user.user_id):
         # We don't return process_graph and only return explicitly set optional values as documentation states:
         # > It is strongly RECOMMENDED to keep the response size small by omitting larger optional values from the objects
         process_item = {
@@ -313,7 +300,7 @@ def api_process_graphs(user):
 @app.route("/process_graphs/<process_graph_id>", methods=["GET", "DELETE", "PUT"])
 @authentication_provider.with_bearer_auth
 @with_logging
-def api_process_graph(user, process_graph_id):
+def api_process_graph(process_graph_id):
     if flask.request.method in ["GET", "HEAD"]:
         record = ProcessGraphsPersistence.get_by_id(process_graph_id)
         if record is None:
@@ -363,7 +350,7 @@ def api_process_graph(user, process_graph_id):
         if process_graph_id in list_supported_processes():
             raise BadRequest(f"Process with id '{process_graph_id}' already exists among pre-defined processes.")
 
-        data["user_id"] = user.user_id
+        data["user_id"] = g.user.user_id
         ProcessGraphsPersistence.create(data, process_graph_id)
 
         return flask.make_response("The user-defined process has been stored successfully.", 200)
@@ -372,7 +359,7 @@ def api_process_graph(user, process_graph_id):
 @app.route("/result", methods=["POST"])
 @authentication_provider.with_bearer_auth
 @with_logging
-def api_result(user):
+def api_result():
     if flask.request.method == "POST":
         job_data = flask.request.get_json()
 
@@ -404,12 +391,12 @@ def api_result(user):
 @app.route("/jobs", methods=["GET", "POST"])
 @authentication_provider.with_bearer_auth
 @with_logging
-def api_jobs(user):
+def api_jobs():
     if flask.request.method == "GET":
         jobs = []
         links = []
 
-        for record in JobsPersistence.query_by_user_id(user.user_id):
+        for record in JobsPersistence.query_by_user_id(g.user.user_id):
             status, _ = get_batch_job_status(record["batch_request_id"], record["deployment_endpoint"])
 
             jobs.append(
@@ -452,7 +439,7 @@ def api_jobs(user):
         batch_request_id, deployment_endpoint = create_batch_job(data["process"])
 
         data["batch_request_id"] = batch_request_id
-        data["user_id"] = user.user_id
+        data["user_id"] = g.user.user_id
         data["deployment_endpoint"] = deployment_endpoint
 
         record_id = JobsPersistence.create(data)
@@ -467,9 +454,9 @@ def api_jobs(user):
 @app.route("/jobs/<job_id>", methods=["GET", "PATCH", "DELETE"])
 @authentication_provider.with_bearer_auth
 @with_logging
-def api_batch_job(user, job_id):
+def api_batch_job(job_id):
     job = JobsPersistence.get_by_id(job_id)
-    if job is None or job["user_id"] != user.user_id:
+    if job is None or job["user_id"] != g.user.user_id:
         raise JobNotFound()
 
     if flask.request.method == "GET":
@@ -522,9 +509,9 @@ def api_batch_job(user, job_id):
 @app.route("/jobs/<job_id>/results", methods=["POST", "GET", "DELETE"])
 @authentication_provider.with_bearer_auth
 @with_logging
-def add_job_to_queue(user, job_id):
+def add_job_to_queue(job_id):
     job = JobsPersistence.get_by_id(job_id)
-    if job is None or job["user_id"] != user.user_id:
+    if job is None or job["user_id"] != g.user.user_id:
         raise JobNotFound()
 
     if flask.request.method == "POST":
@@ -592,7 +579,7 @@ def add_job_to_queue(user, job_id):
 @app.route("/jobs/<job_id>/estimate", methods=["GET"])
 @authentication_provider.with_bearer_auth
 @with_logging
-def estimate_job_cost(user, job_id):
+def estimate_job_cost(job_id):
     job = JobsPersistence.get_by_id(job_id)
     if job is None:
         raise JobNotFound()
@@ -609,12 +596,12 @@ def estimate_job_cost(user, job_id):
 @app.route("/services", methods=["GET", "POST"])
 @authentication_provider.with_bearer_auth
 @with_logging
-def api_services(user):
+def api_services():
     if flask.request.method == "GET":
         services = []
         links = []
 
-        for record in ServicesPersistence.query_by_user_id(user.user_id):
+        for record in ServicesPersistence.query_by_user_id(g.user.user_id):
             service_item = {
                 "id": record["id"],
                 "title": record.get("title", None),
@@ -660,7 +647,7 @@ def api_services(user):
         if invalid_node_id is not None:
             raise ProcessUnsupported(data["process"]["process_graph"][invalid_node_id]["process_id"])
 
-        data["user_id"] = user.user_id
+        data["user_id"] = g.user.user_id
         record_id = ServicesPersistence.create(data)
 
         # add requested headers to 201 response:
@@ -673,9 +660,9 @@ def api_services(user):
 @app.route("/services/<service_id>", methods=["GET", "PATCH", "DELETE"])
 @authentication_provider.with_bearer_auth
 @with_logging
-def api_service(user, service_id):
+def api_service(service_id):
     record = ServicesPersistence.get_by_id(service_id)
-    if record is None or record["user_id"] != user.user_id:
+    if record is None or record["user_id"] != g.user.user_id:
         raise ServiceNotFound(service_id)
 
     if flask.request.method == "GET":
@@ -831,4 +818,4 @@ if __name__ == "__main__":
         print("Running as HTTPS!")
         app.run(ssl_context="adhoc")
     else:
-        app.run()
+        app.run(debug=True)
