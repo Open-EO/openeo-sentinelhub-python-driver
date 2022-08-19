@@ -704,11 +704,7 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
         "https://services.sentinel-hub.com/oauth/token",
         body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
     )
-    responses.add(
-        responses.POST,
-        re.compile(".*"),
-        headers={'x-processingunits-spent': "1"}
-    )
+    responses.add(responses.POST, re.compile(".*"), headers={"x-processingunits-spent": "1"})
 
     r = app_client.get(
         f"/service/xyz/{service_id}/{int(zoom)}/{int(tx)}/{int(ty)}", headers={"Authorization": authorization_header}
