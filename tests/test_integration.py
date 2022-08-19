@@ -1,3 +1,4 @@
+from wsgiref import headers
 from setup_tests import *
 
 
@@ -706,6 +707,7 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
     responses.add(
         responses.POST,
         re.compile(".*"),
+        headers={'x-processingunits-spent': "1"}
     )
 
     r = app_client.get(
