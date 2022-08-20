@@ -315,6 +315,40 @@ class ServicesPersistence(Persistence):
         return record_id
 
 
+class UserCommercialCollectionsPersistence(Persistence):
+    TABLE_NAME = TABLE_NAME_PREFIX + "user_commercial_collections"
+
+    @classmethod
+    def get_byoc_collection_id(cls, user_id, commercial_collection_id):
+        record_id = cls.generate_id(user_id, commercial_collection_id)
+        record = cls.get_by_id(record_id)
+        if record is None:
+            return None
+        return record_id["byoc_collection_id"]
+
+    @classmethod
+    def generate_id(cls, user_id, commercial_collection_id):
+        return f"{user_id}___{commercial_collection_id}"
+
+    @classmethod
+    def create(cls, user_id, commercial_collection_id, byoc_collection_id):
+        """
+        Creates a new record and returns its record ID (UUID).
+        """
+        record_id = cls.generate_id(user_id, commercial_collection_id)
+        item = {
+            "id": {"S": record_id},
+            "user_id": {"S": data["user_id"]},
+            "commercial_collection_id": {"S": commercial_collection_id},
+            "byoc_collection_id": {"S": byoc_collection_id},
+        }
+        cls.dynamodb.put_item(
+            TableName=cls.TABLE_NAME,
+            Item=item,
+        )
+        return record_id
+
+
 if __name__ == "__main__":
 
     # To create tables, run:
@@ -334,4 +368,5 @@ if __name__ == "__main__":
     JobsPersistence.ensure_table_exists()
     ProcessGraphsPersistence.ensure_table_exists()
     ServicesPersistence.ensure_table_exists()
+    UserCommercialCollectionsPersistence.ensure_table_exists()
     log(INFO, "DynamoDB initialized.")

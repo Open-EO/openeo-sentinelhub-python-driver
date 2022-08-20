@@ -1,1 +1,6 @@
-from .dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
+from .dynamodb import (
+    JobsPersistence,
+    ProcessGraphsPersistence,
+    ServicesPersistence,
+    UserCommercialCollectionsPersistence,
+)
