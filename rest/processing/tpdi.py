@@ -83,14 +83,12 @@ class TPDI:
     @with_error_handling
     def search(self, bbox=None, intersects=None, datetime=None, limit=None):
         payload = self.generate_search_payload_from_params(bbox=bbox, intersects=intersects, datetime=datetime)
-        from pprint import pprint
 
-        pprint(payload)
         r = requests.post(
             "https://services.sentinel-hub.com/api/v1/dataimport/search", json=payload, headers=self.auth_headers
         )
         r.raise_for_status()
-        return r.json()
+        return self.convert_search_results(r.json())
 
     def generate_search_payload_from_params(self, bbox=None, intersects=None, datetime=None):
         return {
@@ -100,6 +98,9 @@ class TPDI:
         }
 
     def get_data_filter(self, datetime):
+        datetime = datetime.split("/")
+        if len(datetime) == 1:
+            datetime = datetime[0]
         from_time, to_time = parse_time_interval(datetime)
         return {"timeRange": {"from": from_time.isoformat(), "to": to_time.isoformat()}}
 
@@ -110,6 +111,16 @@ class TPDI:
         if geometry is not None:
             bounds["geometry"] = geometry
         return bounds
+
+    def convert_search_results(self, search_results):
+        return {
+            "type": "FeatureCollection",
+            "features": [self.align_result_with_STAC(result) for result in search_results["features"]],
+            "links": [],
+        }
+
+    def align_result_with_STAC(self, result):
+        raise NotImplementedError
 
     def generate_payload(self, geometry, items, parameters):
         payload = {
@@ -169,6 +180,17 @@ class TPDIAirbus(TPDI):
     def get_items_list_from_order(order):
         return [item["id"] for item in order["input"]["data"][0]["products"]]
 
+    def align_result_with_STAC(self, result):
+        return {
+            "type": "Feature",
+            "stac_version": "1.0.0",
+            "id": result["properties"]["id"],
+            "geometry": result["geometry"],
+            "properties": result["properties"],
+            "links": [],
+            "assets": {},
+        }
+
 
 class TPDIPleiades(TPDIAirbus):
     constellation = "PHR"
@@ -214,9 +236,20 @@ class TPDITMaxar(TPDI):
 
     def generate_search_payload_from_params(self, bbox=None, intersects=None, datetime=None):
         payload = super().generate_search_payload_from_params(bbox=bbox, intersects=intersects, datetime=datetime)
-        payload["productBands"] = params["productBands"]
+        payload["data"][0]["productBands"] = "4BB"
         return payload
 
     @staticmethod
     def get_items_list_from_order(order):
         return order["input"]["data"][0]["selectedImages"]
+
+    def align_result_with_STAC(self, result):
+        return {
+            "type": "Feature",
+            "stac_version": "1.0.0",
+            "id": result["catalogID"],
+            "geometry": result["geometry"],
+            "properties": result,
+            "links": [],
+            "assets": {},
+        }
