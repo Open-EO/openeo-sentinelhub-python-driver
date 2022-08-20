@@ -5,7 +5,7 @@ import requests
 from sentinelhub.time_utils import parse_time_interval
 
 from processing.const import OpenEOOrderStatus, CommercialDataCollections
-from openeoerrors import OrderNotFound
+from openeoerrors import OrderNotFound, BadRequest
 
 
 class TPDI:
@@ -81,8 +81,11 @@ class TPDI:
         return r
 
     @with_error_handling
-    def search(self, bbox=None, intersects=None, datetime=None, limit=None):
-        payload = self.generate_search_payload_from_params(bbox=bbox, intersects=intersects, datetime=datetime)
+    def search(self, bbox, intersects, datetime, filter_query, limit):
+        filter_query = self.parse_filter_query(filter_query)
+        payload = self.generate_search_payload_from_params(
+            bbox=bbox, intersects=intersects, datetime=datetime, filter_query=filter_query
+        )
 
         r = requests.post(
             "https://services.sentinel-hub.com/api/v1/dataimport/search", json=payload, headers=self.auth_headers
@@ -90,19 +93,22 @@ class TPDI:
         r.raise_for_status()
         return self.convert_search_results(r.json())
 
-    def generate_search_payload_from_params(self, bbox=None, intersects=None, datetime=None):
+    def generate_search_payload_from_params(self, bbox, datetime, intersects=None, filter_query=None):
         return {
             "provider": self.provider,
             "bounds": self.get_payload_bounds(bbox, intersects),
-            "data": [{"dataFilter": self.get_data_filter(datetime)}],
+            "data": [{"dataFilter": self.get_data_filter(datetime, filter_query)}],
         }
 
-    def get_data_filter(self, datetime):
+    def get_data_filter(self, datetime, filter_query):
+        return {"timeRange": self.get_timerange_object_from_datetime(datetime)}
+
+    def get_timerange_object_from_datetime(self, datetime):
         datetime = datetime.split("/")
         if len(datetime) == 1:
             datetime = datetime[0]
         from_time, to_time = parse_time_interval(datetime)
-        return {"timeRange": {"from": from_time.isoformat(), "to": to_time.isoformat()}}
+        return {"from": from_time.isoformat(), "to": to_time.isoformat()}
 
     def get_payload_bounds(self, bbox, geometry):
         bounds = {}
@@ -121,6 +127,33 @@ class TPDI:
 
     def align_result_with_STAC(self, result):
         raise NotImplementedError
+
+    def parse_filter_query(self, filter_query, filter_parameters=dict()):
+        """
+        Accepts cql2-json and returns a dictionary of parameters-value pairs.
+        We can only support "and" and "=" operations.
+        """
+        if filter_query is None:
+            return None
+
+        operation = filter_query["op"]
+
+        if operation == "and":
+            for argument in filter_query["args"]:
+                self.parse_filter_query(argument, filter_parameters=filter_parameters)
+        elif operation == "=":
+            parameter_name = filter_query["args"][0]["property"]
+            parameter_value = filter_query["args"][1]
+            filter_parameters[parameter_name] = parameter_value
+        else:
+            raise BadRequest(f"Filter operation '{operation}' not supported.")
+
+        return filter_parameters
+
+    def add_filter_value_to_data_filter(self, parameter_name, filter_query_params, data_filter):
+        if parameter_name in filter_query_params:
+            data_filter[parameter_name] = filter_query_params[parameter_name]
+        return data_filter
 
     def generate_payload(self, geometry, items, parameters):
         payload = {
@@ -171,10 +204,24 @@ class TPDIAirbus(TPDI):
     def get_payload_data(self, items, parameters):
         return {"constellation": self.constellation, "products": [{"id": item} for item in items]}
 
-    def generate_search_payload_from_params(self, bbox=None, intersects=None, datetime=None):
-        payload = super().generate_search_payload_from_params(bbox=bbox, intersects=intersects, datetime=datetime)
+    def generate_search_payload_from_params(self, bbox, datetime, intersects=None, filter_query=None):
+        payload = super().generate_search_payload_from_params(
+            bbox=bbox, intersects=intersects, datetime=datetime, filter_query=filter_query
+        )
         payload["data"][0]["constellation"] = self.constellation
         return payload
+
+    def get_data_filter(self, datetime, filter_query):
+        data_filter = super().get_data_filter(datetime, filter_query)
+        self.add_filter_value_to_data_filter("maxCloudCoverage", filter_query, data_filter)
+        self.add_filter_value_to_data_filter("processingLevel", filter_query, data_filter)
+        self.add_filter_value_to_data_filter("maxSnowCoverage", filter_query, data_filter)
+        self.add_filter_value_to_data_filter("maxIncidenceAngle", filter_query, data_filter)
+
+        if "expirationDate" in filter_query:
+            data_filter["expirationDate"] = self.get_timerange_object_from_datetime(filter_query["expirationDate"])
+
+        return data_filter
 
     @staticmethod
     def get_items_list_from_order(order):
@@ -216,16 +263,23 @@ class TPDITPLanetscope(TPDI):
             "itemIds": items,
         }
 
-    def generate_search_payload_from_params(self, bbox=None, intersects=None, datetime=None):
-        payload = super().generate_search_payload_from_params(bbox=bbox, intersects=intersects, datetime=datetime)
+    def generate_search_payload_from_params(self, bbox, datetime, intersects=None, filter_query=None):
+        payload = super().generate_search_payload_from_params(
+            bbox=bbox, intersects=intersects, datetime=datetime, filter_query=filter_query
+        )
         payload["planetApiKey"] = planetApiKey
-        payload["itemType"] = params["itemType"]
-        payload["productBundle"] = params["productBundle"]
+        payload["itemType"] = filter_query["itemType"]
+        payload["productBundle"] = filter_query["productBundle"]
         return payload
 
     @staticmethod
     def get_items_list_from_order(order):
         return order["input"]["data"][0]["itemIds"]
+
+    def get_data_filter(self, datetime, filter_query):
+        data_filter = super().get_data_filter(datetime, filter_query)
+        self.add_filter_value_to_data_filter("maxCloudCoverage", filter_query, data_filter)
+        return data_filter
 
 
 class TPDITMaxar(TPDI):
@@ -234,8 +288,10 @@ class TPDITMaxar(TPDI):
     def get_payload_data(self, items, parameters):
         return {"productBands": "4BB", "selectedImages": items}
 
-    def generate_search_payload_from_params(self, bbox=None, intersects=None, datetime=None):
-        payload = super().generate_search_payload_from_params(bbox=bbox, intersects=intersects, datetime=datetime)
+    def generate_search_payload_from_params(self, bbox, datetime, intersects=None, filter_query=None):
+        payload = super().generate_search_payload_from_params(
+            bbox=bbox, intersects=intersects, datetime=datetime, filter_query=filter_query
+        )
         payload["data"][0]["productBands"] = "4BB"
         return payload
 
@@ -253,3 +309,13 @@ class TPDITMaxar(TPDI):
             "links": [],
             "assets": {},
         }
+
+    def get_data_filter(self, datetime, filter_query):
+        data_filter = super().get_data_filter(datetime, filter_query)
+        self.add_filter_value_to_data_filter("maxCloudCoverage", filter_query, data_filter)
+        self.add_filter_value_to_data_filter("minOffNadir", filter_query, data_filter)
+        self.add_filter_value_to_data_filter("maxOffNadir", filter_query, data_filter)
+        self.add_filter_value_to_data_filter("minSunElevation", filter_query, data_filter)
+        self.add_filter_value_to_data_filter("maxSunElevation", filter_query, data_filter)
+        self.add_filter_value_to_data_filter("sensor", filter_query, data_filter)
+        return data_filter

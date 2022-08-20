@@ -242,3 +242,17 @@ class PostOrdersSchema(Schema):
     items = fields.List(fields.Str(allow_none=False), required=True)
     parameters = fields.Dict(required=True)
     bounds = fields.Dict(required=True)
+
+
+class PostSearchSchema(Schema):
+    """
+    Request body
+    POST /search
+    """
+
+    collections = fields.List(fields.Str(allow_none=False), required=True)
+    bbox = fields.List(fields.Number(allow_none=False), required=True)
+    intersects = fields.Dict(allow_none=True)
+    datetime = fields.Str(required=True)
+    query_filter = fields.Dict(allow_none=True, data_key="filter")
+    limit = fields.Number(allow_none=True)

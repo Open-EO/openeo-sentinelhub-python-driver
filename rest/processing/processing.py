@@ -195,8 +195,13 @@ def confirm_tpdi_order(order_id):
     return sentinel_hub.confirm_tpdi_order(order_id)
 
 
-def search_tpdi_products(collection_id=None, bbox=None, intersects=None, datetime=None, limit=None):
+def search_tpdi_products(collection_id, bbox, intersects, datetime, filter_query, limit):
     sentinel_hub = new_sentinel_hub()
     return sentinel_hub.search_tpdi_products(
-        collection_id=collection_id, bbox=bbox, intersects=intersects, datetime=datetime, limit=limit
+        collection_id=collection_id,
+        bbox=bbox,
+        intersects=intersects,
+        datetime=datetime,
+        filter_query=filter_query,
+        limit=limit,
     )
