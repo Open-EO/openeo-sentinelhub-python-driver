@@ -338,7 +338,7 @@ class UserCommercialCollectionsPersistence(Persistence):
         record_id = cls.generate_id(user_id, commercial_collection_id)
         item = {
             "id": {"S": record_id},
-            "user_id": {"S": data["user_id"]},
+            "user_id": {"S": user_id},
             "commercial_collection_id": {"S": commercial_collection_id},
             "byoc_collection_id": {"S": byoc_collection_id},
         }

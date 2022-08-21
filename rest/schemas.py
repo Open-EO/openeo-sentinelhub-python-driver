@@ -241,4 +241,3 @@ class PostOrdersSchema(Schema):
     source_collection_id = fields.Str(required=True)
     items = fields.List(fields.Str(allow_none=False), required=True)
     parameters = fields.Dict(required=True)
-    bounds = fields.Dict(required=True)

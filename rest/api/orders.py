@@ -52,7 +52,6 @@ def commercial_data_orders():
 
         order = create_tpdi_order(
             collection_id=data["source_collection_id"],
-            geometry=data["bounds"],
             products=data["items"],
             parameters=data["parameters"],
             byoc_collection_id=byoc_collection_id,

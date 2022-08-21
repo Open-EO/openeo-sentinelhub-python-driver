@@ -519,5 +519,71 @@
       "http://www.opengis.net/def/crs/EPSG/0/32760",
       "http://www.opengis.net/def/crs/SR-ORG/0/98739"
    ],
-   "title":"PlanetScope"
+   "title":"PlanetScope",
+   "orders_parameters": [
+      {
+         "name":"geometry",
+         "description":"The request area of interest geometry as a GeoJSON.",
+         "schema":{
+            "type":"object",
+            "oneOf":[
+               {
+                  "type":"object",
+                  "properties":{
+                     "type":{
+                        "type":"string",
+                        "enum":[
+                           "Polygon"
+                        ]
+                     },
+                     "coordinates":{
+                        "type":"array",
+                        "items":{
+                           "type":"array",
+                           "items":{
+                              "maxItems":2,
+                              "minItems":2,
+                              "type":"array",
+                              "items":{
+                                 "type":"number",
+                                 "format":"double"
+                              }
+                           }
+                        }
+                     }
+                  }
+               },
+               {
+                  "type":"object",
+                  "properties":{
+                     "type":{
+                        "type":"string",
+                        "enum":[
+                           "MultiPolygon"
+                        ]
+                     },
+                     "coordinates":{
+                        "type":"array",
+                        "items":{
+                           "type":"array",
+                           "items":{
+                              "type":"array",
+                              "items":{
+                                 "maxItems":2,
+                                 "minItems":2,
+                                 "type":"array",
+                                 "items":{
+                                    "type":"number",
+                                    "format":"double"
+                                 }
+                              }
+                           }
+                        }
+                     }
+                  }
+               }
+            ]
+         }
+      }
+   ]
 }
