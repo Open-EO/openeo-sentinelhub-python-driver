@@ -41,7 +41,9 @@ def commercial_data_orders():
             g.user.user_id, data["source_collection_id"]
         )
         if byoc_collection_id is None:
-            byoc_collection_id = create_new_empty_byoc_collection()
+            byoc_collection_id = create_new_empty_byoc_collection(
+                name=f"{g.user.user_id}__{data['source_collection_id']}"
+            )
             UserCommercialCollectionsPersistence.create(
                 user_id=g.user.user_id,
                 commercial_collection_id=data["source_collection_id"],
