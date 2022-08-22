@@ -128,9 +128,7 @@ class Process:
                 sentinel_hub=SentinelHub(user=self.user), user_id=self.user.user_id, collection_id=collection_id
             )
             if not byoc_collection_id:
-                raise Internal(
-                    f"Collection {collection_id} requires 'byoc_collection_id' parameter to be set in 'featureflags' argument of 'load_collection'."
-                )
+                raise Internal(f"Collection {collection_id} is not associated with a Sentinel Hub BYOC collection.")
             return self._create_custom_datacollection(byoc_collection_id, collection_info, "byoc")
 
         if collection_type.startswith("byoc"):
