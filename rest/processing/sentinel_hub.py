@@ -216,3 +216,6 @@ class SentinelHub:
     def create_byoc_collection(self, name, aws_bucket):
         new_collection = ByocCollection(name=name, s3_bucket=aws_bucket)
         return self.byoc.create_collection(new_collection)
+
+    def query_byoc_collections(self, search):
+        return self.byoc.iter_collections(search=search)
