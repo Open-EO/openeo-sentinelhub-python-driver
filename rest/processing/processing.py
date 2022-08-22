@@ -1,3 +1,5 @@
+import os
+
 import time
 
 from pg_to_evalscript import convert_from_process_graph
@@ -170,9 +172,9 @@ def get_batch_job_status(batch_request_id, deployment_endpoint):
         return openEOBatchJobStatus.FINISHED, None
 
 
-def create_tpdi_order(collection_id, geometry, products, parameters):
+def create_tpdi_order(collection_id, products, parameters, byoc_collection_id):
     sentinel_hub = new_sentinel_hub()
-    return sentinel_hub.create_tpdi_order(collection_id, geometry, products, parameters)
+    return sentinel_hub.create_tpdi_order(collection_id, products, parameters, byoc_collection_id)
 
 
 def get_all_tpdi_orders():
@@ -205,3 +207,9 @@ def search_tpdi_products(collection_id, bbox, intersects, datetime, filter_query
         filter_query=filter_query,
         limit=limit,
     )
+
+
+def create_new_empty_byoc_collection(name):
+    sentinel_hub = new_sentinel_hub()
+    USER_COMMERCIAL_DATA_BUCKET = os.environ.get("USER_COMMERCIAL_DATA_BUCKET")
+    return sentinel_hub.create_byoc_collection(name=name, aws_bucket=USER_COMMERCIAL_DATA_BUCKET)["id"]

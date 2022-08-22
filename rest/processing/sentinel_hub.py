@@ -1,7 +1,7 @@
 import os
 import json
 
-from sentinelhub import SentinelHubBatch
+from sentinelhub import SentinelHubBatch, SentinelHubBYOC, ByocCollection
 from sentinelhub.exceptions import DownloadFailedException
 from openeoerrors import ProcessGraphComplexity
 import requests
@@ -16,9 +16,11 @@ class SentinelHub:
         self.S3_BUCKET_NAME = BUCKET_NAMES.get(service_base_url)
         self.user = user
         self.batch = SentinelHubBatch()
+        self.byoc = SentinelHubBYOC()
 
         if self.user is not None:
             self.batch.client.session = self.user.session
+            self.byoc.client.session = self.user.session
 
         if service_base_url is not None:
             self.batch.service_url = self.batch._get_service_url(service_base_url)
@@ -191,9 +193,9 @@ class SentinelHub:
                 tiling_grids.append(tiling_grid)
         return tiling_grids
 
-    def create_tpdi_order(self, collection_id, geometry, products, parameters):
+    def create_tpdi_order(self, collection_id, products, parameters, byoc_collection_id):
         tpdi_provider = TPDI(collection_id=collection_id, access_token=self.access_token)
-        return tpdi_provider.create_order(geometry, products, parameters)
+        return tpdi_provider.create_order(products, parameters, byoc_collection_id)
 
     def get_all_tpdi_orders(self):
         tpdi_provider = TPDI(access_token=self.access_token)
@@ -216,3 +218,7 @@ class SentinelHub:
         return tpdi_provider.search(
             bbox=bbox, intersects=intersects, datetime=datetime, filter_query=filter_query, limit=limit
         )
+
+    def create_byoc_collection(self, name, aws_bucket):
+        new_collection = ByocCollection(name=name, s3_bucket=aws_bucket)
+        return self.byoc.create_collection(new_collection)

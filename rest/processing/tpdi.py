@@ -39,8 +39,8 @@ class TPDI:
         return decorated_function
 
     @with_error_handling
-    def create_order(self, geometry, items, parameters):
-        payload = self.generate_payload(geometry, items, parameters)
+    def create_order(self, items, parameters, byoc_collection_id):
+        payload = self.generate_payload(items, parameters, byoc_collection_id)
         r = requests.post(
             "https://services.sentinel-hub.com/api/v1/dataimport/orders",
             json=payload,
@@ -155,13 +155,14 @@ class TPDI:
             data_filter[parameter_name] = filter_query_params[parameter_name]
         return data_filter
 
-    def generate_payload(self, geometry, items, parameters):
+    def generate_payload(self, items, parameters, byoc_collection_id):
         payload = {
+            "collection_id": byoc_collection_id,
             "input": {
                 "provider": self.provider,
-                "bounds": {"geometry": geometry},
+                "bounds": {"geometry": parameters["geometry"]},
                 "data": [self.get_payload_data(items, parameters)],
-            }
+            },
         }
         return payload
 
@@ -250,8 +251,8 @@ class TPDISPOT(TPDIAirbus):
 class TPDITPLanetscope(TPDI):
     provider = "PLANET"
 
-    def generate_payload(self, geometry, items, parameters):
-        payload = super().generate_payload(geometry, items, parameters)
+    def generate_payload(self, items, parameters):
+        payload = super().generate_payload(items, parameters)
         payload["input"]["planetApiKey"] = planetApiKey
         return payload
 
