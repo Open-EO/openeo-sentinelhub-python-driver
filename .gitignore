@@ -8,3 +8,5 @@ __pycache__
 /node_modules/
 /.pydevproject
 /.project
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
