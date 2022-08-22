@@ -40,6 +40,7 @@ from processing.utils import (
     get_spatial_info_from_partial_processes,
 )
 from authentication.user import User
+from dynamodb import UserCommercialCollectionsPersistence
 
 
 class Process:
@@ -47,6 +48,7 @@ class Process:
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_RESOLUTION = (10, 10)
         self.MAXIMUM_SYNC_FILESIZE_BYTES = 5000000
+        self.user = user
         partially_supported_processes_as_udp = {
             partially_supported_process.process_id: {} for partially_supported_process in partially_supported_processes
         }
@@ -122,14 +124,12 @@ class Process:
         collection_type = collection_info["datasource_type"]
 
         if collection_type == "byoc-ID":
-            load_collection_node = self.get_node_by_process_id("load_collection")
-            featureflags = load_collection_node["arguments"].get("featureflags", {})
-            byoc_collection_id = featureflags.get("byoc_collection_id")
+            byoc_collection_id = UserCommercialCollectionsPersistence.get_byoc_collection_id(
+                self.user.user_id, collection_id
+            )
 
             if not byoc_collection_id:
-                raise Internal(
-                    f"Collection {collection_id} requires 'byoc_collection_id' parameter to be set in 'featureflags' argument of 'load_collection'."
-                )
+                raise Internal(f"Collection {collection_id} is not associated with a Sentinel Hub BYOC collection.")
             return self._create_custom_datacollection(byoc_collection_id, collection_info, "byoc")
 
         if collection_type.startswith("byoc"):
