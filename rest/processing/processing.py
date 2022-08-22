@@ -9,6 +9,7 @@ from sentinelhub import BatchRequestStatus, BatchUserAction, SentinelHubBatch
 from processing.process import Process
 from processing.sentinel_hub import SentinelHub
 from processing.partially_supported_processes import partially_supported_processes
+from processing.utils import get_user_commercial_data_collection_name, get_user_commercial_data_collection_byoc_id
 from dynamodb.utils import get_user_defined_processes_graphs
 from const import openEOBatchJobStatus
 from openeoerrors import Timeout
@@ -197,6 +198,10 @@ def confirm_tpdi_order(order_id):
     return sentinel_hub.confirm_tpdi_order(order_id)
 
 
+def get_user_commercial_data_collection_name(user_id, collection_id):
+    return f"{user_id}__{collection_id}"
+
+
 def search_tpdi_products(collection_id, bbox, intersects, datetime, filter_query, limit):
     sentinel_hub = new_sentinel_hub()
     return sentinel_hub.search_tpdi_products(
@@ -209,7 +214,15 @@ def search_tpdi_products(collection_id, bbox, intersects, datetime, filter_query
     )
 
 
-def create_new_empty_byoc_collection(name):
+def create_new_empty_byoc_collection(user_id, collection_id):
     sentinel_hub = new_sentinel_hub()
+    name = get_user_commercial_data_collection_name(user_id=user_id, collection_id=collection_id)
     USER_COMMERCIAL_DATA_BUCKET = os.environ.get("USER_COMMERCIAL_DATA_BUCKET")
     return sentinel_hub.create_byoc_collection(name=name, aws_bucket=USER_COMMERCIAL_DATA_BUCKET)["id"]
+
+
+def get_byoc_collection_id(user_id, collection_id):
+    sentinel_hub = new_sentinel_hub()
+    return get_user_commercial_data_collection_byoc_id(
+        sentinel_hub=sentinel_hub, user_id=user_id, collection_id=collection_id
+    )

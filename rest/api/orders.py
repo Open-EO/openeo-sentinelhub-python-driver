@@ -9,8 +9,8 @@ from processing.processing import (
     delete_tpdi_order,
     confirm_tpdi_order,
     create_new_empty_byoc_collection,
+    get_byoc_collection_id,
 )
-from dynamodb import UserCommercialCollectionsPersistence
 
 app_orders = Blueprint("app_orders", __name__)
 
@@ -37,17 +37,11 @@ def commercial_data_orders():
         if errors:
             raise BadRequest(str(errors))
 
-        byoc_collection_id = UserCommercialCollectionsPersistence.get_byoc_collection_id(
-            g.user.user_id, data["source_collection_id"]
-        )
+        byoc_collection_id = get_byoc_collection_id(user_id=g.user.user_id, collection_id=data["source_collection_id"])
+
         if byoc_collection_id is None:
             byoc_collection_id = create_new_empty_byoc_collection(
-                name=f"{g.user.user_id}__{data['source_collection_id']}"
-            )
-            UserCommercialCollectionsPersistence.create(
-                user_id=g.user.user_id,
-                commercial_collection_id=data["source_collection_id"],
-                byoc_collection_id=byoc_collection_id,
+                user_id=g.user.user_id, collection_id=data["source_collection_id"]
             )
 
         order = create_tpdi_order(
@@ -57,7 +51,7 @@ def commercial_data_orders():
             byoc_collection_id=byoc_collection_id,
         )
 
-        response = flask.make_response("", 201)
+        response = flask.make_response("The order has been created successfully.", 201)
         response.headers["Location"] = "/orders/{}".format(order["id"])
         response.headers["OpenEO-Identifier"] = order["id"]
         return response
