@@ -8,10 +8,12 @@ from flask import request, g
 from http.client import HTTPConnection
 from logging import getLogger, DEBUG
 
+
 class ContextFilter(logging.Filter):
     def filter(self, record):
         record.req_id = request.req_id
         return True
+
 
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL")
 logger = logging.getLogger("APILogger")

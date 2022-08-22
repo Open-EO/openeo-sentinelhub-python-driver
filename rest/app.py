@@ -118,7 +118,7 @@ def openeo_exception_handler(error):
 @app.errorhandler(Exception)
 @with_logging
 def handle_exception(e):
-     # pass through HTTP errors
+    # pass through HTTP errors
     if isinstance(e, HTTPException):
         return e
 
