@@ -28,7 +28,6 @@ class ProcessingAPIRequest:
         r = self.make_request()
         r.raise_for_status()
 
-        # no 'x-processingunits-spent' in response for test_xyz_service_2
         if "x-processingunits-spent" not in r.headers:
             raise Internal(f"Response does not contain 'x-processingunits-spent' header, {r.content}")
 
