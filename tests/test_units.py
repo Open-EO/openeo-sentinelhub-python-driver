@@ -148,7 +148,7 @@ def test_authentication_provider_oidc(oidc_user_info_response, headers, should_r
     )
 
     if func is None:
-        func = lambda x: True
+        func = lambda: True
 
     with app.test_request_context("/", headers=headers):
         # Decorating test_authentication_provider outside this context with responses.activate causes an error
@@ -216,7 +216,7 @@ def test_authentication_provider_basic(headers, should_raise_error, error, func)
     authentication_provider = AuthenticationProvider()
 
     if func is None:
-        func = lambda x: True
+        func = lambda: True
 
     with app.test_request_context("/", headers=headers):
         # Decorating test_authentication_provider outside this context with responses.activate causes an error
