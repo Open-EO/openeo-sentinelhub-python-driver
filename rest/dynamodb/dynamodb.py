@@ -324,7 +324,7 @@ class UserCommercialCollectionsPersistence(Persistence):
         record = cls.get_by_id(record_id)
         if record is None:
             return None
-        return record_id["byoc_collection_id"]
+        return record["byoc_collection_id"]
 
     @classmethod
     def generate_id(cls, user_id, commercial_collection_id):
