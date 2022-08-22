@@ -86,19 +86,22 @@ class Collections:
 
     def get_collections_basic_info(self):
         self.check_if_loaded()
-        collections_basic_info = map(
-            lambda collection_info: {
+
+        collections_basic_info = []
+        for collection_info in self.collections_cache.values():
+            collection_basic_info = {
                 "stac_version": collection_info["stac_version"],
                 "id": collection_info["id"],
                 "description": collection_info["description"],
                 "license": collection_info["license"],
                 "extent": collection_info["extent"],
                 "links": collection_info["links"],
-            },
-            self.collections_cache.values(),
-        )
+            }
+            if collection_info.get("order:status"):
+                collection_basic_info["order:status"] = collection_info["order:status"]
+            collections_basic_info.append(collection_basic_info)
 
-        return list(collections_basic_info)
+        return collections_basic_info
 
     def get_collection(self, collection_id):
         self.check_if_loaded()
