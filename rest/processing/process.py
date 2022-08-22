@@ -48,6 +48,7 @@ class Process:
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_RESOLUTION = (10, 10)
         self.MAXIMUM_SYNC_FILESIZE_BYTES = 5000000
+        self.user = user
         partially_supported_processes_as_udp = {
             partially_supported_process.process_id: {} for partially_supported_process in partially_supported_processes
         }

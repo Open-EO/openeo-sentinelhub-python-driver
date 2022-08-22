@@ -312,3 +312,12 @@ $ gdalinfo /tmp/results/result-0.tiff
 Driver: GTiff/GeoTIFF
 ...
 ```
+
+### Running Jupyter Notebooks
+
+```
+$ cd rest
+$ pipenv shell
+$ cd ..
+$ jupyter notebook
+```
