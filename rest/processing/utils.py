@@ -287,3 +287,16 @@ def get_spatial_info_from_partial_processes(partially_supported_processes, proce
             final_resampling_method = resampling_method
 
     return final_geometry, final_crs, final_resolution, final_resampling_method
+
+
+def get_user_commercial_data_collection_name(user_id, collection_id):
+    return f"{user_id}__{collection_id}"
+
+
+def get_user_commercial_data_collection_byoc_id(sentinel_hub, user_id, collection_id):
+    name = get_user_commercial_data_collection_name(user_id=user_id, collection_id=collection_id)
+    collections = sentinel_hub.query_byoc_collections(search=name)
+
+    for collection in collections:
+        if collection["name"] == name:
+            return collection["id"]

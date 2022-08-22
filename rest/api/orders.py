@@ -9,7 +9,7 @@ from processing.processing import (
     delete_tpdi_order,
     confirm_tpdi_order,
     create_new_empty_byoc_collection,
-    get_byoc_collection_id
+    get_byoc_collection_id,
 )
 
 app_orders = Blueprint("app_orders", __name__)
@@ -37,9 +37,8 @@ def commercial_data_orders():
         if errors:
             raise BadRequest(str(errors))
 
-        byoc_collection_id = get_byoc_collection_id(
-            user_id=g.user.user_id, collection_id=data["source_collection_id"]
-        )
+        byoc_collection_id = get_byoc_collection_id(user_id=g.user.user_id, collection_id=data["source_collection_id"])
+
         if byoc_collection_id is None:
             byoc_collection_id = create_new_empty_byoc_collection(
                 user_id=g.user.user_id, collection_id=data["source_collection_id"]

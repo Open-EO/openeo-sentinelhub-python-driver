@@ -38,6 +38,7 @@ from processing.utils import (
     validate_geojson,
     parse_geojson,
     get_spatial_info_from_partial_processes,
+    get_user_commercial_data_collection_byoc_id,
 )
 from authentication.user import User
 
@@ -122,10 +123,9 @@ class Process:
         collection_type = collection_info["datasource_type"]
 
         if collection_type == "byoc-ID":
-            load_collection_node = self.get_node_by_process_id("load_collection")
-            featureflags = load_collection_node["arguments"].get("featureflags", {})
-            byoc_collection_id = featureflags.get("byoc_collection_id")
-
+            byoc_collection_id = get_user_commercial_data_collection_byoc_id(
+                sentinel_hub=SentinelHub(user=self.user), user_id=self.user.user_id, collection_id=collection_id
+            )
             if not byoc_collection_id:
                 raise Internal(
                     f"Collection {collection_id} requires 'byoc_collection_id' parameter to be set in 'featureflags' argument of 'load_collection'."
