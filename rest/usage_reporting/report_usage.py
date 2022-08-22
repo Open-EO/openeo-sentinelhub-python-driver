@@ -77,7 +77,7 @@ class UsageReporting:
             "metrics": {"processing": {"value": pu_spent, "unit": "shpu"}},
         }
 
-        if not self.reporting_check_health:
+        if not self.reporting_check_health():
             log(ERROR, "Services for usage reporting are not healthy")
             raise Internal("Services for usage reporting are not healthy")
 
