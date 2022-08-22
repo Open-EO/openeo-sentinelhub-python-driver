@@ -1,7 +1,6 @@
 import os
 import json
 import requests
-from flask import g
 import datetime
 import time
 from logging import log, ERROR
