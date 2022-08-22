@@ -1,24 +1,17 @@
-import datetime
 import glob
 import json
 
-from logging import log, INFO, WARN, exception
-import logging
+from logging import log, INFO, WARN
 import os
 import re
 import sys
-import time
-import traceback
 import uuid
 
-import requests
-import boto3
 import flask
-from flask import Flask, url_for, jsonify, g
+from flask import Flask, jsonify, g
 from flask_cors import CORS
 import beeline
 from beeline.middleware.flask import HoneyMiddleware
-from sentinelhub import BatchRequestStatus
 from pg_to_evalscript import list_supported_processes
 from werkzeug.exceptions import HTTPException
 
@@ -26,7 +19,6 @@ import globalmaptiles
 from logs.logging import with_logging
 from schemas import (
     PutProcessGraphSchema,
-    PatchProcessGraphsSchema,
     PGValidationSchema,
     PostResultSchema,
     PostJobsSchema,
@@ -41,7 +33,6 @@ from processing.processing import (
     create_batch_job,
     start_batch_job,
     cancel_batch_job,
-    delete_batch_job,
     modify_batch_job,
     get_batch_job_estimate,
     get_batch_job_status,
@@ -51,8 +42,6 @@ from processing.openeo_process_errors import OpenEOProcessError
 from authentication.authentication import authentication_provider
 from openeoerrors import (
     OpenEOError,
-    AuthenticationRequired,
-    AuthenticationSchemeInvalid,
     ProcessUnsupported,
     JobNotFinished,
     JobNotFound,
@@ -66,7 +55,7 @@ from openeoerrors import (
 )
 from authentication.user import User
 from const import openEOBatchJobStatus, optional_process_parameters
-from utils import get_all_process_definitions, get_data_from_bucket, convert_timestamp_to_simpler_format, get_roles
+from utils import get_all_process_definitions, convert_timestamp_to_simpler_format, get_roles
 from buckets import get_bucket
 
 from openeo_collections.collections import collections
@@ -129,6 +118,14 @@ def openeo_exception_handler(error):
 @app.errorhandler(Exception)
 @with_logging
 def handle_exception(e):
+     # pass through HTTP errors
+    if isinstance(e, HTTPException):
+        return e
+
+    # now you're handling non-HTTP exceptions only
+    if not issubclass(type(e), (OpenEOError, OpenEOProcessError, SHOpenEOError)):
+        e = Internal(str(e))
+
     return flask.make_response(jsonify(id=e.record_id, code=e.error_code, message=e.message, links=[]), e.http_code)
 
 

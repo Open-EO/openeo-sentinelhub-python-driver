@@ -1,9 +1,7 @@
-import logging
 import os
 import json
 import glob
-import datetime
-from this import d
+import warnings
 
 from sentinelhub.time_utils import parse_time
 

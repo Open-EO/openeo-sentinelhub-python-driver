@@ -1,19 +1,30 @@
 import os
 import logging
-import datetime
+import time
 import traceback
 
 from functools import wraps
 from flask import request, g
 from http.client import HTTPConnection
-from logging import getLogger, log, DEBUG, INFO
-from werkzeug.exceptions import HTTPException
-from processing.openeo_process_errors import OpenEOProcessError
-from openeoerrors import OpenEOError, SHOpenEOError, Internal
+from logging import getLogger, DEBUG
+
+class ContextFilter(logging.Filter):
+    def filter(self, record):
+        record.req_id = request.req_id
+        return True
 
 LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL")
 logger = logging.getLogger("APILogger")
 logger.setLevel(logging._nameToLevel[LOGGING_LEVEL])
+hndlr = logging.StreamHandler()
+fmt = logging.Formatter(f"%(levelname)s:%(name)s: - - [%(asctime)s (UTC)] - Request ID: %(req_id)s %(message)s")
+fmt.converter = time.gmtime
+hndlr.setFormatter(fmt)
+logger.addHandler(hndlr)
+fltr = ContextFilter()
+logger.addFilter(fltr)
+logger.propagate = False
+
 
 if logging._nameToLevel[LOGGING_LEVEL] == DEBUG:
     HTTPConnection.debuglevel = 1
@@ -25,23 +36,14 @@ requests_log.propagate = True
 def with_logging(func):
     @wraps(func)
     def decorated_function(*args, **kwargs):
-        msg = f" - - [{datetime.datetime.utcnow()} (UTC)] \"{request.method} {request.path}\" [{g.get('user') or 'Unathenticated'}]. \nReq ID: {request.req_id} Request args: {request.args}. Request payload: {request.get_json(silent=True)}"
+        msg = f"\"{request.method} {request.path}\" [{g.get('user') or 'Unathenticated'}]. \nRequest args: {request.args.to_dict(flat=False)}. Request payload: {request.get_json(silent=True)}"
         logger.debug(msg)
 
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            # pass through HTTP errors
-            log(INFO, f"Error: {str(e)}")
-            if isinstance(e, HTTPException):
-                return e
-
-            # now you're handling non-HTTP exceptions only
-            log(INFO, traceback.format_exc())
-
-            if not issubclass(type(e), (OpenEOError, OpenEOProcessError, SHOpenEOError)):
-                e = Internal(str(e))
-
+            logger.info(msg=f"Error: {str(e)}")
+            logger.info(traceback.format_exc())
             raise e
 
     return decorated_function
