@@ -213,6 +213,12 @@ class SentinelHub:
         tpdi_provider = TPDI(access_token=self.access_token)
         return tpdi_provider.confirm_order(order_id)
 
+    def search_tpdi_products(self, collection_id, bbox, intersects, datetime, filter_query, limit):
+        tpdi_provider = TPDI(collection_id=collection_id, access_token=self.access_token)
+        return tpdi_provider.search(
+            bbox=bbox, intersects=intersects, datetime=datetime, filter_query=filter_query, limit=limit
+        )
+
     def create_byoc_collection(self, name, aws_bucket):
         new_collection = ByocCollection(name=name, s3_bucket=aws_bucket)
         return self.byoc.create_collection(new_collection)
