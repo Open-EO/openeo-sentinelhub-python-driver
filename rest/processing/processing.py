@@ -217,8 +217,10 @@ def search_tpdi_products(collection_id, bbox, intersects, datetime, filter_query
 def create_new_empty_byoc_collection(user_id, collection_id):
     sentinel_hub = new_sentinel_hub()
     name = get_user_commercial_data_collection_name(user_id=user_id, collection_id=collection_id)
-    USER_COMMERCIAL_DATA_BUCKET = os.environ.get("USER_COMMERCIAL_DATA_BUCKET")
-    return sentinel_hub.create_byoc_collection(name=name, aws_bucket=USER_COMMERCIAL_DATA_BUCKET)["id"]
+    # the existing BYOC collections must be in sh.tpdi.byoc.eu-central-1 S3 bucket. Otherwise, the request for creating an order will return an error.
+    # https://docs.sentinel-hub.com/api/latest/api/data-import/#import-data-into-existing-byoc-collection
+    aws_bucket = "sh.tpdi.byoc.eu-central-1"
+    return sentinel_hub.create_byoc_collection(name=name, aws_bucket=aws_bucket)["id"]
 
 
 def get_byoc_collection_id(user_id, collection_id):
