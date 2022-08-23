@@ -41,7 +41,6 @@ from processing.utils import (
     get_user_commercial_data_collection_byoc_id,
 )
 from authentication.user import User
-from dynamodb import UserCommercialCollectionsPersistence
 
 
 class Process:
