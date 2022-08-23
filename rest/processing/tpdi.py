@@ -81,7 +81,7 @@ class TPDI:
 
     def generate_payload(self, items, parameters, byoc_collection_id):
         payload = {
-            "collection_id": byoc_collection_id,
+            "collectionId": byoc_collection_id,
             "input": {
                 "provider": self.provider,
                 "bounds": {"geometry": parameters["geometry"]},

@@ -59,7 +59,7 @@ class SentinelHub:
         )
 
         return ProcessingAPIRequest(
-            f"{collection.service_url}/api/v1/process", request_raw_dict, user=self.user
+            requests.compat.urljoin(collection.service_url, "/api/v1/process"), request_raw_dict, user=self.user
         ).fetch()
 
     def get_request_dictionary(
