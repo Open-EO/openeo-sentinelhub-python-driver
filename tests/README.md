@@ -22,7 +22,7 @@ $ cd rest/
 $ pipenv install --dev
 $ pipenv shell
 <shell> $ cd ../tests/
-<shell> $ pytest -x -v test_integration.py
+<shell> $ pytest -x -v 
 ```
 
 Or run just chosen tests:
