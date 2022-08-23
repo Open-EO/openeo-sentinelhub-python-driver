@@ -13,7 +13,12 @@ from openeoerrors import (
     UnsupportedGeometry,
     TemporalExtentError,
 )
-from processing.utils import inject_variables_in_process_graph, validate_geojson, parse_geojson
+from processing.utils import (
+    inject_variables_in_process_graph,
+    validate_geojson,
+    parse_geojson,
+    get_user_commercial_data_collection_name,
+)
 from processing.sentinel_hub import SentinelHub
 from processing.partially_supported_processes import FilterBBox, FilterSpatial, ResampleSpatial
 from processing.processing_api_request import ProcessingAPIRequest
@@ -627,25 +632,28 @@ def test_tiling_grids(
     assert expected_tiling_grid_resolution == tiling_grid_resolution
 
 
+@responses.activate
 @pytest.mark.parametrize(
-    "collection_id,featureflags,should_raise_error,error,expected_datacollection_api_id",
+    "collection_id,should_raise_error,error,expected_datacollection_api_id",
     [
-        ("sentinel-2-l1c", None, False, None, "sentinel-2-l1c"),
-        ("PLANETSCOPE", None, True, Internal, None),
-        ("WORLDVIEW", {}, True, Internal, None),
-        ("PLEIADES", {"byoc_collection_id": "byoc-some-id"}, False, None, "byoc-some-id"),
+        ("sentinel-2-l1c", False, None, "sentinel-2-l1c"),
+        ("PLANETSCOPE", True, Internal, None),
+        ("WORLDVIEW", True, Internal, None),
+        ("PLEIADES", False, None, "byoc-some-id"),
     ],
 )
-def test_get_collection(
-    get_process_graph, collection_id, featureflags, should_raise_error, error, expected_datacollection_api_id
-):
+def test_get_collection(get_process_graph, collection_id, should_raise_error, error, expected_datacollection_api_id):
+    name = get_user_commercial_data_collection_name(user_id=None, collection_id=collection_id)
+    responses.add(
+        responses.GET,
+        f"https://services.sentinel-hub.com/api/v1/byoc/collections?search={name}",
+        body=json.dumps({"data": [{"name": name, "id": expected_datacollection_api_id}], "links": {}}),
+    )
     if should_raise_error:
         with pytest.raises(error) as e:
-            process = Process(
-                {"process_graph": get_process_graph(collection_id=collection_id, featureflags=featureflags)}
-            )
+            process = Process({"process_graph": get_process_graph(collection_id=collection_id)})
     else:
-        process = Process({"process_graph": get_process_graph(collection_id=collection_id, featureflags=featureflags)})
+        process = Process({"process_graph": get_process_graph(collection_id=collection_id)})
         assert process.collection.api_id == expected_datacollection_api_id
 
 
