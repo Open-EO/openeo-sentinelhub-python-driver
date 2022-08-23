@@ -196,6 +196,7 @@ def confirm_tpdi_order(order_id):
     sentinel_hub = new_sentinel_hub()
     return sentinel_hub.confirm_tpdi_order(order_id)
 
+
 def get_user_commercial_data_collection_name(user_id, collection_id):
     return f"{user_id}__{collection_id}"
 
@@ -215,4 +216,3 @@ def get_byoc_collection_id(user_id, collection_id):
     for collection in collections:
         if collection["name"] == name:
             return collection["id"]
-
