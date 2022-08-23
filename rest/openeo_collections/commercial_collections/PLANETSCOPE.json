@@ -523,7 +523,7 @@
       "http://www.opengis.net/def/crs/SR-ORG/0/98739"
    ],
    "title":"PlanetScope",
-   "orders_parameters": [
+   "order_parameters": [
       {
          "name":"geometry",
          "description":"The request area of interest geometry as a GeoJSON.",
