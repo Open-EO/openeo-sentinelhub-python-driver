@@ -51,13 +51,15 @@ def create_batch_job(process):
     return new_process(process).create_batch_job()
 
 
-def start_new_batch_job(sentinel_hub, process):
-    new_batch_request_id, _ = create_batch_job(process)
+def start_new_batch_job(sentinel_hub, process, job_id):
+    new_batch_request_id, deployment_endpoint = create_batch_job(process)
+    estimated_pu, _ = get_batch_job_estimate(new_batch_request_id, process, deployment_endpoint)
     sentinel_hub.start_batch_job(new_batch_request_id)
+    g.user.report_usage(estimated_pu, job_id)
     return new_batch_request_id
 
 
-def start_batch_job(batch_request_id, process, deployment_endpoint):
+def start_batch_job(batch_request_id, process, deployment_endpoint, job_id):
     """
     openEO allows starting a batch job regardless of the status, unless it's already running or queued.
     Sentinel Hub Batch API only allows starting the job if it hasn't been run yet.
@@ -79,9 +81,11 @@ def start_batch_job(batch_request_id, process, deployment_endpoint):
     batch_request_info = sentinel_hub.get_batch_request_info(batch_request_id)
 
     if batch_request_info is None:
-        return start_new_batch_job(sentinel_hub, process)
+        return start_new_batch_job(sentinel_hub, process, job_id)
     elif batch_request_info.status in [BatchRequestStatus.CREATED, BatchRequestStatus.ANALYSIS_DONE]:
+        estimated_pu, _ = get_batch_job_estimate(batch_request_id, process, deployment_endpoint)
         sentinel_hub.start_batch_job(batch_request_id)
+        g.user.report_usage(estimated_pu, job_id)
     elif batch_request_info.status == BatchRequestStatus.PARTIAL:
         sentinel_hub.restart_batch_job(batch_request_id)
     elif batch_request_info.status in [
@@ -92,7 +96,7 @@ def start_batch_job(batch_request_id, process, deployment_endpoint):
         batch_request_info.status == BatchRequestStatus.ANALYSING
         and batch_request_info.user_action == BatchUserAction.ANALYSE
     ):
-        return start_new_batch_job(sentinel_hub, process)
+        return start_new_batch_job(sentinel_hub, process, job_id)
 
 
 def get_batch_request_info(batch_request_id, deployment_endpoint):
@@ -141,9 +145,18 @@ def get_batch_job_estimate(batch_request_id, process, deployment_endpoint):
         batch_request = sentinel_hub.get_batch_request_info(batch_request_id)
 
     default_temporal_interval = 3
-    estimate_secure_factor = 2
 
-    p = Process(process, user=g.get("user"))
+    # Note that the cost estimate does not take the multiplication factor of 1/3
+    # for batch processing into account.
+    # The actual costs will be 3 times lower than the estimate.
+    # https://docs.sentinel-hub.com/api/latest/api/batch/#cost-estimate
+    actual_pu_to_estimate_ratio = 1 / 3
+
+    # multiply by 2 to be on the safe side
+    estimate_secure_factor = actual_pu_to_estimate_ratio * 2
+
+    user_defined_processes_graphs = get_user_defined_processes_graphs()
+    p = Process(process, user=g.get("user"), user_defined_processes=user_defined_processes_graphs)
     temporal_interval = p.get_temporal_interval(in_days=True)
 
     if temporal_interval is None:

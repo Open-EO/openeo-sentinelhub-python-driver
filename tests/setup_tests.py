@@ -76,6 +76,45 @@ def with_mocked_auth(func):
     return decorated_function
 
 
+def with_mocked_reporting(func):
+    """
+    Adds mocked responses for reporting endpoints.
+    """
+
+    @wraps(func)
+    @responses.activate
+    def decorated_function(*args, **kwargs):
+        responses.add(
+            responses.POST,
+            "https://sso.terrascope.be/auth/realms/terrascope/protocol/openid-connect/token",
+            json={"access_token": "mocked_token", "expires_in": 300},
+        )
+        responses.add(
+            responses.POST,
+            "https://etl.terrascope.be/resources",
+            json=[
+                {
+                    "jobId": "TEST",
+                    "state": "FINISHED",
+                    "userId": "mocked_user_id",
+                    "sourceId": "mocked_source_id",
+                    "orchestrator": "mocked_orchestrator",
+                    "status": "billed",
+                    "type": "processing",
+                    "value": 1,
+                    "unit": "shpu",
+                    "cost": 1,
+                    "date": "2022-08-01T09:39:18.849Z",
+                }
+            ],
+        ),
+
+        responses.add_passthru(re.compile(".*"))
+        return func(*args, **kwargs)
+
+    return decorated_function
+
+
 valid_sh_token = None
 
 
