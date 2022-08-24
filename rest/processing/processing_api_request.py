@@ -25,7 +25,10 @@ class ProcessingAPIRequest:
 
     def fetch(self):
         r = self.make_request()
-        r.raise_for_status()
+        try:
+            r.raise_for_status()
+        except Exception as e:
+            raise Exception(r.content)
         return r.content
 
     def with_rate_limiting(request_func):
