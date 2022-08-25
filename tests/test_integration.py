@@ -698,11 +698,6 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
     # r = app_client.get(f"/service/xyz/{service_id}/{int(zoom)}/{int(tx)}/{int(ty)}")
     # assert r.status_code == 401, r.data
 
-    responses.add(
-        responses.POST,
-        "https://services.sentinel-hub.com/oauth/token",
-        body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
-    )
     responses.add(responses.POST, re.compile(".*"), headers={"x-processingunits-spent": "1"})
 
     r = app_client.get(
@@ -1421,11 +1416,6 @@ def test_batch_job_estimate(
     expected_file_size,
 ):
 
-    responses.add(
-        responses.POST,
-        re.compile("https://(services|creodias)(-uswest2)?.sentinel-hub.com/oauth/token"),
-        body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
-    )
     responses.add(
         responses.POST,
         re.compile("https://(services|creodias)(-uswest2)?.sentinel-hub.com/api/v1/batch/process"),
