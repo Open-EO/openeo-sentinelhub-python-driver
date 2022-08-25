@@ -21,6 +21,9 @@ from processing.openeo_process_errors import NoDataAvailable
 from fixtures.geojson_fixtures import GeoJSON_Fixtures
 from utils import get_roles
 
+from flask import g
+from authentication.user import User
+
 
 @pytest.mark.parametrize(
     "collection_id",
@@ -655,55 +658,62 @@ def test_get_collection(
     ["<some-token>"],
 )
 def test_sentinel_hub_access_token(access_token):
-    example_token = "example"
+    with app.test_request_context("/"):
+        # we need flask g object with user so that g.user.report_usage exists
+        # in ProcessingAPIRequest.fetch() for sync jobs
 
-    responses.add(
-        responses.POST,
-        "https://services.sentinel-hub.com/oauth/token",
-        body=json.dumps({"access_token": example_token, "expires_at": 2147483647}),
-    )
+        example_token = "example"
 
-    responses.add(
-        responses.POST,
-        "https://services.sentinel-hub.com/api/v1/process",
-        match=[
-            matchers.header_matcher(
-                {"Authorization": f"Bearer {access_token if access_token is not None else example_token}"}
-            )
-        ],
-    )
-    responses.add(
-        responses.POST,
-        "https://services.sentinel-hub.com/api/v1/batch/process",
-        json={"id": "example", "processRequest": {}, "status": "CREATED", "tileCount": 1},
-        match=[
-            matchers.header_matcher(
-                {"Authorization": f"Bearer {access_token if access_token is not None else example_token}"}
-            )
-        ],
-    )
+        responses.add(
+            responses.POST,
+            "https://services.sentinel-hub.com/oauth/token",
+            body=json.dumps({"access_token": example_token, "expires_at": 2147483647}),
+        )
 
-    sh = SentinelHub(access_token=access_token)
-    sh.create_processing_request(
-        bbox=BBox((1, 2, 3, 4), crs=CRS.WGS84),
-        collection=DataCollection.SENTINEL2_L2A,
-        evalscript="",
-        from_date=datetime.now(),
-        to_date=datetime.now(),
-        width=1,
-        height=1,
-        mimetype=MimeType.PNG,
-    )
-    sh = SentinelHub(access_token=access_token)
-    sh.create_batch_job(
-        collection=DataCollection.SENTINEL2_L2A,
-        evalscript="",
-        from_date=datetime.now(),
-        to_date=datetime.now(),
-        tiling_grid_id=1,
-        tiling_grid_resolution=20,
-        mimetype=MimeType.PNG,
-    )
+        responses.add(
+            responses.POST,
+            "https://services.sentinel-hub.com/api/v1/process",
+            headers={"x-processingunits-spent": "1"},
+            match=[
+                matchers.header_matcher(
+                    {"Authorization": f"Bearer {access_token if access_token is not None else example_token}"}
+                )
+            ],
+        )
+        responses.add(
+            responses.POST,
+            "https://services.sentinel-hub.com/api/v1/batch/process",
+            json={"id": "example", "processRequest": {}, "status": "CREATED", "tileCount": 1},
+            match=[
+                matchers.header_matcher(
+                    {"Authorization": f"Bearer {access_token if access_token is not None else example_token}"}
+                )
+            ],
+        )
+
+        g.user = User(user_id="mocked_id")
+
+        sh = SentinelHub(access_token=access_token)
+        sh.create_processing_request(
+            bbox=BBox((1, 2, 3, 4), crs=CRS.WGS84),
+            collection=DataCollection.SENTINEL2_L2A,
+            evalscript="",
+            from_date=datetime.now(),
+            to_date=datetime.now(),
+            width=1,
+            height=1,
+            mimetype=MimeType.PNG,
+        )
+        sh = SentinelHub(access_token=access_token)
+        sh.create_batch_job(
+            collection=DataCollection.SENTINEL2_L2A,
+            evalscript="",
+            from_date=datetime.now(),
+            to_date=datetime.now(),
+            tiling_grid_id=1,
+            tiling_grid_resolution=20,
+            mimetype=MimeType.PNG,
+        )
 
 
 @pytest.mark.parametrize(

@@ -19,9 +19,10 @@ from openeoerrors import (
     Internal,
     CredentialsInvalid,
     TokenInvalid,
+    BillingPlanInvalid,
 )
 from authentication.oidc_providers import oidc_providers
-from authentication.user import User
+from authentication.user import OIDCUser, SHUser
 
 
 class AuthScheme(Enum):
@@ -61,9 +62,11 @@ class AuthenticationProvider:
         userinfo = userinfo_resp.json()
 
         user_id = userinfo["sub"]
-        entitlement = userinfo["eduperson_entitlement"]
 
-        user = User(user_id, entitlement)
+        try:
+            user = OIDCUser(user_id, oidc_userinfo=userinfo)
+        except BillingPlanInvalid:
+            return None
 
         if not user.is_in_group("vo.openeo.cloud"):
             return None
@@ -84,7 +87,11 @@ class AuthenticationProvider:
         except:
             raise TokenInvalid()
 
-        user = User(decoded["sub"], sh_access_token=access_token)
+        try:
+            user = SHUser(decoded["sub"], sh_access_token=access_token, sh_userinfo=decoded)
+        except BillingPlanInvalid:
+            return None
+
         return user
 
     def authenticate_user(self, bearer):
