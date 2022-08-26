@@ -21,6 +21,9 @@ from processing.openeo_process_errors import NoDataAvailable
 from fixtures.geojson_fixtures import GeoJSON_Fixtures
 from utils import get_roles
 
+from flask import g
+from authentication.user import User
+
 
 @pytest.mark.parametrize(
     "collection_id",
@@ -144,7 +147,7 @@ def test_collections_provider(url, directory, expected_collection_ids):
 )
 def test_authentication_provider_oidc(oidc_user_info_response, headers, should_raise_error, error, func):
     authentication_provider = AuthenticationProvider(
-        oidc_providers=[{"id": "egi", "issuer": "https://aai.egi.eu/oidc/"}]
+        oidc_providers=[{"id": "egi", "issuer": "https://aai.egi.eu/auth/realms/egi/"}]
     )
 
     if func is None:
@@ -158,7 +161,7 @@ def test_authentication_provider_oidc(oidc_user_info_response, headers, should_r
             def execute():
                 responses.add(
                     responses.GET,
-                    "https://aai.egi.eu/oidc/.well-known/openid-configuration",
+                    "https://aai.egi.eu/auth/realms/egi/.well-known/openid-configuration",
                     json={"userinfo_endpoint": "http://dummy_userinfo_endpoint"},
                 )
                 responses.add(responses.GET, "http://dummy_userinfo_endpoint", json=oidc_user_info_response)
@@ -171,7 +174,7 @@ def test_authentication_provider_oidc(oidc_user_info_response, headers, should_r
             def execute():
                 responses.add(
                     responses.GET,
-                    "https://aai.egi.eu/oidc/.well-known/openid-configuration",
+                    "https://aai.egi.eu/auth/realms/egi/.well-known/openid-configuration",
                     json={"userinfo_endpoint": "http://dummy_userinfo_endpoint"},
                 )
                 responses.add(responses.GET, "http://dummy_userinfo_endpoint", json=oidc_user_info_response)
@@ -655,59 +658,63 @@ def test_get_collection(
     ["<some-token>"],
 )
 def test_sentinel_hub_access_token(access_token):
-    example_token = "example"
+    with app.test_request_context("/"):
+        # we need flask g object with user so that g.user.report_usage exists
+        # in ProcessingAPIRequest.fetch() for sync jobs
 
-    responses.add(
-        responses.POST,
-        "https://services.sentinel-hub.com/oauth/token",
-        body=json.dumps({"access_token": example_token, "expires_at": 2147483647}),
-    )
+        example_token = "example"
 
-    responses.add(
-        responses.POST,
-        "https://services.sentinel-hub.com/api/v1/process",
-        match=[
-            matchers.header_matcher(
-                {"Authorization": f"Bearer {access_token if access_token is not None else example_token}"}
-            )
-        ],
-    )
-    responses.add(
-        responses.POST,
-        "https://services.sentinel-hub.com/api/v1/batch/process",
-        json={"id": "example", "processRequest": {}, "status": "CREATED", "tileCount": 1},
-        match=[
-            matchers.header_matcher(
-                {"Authorization": f"Bearer {access_token if access_token is not None else example_token}"}
-            )
-        ],
-    )
+        responses.add(
+            responses.POST,
+            "https://services.sentinel-hub.com/oauth/token",
+            body=json.dumps({"access_token": example_token, "expires_at": 2147483647}),
+        )
 
-    user = SHUser(
-        sh_access_token=access_token, sh_userinfo={"d": {"1": {"t": 11000}}}
-    )  # sh_userinfo is needed for determining the billing plan
+        responses.add(
+            responses.POST,
+            "https://services.sentinel-hub.com/api/v1/process",
+            headers={"x-processingunits-spent": "1"},
+            match=[
+                matchers.header_matcher(
+                    {"Authorization": f"Bearer {access_token if access_token is not None else example_token}"}
+                )
+            ],
+        )
+        responses.add(
+            responses.POST,
+            "https://services.sentinel-hub.com/api/v1/batch/process",
+            json={"id": "example", "processRequest": {}, "status": "CREATED", "tileCount": 1},
+            match=[
+                matchers.header_matcher(
+                    {"Authorization": f"Bearer {access_token if access_token is not None else example_token}"}
+                )
+            ],
+        )
 
-    sh = SentinelHub(user=user)
-    sh.create_processing_request(
-        bbox=BBox((1, 2, 3, 4), crs=CRS.WGS84),
-        collection=DataCollection.SENTINEL2_L2A,
-        evalscript="",
-        from_date=datetime.now(),
-        to_date=datetime.now(),
-        width=1,
-        height=1,
-        mimetype=MimeType.PNG,
-    )
-    sh = SentinelHub(user=user)
-    sh.create_batch_job(
-        collection=DataCollection.SENTINEL2_L2A,
-        evalscript="",
-        from_date=datetime.now(),
-        to_date=datetime.now(),
-        tiling_grid_id=1,
-        tiling_grid_resolution=20,
-        mimetype=MimeType.PNG,
-    )
+        user = SHUser(user_id="mocked_id", sh_access_token=access_token, sh_userinfo={"d": {"1": {"t": 11000}}})
+        g.user = user
+
+        sh = SentinelHub(user=user)
+        sh.create_processing_request(
+            bbox=BBox((1, 2, 3, 4), crs=CRS.WGS84),
+            collection=DataCollection.SENTINEL2_L2A,
+            evalscript="",
+            from_date=datetime.now(),
+            to_date=datetime.now(),
+            width=1,
+            height=1,
+            mimetype=MimeType.PNG,
+        )
+        sh = SentinelHub(user=user)
+        sh.create_batch_job(
+            collection=DataCollection.SENTINEL2_L2A,
+            evalscript="",
+            from_date=datetime.now(),
+            to_date=datetime.now(),
+            tiling_grid_id=1,
+            tiling_grid_resolution=20,
+            mimetype=MimeType.PNG,
+        )
 
 
 @pytest.mark.parametrize(
@@ -1716,3 +1723,42 @@ def test_resample_spatial_process(process_graph, expected_resolution, expected_c
         assert crs == expected_crs
         assert resolution == expected_resolution
         assert resampling_method == expected_resampling_method
+
+
+@pytest.mark.parametrize(
+    "process_graph",
+    [
+        {
+            "1": {
+                "process_id": "load_collection",
+                "arguments": {
+                    "id": "sentinel-2-l1c",
+                    "spatial_extent": {
+                        "west": 14.503132250376241,
+                        "south": 45.98989222284457,
+                        "east": 14.578437275398317,
+                        "north": 46.04381770188389,
+                    },
+                    "temporal_extent": ["2022-03-26T00:00:00Z", "2022-03-26T23:59:59Z"],
+                    "bands": ["B04", "B08"],
+                },
+            },
+            "2": {
+                "process_id": "save_result",
+                "arguments": {"data": {"from_node": "ndvi4"}, "format": "GTIFF"},
+                "result": True,
+            },
+            "ndvi4": {
+                "process_id": "ndvi",
+                "arguments": {"data": {"from_node": "1"}, "target_band": "NDVI", "nir": "B08", "red": "B04"},
+            },
+        }
+    ],
+)
+def test_bands_metadata(process_graph):
+    for node in process_graph.values():
+        if node["process_id"] == "load_collection":
+            collection_id = node["arguments"]["id"]
+    bands_metadata = collections.get_collection(collection_id)["summaries"]["eo:bands"]
+    process = Process({"process_graph": process_graph})
+    assert process.evalscript.bands_metadata == bands_metadata
