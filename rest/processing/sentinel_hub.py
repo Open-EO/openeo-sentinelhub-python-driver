@@ -1,30 +1,25 @@
 import os
 import json
 
-from sentinelhub import SentinelHubBatch, SentinelHubSession
+from sentinelhub import SentinelHubBatch
 from sentinelhub.exceptions import DownloadFailedException
 from openeoerrors import ProcessGraphComplexity
 import requests
 
-from processing.const import sh_config
 from buckets import BUCKET_NAMES
 from processing.processing_api_request import ProcessingAPIRequest
 
 
 class SentinelHub:
-    def __init__(self, access_token=None, service_base_url=None):
-        self.config = sh_config
+    def __init__(self, user=None, service_base_url=None):
         self.S3_BUCKET_NAME = BUCKET_NAMES.get(service_base_url)
-        self.batch = SentinelHubBatch(config=self.config)
-        self.access_token = access_token
+        self.user = user
+        self.batch = SentinelHubBatch()
 
-        if access_token is not None:
-            # This is an ugly hack to set custom access token
-            self.batch.client.session = SentinelHubSession(config=self.config)
-            self.batch.client.session._token = {"access_token": access_token, "expires_at": 99999999999999}
+        if self.user is not None:
+            self.batch.client.session = self.user.session
 
         if service_base_url is not None:
-            self.config.sh_base_url = service_base_url
             self.batch.service_url = self.batch._get_service_url(service_base_url)
 
     def create_processing_request(
@@ -59,10 +54,7 @@ class SentinelHub:
         )
 
         return ProcessingAPIRequest(
-            f"{collection.service_url}/api/v1/process",
-            request_raw_dict,
-            access_token=self.access_token,
-            config=self.config,
+            f"{collection.service_url}/api/v1/process", request_raw_dict, user=self.user
         ).fetch()
 
     def get_request_dictionary(

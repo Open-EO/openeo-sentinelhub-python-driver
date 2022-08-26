@@ -4,25 +4,24 @@ import functools
 from flask import g
 
 import requests
-from sentinelhub import SentinelHubSession
+
 from openeoerrors import Internal
 
 from const import SentinelhubDeployments
 
 
 class ProcessingAPIRequest:
-    def __init__(self, url, data, access_token=None, config=None, max_retries=5):
+    def __init__(self, url, data, user=None, max_retries=5):
         self.url = url
         self.data = data
+        self.user = user
         self.max_retries = max_retries
 
-        if access_token is None:
-            self.access_token = SentinelHubSession(config=config)._token["access_token"]  # Fetches the token
-        else:
-            self.access_token = access_token
-
     def get_headers(self):
-        return {"content-type": "application/json", "Authorization": f"Bearer {self.access_token}"}
+        return {
+            "content-type": "application/json",
+            "Authorization": f"Bearer {self.user.session.token['access_token']}",
+        }
 
     def fetch(self):
         r = self.make_request()

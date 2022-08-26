@@ -2,8 +2,11 @@ import json
 from usage_reporting.report_usage import usageReporting
 
 import requests
+from sentinelhub import SentinelHubSession
 
 from const import OpenEOPBillingPlan, SentinelHubBillingPlan
+from authentication.sh_session import central_user_sentinelhub_session
+from authentication.utils import decode_sh_access_token
 
 
 class User:
@@ -11,6 +14,7 @@ class User:
         self.user_id = user_id
         self.sh_access_token = None
         self.default_plan = None
+        self.session = central_user_sentinelhub_session
 
     def __repr__(self):
         return f"<{type(self).__name__}: {self.user_id} User info: {json.dumps(self.get_user_info())}>"
@@ -33,6 +37,7 @@ class OIDCUser(User):
         ]
         self.oidc_userinfo = oidc_userinfo
         self.default_plan = OpenEOPBillingPlan.get_billing_plan(self.entitlements)
+        self.session = central_user_sentinelhub_session
 
     @staticmethod
     def convert_entitlement(entitlement):
@@ -60,8 +65,16 @@ class SHUser(User):
     def __init__(self, user_id=None, sh_access_token=None, sh_userinfo={}, plan_number=None):
         super().__init__(user_id)
         self.sh_access_token = sh_access_token
-        self.sh_userinfo = sh_userinfo
+
+        if sh_access_token and not sh_userinfo:
+            self.sh_userinfo = decode_sh_access_token(sh_access_token)
+        else:
+            self.sh_userinfo = sh_userinfo
+
         self.default_plan = SentinelHubBillingPlan.get_billing_plan(self.get_account_type_number())
+        self.session = SentinelHubSession(
+            _token={"access_token": self.sh_access_token, "expires_at": 99999999999999}, refresh_before_expiry=None
+        )
 
     def get_account_type_number(self):
         if "d" in self.sh_userinfo and "1" in self.sh_userinfo["d"] and "t" in self.sh_userinfo["d"]["1"]:
