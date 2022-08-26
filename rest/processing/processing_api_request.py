@@ -25,7 +25,7 @@ class ProcessingAPIRequest:
 
     def fetch(self):
         r = self.make_request()
-        
+
         try:
             r.raise_for_status()
         except Exception as e:
