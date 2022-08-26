@@ -526,7 +526,7 @@ def add_job_to_queue(job_id, user):
 
     if flask.request.method == "POST":
         new_batch_request_id = start_batch_job(
-            job["batch_request_id"], json.loads(job["process"]), job["deployment_endpoint"]
+            job["batch_request_id"], json.loads(job["process"]), job["deployment_endpoint"], job_id
         )
 
         if new_batch_request_id and new_batch_request_id != job["batch_request_id"]:

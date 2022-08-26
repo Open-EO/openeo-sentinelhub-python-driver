@@ -126,7 +126,7 @@ Content-Type: application/json
 
 Using curl:
 ```bash
-$ curl -i -X POST -H "Authorization: Bearer basic//$AUTH_TOKEN" -H "Content-Type: application/json" -d '{ "process": { "process_graph": { "loadco1": { "process_id": "load_collection", "arguments": { "id": "S2L1C", "temporal_extent": [ "2019-08-16", "2019-08-18" ], "spatial_extent": { "west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347 } } }, "ndvi1": { "process_id": "ndvi", "arguments": { "data": { "from_node": "loadco1" } } }, "result1": { "process_id": "save_result", "arguments": { "data": { "from_node": "ndvi1" }, "format": "gtiff" }, "result": true} } } }' http://localhost:5000/result/
+$ curl -i -X POST -H "Authorization: Bearer basic//$AUTH_TOKEN" -H "Content-Type: application/json" -d '{ "process": { "process_graph": { "loadco1": { "process_id": "load_collection", "arguments": { "id": "SENTINEL2_L1C_SENTINELHUB", "temporal_extent": [ "2019-08-16", "2019-08-18" ], "spatial_extent": { "west": 12.32271, "east": 12.33572, "north": 42.07112, "south": 42.06347 } } }, "ndvi1": { "process_id": "ndvi", "arguments": { "data": { "from_node": "loadco1" } } }, "result1": { "process_id": "save_result", "arguments": { "data": { "from_node": "ndvi1" }, "format": "gtiff" }, "result": true} } } }' http://localhost:5000/result/
 ```
 
 

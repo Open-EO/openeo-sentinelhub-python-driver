@@ -1,10 +1,10 @@
 import time
 import json
 import functools
+from flask import g
 
 import requests
 
-# from sentinelhub import SentinelHubSession
 from openeoerrors import Internal
 
 from const import SentinelhubDeployments
@@ -25,10 +25,17 @@ class ProcessingAPIRequest:
 
     def fetch(self):
         r = self.make_request()
+        
         try:
             r.raise_for_status()
         except Exception as e:
             raise Exception(r.content)
+
+        if "x-processingunits-spent" not in r.headers:
+            raise Internal(f"Response does not contain 'x-processingunits-spent' header, {r.content}")
+
+        g.user.report_usage(r.headers["x-processingunits-spent"])
+
         return r.content
 
     def with_rate_limiting(request_func):
