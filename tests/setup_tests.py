@@ -55,7 +55,7 @@ def with_mocked_auth(func):
     def decorated_function(*args, **kwargs):
         responses.add(
             responses.GET,
-            "https://aai.egi.eu/oidc/.well-known/openid-configuration",
+            "https://aai.egi.eu/auth/realms/egi/.well-known/openid-configuration",
             json={"userinfo_endpoint": "http://dummy_userinfo_endpoint"},
         )
         responses.add(
@@ -70,6 +70,45 @@ def with_mocked_auth(func):
                 ],
             },
         )
+        responses.add_passthru(re.compile(".*"))
+        return func(*args, **kwargs)
+
+    return decorated_function
+
+
+def with_mocked_reporting(func):
+    """
+    Adds mocked responses for reporting endpoints.
+    """
+
+    @wraps(func)
+    @responses.activate
+    def decorated_function(*args, **kwargs):
+        responses.add(
+            responses.POST,
+            "https://sso.terrascope.be/auth/realms/terrascope/protocol/openid-connect/token",
+            json={"access_token": "mocked_token", "expires_in": 300},
+        )
+        responses.add(
+            responses.POST,
+            "https://etl.terrascope.be/resources",
+            json=[
+                {
+                    "jobId": "TEST",
+                    "state": "FINISHED",
+                    "userId": "mocked_user_id",
+                    "sourceId": "mocked_source_id",
+                    "orchestrator": "mocked_orchestrator",
+                    "status": "billed",
+                    "type": "processing",
+                    "value": 1,
+                    "unit": "shpu",
+                    "cost": 1,
+                    "date": "2022-08-01T09:39:18.849Z",
+                }
+            ],
+        ),
+
         responses.add_passthru(re.compile(".*"))
         return func(*args, **kwargs)
 
