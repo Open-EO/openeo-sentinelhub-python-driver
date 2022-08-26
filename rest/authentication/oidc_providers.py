@@ -40,5 +40,5 @@ oidc_providers = [
         "issuer": "https://aai.egi.eu/oidc/",
         "scopes": ["openid", "email", "eduperson_entitlement", "eduperson_scoped_affiliation"],
         "title": "EGI Check-in (legacy)",
-    }    
+    },
 ]
