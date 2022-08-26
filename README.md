@@ -319,5 +319,6 @@ Driver: GTiff/GeoTIFF
 $ cd rest
 $ pipenv shell
 $ cd ..
+$ cd notebooks
 $ jupyter notebook
 ```
