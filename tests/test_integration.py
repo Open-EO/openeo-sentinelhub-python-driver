@@ -378,6 +378,7 @@ def test_manage_batch_jobs(app_client, example_authorization_header_with_oidc):
 
 
 @with_mocked_auth
+@with_mocked_reporting
 def test_process_batch_job(app_client, example_process_graph, example_authorization_header_with_oidc):
     """
     - test /jobs/job_id/results endpoints
@@ -423,6 +424,7 @@ def test_process_batch_job(app_client, example_process_graph, example_authorizat
 
 
 @with_mocked_auth
+@with_mocked_reporting
 def test_result_not_encoded_secret(app_client, example_process_graph, example_authorization_header_with_oidc):
     """
     - test /result endpoint
@@ -633,6 +635,7 @@ def test_xyz_service(app_client, service_factory, example_process_graph_with_var
 
 # @responses.activate
 @with_mocked_auth
+@with_mocked_reporting
 @pytest.mark.parametrize(
     "tile_size",
     [None, 256, 512],
@@ -700,10 +703,7 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
         "https://services.sentinel-hub.com/oauth/token",
         body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
     )
-    responses.add(
-        responses.POST,
-        re.compile(".*"),
-    )
+    responses.add(responses.POST, re.compile(".*"), headers={"x-processingunits-spent": "1"})
 
     r = app_client.get(
         f"/service/xyz/{service_id}/{int(zoom)}/{int(tx)}/{int(ty)}", headers={"Authorization": authorization_header}
@@ -1210,6 +1210,7 @@ def test_fetching_correct_collection_type(app_client, collection_id, collection_
 
 
 @with_mocked_auth
+@with_mocked_reporting
 @pytest.mark.parametrize(
     "collection_id,bands,should_raise_error",
     [
@@ -1301,7 +1302,7 @@ def test_validate_bands(
             "gtiff",
             None,
             30,
-            36,
+            12,
             2,
             2004,
             2004,
@@ -1314,7 +1315,7 @@ def test_validate_bands(
             "png",
             None,
             30,
-            36,
+            12,
             2,
             2004,
             2004,
@@ -1327,7 +1328,7 @@ def test_validate_bands(
             "jpeg",
             None,
             30,
-            11.25,
+            3.75,
             2,
             2004,
             2004,
@@ -1340,7 +1341,7 @@ def test_validate_bands(
             "gtiff",
             None,
             30,
-            36,
+            12,
             1,
             2004,
             2004,
@@ -1353,7 +1354,7 @@ def test_validate_bands(
             "png",
             None,
             30,
-            36,
+            12,
             1,
             2004,
             2004,
@@ -1366,7 +1367,7 @@ def test_validate_bands(
             "jpeg",
             None,
             30,
-            36,
+            12,
             1,
             2004,
             2004,
@@ -1379,7 +1380,7 @@ def test_validate_bands(
             "png",
             {"datatype": "uint16"},
             30,
-            36,
+            12,
             2,
             2004,
             2004,
@@ -1392,7 +1393,7 @@ def test_validate_bands(
             "gtiff",
             {"datatype": "byte"},
             30,
-            36,
+            12,
             2,
             2004,
             2004,
@@ -1405,7 +1406,7 @@ def test_validate_bands(
             "gtiff",
             {"datatype": "uint16"},
             30,
-            36,
+            12,
             2,
             2004,
             2004,
@@ -1766,6 +1767,7 @@ def test_job_with_deleted_batch_request(app_client, example_process_graph):
 
 
 @with_mocked_auth
+@with_mocked_reporting
 def test_using_user_defined_process(
     app_client, fahrenheit_to_celsius_process, process_graph_with_udp, example_authorization_header_with_oidc
 ):
