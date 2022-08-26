@@ -74,7 +74,8 @@ deploy-testing-rest-lambda:
     - chmod +x download-process-definitions.sh
     - ./download-process-definitions.sh
     - cd rest/
-    - pipenv install --dev
+    - pipenv install
+    - pipenv install zappa
     # create zappa_settings.json on-the-fly:
     - cp zappa_settings.json.template zappa_settings.json
     - sed -i "s/@@AWS_ACCESS_KEY_ID@@/$TESTINGDATA_AWS_ACCESS_KEY_ID/g" zappa_settings.json
@@ -119,7 +120,8 @@ deploy-production-rest-lambda:
     - chmod +x download-process-definitions.sh
     - ./download-process-definitions.sh
     - cd rest/
-    - pipenv install --dev
+    - pipenv install
+    - pipenv install zappa
     # create zappa_settings.json on-the-fly:
     - cp zappa_settings.json.template zappa_settings.json
     - sed -i "s/@@AWS_ACCESS_KEY_ID@@/$PRODDATA_AWS_ACCESS_KEY_ID/g" zappa_settings.json
