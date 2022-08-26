@@ -23,7 +23,7 @@ requests = "==2.27.1"
 flask-cors = "==3.0.10"
 honeycomb-beeline = "==3.2.0"
 numpy = "==1.19.5"
-pg-to-evalscript = "==0.2.5"
+pg-to-evalscript = "==0.2.6"
 sentinelhub = "==3.6.3"
 isodate = "==0.6.1"
 pyjwt = {extras = ["crypto"], version = "==2.3.0"}
