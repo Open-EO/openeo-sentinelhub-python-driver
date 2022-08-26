@@ -5,7 +5,6 @@ from flask import g
 
 import requests
 
-# from sentinelhub import SentinelHubSession
 from openeoerrors import Internal
 
 from const import SentinelhubDeployments
