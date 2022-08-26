@@ -78,18 +78,22 @@ class Process:
         process_graph = remove_partially_supported_processes_from_process_graph(
             self.process_graph, partially_supported_processes
         )
+
+        load_collection_node = self.get_node_by_process_id("load_collection")
+        collection = collections.get_collection(load_collection_node["arguments"]["id"])
+        bands_metadata = collection.get("summaries", {}).get("eo:bands")
+
         results = convert_from_process_graph(
             process_graph,
             sample_type=self.sample_type.value,
             user_defined_processes=self.user_defined_processes,
+            bands_metadata=bands_metadata,
             encode_result=False,
         )
         evalscript = results[0]["evalscript"]
         evalscript.mosaicking = self.get_appropriate_mosaicking()
 
         if self.get_input_bands() is None:
-            load_collection_node = self.get_node_by_process_id("load_collection")
-            collection = collections.get_collection(load_collection_node["arguments"]["id"])
             all_bands = collection["cube:dimensions"]["bands"]["values"]
             evalscript.set_input_bands(all_bands)
 

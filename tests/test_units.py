@@ -1723,3 +1723,42 @@ def test_resample_spatial_process(process_graph, expected_resolution, expected_c
         assert crs == expected_crs
         assert resolution == expected_resolution
         assert resampling_method == expected_resampling_method
+
+
+@pytest.mark.parametrize(
+    "process_graph",
+    [
+        {
+            "1": {
+                "process_id": "load_collection",
+                "arguments": {
+                    "id": "sentinel-2-l1c",
+                    "spatial_extent": {
+                        "west": 14.503132250376241,
+                        "south": 45.98989222284457,
+                        "east": 14.578437275398317,
+                        "north": 46.04381770188389,
+                    },
+                    "temporal_extent": ["2022-03-26T00:00:00Z", "2022-03-26T23:59:59Z"],
+                    "bands": ["B04", "B08"],
+                },
+            },
+            "2": {
+                "process_id": "save_result",
+                "arguments": {"data": {"from_node": "ndvi4"}, "format": "GTIFF"},
+                "result": True,
+            },
+            "ndvi4": {
+                "process_id": "ndvi",
+                "arguments": {"data": {"from_node": "1"}, "target_band": "NDVI", "nir": "B08", "red": "B04"},
+            },
+        }
+    ],
+)
+def test_bands_metadata(process_graph):
+    for node in process_graph.values():
+        if node["process_id"] == "load_collection":
+            collection_id = node["arguments"]["id"]
+    bands_metadata = collections.get_collection(collection_id)["summaries"]["eo:bands"]
+    process = Process({"process_graph": process_graph})
+    assert process.evalscript.bands_metadata == bands_metadata
