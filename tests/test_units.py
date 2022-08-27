@@ -64,6 +64,7 @@ def test_collections(get_process_graph, collection_id):
                 "mapzen-dem",
                 "sentinel-3-l1b-slstr",
                 "sentinel-1-grd",
+                "CNES_LAND_COVER_MAP",
             ],
         ),
     ],
