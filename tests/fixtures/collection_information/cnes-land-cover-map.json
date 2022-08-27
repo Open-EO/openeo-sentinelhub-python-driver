@@ -1,0 +1,69 @@
+{
+  "type": "Collection",
+  "stac_version": "1.0.0",
+  "stac_extensions": [
+    "https://stac-extensions.github.io/datacube/v1.0.0/schema.json" 
+    ],
+  "id": "CNES_LAND_COVER_MAP",
+  "datasource_type": "byoc-9baa2732-6597-49d2-ae3b-68ba0a5386b2",
+  "title": "CNES Land Cover Map",
+  "description": "The CNES Land Cover Map (Occupation des Sols, OSO) produces land classification for Metropolitan France at 10 m spatial resolution based on Sentinel-2 L2A data within the Theia Land Cover CES framework.\nMaps for 2020, 2019, and 2018 use a 23-categories nomenclature.\n",
+  "keywords": [
+    "derived data",
+    "land cover",
+    "machine learning",
+    "open data",
+    "raster",
+    "sentinel hub",
+    "systematic"
+  ],
+  "license": "proprietary",
+  "providers": [
+    {
+      "name": "Sentinel Hub",
+      "description": "",
+      "roles": [
+        "processor"
+      ],
+      "url": "https://services.sentinel-hub.com"
+    }
+  ],
+  "extent": {"spatial":{"bbox":[[-6.26,40.46,11.85,51.45]]},"temporal":{"interval":[["2016-01-01T00:00:00Z","2020-01-01T00:00:00Z"]]}},
+  "links": [
+    {
+      "href": "https://collections.eurodatacube.com/stac/cnes-land-cover-map.json",
+      "rel": "self"
+    },
+    {
+      "href": "https://collections.eurodatacube.com/cnes-land-cover-map",
+      "rel": "about",
+      "type": "text/html",
+      "title": "Website describing the collection"
+    },
+	{"href":"https://docs.sentinel-hub.com/api/latest/api/process/","rel":"about","type":"text/html","title":"Details about running Evalscripts"},
+	{"href":"https://custom-scripts.sentinel-hub.com/custom-scripts/other_collections/cnes_land_cover_classification/script.js","rel":"processing-expression","type":"application/javascript","title":"Evalscript to visualise CNES Land Cover Map imagery","sentinelhub:layer_name":"CNES Land Cover Map","sentinelhub:mosaicking_order":"mostRecent","sentinelhub:upsampling":"BICUBIC"},
+	{"href":"https://custom-scripts.sentinel-hub.com/custom-scripts/other_collections/cnes_land_cover_confidence/script.js","rel":"processing-expression","type":"application/javascript","title":"Evalscript to visualise the classifier confidence","sentinelhub:layer_name":"CNES Land Cover Classifier Confidence","sentinelhub:mosaicking_order":"mostRecent","sentinelhub:upsampling":"BICUBIC"},
+	{"href":"https://custom-scripts.sentinel-hub.com/custom-scripts/other_collections/cnes_land_cover_validity/script.js","rel":"processing-expression","type":"application/javascript","title":"Evalscript to visualise the CNES Land Cover Validity","sentinelhub:layer_name":"CNES Land Cover Validity","sentinelhub:mosaicking_order":"mostRecent","sentinelhub:upsampling":"BICUBIC"},
+    {
+      "href": "https://collections.eurodatacube.com/cnes-land-cover-map/readme.html#band-information",
+      "rel": "about",
+      "type": "text/html",
+      "title": "Nomenclature mapping - band values CNES Land Cover Map labels - Legend used for 2020, 2019 and 2018 data"  
+    },
+    {
+      "href": "https://theia.cnes.fr/atdistrib/documents/Licence-Theia-CNES-Sentinel-ETALAB-v2.0-en.pdf",
+      "rel": "license",
+      "type": "text/html",
+      "title": "License"
+    }
+  ],
+  "cube:dimensions": {"x":{"type":"spatial","axis":"x","extent":[-6.26,11.85]},"y":{"type":"spatial","axis":"y","extent":[40.46,51.45]},"t":{"type":"temporal","extent":["2016-01-01T00:00:00Z","2020-01-01T00:00:00Z"],"step":"P1Y"},"bands":{"type":"bands","values":["OCS","OCS_Confidence","OCS_Validity"]}},
+  "assets": {
+   "thumbnail": {
+      "href": "https://collections.eurodatacube.com/cnes-land-cover-map/cnes-land-cover-map-france-overview.png",
+      "title": "Thumbnail",
+      "type": "image/png",
+      "roles": ["thumbnail"]
+    }
+  }
+}

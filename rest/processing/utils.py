@@ -1,5 +1,6 @@
 import math
 import copy
+from datetime import timedelta
 
 from pyproj import CRS, Transformer
 from shapely.geometry import shape, mapping
@@ -300,3 +301,21 @@ def get_user_commercial_data_collection_byoc_id(sentinel_hub, user_id, collectio
     for collection in collections:
         if collection["name"] == name:
             return collection["id"]
+
+
+def get_total_seconds(duration):
+    """
+    isodate.Duration's total_seconds() return 0.0 when the duration is measured in months or years.
+    Thus, we have to handle that separately.
+    """
+    seconds = duration.total_seconds()
+    if isinstance(duration, timedelta):
+        return seconds
+
+    if duration.months:
+        seconds_in_a_month = 2629800
+        seconds += float(duration.months) * seconds_in_a_month
+    if duration.years:
+        seconds_in_a_year = 31557600
+        seconds += float(duration.years) * seconds_in_a_year
+    return seconds

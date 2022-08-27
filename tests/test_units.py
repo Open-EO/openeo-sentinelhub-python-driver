@@ -1770,3 +1770,22 @@ def test_bands_metadata(process_graph):
     bands_metadata = collections.get_collection(collection_id)["summaries"]["eo:bands"]
     process = Process({"process_graph": process_graph})
     assert process.evalscript.bands_metadata == bands_metadata
+
+
+@pytest.mark.parametrize(
+    "collection_id,expected_temporal_interval_seconds",
+    [
+        ("sentinel-2-l1c", 5 * 24 * 60 * 60),
+        ("CNES_LAND_COVER_MAP", 1 * 365.25 * 24 * 60 * 60),
+        ("landsat-7-etm+-l2", 16 * 24 * 60 * 60),
+    ],
+)
+def test_get_temporal_interval(get_process_graph, collection_id, expected_temporal_interval_seconds):
+    process = Process(
+        {
+            "process_graph": get_process_graph(
+                collection_id=collection_id,
+            )
+        }
+    )
+    assert process.get_temporal_interval() == expected_temporal_interval_seconds

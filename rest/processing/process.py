@@ -39,6 +39,7 @@ from processing.utils import (
     parse_geojson,
     get_spatial_info_from_partial_processes,
     get_user_commercial_data_collection_byoc_id,
+    get_total_seconds,
 )
 from authentication.user import User
 
@@ -238,8 +239,8 @@ class Process:
 
         if in_days:
             n_seconds_per_day = 86400
-            return temporal_interval.total_seconds() / n_seconds_per_day
-        return temporal_interval.total_seconds()
+            return get_total_seconds(temporal_interval) / n_seconds_per_day
+        return get_total_seconds(temporal_interval)
 
     def get_maximum_temporal_extent_for_collection(self):
         load_collection_node = self.get_node_by_process_id("load_collection")
