@@ -39,10 +39,11 @@ from processing.utils import (
     parse_geojson,
     get_spatial_info_from_partial_processes,
 )
+from authentication.user import User
 
 
 class Process:
-    def __init__(self, process, width=None, height=None, access_token=None, user_defined_processes={}):
+    def __init__(self, process, width=None, height=None, user=User(), user_defined_processes={}):
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_RESOLUTION = (10, 10)
         self.MAXIMUM_SYNC_FILESIZE_BYTES = 5000000
@@ -51,8 +52,6 @@ class Process:
         }
         partially_supported_processes_as_udp.update(user_defined_processes)
         self.user_defined_processes = partially_supported_processes_as_udp
-        self.sentinel_hub = SentinelHub(access_token=access_token)
-        self.user_defined_processes = user_defined_processes
 
         self.process_graph = process["process_graph"]
         (
@@ -64,7 +63,7 @@ class Process:
         self.bbox, self.epsg_code, self.geometry = self.get_bounds()
         self.collection = self.get_collection()
         self.service_base_url = self.collection.service_url
-        self.sentinel_hub = SentinelHub(access_token=access_token, service_base_url=self.service_base_url)
+        self.sentinel_hub = SentinelHub(user=user, service_base_url=self.service_base_url)
         self.from_date, self.to_date = self.get_temporal_extent()
         self.mimetype = self.get_mimetype()
         self.width = width or self.get_dimensions()[0]
@@ -79,18 +78,22 @@ class Process:
         process_graph = remove_partially_supported_processes_from_process_graph(
             self.process_graph, partially_supported_processes
         )
+
+        load_collection_node = self.get_node_by_process_id("load_collection")
+        collection = collections.get_collection(load_collection_node["arguments"]["id"])
+        bands_metadata = collection.get("summaries", {}).get("eo:bands")
+
         results = convert_from_process_graph(
             process_graph,
             sample_type=self.sample_type.value,
             user_defined_processes=self.user_defined_processes,
+            bands_metadata=bands_metadata,
             encode_result=False,
         )
         evalscript = results[0]["evalscript"]
         evalscript.mosaicking = self.get_appropriate_mosaicking()
 
         if self.get_input_bands() is None:
-            load_collection_node = self.get_node_by_process_id("load_collection")
-            collection = collections.get_collection(load_collection_node["arguments"]["id"])
             all_bands = collection["cube:dimensions"]["bands"]["values"]
             evalscript.set_input_bands(all_bands)
 

@@ -378,6 +378,7 @@ def test_manage_batch_jobs(app_client, example_authorization_header_with_oidc):
 
 
 @with_mocked_auth
+@with_mocked_reporting
 def test_process_batch_job(app_client, example_process_graph, example_authorization_header_with_oidc):
     """
     - test /jobs/job_id/results endpoints
@@ -423,6 +424,7 @@ def test_process_batch_job(app_client, example_process_graph, example_authorizat
 
 
 @with_mocked_auth
+@with_mocked_reporting
 def test_result_not_encoded_secret(app_client, example_process_graph, example_authorization_header_with_oidc):
     """
     - test /result endpoint
@@ -633,6 +635,7 @@ def test_xyz_service(app_client, service_factory, example_process_graph_with_var
 
 # @responses.activate
 @with_mocked_auth
+@with_mocked_reporting
 @pytest.mark.parametrize(
     "tile_size",
     [None, 256, 512],
@@ -695,15 +698,7 @@ def test_xyz_service_2(app_client, service_factory, get_expected_data, authoriza
     # r = app_client.get(f"/service/xyz/{service_id}/{int(zoom)}/{int(tx)}/{int(ty)}")
     # assert r.status_code == 401, r.data
 
-    responses.add(
-        responses.POST,
-        "https://services.sentinel-hub.com/oauth/token",
-        body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
-    )
-    responses.add(
-        responses.POST,
-        re.compile(".*"),
-    )
+    responses.add(responses.POST, re.compile(".*"), headers={"x-processingunits-spent": "1"})
 
     r = app_client.get(
         f"/service/xyz/{service_id}/{int(zoom)}/{int(tx)}/{int(ty)}", headers={"Authorization": authorization_header}
@@ -1157,16 +1152,6 @@ def test_collections(app_client):
     ],
 )
 def test_fetching_correct_collection_type(app_client, collection_id, collection_type, request_url):
-    responses.add(
-        responses.POST,
-        "https://services.sentinel-hub.com/oauth/token",
-        body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
-    )
-    responses.add(
-        responses.POST,
-        re.compile(".*"),
-    )
-
     process_graph = {
         "loadco1": {
             "process_id": "load_collection",
@@ -1210,6 +1195,7 @@ def test_fetching_correct_collection_type(app_client, collection_id, collection_
 
 
 @with_mocked_auth
+@with_mocked_reporting
 @pytest.mark.parametrize(
     "collection_id,bands,should_raise_error",
     [
@@ -1301,7 +1287,7 @@ def test_validate_bands(
             "gtiff",
             None,
             30,
-            36,
+            12,
             2,
             2004,
             2004,
@@ -1314,7 +1300,7 @@ def test_validate_bands(
             "png",
             None,
             30,
-            36,
+            12,
             2,
             2004,
             2004,
@@ -1327,7 +1313,7 @@ def test_validate_bands(
             "jpeg",
             None,
             30,
-            11.25,
+            3.75,
             2,
             2004,
             2004,
@@ -1340,7 +1326,7 @@ def test_validate_bands(
             "gtiff",
             None,
             30,
-            36,
+            12,
             1,
             2004,
             2004,
@@ -1353,7 +1339,7 @@ def test_validate_bands(
             "png",
             None,
             30,
-            36,
+            12,
             1,
             2004,
             2004,
@@ -1366,7 +1352,7 @@ def test_validate_bands(
             "jpeg",
             None,
             30,
-            36,
+            12,
             1,
             2004,
             2004,
@@ -1379,7 +1365,7 @@ def test_validate_bands(
             "png",
             {"datatype": "uint16"},
             30,
-            36,
+            12,
             2,
             2004,
             2004,
@@ -1392,7 +1378,7 @@ def test_validate_bands(
             "gtiff",
             {"datatype": "byte"},
             30,
-            36,
+            12,
             2,
             2004,
             2004,
@@ -1405,7 +1391,7 @@ def test_validate_bands(
             "gtiff",
             {"datatype": "uint16"},
             30,
-            36,
+            12,
             2,
             2004,
             2004,
@@ -1430,11 +1416,6 @@ def test_batch_job_estimate(
     expected_file_size,
 ):
 
-    responses.add(
-        responses.POST,
-        re.compile("https://(services|creodias)(-uswest2)?.sentinel-hub.com/oauth/token"),
-        body=json.dumps({"access_token": "example", "expires_at": 2147483647}),
-    )
     responses.add(
         responses.POST,
         re.compile("https://(services|creodias)(-uswest2)?.sentinel-hub.com/api/v1/batch/process"),
@@ -1519,7 +1500,7 @@ def test_user_workspace(app_client, example_authorization_header_with_oidc, exam
 
     responses.add(
         responses.GET,
-        "https://aai.egi.eu/oidc/.well-known/openid-configuration",
+        "https://aai.egi.eu/auth/realms/egi/.well-known/openid-configuration",
         json={"userinfo_endpoint": "http://dummy_userinfo_endpoint"},
     )
     responses.add_callback(responses.GET, "http://dummy_userinfo_endpoint", callback=request_callback)
@@ -1728,7 +1709,8 @@ def test_job_with_deleted_batch_request(app_client, example_process_graph):
 
     job_data = JobsPersistence.get_by_id(record_id)
     batch_request_id = job_data["batch_request_id"]
-    sentinel_hub = SentinelHub(access_token=valid_sh_token)
+    user = SHUser(sh_access_token=valid_sh_token)
+    sentinel_hub = SentinelHub(user=user)
     sentinel_hub.delete_batch_job(batch_request_id)
 
     r = app_client.get("/jobs", headers=headers)
@@ -1766,6 +1748,7 @@ def test_job_with_deleted_batch_request(app_client, example_process_graph):
 
 
 @with_mocked_auth
+@with_mocked_reporting
 def test_using_user_defined_process(
     app_client, fahrenheit_to_celsius_process, process_graph_with_udp, example_authorization_header_with_oidc
 ):
@@ -1925,3 +1908,22 @@ def test_job_saving_data(
 
     all_data = bucket.get_data_from_bucket(prefix=batch_request_id)
     assert len(all_data) == 0
+
+
+@with_mocked_auth
+def test_describe_account(app_client, example_authorization_header_with_oidc):
+    r = app_client.get("/me")
+    assert r.status_code == 401, r.data
+
+    r = app_client.get("/me", headers=example_authorization_header_with_oidc)
+    assert r.status_code == 200, r.data
+    data = json.loads(r.data.decode("utf-8"))
+    assert "user_id" in data, data
+    assert data["user_id"] == "example-id"
+    assert "info" in data and "oidc_userinfo" in data["info"]
+
+    r = app_client.get("/me", headers={"Authorization": f"Bearer basic//{valid_sh_token}"})
+    assert r.status_code == 200, r.data
+    data = json.loads(r.data.decode("utf-8"))
+    assert "user_id" in data, data
+    assert "info" in data and "sh_userinfo" in data["info"]
