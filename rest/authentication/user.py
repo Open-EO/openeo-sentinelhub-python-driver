@@ -39,6 +39,9 @@ class OIDCUser(User):
         self.default_plan = OpenEOPBillingPlan.get_billing_plan(self.entitlements)
         self.session = central_user_sentinelhub_session
 
+    def __str__(self):
+        return f"{self.__class__.__name__}: {self.user_id}"
+
     @staticmethod
     def convert_entitlement(entitlement):
         namespace, rest = entitlement.split(":group:")

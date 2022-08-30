@@ -1,28 +1,24 @@
-import datetime
 import glob
 import json
-from logging import log, INFO, WARN, ERROR
+
+from logging import log, INFO, WARN
 import os
 import re
 import sys
-import time
-import traceback
+import uuid
 
-import requests
-import boto3
 import flask
-from flask import Flask, url_for, jsonify, g
+from flask import Flask, jsonify, g
 from flask_cors import CORS
 import beeline
 from beeline.middleware.flask import HoneyMiddleware
-from sentinelhub import BatchRequestStatus
 from pg_to_evalscript import list_supported_processes
 from werkzeug.exceptions import HTTPException
 
 import globalmaptiles
+from logs.logging import with_logging
 from schemas import (
     PutProcessGraphSchema,
-    PatchProcessGraphsSchema,
     PGValidationSchema,
     PostResultSchema,
     PostJobsSchema,
@@ -37,7 +33,6 @@ from processing.processing import (
     create_batch_job,
     start_batch_job,
     cancel_batch_job,
-    delete_batch_job,
     modify_batch_job,
     get_batch_job_estimate,
     get_batch_job_status,
@@ -47,8 +42,6 @@ from processing.openeo_process_errors import OpenEOProcessError
 from authentication.authentication import authentication_provider
 from openeoerrors import (
     OpenEOError,
-    AuthenticationRequired,
-    AuthenticationSchemeInvalid,
     ProcessUnsupported,
     JobNotFinished,
     JobNotFound,
@@ -62,7 +55,7 @@ from openeoerrors import (
 )
 from authentication.user import User
 from const import openEOBatchJobStatus, optional_process_parameters, SentinelHubBillingPlan
-from utils import get_all_process_definitions, get_data_from_bucket, convert_timestamp_to_simpler_format, get_roles
+from utils import get_all_process_definitions, convert_timestamp_to_simpler_format, get_roles
 from buckets import get_bucket
 
 from openeo_collections.collections import collections
@@ -109,7 +102,13 @@ def update_batch_request_id(job_id, job, new_batch_request_id):
     )
 
 
+@app.before_request
+def add_uuid_to_request():
+    flask.request.req_id = uuid.uuid4()
+
+
 @app.errorhandler(OpenEOError)
+@with_logging
 def openeo_exception_handler(error):
     return flask.make_response(
         jsonify(id=error.record_id, code=error.error_code, message=error.message, links=[]), error.http_code
@@ -117,15 +116,13 @@ def openeo_exception_handler(error):
 
 
 @app.errorhandler(Exception)
+@with_logging
 def handle_exception(e):
     # pass through HTTP errors
-    log(INFO, f"Error: {str(e)}")
     if isinstance(e, HTTPException):
         return e
 
     # now you're handling non-HTTP exceptions only
-    log(INFO, traceback.format_exc())
-
     if not issubclass(type(e), (OpenEOError, OpenEOProcessError, SHOpenEOError)):
         e = Internal(str(e))
 
@@ -133,6 +130,7 @@ def handle_exception(e):
 
 
 @app.route("/", methods=["GET"])
+@with_logging
 def api_root():
     return {
         "api_version": "1.0.0",
@@ -220,6 +218,7 @@ def get_links():
 
 
 @app.route("/credentials/basic", methods=["GET"])
+@with_logging
 def api_credentials_basic():
     access_token = authentication_provider.check_credentials_basic()
     return flask.make_response(
@@ -233,6 +232,7 @@ def api_credentials_basic():
 
 
 @app.route("/credentials/oidc", methods=["GET"])
+@with_logging
 def oidc_credentials():
     providers = {"providers": authentication_provider.get_oidc_providers()}
     return flask.make_response(jsonify(providers))
@@ -245,6 +245,7 @@ def describe_account():
 
 
 @app.route("/file_formats", methods=["GET"])
+@with_logging
 def api_file_formats():
     output_formats = {}
     for file in glob.iglob("output_formats/*.json"):
@@ -264,6 +265,7 @@ def api_file_formats():
 
 
 @app.route("/service_types", methods=["GET"])
+@with_logging
 def api_service_types():
     files = glob.iglob("service_types/*.json")
     result = {}
@@ -277,10 +279,11 @@ def api_service_types():
 
 @app.route("/process_graphs", methods=["GET"])
 @authentication_provider.with_bearer_auth
-def api_process_graphs(user):
+@with_logging
+def api_process_graphs():
     process_graphs = []
     links = []
-    for record in ProcessGraphsPersistence.query_by_user_id(user.user_id):
+    for record in ProcessGraphsPersistence.query_by_user_id(g.user.user_id):
         # We don't return process_graph and only return explicitly set optional values as documentation states:
         # > It is strongly RECOMMENDED to keep the response size small by omitting larger optional values from the objects
         process_item = {
@@ -306,7 +309,8 @@ def api_process_graphs(user):
 
 @app.route("/process_graphs/<process_graph_id>", methods=["GET", "DELETE", "PUT"])
 @authentication_provider.with_bearer_auth
-def api_process_graph(process_graph_id, user):
+@with_logging
+def api_process_graph(process_graph_id):
     if flask.request.method in ["GET", "HEAD"]:
         record = ProcessGraphsPersistence.get_by_id(process_graph_id)
         if record is None:
@@ -356,7 +360,7 @@ def api_process_graph(process_graph_id, user):
         if process_graph_id in list_supported_processes():
             raise BadRequest(f"Process with id '{process_graph_id}' already exists among pre-defined processes.")
 
-        data["user_id"] = user.user_id
+        data["user_id"] = g.user.user_id
         ProcessGraphsPersistence.create(data, process_graph_id)
 
         return flask.make_response("The user-defined process has been stored successfully.", 200)
@@ -364,6 +368,7 @@ def api_process_graph(process_graph_id, user):
 
 @app.route("/result", methods=["POST"])
 @authentication_provider.with_bearer_auth
+@with_logging
 def api_result():
     if flask.request.method == "POST":
         job_data = flask.request.get_json()
@@ -395,12 +400,13 @@ def api_result():
 
 @app.route("/jobs", methods=["GET", "POST"])
 @authentication_provider.with_bearer_auth
-def api_jobs(user):
+@with_logging
+def api_jobs():
     if flask.request.method == "GET":
         jobs = []
         links = []
 
-        for record in JobsPersistence.query_by_user_id(user.user_id):
+        for record in JobsPersistence.query_by_user_id(g.user.user_id):
             status, _ = get_batch_job_status(record["batch_request_id"], record["deployment_endpoint"])
 
             jobs.append(
@@ -443,7 +449,7 @@ def api_jobs(user):
         batch_request_id, deployment_endpoint = create_batch_job(data["process"])
 
         data["batch_request_id"] = batch_request_id
-        data["user_id"] = user.user_id
+        data["user_id"] = g.user.user_id
         data["deployment_endpoint"] = deployment_endpoint
 
         record_id = JobsPersistence.create(data)
@@ -457,9 +463,10 @@ def api_jobs(user):
 
 @app.route("/jobs/<job_id>", methods=["GET", "PATCH", "DELETE"])
 @authentication_provider.with_bearer_auth
-def api_batch_job(job_id, user):
+@with_logging
+def api_batch_job(job_id):
     job = JobsPersistence.get_by_id(job_id)
-    if job is None or job["user_id"] != user.user_id:
+    if job is None or job["user_id"] != g.user.user_id:
         raise JobNotFound()
 
     if flask.request.method == "GET":
@@ -511,9 +518,10 @@ def api_batch_job(job_id, user):
 
 @app.route("/jobs/<job_id>/results", methods=["POST", "GET", "DELETE"])
 @authentication_provider.with_bearer_auth
-def add_job_to_queue(job_id, user):
+@with_logging
+def add_job_to_queue(job_id):
     job = JobsPersistence.get_by_id(job_id)
-    if job is None or job["user_id"] != user.user_id:
+    if job is None or job["user_id"] != g.user.user_id:
         raise JobNotFound()
 
     if flask.request.method == "POST":
@@ -580,6 +588,7 @@ def add_job_to_queue(job_id, user):
 
 @app.route("/jobs/<job_id>/estimate", methods=["GET"])
 @authentication_provider.with_bearer_auth
+@with_logging
 def estimate_job_cost(job_id):
     job = JobsPersistence.get_by_id(job_id)
     if job is None:
@@ -596,12 +605,13 @@ def estimate_job_cost(job_id):
 
 @app.route("/services", methods=["GET", "POST"])
 @authentication_provider.with_bearer_auth
-def api_services(user):
+@with_logging
+def api_services():
     if flask.request.method == "GET":
         services = []
         links = []
 
-        for record in ServicesPersistence.query_by_user_id(user.user_id):
+        for record in ServicesPersistence.query_by_user_id(g.user.user_id):
             service_item = {
                 "id": record["id"],
                 "title": record.get("title", None),
@@ -647,7 +657,7 @@ def api_services(user):
         if invalid_node_id is not None:
             raise ProcessUnsupported(data["process"]["process_graph"][invalid_node_id]["process_id"])
 
-        data["user_id"] = user.user_id
+        data["user_id"] = g.user.user_id
         record_id = ServicesPersistence.create(data)
 
         # add requested headers to 201 response:
@@ -659,9 +669,10 @@ def api_services(user):
 
 @app.route("/services/<service_id>", methods=["GET", "PATCH", "DELETE"])
 @authentication_provider.with_bearer_auth
-def api_service(service_id, user):
+@with_logging
+def api_service(service_id):
     record = ServicesPersistence.get_by_id(service_id)
-    if record is None or record["user_id"] != user.user_id:
+    if record is None or record["user_id"] != g.user.user_id:
         raise ServiceNotFound(service_id)
 
     if flask.request.method == "GET":
@@ -713,6 +724,7 @@ def api_service(service_id, user):
 
 
 @app.route("/service/xyz/<service_id>/<int:zoom>/<int:tx>/<int:ty>", methods=["GET"])
+@with_logging
 def api_execute_service(service_id, zoom, tx, ty):
     record = ServicesPersistence.get_by_id(service_id)
     if record is None or record["service_type"].lower() != "xyz":
@@ -744,6 +756,7 @@ def api_execute_service(service_id, zoom, tx, ty):
 
 
 @app.route("/processes", methods=["GET"])
+@with_logging
 def available_processes():
     processes = get_all_process_definitions()
     processes.sort(key=lambda process: process["id"])
@@ -758,13 +771,14 @@ def available_processes():
 
 
 @app.route("/collections", methods=["GET"])
+@with_logging
 def available_collections():
-
     all_collections = collections.get_collections_basic_info()
     return flask.make_response(jsonify(collections=all_collections, links=[]), 200)
 
 
 @app.route("/collections/<collection_id>", methods=["GET"])
+@with_logging
 def collection_information(collection_id):
     collection = collections.get_collection(collection_id)
 
@@ -775,6 +789,7 @@ def collection_information(collection_id):
 
 
 @app.route("/validation", methods=["POST"])
+@with_logging
 def validate_process_graph():
     data = flask.request.get_json()
 
@@ -793,6 +808,7 @@ def validate_process_graph():
 
 
 @app.route("/.well-known/openeo", methods=["GET"])
+@with_logging
 def well_known():
     return flask.make_response(
         jsonify(versions=[{"api_version": "1.0.0", "production": False, "url": flask.request.url_root}]), 200
@@ -800,6 +816,7 @@ def well_known():
 
 
 @app.route("/health", methods=["GET"])
+@with_logging
 def return_health():
     return flask.make_response({"status": "OK"}, 200)
 
@@ -811,4 +828,4 @@ if __name__ == "__main__":
         print("Running as HTTPS!")
         app.run(ssl_context="adhoc")
     else:
-        app.run()
+        app.run(debug=True)
