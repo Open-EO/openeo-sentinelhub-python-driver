@@ -95,6 +95,7 @@ deploy-testing-rest-lambda:
     - sed -i "s#@@USAGE_REPORTING_AUTH_URL_TESTING@@#$USAGE_REPORTING_AUTH_URL_TESTING#g" zappa_settings.json
     - sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_ID_TESTING@@#$USAGE_REPORTING_AUTH_CLIENT_ID_TESTING#g" zappa_settings.json
     - sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING@@#$USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING#g" zappa_settings.json
+    - sed -i "s#@@LOGGING_LEVEL@@#$LOGGING_LEVEL_TESTING#g" zappa_settings.json
     - pipenv run zappa deploy testing || pipenv run zappa update testing
     # ensure tables are created:
     - export AWS_ACCESS_KEY_ID="$TESTING_AWS_ACCESS_KEY_ID"
@@ -140,6 +141,7 @@ deploy-production-rest-lambda:
     - sed -i "s#@@USAGE_REPORTING_AUTH_URL_PRODUCTION@@#$USAGE_REPORTING_AUTH_URL_PRODUCTION#g" zappa_settings.json
     - sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_ID_PRODUCTION@@#$USAGE_REPORTING_AUTH_CLIENT_ID_PRODUCTION#g" zappa_settings.json
     - sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_SECRET_PRODUCTION@@#$USAGE_REPORTING_AUTH_CLIENT_SECRET_PRODUCTION#g" zappa_settings.json
+    - sed -i "s#@@LOGGING_LEVEL@@#$LOGGING_LEVEL_PRODUCTION#g" zappa_settings.json
     - pipenv run zappa deploy production || pipenv run zappa update production
     # ensure tables are created:
     - export AWS_ACCESS_KEY_ID="$PRODDATA_AWS_ACCESS_KEY_ID"
