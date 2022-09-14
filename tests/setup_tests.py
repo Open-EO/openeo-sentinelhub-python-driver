@@ -82,13 +82,14 @@ def with_mocked_estimate(func):
     @responses.activate
     def decorated_function(*args, **kwargs):
         uuid_regex = r"[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$"
+
         def request_callback(request):
             batch_request_id_search = re.search(uuid_regex, request.path_url)
             batch_request_id = batch_request_id_search.group()
             auth_header = request.headers.get("Authorization")
             if auth_header is None:
-                return (401)
-                
+                return 401
+
             resp_body = create_mocked_batch_request(batch_request_id)
             return (200, request.headers, json.dumps(resp_body))
 
