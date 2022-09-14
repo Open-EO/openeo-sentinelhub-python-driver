@@ -379,6 +379,7 @@ def test_manage_batch_jobs(app_client, example_authorization_header_with_oidc):
 
 @with_mocked_auth
 @with_mocked_reporting
+@with_mocked_estimate
 def test_process_batch_job(app_client, example_process_graph, example_authorization_header_with_oidc):
     """
     - test /jobs/job_id/results endpoints
