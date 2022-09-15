@@ -1750,6 +1750,7 @@ def test_job_with_deleted_batch_request(app_client, example_process_graph):
 
 @with_mocked_auth
 @with_mocked_reporting
+@with_mocked_batch_request_info
 def test_using_user_defined_process(
     app_client, fahrenheit_to_celsius_process, process_graph_with_udp, example_authorization_header_with_oidc
 ):
