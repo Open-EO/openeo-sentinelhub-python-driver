@@ -45,6 +45,7 @@ class ResultsBucket:
                 "Bucket": self.bucket_name,
                 "Key": object_key,
             },
+            ExpiresIn=604800,  # equals 7 days, part of federation agreement
         )
 
 
