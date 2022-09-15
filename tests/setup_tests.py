@@ -77,7 +77,7 @@ def with_mocked_auth(func):
     return decorated_function
 
 
-def with_mocked_estimate(func):
+def with_mocked_batch_request_info(func):
     @wraps(func)
     @responses.activate
     def decorated_function(*args, **kwargs):
