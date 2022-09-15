@@ -99,7 +99,7 @@ def with_mocked_batch_request_info(func):
             url,
             callback=request_callback,
         )
-        
+
         responses.add_passthru(re.compile(".*"))
         return func(*args, **kwargs)
 
