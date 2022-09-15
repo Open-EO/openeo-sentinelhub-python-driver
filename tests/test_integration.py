@@ -1689,7 +1689,7 @@ def test_user_token_user(app_client, example_process_graph):
     r = app_client.post("/jobs", data=json.dumps(data), headers=headers, content_type="application/json")
     assert r.status_code == 201, r.data
 
-
+@with_mocked_batch_request_info
 def test_job_with_deleted_batch_request(app_client, example_process_graph):
     data = {
         "process": {
