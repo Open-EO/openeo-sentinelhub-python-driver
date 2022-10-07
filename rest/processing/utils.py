@@ -287,3 +287,27 @@ def get_spatial_info_from_partial_processes(partially_supported_processes, proce
             final_resampling_method = resampling_method
 
     return final_geometry, final_crs, final_resolution, final_resampling_method
+
+
+def get_node_by_process_id(process_graph, process_id):
+    for node in process_graph.values():
+        if node["process_id"] == process_id:
+            return node
+
+
+def overwrite_spatial_extent_without_parameters(process_graph):
+    # https://github.com/Open-EO/openeo-web-editor/issues/277#issuecomment-1246989125
+    required_params = ["spatial_extent_west", "spatial_extent_south", "spatial_extent_east", "spatial_extent_north"]
+    load_collection_node = get_node_by_process_id(process_graph, "load_collection")
+
+    for cardinal_direction in ["east", "west", "south", "north"]:
+        cardinal_direction_value = load_collection_node["arguments"]["spatial_extent"][cardinal_direction]
+        if isinstance(cardinal_direction_value, dict) and "from_parameter" in cardinal_direction_value:
+            return process_graph
+
+    for cardinal_direction in ["east", "west", "south", "north"]:
+        load_collection_node["arguments"]["spatial_extent"][cardinal_direction] = {
+            "from_parameter": f"spatial_extent_{cardinal_direction}"
+        }
+
+    return process_graph

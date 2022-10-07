@@ -2,14 +2,6 @@ from setup_tests import *
 
 
 @pytest.fixture
-def app_client():
-    # set env vars used by the app:
-    os.environ["BACKEND_VERSION"] = "v6.7.8"
-    app.testing = True
-    return app.test_client()
-
-
-@pytest.fixture
 def get_expected_data():
     def _generate(base_filename):
         filename = os.path.join(FIXTURES_FOLDER, base_filename)
@@ -118,31 +110,6 @@ def get_example_process_graph_with_bands_and_collection():
 
 
 @pytest.fixture
-def service_factory(app_client, example_authorization_header_with_oidc):
-    def wrapped(process_graph, title="MyService", service_type="xyz", tile_size=None):
-        data = {
-            "title": title,
-            "process": {
-                "process_graph": process_graph,
-            },
-            "type": service_type,
-        }
-        if tile_size is not None:
-            data["configuration"] = {"tile_size": tile_size}
-        r = app_client.post(
-            "/services",
-            data=json.dumps(data),
-            content_type="application/json",
-            headers=example_authorization_header_with_oidc,
-        )
-        assert r.status_code == 201, r.data
-        service_id = r.headers["OpenEO-Identifier"]
-        return service_id
-
-    return wrapped
-
-
-@pytest.fixture
 def authorization_header(app_client):
     SH_CLIENT_ID = os.environ.get("SH_CLIENT_ID", None)
     SH_CLIENT_SECRET = os.environ.get("SH_CLIENT_SECRET", None)
@@ -179,11 +146,6 @@ def authorization_header_base64(app_client):
     assert r.status_code == 200, r.data
     j = r.json
     return f'Bearer basic//{j["access_token"]}'
-
-
-@pytest.fixture
-def example_authorization_header_with_oidc(oidc_provider_id="egi"):
-    return {"Authorization": f"Bearer oidc/{oidc_provider_id}/<token>"}
 
 
 ###################################

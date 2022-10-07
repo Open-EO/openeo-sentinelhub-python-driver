@@ -37,7 +37,7 @@ from processing.processing import (
     get_batch_job_estimate,
     get_batch_job_status,
 )
-from processing.utils import inject_variables_in_process_graph
+from processing.utils import inject_variables_in_process_graph, overwrite_spatial_extent_without_parameters
 from processing.openeo_process_errors import OpenEOProcessError
 from authentication.authentication import authentication_provider
 from openeoerrors import (
@@ -653,6 +653,7 @@ def api_services():
             return flask.make_response("Invalid request: {}".format(errors), 400)
 
         invalid_node_id = check_process_graph_conversion_validity(data["process"]["process_graph"])
+        data["process"]["process_graph"] = overwrite_spatial_extent_without_parameters(data["process"]["process_graph"])
 
         if invalid_node_id is not None:
             raise ProcessUnsupported(data["process"]["process_graph"][invalid_node_id]["process_id"])
@@ -712,6 +713,9 @@ def api_service(service_id):
             invalid_node_id = check_process_graph_conversion_validity(data["process"]["process_graph"])
             if invalid_node_id is not None:
                 raise ProcessUnsupported(data["process"]["process_graph"][invalid_node_id]["process_id"])
+            data["process"]["process_graph"] = overwrite_spatial_extent_without_parameters(
+                data["process"]["process_graph"]
+            )
 
         for key in data:
             ServicesPersistence.update_key(service_id, key, data[key])
