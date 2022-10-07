@@ -52,13 +52,12 @@ def example_process_graph_with_variables():
             "arguments": {
                 "id": "sentinel-2-l1c",
                 "spatial_extent": {
-                    "west": {"variable_id": "spatial_extent_west"},
-                    "east": {"variable_id": "spatial_extent_east"},
-                    "north": {"variable_id": "spatial_extent_north"},
-                    "south": {"variable_id": "spatial_extent_south"},
+                    "west": {"from_parameter": "spatial_extent_west"},
+                    "east": {"from_parameter": "spatial_extent_east"},
+                    "north": {"from_parameter": "spatial_extent_north"},
+                    "south": {"from_parameter": "spatial_extent_south"},
                 },
                 "temporal_extent": ["2019-08-16", "2019-08-18"],
-                "options": {"width": {"variable_id": "tile_size"}, "height": {"variable_id": "tile_size"}},
             },
         },
         "ndvi1": {"process_id": "ndvi", "arguments": {"data": {"from_node": "loadco1"}}},
@@ -433,7 +432,7 @@ def test_result_base64_encoded_secret(app_client, example_process_graph, authori
 
 
 @with_mocked_auth
-def test_services_crud(app_client, example_process_graph, example_authorization_header_with_oidc):
+def test_services_crud(app_client, example_process_graph_with_variables, example_authorization_header_with_oidc):
     """
     - test /services endpoint
     """
@@ -446,7 +445,7 @@ def test_services_crud(app_client, example_process_graph, example_authorization_
     data = {
         "title": "MyService",
         "process": {
-            "process_graph": example_process_graph,
+            "process_graph": example_process_graph_with_variables,
         },
         "type": "xyz",
     }
@@ -502,7 +501,7 @@ def test_services_crud(app_client, example_process_graph, example_authorization_
     expected.update(
         {
             "process": {
-                "process_graph": example_process_graph,
+                "process_graph": example_process_graph_with_variables,
             },
             "attributes": {},
             "created": actual["created"],
@@ -1768,8 +1767,8 @@ def test_using_user_defined_process(
     assert r.status_code == 201, r.data
     service_id = r.headers["OpenEO-Identifier"]
 
-    r = app_client.get("/service/xyz/{}/20/100/100".format(service_id))
-    assert r.status_code == 200
+    r = app_client.get("/service/xyz/{}/16/35321/23318".format(service_id))
+    assert r.status_code == 200, r.data
 
 
 def test_process_graph_with_partially_defined_processes(app_client, get_expected_data):
