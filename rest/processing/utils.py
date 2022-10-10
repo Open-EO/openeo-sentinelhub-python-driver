@@ -297,7 +297,6 @@ def get_node_by_process_id(process_graph, process_id):
 
 def overwrite_spatial_extent_without_parameters(process_graph):
     # https://github.com/Open-EO/openeo-web-editor/issues/277#issuecomment-1246989125
-    required_params = ["spatial_extent_west", "spatial_extent_south", "spatial_extent_east", "spatial_extent_north"]
     load_collection_node = get_node_by_process_id(process_graph, "load_collection")
 
     for cardinal_direction in ["east", "west", "south", "north"]:
