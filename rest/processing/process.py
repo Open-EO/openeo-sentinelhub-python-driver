@@ -38,6 +38,7 @@ from processing.utils import (
     validate_geojson,
     parse_geojson,
     get_spatial_info_from_partial_processes,
+    get_node_by_process_id,
 )
 from authentication.user import User
 
@@ -149,9 +150,7 @@ class Process:
         raise Internal(f"Collection {collection_id} could not be mapped to a Sentinel Hub collection type.")
 
     def get_node_by_process_id(self, process_id):
-        for node in self.process_graph.values():
-            if node["process_id"] == process_id:
-                return node
+        return get_node_by_process_id(self.process_graph, process_id)
 
     def get_collection(self):
         load_collection_node = self.get_node_by_process_id("load_collection")

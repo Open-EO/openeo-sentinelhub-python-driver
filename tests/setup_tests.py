@@ -6,6 +6,7 @@ import sys
 import time
 import re
 from functools import wraps
+from copy import deepcopy
 
 import pytest
 import requests
@@ -266,6 +267,44 @@ def process_graph_with_udp():
             "result": True,
         },
     }
+
+
+@pytest.fixture
+def service_factory(app_client, example_authorization_header_with_oidc):
+    def wrapped(process_graph, title="MyService", service_type="xyz", tile_size=None):
+        data = {
+            "title": title,
+            "process": {
+                "process_graph": process_graph,
+            },
+            "type": service_type,
+        }
+        if tile_size is not None:
+            data["configuration"] = {"tile_size": tile_size}
+        r = app_client.post(
+            "/services",
+            data=json.dumps(data),
+            content_type="application/json",
+            headers=example_authorization_header_with_oidc,
+        )
+        assert r.status_code == 201, r.data
+        service_id = r.headers["OpenEO-Identifier"]
+        return service_id
+
+    return wrapped
+
+
+@pytest.fixture
+def app_client():
+    # set env vars used by the app:
+    os.environ["BACKEND_VERSION"] = "v6.7.8"
+    app.testing = True
+    return app.test_client()
+
+
+@pytest.fixture
+def example_authorization_header_with_oidc(oidc_provider_id="egi"):
+    return {"Authorization": f"Bearer oidc/{oidc_provider_id}/<token>"}
 
 
 def setup_function(function):

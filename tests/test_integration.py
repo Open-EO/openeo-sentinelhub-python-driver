@@ -2,14 +2,6 @@ from setup_tests import *
 
 
 @pytest.fixture
-def app_client():
-    # set env vars used by the app:
-    os.environ["BACKEND_VERSION"] = "v6.7.8"
-    app.testing = True
-    return app.test_client()
-
-
-@pytest.fixture
 def get_expected_data():
     def _generate(base_filename):
         filename = os.path.join(FIXTURES_FOLDER, base_filename)
@@ -60,13 +52,12 @@ def example_process_graph_with_variables():
             "arguments": {
                 "id": "sentinel-2-l1c",
                 "spatial_extent": {
-                    "west": {"variable_id": "spatial_extent_west"},
-                    "east": {"variable_id": "spatial_extent_east"},
-                    "north": {"variable_id": "spatial_extent_north"},
-                    "south": {"variable_id": "spatial_extent_south"},
+                    "west": {"from_parameter": "spatial_extent_west"},
+                    "east": {"from_parameter": "spatial_extent_east"},
+                    "north": {"from_parameter": "spatial_extent_north"},
+                    "south": {"from_parameter": "spatial_extent_south"},
                 },
                 "temporal_extent": ["2019-08-16", "2019-08-18"],
-                "options": {"width": {"variable_id": "tile_size"}, "height": {"variable_id": "tile_size"}},
             },
         },
         "ndvi1": {"process_id": "ndvi", "arguments": {"data": {"from_node": "loadco1"}}},
@@ -118,31 +109,6 @@ def get_example_process_graph_with_bands_and_collection():
 
 
 @pytest.fixture
-def service_factory(app_client, example_authorization_header_with_oidc):
-    def wrapped(process_graph, title="MyService", service_type="xyz", tile_size=None):
-        data = {
-            "title": title,
-            "process": {
-                "process_graph": process_graph,
-            },
-            "type": service_type,
-        }
-        if tile_size is not None:
-            data["configuration"] = {"tile_size": tile_size}
-        r = app_client.post(
-            "/services",
-            data=json.dumps(data),
-            content_type="application/json",
-            headers=example_authorization_header_with_oidc,
-        )
-        assert r.status_code == 201, r.data
-        service_id = r.headers["OpenEO-Identifier"]
-        return service_id
-
-    return wrapped
-
-
-@pytest.fixture
 def authorization_header(app_client):
     SH_CLIENT_ID = os.environ.get("SH_CLIENT_ID", None)
     SH_CLIENT_SECRET = os.environ.get("SH_CLIENT_SECRET", None)
@@ -179,11 +145,6 @@ def authorization_header_base64(app_client):
     assert r.status_code == 200, r.data
     j = r.json
     return f'Bearer basic//{j["access_token"]}'
-
-
-@pytest.fixture
-def example_authorization_header_with_oidc(oidc_provider_id="egi"):
-    return {"Authorization": f"Bearer oidc/{oidc_provider_id}/<token>"}
 
 
 ###################################
@@ -471,7 +432,7 @@ def test_result_base64_encoded_secret(app_client, example_process_graph, authori
 
 
 @with_mocked_auth
-def test_services_crud(app_client, example_process_graph, example_authorization_header_with_oidc):
+def test_services_crud(app_client, example_process_graph_with_variables, example_authorization_header_with_oidc):
     """
     - test /services endpoint
     """
@@ -484,7 +445,7 @@ def test_services_crud(app_client, example_process_graph, example_authorization_
     data = {
         "title": "MyService",
         "process": {
-            "process_graph": example_process_graph,
+            "process_graph": example_process_graph_with_variables,
         },
         "type": "xyz",
     }
@@ -540,7 +501,7 @@ def test_services_crud(app_client, example_process_graph, example_authorization_
     expected.update(
         {
             "process": {
-                "process_graph": example_process_graph,
+                "process_graph": example_process_graph_with_variables,
             },
             "attributes": {},
             "created": actual["created"],
@@ -1806,8 +1767,8 @@ def test_using_user_defined_process(
     assert r.status_code == 201, r.data
     service_id = r.headers["OpenEO-Identifier"]
 
-    r = app_client.get("/service/xyz/{}/20/100/100".format(service_id))
-    assert r.status_code == 200
+    r = app_client.get("/service/xyz/{}/16/35321/23318".format(service_id))
+    assert r.status_code == 200, r.data
 
 
 def test_process_graph_with_partially_defined_processes(app_client, get_expected_data):
