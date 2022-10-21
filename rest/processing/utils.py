@@ -299,10 +299,13 @@ def overwrite_spatial_extent_without_parameters(process_graph):
     # https://github.com/Open-EO/openeo-web-editor/issues/277#issuecomment-1246989125
     load_collection_node = get_node_by_process_id(process_graph, "load_collection")
 
-    for cardinal_direction in ["east", "west", "south", "north"]:
-        cardinal_direction_value = load_collection_node["arguments"]["spatial_extent"][cardinal_direction]
-        if isinstance(cardinal_direction_value, dict) and "from_parameter" in cardinal_direction_value:
-            return process_graph
+    if load_collection_node["arguments"]["spatial_extent"] is None:
+        load_collection_node["arguments"]["spatial_extent"] = {}
+    else:
+        for cardinal_direction in ["east", "west", "south", "north"]:
+            cardinal_direction_value = load_collection_node["arguments"]["spatial_extent"][cardinal_direction]
+            if isinstance(cardinal_direction_value, dict) and "from_parameter" in cardinal_direction_value:
+                return process_graph
 
     for cardinal_direction in ["east", "west", "south", "north"]:
         load_collection_node["arguments"]["spatial_extent"][cardinal_direction] = {
