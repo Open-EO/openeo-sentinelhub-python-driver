@@ -263,7 +263,7 @@ def process_graph_with_udp():
         },
         "result1": {
             "process_id": "save_result",
-            "arguments": {"data": {"from_node": "apply"}, "format": "jpeg"},
+            "arguments": {"data": {"from_node": "apply"}, "format": "gtiff"},
             "result": True,
         },
     }
