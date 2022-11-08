@@ -1228,7 +1228,7 @@ def test_validate_bands(
     )
 
     if should_raise_error:
-        response_data = r.data.decode("utf-8")
+        response_data = json.loads(r.data.decode("utf-8"))
         assert r.status_code == 400, r.data
         assert (
             f"Invalid process graph: Invalid process graph: 'non-existent band' is not a valid band name for collection '{collection_id}'"
