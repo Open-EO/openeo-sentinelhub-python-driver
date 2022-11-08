@@ -1218,7 +1218,7 @@ def test_validate_bands(
         assert r.status_code == 400, r.data
         assert (
             f"Invalid process graph: Invalid process graph: 'non-existent band' is not a valid band name for collection '{collection_id}'"
-            in response_data["message"]["process"]["process_graph"][0]
+            in response_data["message"]
         )
     else:
         assert r.status_code == 200, r.data
@@ -1232,7 +1232,7 @@ def test_validate_bands(
         assert r.status_code == 400, r.data
         assert (
             f"Invalid process graph: Invalid process graph: 'non-existent band' is not a valid band name for collection '{collection_id}'"
-            in response_data
+            in response_data["message"]
         )
     else:
         assert r.status_code == 201, r.data
