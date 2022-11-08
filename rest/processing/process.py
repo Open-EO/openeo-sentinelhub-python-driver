@@ -346,8 +346,6 @@ class Process:
         else:
             resolution = self.get_highest_resolution()
         width, height = bbox_to_dimensions(bbox, resolution)
-        if width == 0 or height == 0:
-            raise ImageDimensionInvalid(width, height)
         return width, height
 
     def get_highest_resolution(self):
@@ -475,6 +473,9 @@ class Process:
             raise ProcessGraphComplexity(
                 f"estimated size of generated output of {estimated_file_size} bytes exceeds maximum supported size of {self.MAXIMUM_SYNC_FILESIZE_BYTES} bytes."
             )
+
+        if self.width == 0 or self.height == 0:
+            raise ImageDimensionInvalid(self.width, self.height)
 
         return self.sentinel_hub.create_processing_request(
             bbox=self.bbox,
