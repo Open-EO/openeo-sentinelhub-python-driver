@@ -380,7 +380,7 @@ def api_result():
             if errors.get("process").get("process_graph"):
                 return flask.make_response(
                     jsonify(id=None, code=400, message=errors.get("process").get("process_graph")[0], links=[]), 400
-            )
+                )
 
         invalid_node_id = check_process_graph_conversion_validity(job_data["process"]["process_graph"])
 
@@ -443,7 +443,7 @@ def api_jobs():
             if errors.get("process").get("process_graph"):
                 return flask.make_response(
                     jsonify(id=None, code=400, message=errors.get("process").get("process_graph")[0], links=[]), 400
-            )
+                )
 
         invalid_node_id = check_process_graph_conversion_validity(data["process"]["process_graph"])
 
@@ -501,7 +501,7 @@ def api_batch_job(job_id):
             if errors.get("process").get("process_graph"):
                 return flask.make_response(
                     jsonify(id=None, code=400, message=errors.get("process").get("process_graph")[0], links=[]), 400
-            )
+                )
 
         if data.get("process"):
             new_batch_request_id, deployment_endpoint = modify_batch_job(data["process"])
@@ -659,7 +659,7 @@ def api_services():
             if errors.get("process").get("process_graph"):
                 return flask.make_response(
                     jsonify(id=None, code=400, message=errors.get("process").get("process_graph")[0], links=[]), 400
-            )
+                )
 
         invalid_node_id = check_process_graph_conversion_validity(data["process"]["process_graph"])
         data["process"]["process_graph"] = overwrite_spatial_extent_without_parameters(data["process"]["process_graph"])
@@ -718,7 +718,7 @@ def api_service(service_id):
             if errors.get("process").get("process_graph"):
                 return flask.make_response(
                     jsonify(id=None, code=400, message=errors.get("process").get("process_graph")[0], links=[]), 400
-            )
+                )
 
         if data.get("process"):
             invalid_node_id = check_process_graph_conversion_validity(data["process"]["process_graph"])
@@ -812,7 +812,7 @@ def validate_process_graph():
     errors = process_graph_schema.validate(data)
 
     validation_errors = []
-    
+
     if errors.get("process_graph"):
         for error in errors.get("process_graph"):
             validation_errors.append({"message": error, "code": "ValidationError"})
