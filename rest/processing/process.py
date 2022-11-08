@@ -25,6 +25,7 @@ from openeoerrors import (
     ProcessGraphComplexity,
     TemporalExtentError,
     BadRequest,
+    ImageDimensionInvalid,
 )
 from processing.partially_supported_processes import partially_supported_processes
 from processing.utils import (
@@ -345,6 +346,8 @@ class Process:
         else:
             resolution = self.get_highest_resolution()
         width, height = bbox_to_dimensions(bbox, resolution)
+        if width == 0 or height == 0:
+            raise ImageDimensionInvalid(width, height)
         return width, height
 
     def get_highest_resolution(self):

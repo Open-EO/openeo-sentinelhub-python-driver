@@ -145,3 +145,9 @@ class PartiallySupportedProcessInvalid(SHOpenEOError):
 
     error_code = "PartiallySupportedProcessInvalid"
     http_code = 400
+
+class ImageDimensionInvalid(SHOpenEOError):
+    def __init__(self, width, height) -> None:
+        self.message = f"Requested image of {width}x{height} is below the limit of 1x1"
+    error_code = "ImageDimensionInvalid"
+    http_code = 400
