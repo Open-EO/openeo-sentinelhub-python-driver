@@ -2,7 +2,7 @@ import warnings
 import math
 from datetime import datetime, date, timedelta, timezone
 
-from sentinelhub import DataCollection, MimeType, BBox, Geometry, CRS
+from sentinelhub import DataCollection, MimeType, BBox, Geometry, CRS, ServiceUrl
 from sentinelhub.time_utils import parse_time
 from pg_to_evalscript import convert_from_process_graph
 from sentinelhub.geo_utils import bbox_to_dimensions
@@ -41,6 +41,14 @@ from processing.utils import (
     get_node_by_process_id,
 )
 from authentication.user import User
+
+
+HLS_COLLECTION = DataCollection.define(
+    "hls",
+    api_id="hls",
+    service_url=ServiceUrl.USWEST,
+    collection_type="hls",
+)
 
 
 class Process:
@@ -142,6 +150,9 @@ class Process:
 
         if collection_type.startswith("batch"):
             return self._create_custom_datacollection(collection_type, collection_info, "batch")
+
+        if collection_type.startswith("hls"):
+            return HLS_COLLECTION
 
         for data_collection in DataCollection:
             if data_collection.value.api_id == collection_type:
