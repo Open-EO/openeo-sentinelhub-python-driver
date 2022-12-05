@@ -1897,10 +1897,20 @@ def test_describe_account(app_client, example_authorization_header_with_oidc):
     "spatial_extent, is_error",
     [
         ({"east": 6.11, "north": 46.17, "south": 46.16, "west": 6.1}, False),
-        ({"east": 6.11111111111113, "north": 46.11111111111113, "south": 46.11111111111112, "west": 6.11111111111112}, True),
+        (
+            {
+                "east": 6.11111111111113,
+                "north": 46.11111111111113,
+                "south": 46.11111111111112,
+                "west": 6.11111111111112,
+            },
+            True,
+        ),
     ],
 )
-def test_sync_jobs_imagesize(app_client, example_process_graph, example_authorization_header_with_oidc, spatial_extent, is_error):
+def test_sync_jobs_imagesize(
+    app_client, example_process_graph, example_authorization_header_with_oidc, spatial_extent, is_error
+):
     """ """
     example_process_graph["loadco1"]["arguments"]["spatial_extent"] = spatial_extent
 
