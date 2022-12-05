@@ -1890,3 +1890,34 @@ def test_describe_account(app_client, example_authorization_header_with_oidc):
     data = json.loads(r.data.decode("utf-8"))
     assert "user_id" in data, data
     assert "info" in data and "sh_userinfo" in data["info"]
+
+
+@with_mocked_auth
+@pytest.mark.parametrize(
+    "spatial_extent, is_error",
+    [
+        ({"east": 6.11, "north": 46.17, "south": 46.16, "west": 6.1}, False),
+        ({"east": 6.11111111111113, "north": 46.11111111111113, "south": 46.11111111111112, "west": 6.11111111111112}, True),
+    ],
+)
+def test_sync_jobs_imagesize(app_client, example_process_graph, example_authorization_header_with_oidc, spatial_extent, is_error):
+    """ """
+    example_process_graph["loadco1"]["arguments"]["spatial_extent"] = spatial_extent
+
+    data = {
+        "process": {
+            "process_graph": example_process_graph,
+        }
+    }
+
+    r = app_client.post(
+        "/result",
+        data=json.dumps(data),
+        headers=example_authorization_header_with_oidc,
+        content_type="application/json",
+    )
+    if is_error:
+        assert r.status_code == ImageDimensionInvalid.http_code, r.data
+        assert ImageDimensionInvalid.error_code in r.data.decode("utf-8")
+    else:
+        assert r.status_code == 200, r.data

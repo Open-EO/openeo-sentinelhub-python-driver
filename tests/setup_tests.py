@@ -27,7 +27,7 @@ from authentication.user import SHUser, User
 from processing.process import Process
 from processing.sentinel_hub import SentinelHub
 from processing.processing import delete_batch_job
-from openeoerrors import ProcessGraphComplexity
+from openeoerrors import ProcessGraphComplexity, ImageDimensionInvalid
 from buckets import get_bucket
 
 
