@@ -352,7 +352,8 @@ def api_process_graph(process_graph_id):
             errors = "Process graph id does not match the required pattern"
 
         if errors:
-            raise BadRequest(str(errors))
+            if errors.get("_schema"):
+                raise BadRequest(errors.get("_schema")[0])
 
         if "id" in data and data["id"] != process_graph_id:
             data["id"] = process_graph_id
