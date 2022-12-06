@@ -25,6 +25,7 @@ from openeoerrors import (
     ProcessGraphComplexity,
     TemporalExtentError,
     BadRequest,
+    ImageDimensionInvalid,
 )
 from processing.partially_supported_processes import partially_supported_processes
 from processing.utils import (
@@ -483,6 +484,9 @@ class Process:
             raise ProcessGraphComplexity(
                 f"estimated size of generated output of {estimated_file_size} bytes exceeds maximum supported size of {self.MAXIMUM_SYNC_FILESIZE_BYTES} bytes."
             )
+
+        if self.width == 0 or self.height == 0:
+            raise ImageDimensionInvalid(self.width, self.height)
 
         return self.sentinel_hub.create_processing_request(
             bbox=self.bbox,
