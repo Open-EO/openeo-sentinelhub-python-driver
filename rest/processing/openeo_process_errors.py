@@ -2,6 +2,7 @@ class OpenEOProcessError(Exception):
     error_code = None
     http_code = 400
     message = None
+    record_id = None
 
 
 class FormatUnsuitable(OpenEOProcessError):
