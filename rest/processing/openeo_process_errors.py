@@ -7,9 +7,11 @@ class OpenEOProcessError(Exception):
 
 class FormatUnsuitable(OpenEOProcessError):
     # https://github.com/Open-EO/openeo-processes/blob/d0ce91fcd347360b907ea2d9589d7564a2c1e1e3/save_result.json#L49-L52
+    def __init__(self, supported_formats_explanation):
+        self.message = f"Data can't be transformed into the requested output format. {supported_formats_explanation}"
+
     error_code = "FormatUnsuitable"
     http_code = 400
-    message = "Data can't be transformed into the requested output format."
 
 
 class NoDataAvailable(OpenEOProcessError):
