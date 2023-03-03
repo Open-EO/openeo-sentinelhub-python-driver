@@ -314,13 +314,9 @@ class Process:
         return load_collection_node["arguments"].get("bands")
 
     def format_to_mimetype(self, output_format):
-        OUTPUT_FORMATS = {
-            "gtiff": MimeType.TIFF,
-            "png": MimeType.PNG,
-            "jpeg": MimeType.JPG,
-        }
+        OUTPUT_FORMATS = self.request_type.get_supported_mime_types()
         output_format = output_format.lower()
-        if output_format in self.request_type.get_supported_mime_types():
+        if output_format in OUTPUT_FORMATS:
             return OUTPUT_FORMATS[output_format]
         else:
             raise FormatUnsuitable(self.request_type.get_unsupported_mimetype_message())

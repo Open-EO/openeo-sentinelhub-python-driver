@@ -158,7 +158,7 @@ def get_batch_job_estimate(batch_request_id, process, deployment_endpoint):
     estimate_secure_factor = actual_pu_to_estimate_ratio * 2
 
     user_defined_processes_graphs = get_user_defined_processes_graphs()
-    p = Process(process, user=g.get("user"), user_defined_processes=user_defined_processes_graphs)
+    p = Process(process, user=g.get("user"), user_defined_processes=user_defined_processes_graphs, request_type=ProcessingRequestTypes.BATCH)
     temporal_interval = p.get_temporal_interval(in_days=True)
 
     if temporal_interval is None:
