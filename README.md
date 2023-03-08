@@ -39,7 +39,7 @@ Then the REST API server can be run:
 <pipenv> $ python app.py
 ```
 
-To locally run the REST API server on HTTPS, so you can use it in [OpenEO editor](https://editor.openeo.org/), start it with:
+To locally run the REST API server on HTTPS, so you can use it in the [openEO editor](https://editor.openeo.org/), start it with:
 ```
 <pipenv> $ python app.py https
 ```
