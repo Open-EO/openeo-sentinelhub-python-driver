@@ -1077,7 +1077,6 @@ def test_batch_job_json_output(app_client, authorization_header):
 
 
 def test_collections(app_client):
-
     mocked_collections = load_collections_fixtures("fixtures/collection_information/", "sentinel-2-l1c")
     collections.set_collections(mocked_collections)
 
@@ -1217,7 +1216,7 @@ def test_validate_bands(
         response_data = json.loads(r.data.decode("utf-8"))
         assert r.status_code == 400, r.data
         assert (
-            f"Invalid process graph: Invalid process graph: 'non-existent band' is not a valid band name for collection '{collection_id}'"
+            f"Invalid process graph: 'non-existent band' is not a valid band name for collection '{collection_id}'"
             in response_data["message"]
         )
     else:
@@ -1231,7 +1230,7 @@ def test_validate_bands(
         response_data = json.loads(r.data.decode("utf-8"))
         assert r.status_code == 400, r.data
         assert (
-            f"Invalid process graph: Invalid process graph: 'non-existent band' is not a valid band name for collection '{collection_id}'"
+            f"Invalid process graph: 'non-existent band' is not a valid band name for collection '{collection_id}'"
             in response_data["message"]
         )
     else:
@@ -1377,7 +1376,6 @@ def test_batch_job_estimate(
     tile_height,
     expected_file_size,
 ):
-
     responses.add(
         responses.POST,
         re.compile("https://(services|creodias)(-uswest2)?.sentinel-hub.com/api/v1/batch/process"),
