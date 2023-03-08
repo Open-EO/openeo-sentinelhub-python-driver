@@ -577,10 +577,7 @@ def add_job_to_queue(job_id):
                 properties={"datetime": None},
                 assets=assets,
                 links=[],
-                processing=[{
-                    "format" : "openeo",
-                    "expression" : json.loads(job["process"])
-                }]
+                processing=[{"format": "openeo", "expression": json.loads(job["process"])}],
             ),
             200,
         )
