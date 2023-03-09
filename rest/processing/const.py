@@ -37,3 +37,31 @@ sample_types_to_bytes = {
     SampleType.UINT16: 2,
     SampleType.FLOAT32: 4,
 }
+
+
+class ProcessingRequestTypes(Enum):
+    BATCH = "batch"
+    SYNC = "sync"
+
+    def get_supported_mime_types(self):
+        return supported_mime_types[self]
+
+    def get_unsupported_mimetype_message(self):
+        return supported_mime_types_error_msg[self]
+
+
+supported_mime_types = {
+    ProcessingRequestTypes.BATCH: {
+        "gtiff": MimeType.TIFF,
+    },
+    ProcessingRequestTypes.SYNC: {
+        "gtiff": MimeType.TIFF,
+        "png": MimeType.PNG,
+        "jpeg": MimeType.JPG,
+    },
+}
+
+supported_mime_types_error_msg = {
+    ProcessingRequestTypes.BATCH: "Currently only GTIFF is supported.'",
+    ProcessingRequestTypes.SYNC: "Currently supported formats are GTIFF, PNG or JPEG",
+}

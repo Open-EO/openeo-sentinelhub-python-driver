@@ -16,6 +16,7 @@ from processing.const import (
     default_sample_type_for_mimetype,
     supported_sample_types,
     sample_types_to_bytes,
+    ProcessingRequestTypes,
 )
 from openeo_collections.collections import collections
 from openeoerrors import (
@@ -53,7 +54,7 @@ HLS_COLLECTION = DataCollection.define(
 
 
 class Process:
-    def __init__(self, process, width=None, height=None, user=User(), user_defined_processes={}):
+    def __init__(self, process, width=None, height=None, user=User(), user_defined_processes={}, request_type=None):
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_RESOLUTION = (10, 10)
         self.MAXIMUM_SYNC_FILESIZE_BYTES = 5000000
@@ -62,7 +63,7 @@ class Process:
         }
         partially_supported_processes_as_udp.update(user_defined_processes)
         self.user_defined_processes = partially_supported_processes_as_udp
-
+        self.request_type = request_type
         self.process_graph = process["process_graph"]
         (
             self.pisp_geometry,
@@ -313,16 +314,12 @@ class Process:
         return load_collection_node["arguments"].get("bands")
 
     def format_to_mimetype(self, output_format):
-        OUTPUT_FORMATS = {
-            "gtiff": MimeType.TIFF,
-            "png": MimeType.PNG,
-            "jpeg": MimeType.JPG,
-        }
+        OUTPUT_FORMATS = self.request_type.get_supported_mime_types()
         output_format = output_format.lower()
         if output_format in OUTPUT_FORMATS:
             return OUTPUT_FORMATS[output_format]
         else:
-            raise FormatUnsuitable()
+            raise FormatUnsuitable(self.request_type.get_unsupported_mimetype_message())
 
     def get_mimetype(self):
         save_result_node = self.get_node_by_process_id("save_result")
