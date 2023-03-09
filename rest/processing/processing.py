@@ -4,6 +4,7 @@ from pg_to_evalscript import convert_from_process_graph
 from flask import g
 from sentinelhub import BatchRequestStatus, BatchUserAction, SentinelHubBatch
 
+from processing.const import ProcessingRequestTypes
 from processing.process import Process
 from processing.sentinel_hub import SentinelHub
 from processing.partially_supported_processes import partially_supported_processes
@@ -27,7 +28,7 @@ def check_process_graph_conversion_validity(process_graph):
     return results[0]["invalid_node_id"]
 
 
-def new_process(process, width=None, height=None):
+def new_process(process, width=None, height=None, request_type=None):
     user_defined_processes_graphs = get_user_defined_processes_graphs()
     return Process(
         process,
@@ -35,6 +36,7 @@ def new_process(process, width=None, height=None):
         height=height,
         user=g.get("user"),
         user_defined_processes=user_defined_processes_graphs,
+        request_type=request_type,
     )
 
 
@@ -43,12 +45,12 @@ def new_sentinel_hub(deployment_endpoint=None):
 
 
 def process_data_synchronously(process, width=None, height=None):
-    p = new_process(process, width=width, height=height)
+    p = new_process(process, width=width, height=height, request_type=ProcessingRequestTypes.SYNC)
     return p.execute_sync(), p.mimetype.get_string()
 
 
 def create_batch_job(process):
-    return new_process(process).create_batch_job()
+    return new_process(process, request_type=ProcessingRequestTypes.BATCH).create_batch_job()
 
 
 def start_new_batch_job(sentinel_hub, process, job_id):
@@ -156,7 +158,12 @@ def get_batch_job_estimate(batch_request_id, process, deployment_endpoint):
     estimate_secure_factor = actual_pu_to_estimate_ratio * 2
 
     user_defined_processes_graphs = get_user_defined_processes_graphs()
-    p = Process(process, user=g.get("user"), user_defined_processes=user_defined_processes_graphs)
+    p = Process(
+        process,
+        user=g.get("user"),
+        user_defined_processes=user_defined_processes_graphs,
+        request_type=ProcessingRequestTypes.BATCH,
+    )
     temporal_interval = p.get_temporal_interval(in_days=True)
 
     if temporal_interval is None:
