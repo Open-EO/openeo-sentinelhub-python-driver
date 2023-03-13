@@ -569,13 +569,17 @@ def add_job_to_queue(job_id):
 
         return flask.make_response(
             jsonify(
-                stac_version=STAC_VERSION,
-                id=job_id,
-                type="Feature",
-                geometry=None,
-                properties={"datetime": None},
-                assets=assets,
-                links=[],
+                {
+                    "stac_version": STAC_VERSION,
+                    "stac_extensions": ["https://stac-extensions.github.io/processing/v1.1.0/schema.json"],
+                    "id": job_id,
+                    "type": "Feature",
+                    "geometry": None,
+                    "properties": {"datetime": None},
+                    "assets": assets,
+                    "links": [],
+                    "processing:expression": [{"format": "openeo", "expression": json.loads(job["process"])}],
+                }
             ),
             200,
         )
