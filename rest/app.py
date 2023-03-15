@@ -582,12 +582,14 @@ def add_job_to_queue(job_id):
 
         batch_job_metadata = {
             "stac_version": STAC_VERSION,
+            "stac_extensions": ["https://stac-extensions.github.io/processing/v1.1.0/schema.json"],
             "id": job_id,
             "type": "Feature",
             "geometry": None,
             "properties": {"datetime": None},
             "assets": assets,
             "links": [],
+            "processing:expression": [{"format": "openeo", "expression": json.loads(job["process"])}],
         }
 
         # boto3 put_object() used in this method simply overwrites existing file
