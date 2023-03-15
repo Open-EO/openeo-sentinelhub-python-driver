@@ -540,6 +540,10 @@ def add_job_to_queue(job_id):
         if new_batch_request_id and new_batch_request_id != job["batch_request_id"]:
             update_batch_request_id(job_id, job, new_batch_request_id)
 
+        # can we create a /results_metadata.json file already here?
+        # we don't have the contents of the folder yet to create presigned URLs
+        # also, how does SH batch API handle already existing folder in the bucket?
+        
         return flask.make_response("The creation of the resource has been queued successfully.", 202)
 
     elif flask.request.method == "GET":
@@ -556,6 +560,25 @@ def add_job_to_queue(job_id):
 
         bucket = get_bucket(job["deployment_endpoint"])
         results = bucket.get_data_from_bucket(prefix=job["batch_request_id"])
+
+        # we can create a /results_metadata.json file here
+        # the contents of the batch job folder in the bucket isn't revealed anywhere else anyway
+
+        # TODO:
+        # - check if file already exists
+        # - if not, create it
+        # - call get_data_from_bucket again()
+
+        demo_metadata = json.dumps({
+            "stac_version":STAC_VERSION,
+            "id":job_id,
+            "type":"Feature",
+            "geometry":None,
+            "properties":{"datetime": None},
+            "links":[]
+        })
+
+        bucket.create_batch_job_metadata(demo_metadata, prefix=job["batch_request_id"])
 
         assets = {}
         log(INFO, f"Fetched all results: {str(results)}")
