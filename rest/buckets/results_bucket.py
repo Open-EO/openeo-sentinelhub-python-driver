@@ -1,5 +1,6 @@
 import boto3
 
+
 class ResultsBucket:
     def __init__(self, bucket_name, region_name, endpoint_url, access_key_id, secret_access_key):
         self.bucket_name = bucket_name
@@ -11,15 +12,10 @@ class ResultsBucket:
             aws_secret_access_key=secret_access_key,
         )
 
-    def create_batch_job_metadata(self, metadata_string, prefix=None):
-        metadata_file_name = "metadata.json"
-        metadata_file_path = prefix + "/" + metadata_file_name if prefix else metadata_file_name
+    def put_file_to_bucket(self, content_as_string, prefix=None, file_name="file"):
+        file_path = prefix + "/" + file_name if prefix else file_name
 
-        self.client.put_object(
-            Bucket=self.bucket_name,
-            Key=metadata_file_path,
-            Body=metadata_string
-        )
+        self.client.put_object(Bucket=self.bucket_name, Key=file_path, Body=content_as_string)
 
     def get_data_from_bucket(self, prefix=None):
         continuation_token = None
