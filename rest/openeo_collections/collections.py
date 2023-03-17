@@ -8,7 +8,7 @@ import requests
 from logging import log, ERROR
 
 # aliases for harmonized Sentinel-2 collection names to platform names
-SH_COLLECTION_ALIASES = {
+SH_COLLECTION_ID_ALIASES = {
     "SENTINEL2_L2A_SENTINELHUB": "SENTINEL2_L2A",
     "SENTINEL2_L1C_SENTINELHUB": "SENTINEL2_L1C",
 }
@@ -63,9 +63,9 @@ class CollectionsProvider:
                     )
                 else:
                     collections.append(collection.json())
-                    if SH_COLLECTION_ALIASES.get(collection_meta_data["id"]):
+                    if SH_COLLECTION_ID_ALIASES.get(collection_meta_data["id"]):
                         alias_collection = copy.deepcopy(collection.json())
-                        alias_collection["id"] = SH_COLLECTION_ALIASES.get(collection_meta_data["id"])
+                        alias_collection["id"] = SH_COLLECTION_ID_ALIASES.get(collection_meta_data["id"])
                         collections.append(alias_collection)
 
         return collections
