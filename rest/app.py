@@ -583,14 +583,14 @@ def add_job_to_queue(job_id):
 
         metadata_creation_time = datetime.utcnow().strftime(ISO8601_UTC_FORMAT)
         batch_job_metadata = {
+            "type": "Feature",
             "stac_version": STAC_VERSION,
             "stac_extensions": ["https://stac-extensions.github.io/processing/v1.1.0/schema.json"],
             "id": job_id,
-            "type": "Feature",
             "geometry": None,
             "properties": {"datetime": metadata_creation_time},
-            "assets": assets,
             "links": [],
+            "assets": assets,
             "processing:expression": [{"format": "openeo", "expression": json.loads(job["process"])}],
         }
 
