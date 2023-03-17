@@ -6,6 +6,7 @@ import os
 import re
 import sys
 import uuid
+from datetime import datetime
 
 import flask
 from flask import Flask, jsonify, g
@@ -55,7 +56,7 @@ from openeoerrors import (
 )
 from authentication.user import User
 from const import openEOBatchJobStatus, optional_process_parameters, SentinelHubBillingPlan
-from utils import get_all_process_definitions, convert_timestamp_to_simpler_format, get_roles
+from utils import get_all_process_definitions, convert_timestamp_to_simpler_format, get_roles, ISO8601_UTC_FORMAT
 from buckets import get_bucket
 
 from openeo_collections.collections import collections
@@ -90,7 +91,7 @@ if HONEYCOMP_APM_API_KEY:
     HoneyMiddleware(app, db_events=False)  # db_events: we do not use SQLAlchemy
 
 
-STAC_VERSION = "0.9.0"
+STAC_VERSION = "1.0.0"
 
 
 def update_batch_request_id(job_id, job, new_batch_request_id):
@@ -580,13 +581,14 @@ def add_job_to_queue(job_id):
         # we can create a /results_metadata.json file here
         # the contents of the batch job folder in the bucket isn't revealed anywhere else anyway
 
+        metadata_creation_time = datetime.utcnow().strftime(ISO8601_UTC_FORMAT)
         batch_job_metadata = {
             "stac_version": STAC_VERSION,
             "stac_extensions": ["https://stac-extensions.github.io/processing/v1.1.0/schema.json"],
             "id": job_id,
             "type": "Feature",
             "geometry": None,
-            "properties": {"datetime": None},
+            "properties": {"datetime": metadata_creation_time},
             "assets": assets,
             "links": [],
             "processing:expression": [{"format": "openeo", "expression": json.loads(job["process"])}],
@@ -598,10 +600,7 @@ def add_job_to_queue(job_id):
             json.dumps(batch_job_metadata), prefix=job["batch_request_id"], file_name=metadata_filename
         )
 
-        return flask.make_response(
-            jsonify(batch_job_metadata),
-            200,
-        )
+        return flask.make_response(jsonify(batch_job_metadata), 200)
 
     elif flask.request.method == "DELETE":
         new_batch_request_id, _ = cancel_batch_job(
