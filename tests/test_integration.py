@@ -1620,7 +1620,10 @@ def test_job_with_deleted_batch_request(app_client, example_process_graph):
     r = app_client.get(f"/jobs/{record_id}/results", headers=headers)
     actual = json.loads(r.data.decode("utf-8"))
     assert r.status_code == 200, r.data
-    assert len(actual["assets"]) == 1  # Batch saves the JSON with request info upon creation
+    # Batch saves the JSON with request info upon creation
+    # our openEO driver saves metadata.json in the bucket when /jobs/{job_id}/results is accessed
+    expected_num_assets = 2
+    assert len(actual["assets"]) == expected_num_assets
 
     r = app_client.post(f"/jobs/{record_id}/results", headers=headers)
     assert r.status_code == 202, r.data

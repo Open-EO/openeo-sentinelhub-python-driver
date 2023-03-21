@@ -12,6 +12,11 @@ class ResultsBucket:
             aws_secret_access_key=secret_access_key,
         )
 
+    def put_file_to_bucket(self, content_as_string, prefix=None, file_name="file"):
+        file_path = prefix + "/" + file_name if prefix else file_name
+
+        self.client.put_object(Bucket=self.bucket_name, Key=file_path, Body=content_as_string)
+
     def get_data_from_bucket(self, prefix=None):
         continuation_token = None
         results = []
