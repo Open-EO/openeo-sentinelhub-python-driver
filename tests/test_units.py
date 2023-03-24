@@ -65,6 +65,8 @@ def test_collections(get_process_graph, collection_id):
                 "S2L1C",
                 "SENTINEL2_L1C",
                 "SENTINEL2_L1C_SENTINELHUB",
+                "SENTINEL2_L2A",
+                "SENTINEL2_L2A_SENTINELHUB",
                 "mapzen-dem",
                 "sentinel-3-l1b-slstr",
                 "sentinel-1-grd",
