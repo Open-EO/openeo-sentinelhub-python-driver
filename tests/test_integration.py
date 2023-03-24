@@ -1131,7 +1131,7 @@ def test_sentinel2_l1c_collections_aliases(app_client):
 
     # check contents of both collections (except id)
     for key in actual_S2L1C_SH:
-        if key != 'id':
+        if key != "id":
             assert actual_S2L1C_SH[key] == actual_S2L1C[key]
 
 
@@ -1163,8 +1163,9 @@ def test_sentinel2_l2a_collections_aliases(app_client):
 
     # check contents of both collections (except id)
     for key in actual_S2L2A_SH:
-        if key != 'id':
+        if key != "id":
             assert actual_S2L2A_SH[key] == actual_S2L2A[key]
+
 
 @responses.activate
 @pytest.mark.parametrize(
