@@ -1620,9 +1620,11 @@ def test_job_with_deleted_batch_request(app_client, example_process_graph):
     r = app_client.get(f"/jobs/{record_id}/results", headers=headers)
     actual = json.loads(r.data.decode("utf-8"))
     assert r.status_code == 200, r.data
-    # Batch saves the JSON with request info upon creation
+    # SH Batch API saves the JSON file with request info upon creation
     # our openEO driver saves metadata.json in the bucket when /jobs/{job_id}/results is accessed
-    expected_num_assets = 2
+    # our openEO driver doesn't include the JSON file that SH Batch API saved in the response to
+    # /jobs/<job_id>/results
+    expected_num_assets = 1
     assert len(actual["assets"]) == expected_num_assets
 
     r = app_client.post(f"/jobs/{record_id}/results", headers=headers)
