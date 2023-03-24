@@ -63,6 +63,8 @@ def test_collections(get_process_graph, collection_id):
                 "sentinel-2-l1c",
                 "corine-land-cover",
                 "S2L1C",
+                "SENTINEL2_L1C",
+                "SENTINEL2_L1C_SENTINELHUB",
                 "mapzen-dem",
                 "sentinel-3-l1b-slstr",
                 "sentinel-1-grd",
@@ -71,6 +73,7 @@ def test_collections(get_process_graph, collection_id):
     ],
 )
 def test_collections_provider(url, directory, expected_collection_ids):
+    # this gets all jsons in the directory
     collections_provider = CollectionsProvider("test", url=url, directory=directory)
     if url is not None:
         responses.add(
