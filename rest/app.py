@@ -572,6 +572,11 @@ def add_job_to_queue(job_id):
 
         assets = {}
         for result in results:
+            # do not add json file created by SH batch job API to the list of assets
+            sh_batch_job_json_filename = f"request-{job['batch_request_id']}.json"
+            if sh_batch_job_json_filename in result["Key"]:
+                continue
+
             # create signed url:
             object_key = result["Key"]
             url = bucket.generate_presigned_url(object_key=object_key)
