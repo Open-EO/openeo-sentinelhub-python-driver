@@ -1103,6 +1103,70 @@ def test_collections(app_client):
     assert actual == expected
 
 
+def test_sentinel2_l1c_collections_aliases(app_client):
+    mocked_collections = load_collections_fixtures("fixtures/collection_information/", "SENTINEL2_L1C*")
+    collections.set_collections(mocked_collections)
+
+    # get a list of all SENTINEL2_L1C collections:
+    r = app_client.get("/collections")
+    assert r.status_code == 200, r.data
+    actual = json.loads(r.data.decode("utf-8"))
+    assert len(actual["collections"]) == 2
+
+    # use SENTINEL2_L1C_SENTINELHUB collection id:
+    collection_id = "SENTINEL2_L1C_SENTINELHUB"
+    r = app_client.get(f"/collections/{collection_id}")
+    assert r.status_code == 200, r.data
+    expected_S2L1C_SH = mocked_collections[collection_id]
+    actual_S2L1C_SH = json.loads(r.data.decode("utf-8"))
+    assert actual_S2L1C_SH == expected_S2L1C_SH
+
+    # use SENTINEL2_L1C alias:
+    collection_id = "SENTINEL2_L1C"
+    r = app_client.get(f"/collections/{collection_id}")
+    assert r.status_code == 200, r.data
+    expected_S2L1C = mocked_collections[collection_id]
+    actual_S2L1C = json.loads(r.data.decode("utf-8"))
+    assert actual_S2L1C == expected_S2L1C
+
+    # check contents of both collections (except id)
+    for key in actual_S2L1C_SH:
+        if key != "id":
+            assert actual_S2L1C_SH[key] == actual_S2L1C[key]
+
+
+def test_sentinel2_l2a_collections_aliases(app_client):
+    mocked_collections = load_collections_fixtures("fixtures/collection_information/", "SENTINEL2_L2A*")
+    collections.set_collections(mocked_collections)
+
+    # get a list of all SENTINEL2_L2A collections:
+    r = app_client.get("/collections")
+    assert r.status_code == 200, r.data
+    actual = json.loads(r.data.decode("utf-8"))
+    assert len(actual["collections"]) == 2
+
+    # use SENTINEL2_L2A_SENTINELHUB collection id:
+    collection_id = "SENTINEL2_L2A_SENTINELHUB"
+    r = app_client.get(f"/collections/{collection_id}")
+    assert r.status_code == 200, r.data
+    expected_S2L2A_SH = mocked_collections[collection_id]
+    actual_S2L2A_SH = json.loads(r.data.decode("utf-8"))
+    assert actual_S2L2A_SH == expected_S2L2A_SH
+
+    # use SENTINEL2_L2A alias:
+    collection_id = "SENTINEL2_L2A"
+    r = app_client.get(f"/collections/{collection_id}")
+    assert r.status_code == 200, r.data
+    expected_S2L2A = mocked_collections[collection_id]
+    actual_S2L2A = json.loads(r.data.decode("utf-8"))
+    assert actual_S2L2A == expected_S2L2A
+
+    # check contents of both collections (except id)
+    for key in actual_S2L2A_SH:
+        if key != "id":
+            assert actual_S2L2A_SH[key] == actual_S2L2A[key]
+
+
 @responses.activate
 @pytest.mark.parametrize(
     "collection_id,collection_type,request_url",
