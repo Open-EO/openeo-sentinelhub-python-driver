@@ -571,7 +571,9 @@ def add_job_to_queue(job_id):
         log(INFO, f"Fetched all results: {str(results)}")
 
         assets = {}
+        links = []
         for result in results:
+
             # do not add json file created by SH batch job API to the list of assets
             sh_batch_job_json_filename = f"request-{job['batch_request_id']}.json"
             if sh_batch_job_json_filename in result["Key"]:
@@ -580,8 +582,13 @@ def add_job_to_queue(job_id):
             # create signed url:
             object_key = result["Key"]
             url = bucket.generate_presigned_url(object_key=object_key)
-            roles = get_roles(object_key)
-            assets[object_key] = {"href": url, "roles": roles}
+
+            # add signed url (that links to metadata) to links with rel type "canonical"
+            if metadata_filename in result["Key"]:
+                links.append({"href": url, "rel": "canonical", "type": "application/json"})
+            else:
+                roles = get_roles(object_key)
+                assets[object_key] = {"href": url, "roles": roles}
 
         # we can create a /results_metadata.json file here
         # the contents of the batch job folder in the bucket isn't revealed anywhere else anyway
@@ -594,7 +601,7 @@ def add_job_to_queue(job_id):
             "id": job_id,
             "geometry": None,
             "properties": {"datetime": metadata_creation_time},
-            "links": [],
+            "links": links,
             "assets": assets,
             "processing:expression": [{"format": "openeo", "expression": json.loads(job["process"])}],
         }
