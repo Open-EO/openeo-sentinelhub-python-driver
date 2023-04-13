@@ -601,7 +601,7 @@ def add_job_to_queue(job_id):
             "id": job_id,
             "geometry": None,
             "properties": {
-                "title": job["title"],
+                "title": job.get("title", None),
                 "datetime": metadata_creation_time,
                 "processing:expression": {"format": "openeo", "expression": json.loads(job["process"])},
             },
