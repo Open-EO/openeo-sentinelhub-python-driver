@@ -6,7 +6,7 @@ import os
 import re
 import sys
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import flask
 from flask import Flask, jsonify, g
@@ -15,6 +15,7 @@ import beeline
 from beeline.middleware.flask import HoneyMiddleware
 from pg_to_evalscript import list_supported_processes
 from werkzeug.exceptions import HTTPException
+from urllib.parse import urlparse, parse_qs
 
 import globalmaptiles
 from logs.logging import with_logging
@@ -572,6 +573,7 @@ def add_job_to_queue(job_id):
 
         assets = {}
         links = []
+        metadata_valid = None
         for result in results:
 
             # do not add json file created by SH batch job API to the list of assets
@@ -583,12 +585,22 @@ def add_job_to_queue(job_id):
             object_key = result["Key"]
             url = bucket.generate_presigned_url(object_key=object_key)
 
+            parsed_url = urlparse(url)
+            parsed_query = parse_qs(parsed_url.query)
+            time_url_generated = datetime.strptime(parsed_query["X-Amz-Date"][0], "%Y%m%dT%H%M%SZ")
+            time_expires = timedelta(seconds=int(parsed_query["X-Amz-Expires"][0]))
+            time_valid = time_url_generated + time_expires
+            time_valid_iso8601 = time_valid.strftime(ISO8601_UTC_FORMAT)
+
             # add signed url (that links to metadata) to links with rel type "canonical"
             if metadata_filename in result["Key"]:
-                links.append({"href": url, "rel": "canonical", "type": "application/json"})
+                metadata_valid = time_valid_iso8601
+                links.append(
+                    {"href": url, "rel": "canonical", "type": "application/json", "expires": time_valid_iso8601}
+                )
             else:
                 roles = get_roles(object_key)
-                assets[object_key] = {"href": url, "roles": roles}
+                assets[object_key] = {"href": url, "roles": roles, "expires": time_valid_iso8601}
 
         # we can create a /results_metadata.json file here
         # the contents of the batch job folder in the bucket isn't revealed anywhere else anyway
@@ -597,12 +609,16 @@ def add_job_to_queue(job_id):
         batch_job_metadata = {
             "type": "Feature",
             "stac_version": STAC_VERSION,
-            "stac_extensions": ["https://stac-extensions.github.io/processing/v1.1.0/schema.json"],
+            "stac_extensions": [
+                "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
+                "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json",
+            ],
             "id": job_id,
             "geometry": None,
             "properties": {
                 "title": job.get("title", None),
                 "datetime": metadata_creation_time,
+                "expires": metadata_valid,
                 "processing:expression": {"format": "openeo", "expression": json.loads(job["process"])},
             },
             "links": links,
