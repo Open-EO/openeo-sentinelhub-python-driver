@@ -191,10 +191,10 @@ class SentinelHub:
     def get_utm_tiling_grids(self):
         access_token = self.batch.client.session.token["access_token"]
         tiling_grids = []
-        headers = {"Content-Type":"application/json", "Authorization": f"Bearer {access_token}"}
-        resp = requests.get('https://services.sentinel-hub.com/api/v1/batch/tilinggrids', headers=headers)
+        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {access_token}"}
+        resp = requests.get("https://services.sentinel-hub.com/api/v1/batch/tilinggrids", headers=headers)
         json = resp.json()
-        iter_grids =  iter(json.get('data'))
+        iter_grids = iter(json.get("data"))
         for tiling_grid in iter_grids:
             if tiling_grid["properties"]["unit"] == "METRE":
                 tiling_grids.append(tiling_grid)
