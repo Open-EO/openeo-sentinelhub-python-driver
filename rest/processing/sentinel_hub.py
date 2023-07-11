@@ -181,9 +181,21 @@ class SentinelHub:
         batch_request = self.batch.get_request(batch_request_id)
         self.batch.start_analysis(batch_request)
 
-    def get_utm_tiling_grids(self):
+    def get_utm_tiling_grids_SH_PY(self):
         tiling_grids = []
         for tiling_grid in self.batch.iter_tiling_grids():
+            if tiling_grid["properties"]["unit"] == "METRE":
+                tiling_grids.append(tiling_grid)
+        return tiling_grids
+
+    def get_utm_tiling_grids(self):
+        access_token = self.batch.client.session.token["access_token"]
+        tiling_grids = []
+        headers = {"Content-Type":"application/json", "Authorization": f"Bearer {access_token}"}
+        resp = requests.get('https://services.sentinel-hub.com/api/v1/batch/tilinggrids', headers=headers)
+        json = resp.json()
+        iter_grids =  iter(json.get('data'))
+        for tiling_grid in iter_grids:
             if tiling_grid["properties"]["unit"] == "METRE":
                 tiling_grids.append(tiling_grid)
         return tiling_grids
