@@ -1,6 +1,21 @@
 from enum import Enum
+import mimetypes
 
 from sentinelhub import MimeType, SentinelHubBatch
+
+# inspired by sentinelhub.py MimeType class
+# https://github.com/sentinel-hub/sentinelhub-py/blob/master/sentinelhub/constants.py#L261
+class CustomMimeType(Enum):
+    ZARR = "zarr"
+
+    # this method is needed because mimetype.get_string() is called in construct_output in rest/processing/sentinel_hub.py
+    def get_string(self) -> str:
+        # value found by sending random value as format to batch process api
+        # 400 Client Error: Bad Request for url: https://services.sentinel-hub.com/api/v1/batch/process
+        # Server response: "{"status": 400, "reason": "Bad Request", "message": "Invalid type", "code": "COMMON_BAD_PAYLOAD", "errors": {"parameter": "processRequest->output->responses[0]->format", "invalidValue": "data/zarr", "description": "Format object.", "possibleValues": ["image/jpeg", "image/png", "image/tiff", "application/json", "zarr/array", "sentinel/full"]}}"
+        if self is CustomMimeType.ZARR:
+            return "zarr/array"
+        return mimetypes.types_map["." + self.value]
 
 
 class SampleType(Enum):
@@ -24,12 +39,14 @@ default_sample_type_for_mimetype = {
     MimeType.PNG: SampleType.UINT8,
     MimeType.JPG: SampleType.UINT8,
     MimeType.TIFF: SampleType.FLOAT32,
+    CustomMimeType.ZARR: SampleType.FLOAT32,
 }
 
 supported_sample_types = {
     MimeType.PNG: [SampleType.UINT8, SampleType.UINT16],
     MimeType.JPG: [SampleType.UINT8],
     MimeType.TIFF: [SampleType.UINT8, SampleType.UINT16, SampleType.FLOAT32],
+    CustomMimeType.ZARR: [SampleType.UINT8, SampleType.UINT16, SampleType.FLOAT32],
 }
 
 sample_types_to_bytes = {
@@ -53,6 +70,7 @@ class ProcessingRequestTypes(Enum):
 supported_mime_types = {
     ProcessingRequestTypes.BATCH: {
         "gtiff": MimeType.TIFF,
+        "zarr": CustomMimeType.ZARR,
     },
     ProcessingRequestTypes.SYNC: {
         "gtiff": MimeType.TIFF,
