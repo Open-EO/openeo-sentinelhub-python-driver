@@ -1,7 +1,13 @@
 from enum import Enum
 import mimetypes
 
-from sentinelhub import MimeType, SentinelHubBatch
+from sentinelhub import MimeType
+
+
+class TilingGridUnit(Enum):
+    DEGREE = "DEGREE"
+    METRE = "METRE"
+
 
 # inspired by sentinelhub.py MimeType class
 # https://github.com/sentinel-hub/sentinelhub-py/blob/master/sentinelhub/constants.py#L261
@@ -80,6 +86,6 @@ supported_mime_types = {
 }
 
 supported_mime_types_error_msg = {
-    ProcessingRequestTypes.BATCH: "Currently only GTIFF is supported.'",
+    ProcessingRequestTypes.BATCH: "Currently only GTIFF and ZARR are supported.",
     ProcessingRequestTypes.SYNC: "Currently supported formats are GTIFF, PNG or JPEG",
 }
