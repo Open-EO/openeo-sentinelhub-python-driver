@@ -8,6 +8,7 @@ import requests
 
 from buckets import BUCKET_NAMES
 from processing.processing_api_request import ProcessingAPIRequest
+from processing.const import TilingGridUnit, CustomMimeType
 
 
 class SentinelHub:
@@ -146,12 +147,31 @@ class SentinelHub:
             preview_mode="DETAIL",
         )
 
+        # path should be env var
+        # only zarr_format supported is 2
+        # arrayParameters should be settable or default values (number in chunks should be calculated)
+        zarrOutput = {
+            "path": "s3://com.sinergise.openeo.results.dev/<requestId>",
+            "group": {"zarr_format": 2},
+            "arrayParameters": {
+                "dtype": "<f8",
+                "order": "C",
+                "chunks": [
+                    1,
+                    1000,
+                    1000,
+                ],  # The second and third (latidude/y and longitude/x-dimension chunking, respectively) must evenly divide the batch output tile raster size. For example, when using the LAEA 100km grid with an output resolution of 50 m, each batch tile will be 2000 x 2000 pixels (100km/50m = 2000), thus valid chunking sizes are 2000, 1000, 500, 400 etc.
+                "fill_value": 0,
+            },
+        }
+
         batch_request = self.batch.create(
             request_raw_dict,
             tiling_grid=SentinelHubBatch.tiling_grid(
                 grid_id=tiling_grid_id, resolution=tiling_grid_resolution, buffer=(0, 0)
             ),
-            bucket_name=self.S3_BUCKET_NAME,
+            bucket_name=self.S3_BUCKET_NAME if mimetype != CustomMimeType.ZARR else None,
+            zarrOutput=zarrOutput if mimetype == CustomMimeType.ZARR else None,
         )
         return batch_request.request_id
 
@@ -188,7 +208,7 @@ class SentinelHub:
                 tiling_grids.append(tiling_grid)
         return tiling_grids
 
-    def get_utm_tiling_grids(self):
+    def get_tiling_grids(self, unit: TilingGridUnit, only_single_crs: bool):
         access_token = self.batch.client.session.token["access_token"]
         tiling_grids = []
         headers = {"Content-Type": "application/json", "Authorization": f"Bearer {access_token}"}
@@ -196,6 +216,9 @@ class SentinelHub:
         json = resp.json()
         iter_grids = iter(json.get("data"))
         for tiling_grid in iter_grids:
-            if tiling_grid["properties"]["unit"] == "METRE":
-                tiling_grids.append(tiling_grid)
+            if tiling_grid["properties"]["unit"] == unit.value:
+                if only_single_crs is False or (
+                    only_single_crs is True and tiling_grid["properties"]["singleCrs"] is True
+                ):
+                    tiling_grids.append(tiling_grid)
         return tiling_grids
