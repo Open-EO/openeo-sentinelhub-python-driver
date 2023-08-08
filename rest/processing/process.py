@@ -12,7 +12,9 @@ from shapely.geometry import shape, mapping
 from processing.openeo_process_errors import FormatUnsuitable, NoDataAvailable
 from processing.sentinel_hub import SentinelHub
 from processing.const import (
+    CustomMimeType,
     SampleType,
+    TilingGridUnit,
     default_sample_type_for_mimetype,
     supported_sample_types,
     sample_types_to_bytes,
@@ -401,7 +403,9 @@ class Process:
         return resolution
 
     def get_appropriate_tiling_grid_and_resolution(self):
-        utm_tiling_grids = self.sentinel_hub.get_utm_tiling_grids()
+
+        only_single_crs = self.mimetype == CustomMimeType.ZARR
+        tiling_grids = self.sentinel_hub.get_tiling_grids(TilingGridUnit.METRE, only_single_crs)
 
         if self.pisp_resolution:
             # If desired resolution was explicitly set in partially defined spatial processes.
@@ -409,7 +413,7 @@ class Process:
             if self.pisp_resolution[0] != self.pisp_resolution[1]:
                 raise BadRequest("X and Y resolution must be identical in Sentinel Hub batch processing request.")
 
-            for tiling_grid in utm_tiling_grids:
+            for tiling_grid in tiling_grids:
                 if self.pisp_resolution[0] in tiling_grid["properties"]["resolutions"]:
                     break
             else:
@@ -420,13 +424,13 @@ class Process:
         else:
             requested_resolution = min(self.get_highest_resolution())
 
-        utm_tiling_grids = sorted(
-            utm_tiling_grids, key=lambda tg: tg["properties"]["tileWidth"]
+        tiling_grids = sorted(
+            tiling_grids, key=lambda tg: tg["properties"]["tileWidth"]
         )  # We prefer grids with smaller tiles
         best_tiling_grid_id = None
         best_tiling_grid_resolution = math.inf
 
-        for tiling_grid in utm_tiling_grids:
+        for tiling_grid in tiling_grids:
             resolutions = tiling_grid["properties"]["resolutions"]
 
             for resolution in resolutions:
@@ -437,7 +441,7 @@ class Process:
                     best_tiling_grid_resolution = resolution
 
         if best_tiling_grid_id is None and best_tiling_grid_resolution is None:
-            return utm_tiling_grids[0]["id"], min(utm_tiling_grids[0]["properties"]["resolutions"])
+            return tiling_grids[0]["id"], min(tiling_grids[0]["properties"]["resolutions"])
 
         return best_tiling_grid_id, best_tiling_grid_resolution
 
