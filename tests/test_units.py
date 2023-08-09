@@ -636,13 +636,22 @@ def test_sample_type(
     ],
 )
 def test_tiling_grids(
-    get_process_graph, collection_id, bands, expected_tiling_grid_id, expected_tiling_grid_resolution,expected_tiling_grid_tile_width
+    get_process_graph,
+    collection_id,
+    bands,
+    expected_tiling_grid_id,
+    expected_tiling_grid_resolution,
+    expected_tiling_grid_tile_width,
 ):
     process = Process(
         {"process_graph": get_process_graph(collection_id=collection_id, bands=bands)},
         request_type=ProcessingRequestTypes.BATCH,
     )
-    tiling_grid_id, tiling_grid_resolution, tiling_grid_tile_width = process.get_appropriate_tiling_grid_and_resolution()
+    (
+        tiling_grid_id,
+        tiling_grid_resolution,
+        tiling_grid_tile_width,
+    ) = process.get_appropriate_tiling_grid_and_resolution()
 
     assert expected_tiling_grid_id == tiling_grid_id
     assert expected_tiling_grid_resolution == tiling_grid_resolution
