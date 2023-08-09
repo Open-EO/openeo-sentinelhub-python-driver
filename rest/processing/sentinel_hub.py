@@ -8,7 +8,13 @@ import requests
 
 from buckets import BUCKET_NAMES
 from processing.processing_api_request import ProcessingAPIRequest
-from processing.const import SampleType, TilingGridUnit, CustomMimeType, sample_type_to_zarr_dtype, default_sample_type_for_mimetype
+from processing.const import (
+    SampleType,
+    TilingGridUnit,
+    CustomMimeType,
+    sample_type_to_zarr_dtype,
+    default_sample_type_for_mimetype,
+)
 
 
 class SentinelHub:
@@ -150,7 +156,9 @@ class SentinelHub:
         )
 
         if tiling_grid_resolution == None or tiling_grid_tile_width == None:
-            raise Internal("class SentinelHub, method create_batch_job: parameter tiling_grid_resolution or tiling_grid_tile_width is None" )
+            raise Internal(
+                "class SentinelHub, method create_batch_job: parameter tiling_grid_resolution or tiling_grid_tile_width is None"
+            )
 
         # might not work for CREODIAS
         zarr_path = f"s3://{self.S3_BUCKET_NAME}/<requestId>"
@@ -166,7 +174,7 @@ class SentinelHub:
         # - <i2,>i2: 16-bit signed integer (little and big endian, respectively), recommended for sampleType INT16, allowed for UINT8, INT8 and AUTO,
         # - <f4, >f4, <f8, >f8: float (little/big endian single precision, little/big endian double precision, respectively), recommended for sampleType FLOAT32, allowed for any sampleType.
         # Recommended values encode the chosen sampleType losslessly, while other allowed values encode the same values in a wider data type but do not add any more precision.
-        default_sample_type = default_sample_type_for_mimetype.get(CustomMimeType.ZARR,SampleType.FLOAT32)
+        default_sample_type = default_sample_type_for_mimetype.get(CustomMimeType.ZARR, SampleType.FLOAT32)
         zarr_sample_type = sample_type if sample_type is not None else default_sample_type
         zarr_dtype = sample_type_to_zarr_dtype.get(zarr_sample_type)
 
@@ -191,7 +199,7 @@ class SentinelHub:
 
         zarrOutput = {
             "path": zarr_path,
-            "group": {"zarr_format": zarr_format}, 
+            "group": {"zarr_format": zarr_format},
             "arrayParameters": {
                 "dtype": zarr_dtype,
                 "order": zarr_order,

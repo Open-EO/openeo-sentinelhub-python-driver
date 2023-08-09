@@ -443,7 +443,11 @@ class Process:
                     best_tiling_grid_tile_width = tiling_grid["properties"]["tileWidth"]
 
         if best_tiling_grid_id is None and best_tiling_grid_resolution is None:
-            return tiling_grids[0]["id"], min(tiling_grids[0]["properties"]["resolutions"]), tiling_grids[0]["properties"]["tileWidth"]
+            return (
+                tiling_grids[0]["id"],
+                min(tiling_grids[0]["properties"]["resolutions"]),
+                tiling_grids[0]["properties"]["tileWidth"],
+            )
 
         return best_tiling_grid_id, best_tiling_grid_resolution, best_tiling_grid_tile_width
 
@@ -506,7 +510,11 @@ class Process:
         )
 
     def create_batch_job(self):
-        self.tiling_grid_id, self.tiling_grid_resolution, self.tiling_grid_tile_width = self.get_appropriate_tiling_grid_and_resolution()
+        (
+            self.tiling_grid_id,
+            self.tiling_grid_resolution,
+            self.tiling_grid_tile_width,
+        ) = self.get_appropriate_tiling_grid_and_resolution()
         return (
             self.sentinel_hub.create_batch_job(
                 bbox=self.bbox,
@@ -521,7 +529,7 @@ class Process:
                 tiling_grid_tile_width=self.tiling_grid_tile_width,
                 mimetype=self.mimetype,
                 resampling_method=self.pisp_resampling_method,
-                sample_type=self.sample_type
+                sample_type=self.sample_type,
             ),
             self.service_base_url,
         )
