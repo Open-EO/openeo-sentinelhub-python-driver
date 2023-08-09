@@ -126,39 +126,15 @@ class SentinelHub:
             output["height"] = height
         return output
 
-    def create_batch_job(
+    def construct_zarr_output(
         self,
-        bbox=None,
-        geometry=None,
-        epsg_code=None,
-        collection=None,
-        evalscript=None,
-        from_date=None,
-        to_date=None,
-        tiling_grid_id=None,
         tiling_grid_resolution=None,
         tiling_grid_tile_width=None,
-        mimetype=None,
-        resampling_method=None,
         sample_type=None,
     ):
-        request_raw_dict = self.get_request_dictionary(
-            bbox=bbox,
-            geometry=geometry,
-            epsg_code=epsg_code,
-            collection=collection,
-            evalscript=evalscript,
-            from_date=from_date,
-            to_date=to_date,
-            mimetype=mimetype,
-            resampling_method=resampling_method,
-            preview_mode="DETAIL",
-        )
 
         if tiling_grid_resolution == None or tiling_grid_tile_width == None:
-            raise Internal(
-                "class SentinelHub, method create_batch_job: parameter tiling_grid_resolution or tiling_grid_tile_width is None"
-            )
+            raise Internal("construct_zarr_output: parameter tiling_grid_resolution or tiling_grid_tile_width is None")
 
         # might not work for CREODIAS
         zarr_path = f"s3://{self.S3_BUCKET_NAME}/<requestId>"
@@ -197,7 +173,7 @@ class SentinelHub:
         # https://docs.sentinel-hub.com/api/latest/reference/#tag/batch_process/operation/createNewBatchProcessingRequest
         zarr_fill_value = 0
 
-        zarrOutput = {
+        zarr_output = {
             "path": zarr_path,
             "group": {"zarr_format": zarr_format},
             "arrayParameters": {
@@ -208,13 +184,46 @@ class SentinelHub:
             },
         }
 
+        return zarr_output
+
+    def create_batch_job(
+        self,
+        bbox=None,
+        geometry=None,
+        epsg_code=None,
+        collection=None,
+        evalscript=None,
+        from_date=None,
+        to_date=None,
+        tiling_grid_id=None,
+        tiling_grid_resolution=None,
+        tiling_grid_tile_width=None,
+        mimetype=None,
+        resampling_method=None,
+        sample_type=None,
+    ):
+        request_raw_dict = self.get_request_dictionary(
+            bbox=bbox,
+            geometry=geometry,
+            epsg_code=epsg_code,
+            collection=collection,
+            evalscript=evalscript,
+            from_date=from_date,
+            to_date=to_date,
+            mimetype=mimetype,
+            resampling_method=resampling_method,
+            preview_mode="DETAIL",
+        )
+
         batch_request = self.batch.create(
             request_raw_dict,
             tiling_grid=SentinelHubBatch.tiling_grid(
                 grid_id=tiling_grid_id, resolution=tiling_grid_resolution, buffer=(0, 0)
             ),
             bucket_name=self.S3_BUCKET_NAME if mimetype != CustomMimeType.ZARR else None,
-            zarrOutput=zarrOutput if mimetype == CustomMimeType.ZARR else None,
+            zarrOutput=self.construct_zarr_output(tiling_grid_resolution, tiling_grid_tile_width, sample_type)
+            if mimetype == CustomMimeType.ZARR
+            else None,
         )
         return batch_request.request_id
 
