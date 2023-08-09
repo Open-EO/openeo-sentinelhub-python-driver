@@ -61,6 +61,12 @@ sample_types_to_bytes = {
     SampleType.FLOAT32: 4,
 }
 
+sample_type_to_zarr_dtype = {
+    SampleType.UINT8: "|u1",
+    SampleType.UINT16: "<u2",
+    SampleType.FLOAT32: "<f8",
+}
+
 
 class ProcessingRequestTypes(Enum):
     BATCH = "batch"

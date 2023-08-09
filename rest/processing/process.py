@@ -429,6 +429,7 @@ class Process:
         )  # We prefer grids with smaller tiles
         best_tiling_grid_id = None
         best_tiling_grid_resolution = math.inf
+        best_tiling_grid_tile_width = 0
 
         for tiling_grid in tiling_grids:
             resolutions = tiling_grid["properties"]["resolutions"]
@@ -439,11 +440,12 @@ class Process:
                 ):
                     best_tiling_grid_id = tiling_grid["id"]
                     best_tiling_grid_resolution = resolution
+                    best_tiling_grid_tile_width = tiling_grid["properties"]["tileWidth"]
 
         if best_tiling_grid_id is None and best_tiling_grid_resolution is None:
-            return tiling_grids[0]["id"], min(tiling_grids[0]["properties"]["resolutions"])
+            return tiling_grids[0]["id"], min(tiling_grids[0]["properties"]["resolutions"]), tiling_grids[0]["properties"]["tileWidth"]
 
-        return best_tiling_grid_id, best_tiling_grid_resolution
+        return best_tiling_grid_id, best_tiling_grid_resolution, best_tiling_grid_tile_width
 
     def estimate_file_size(self, n_pixels=None):
         if n_pixels is None:
@@ -504,7 +506,7 @@ class Process:
         )
 
     def create_batch_job(self):
-        self.tiling_grid_id, self.tiling_grid_resolution = self.get_appropriate_tiling_grid_and_resolution()
+        self.tiling_grid_id, self.tiling_grid_resolution, self.tiling_grid_tile_width = self.get_appropriate_tiling_grid_and_resolution()
         return (
             self.sentinel_hub.create_batch_job(
                 bbox=self.bbox,
@@ -516,8 +518,10 @@ class Process:
                 to_date=self.to_date,
                 tiling_grid_id=self.tiling_grid_id,
                 tiling_grid_resolution=self.tiling_grid_resolution,
+                tiling_grid_tile_width=self.tiling_grid_tile_width,
                 mimetype=self.mimetype,
                 resampling_method=self.pisp_resampling_method,
+                sample_type=self.sample_type
             ),
             self.service_base_url,
         )
