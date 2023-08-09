@@ -16,9 +16,8 @@ class CustomMimeType(Enum):
 
     # this method is needed because mimetype.get_string() is called in construct_output in rest/processing/sentinel_hub.py
     def get_string(self) -> str:
-        # value found by sending random value as format to batch process api
-        # 400 Client Error: Bad Request for url: https://services.sentinel-hub.com/api/v1/batch/process
-        # Server response: "{"status": 400, "reason": "Bad Request", "message": "Invalid type", "code": "COMMON_BAD_PAYLOAD", "errors": {"parameter": "processRequest->output->responses[0]->format", "invalidValue": "data/zarr", "description": "Format object.", "possibleValues": ["image/jpeg", "image/png", "image/tiff", "application/json", "zarr/array", "sentinel/full"]}}"
+        # mimetype string should be `zarr/array` for ZARR
+        # https://docs.sentinel-hub.com/api/latest/reference/#tag/batch_process/operation/createNewBatchProcessingRequest
         if self is CustomMimeType.ZARR:
             return "zarr/array"
         return mimetypes.types_map["." + self.value]
