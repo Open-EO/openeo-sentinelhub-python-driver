@@ -143,13 +143,7 @@ class SentinelHub:
         # https://docs.sentinel-hub.com/api/latest/reference/#tag/batch_process/operation/createNewBatchProcessingRequest
         zarr_format = 2
 
-        # Data type/encoding. Allowed values depend on the sampleType defined in evalscript:
-        # - |u1: 8-bit unsigned integer, recommended for sampleType UINT8 and AUTO,
-        # - |i1: 8-bit signed integer, recommended for sampleType INT8,
-        # - <u2,>u2: 16-bit unsigned integer (little and big endian, respectively), recommended for sampleType UINT16, allowed for UINT8 and AUTO,
-        # - <i2,>i2: 16-bit signed integer (little and big endian, respectively), recommended for sampleType INT16, allowed for UINT8, INT8 and AUTO,
-        # - <f4, >f4, <f8, >f8: float (little/big endian single precision, little/big endian double precision, respectively), recommended for sampleType FLOAT32, allowed for any sampleType.
-        # Recommended values encode the chosen sampleType losslessly, while other allowed values encode the same values in a wider data type but do not add any more precision.
+        # Data type/encoding. More in rest/processing/const.py
         default_sample_type = default_sample_type_for_mimetype.get(CustomMimeType.ZARR, SampleType.FLOAT32)
         zarr_sample_type = sample_type if sample_type is not None else default_sample_type
         zarr_dtype = sample_type_to_zarr_dtype.get(zarr_sample_type)
@@ -172,6 +166,7 @@ class SentinelHub:
         # Note: any grid tiles that are within Zarr envelope but outside of processRequest.input.bounds.geometry will not be processed by batch at all. No chunks will thus be written for those tiles, thus fill_value is required to ensure a valid Zarr is created.
         # https://docs.sentinel-hub.com/api/latest/reference/#tag/batch_process/operation/createNewBatchProcessingRequest
         zarr_fill_value = 0
+        # TODO: make this configurable by user
 
         zarr_output = {
             "path": zarr_path,

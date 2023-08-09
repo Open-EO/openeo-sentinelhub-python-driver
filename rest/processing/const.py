@@ -60,6 +60,13 @@ sample_types_to_bytes = {
     SampleType.FLOAT32: 4,
 }
 
+# Data type/encoding. Allowed values depend on the sampleType defined in evalscript:
+# - |u1: 8-bit unsigned integer, recommended for sampleType UINT8 and AUTO,
+# - |i1: 8-bit signed integer, recommended for sampleType INT8,
+# - <u2,>u2: 16-bit unsigned integer (little and big endian, respectively), recommended for sampleType UINT16, allowed for UINT8 and AUTO,
+# - <i2,>i2: 16-bit signed integer (little and big endian, respectively), recommended for sampleType INT16, allowed for UINT8, INT8 and AUTO,
+# - <f4, >f4, <f8, >f8: float (little/big endian single precision, little/big endian double precision, respectively), recommended for sampleType FLOAT32, allowed for any sampleType.
+# Recommended values encode the chosen sampleType losslessly, while other allowed values encode the same values in a wider data type but do not add any more precision.
 sample_type_to_zarr_dtype = {
     SampleType.UINT8: "|u1",
     SampleType.UINT16: "<u2",
