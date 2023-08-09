@@ -3,12 +3,12 @@ import json
 
 from sentinelhub import SentinelHubBatch
 from sentinelhub.exceptions import DownloadFailedException
-from openeoerrors import ProcessGraphComplexity
+from openeoerrors import ProcessGraphComplexity, Internal
 import requests
 
 from buckets import BUCKET_NAMES
 from processing.processing_api_request import ProcessingAPIRequest
-from processing.const import TilingGridUnit, CustomMimeType
+from processing.const import SampleType, TilingGridUnit, CustomMimeType, sample_type_to_zarr_dtype, default_sample_type_for_mimetype
 
 
 class SentinelHub:
@@ -131,8 +131,10 @@ class SentinelHub:
         to_date=None,
         tiling_grid_id=None,
         tiling_grid_resolution=None,
+        tiling_grid_tile_width=None,
         mimetype=None,
         resampling_method=None,
+        sample_type=None,
     ):
         request_raw_dict = self.get_request_dictionary(
             bbox=bbox,
@@ -147,21 +149,54 @@ class SentinelHub:
             preview_mode="DETAIL",
         )
 
-        # path should be env var
-        # only zarr_format supported is 2
-        # arrayParameters should be settable or default values (number in chunks should be calculated)
+        if tiling_grid_resolution == None or tiling_grid_tile_width == None:
+            raise Internal("class SentinelHub, method create_batch_job: parameter tiling_grid_resolution or tiling_grid_tile_width is None" )
+
+        # might not work for CREODIAS
+        zarr_path = f"s3://{self.S3_BUCKET_NAME}/<requestId>"
+
+        # Zarr format version. Currently only version 2 is supported.
+        # https://docs.sentinel-hub.com/api/latest/reference/#tag/batch_process/operation/createNewBatchProcessingRequest
+        zarr_format = 2
+
+        # Data type/encoding. Allowed values depend on the sampleType defined in evalscript:
+        # - |u1: 8-bit unsigned integer, recommended for sampleType UINT8 and AUTO,
+        # - |i1: 8-bit signed integer, recommended for sampleType INT8,
+        # - <u2,>u2: 16-bit unsigned integer (little and big endian, respectively), recommended for sampleType UINT16, allowed for UINT8 and AUTO,
+        # - <i2,>i2: 16-bit signed integer (little and big endian, respectively), recommended for sampleType INT16, allowed for UINT8, INT8 and AUTO,
+        # - <f4, >f4, <f8, >f8: float (little/big endian single precision, little/big endian double precision, respectively), recommended for sampleType FLOAT32, allowed for any sampleType.
+        # Recommended values encode the chosen sampleType losslessly, while other allowed values encode the same values in a wider data type but do not add any more precision.
+        default_sample_type = default_sample_type_for_mimetype.get(CustomMimeType.ZARR,SampleType.FLOAT32)
+        zarr_sample_type = sample_type if sample_type is not None else default_sample_type
+        zarr_dtype = sample_type_to_zarr_dtype.get(zarr_sample_type)
+
+        # Layout of values within each chunk of the array. Currently only "C" is supported, which means row-major order.
+        # https://docs.sentinel-hub.com/api/latest/reference/#tag/batch_process/operation/createNewBatchProcessingRequest
+        zarr_order = "C"
+
+        # A list of integers defining the length of each dimension of a chunk of the array, e.g. [1, 1000, 1000].
+        # The first element (time dimension chunking) must be 1.
+        # The second and third (latidude/y and longitude/x-dimension chunking, respectively) must evenly divide the batch output tile raster size. For example, when using the LAEA 100km grid with an output resolution of 50 m, each batch tile will be 2000 x 2000 pixels, thus valid chunking sizes are 2000, 1000, 500, 400 etc.
+        # https://docs.sentinel-hub.com/api/latest/reference/#tag/batch_process/operation/createNewBatchProcessingRequest
+        zarr_spatial_dimension_chunking = tiling_grid_tile_width / tiling_grid_resolution
+        zarr_chunks = [1, zarr_spatial_dimension_chunking, zarr_spatial_dimension_chunking]
+
+        # A scalar value providing the default value for portions of the array corresponding to non-existing chunks:
+        # - any chunks consisting solely of this value will not be written,
+        # - the value will be included in the output Zarr metadata.
+        # Note: fill_value must be representable by the array's dtype.
+        # Note: any grid tiles that are within Zarr envelope but outside of processRequest.input.bounds.geometry will not be processed by batch at all. No chunks will thus be written for those tiles, thus fill_value is required to ensure a valid Zarr is created.
+        # https://docs.sentinel-hub.com/api/latest/reference/#tag/batch_process/operation/createNewBatchProcessingRequest
+        zarr_fill_value = 0
+
         zarrOutput = {
-            "path": "s3://com.sinergise.openeo.results.dev/<requestId>",
-            "group": {"zarr_format": 2},
+            "path": zarr_path,
+            "group": {"zarr_format": zarr_format}, 
             "arrayParameters": {
-                "dtype": "<f8",
-                "order": "C",
-                "chunks": [
-                    1,
-                    1000,
-                    1000,
-                ],  # The second and third (latidude/y and longitude/x-dimension chunking, respectively) must evenly divide the batch output tile raster size. For example, when using the LAEA 100km grid with an output resolution of 50 m, each batch tile will be 2000 x 2000 pixels (100km/50m = 2000), thus valid chunking sizes are 2000, 1000, 500, 400 etc.
-                "fill_value": 0,
+                "dtype": zarr_dtype,
+                "order": zarr_order,
+                "chunks": zarr_chunks,
+                "fill_value": zarr_fill_value,
             },
         }
 
