@@ -118,7 +118,10 @@ class SentinelHub:
 
     def construct_output(self, width, height, mimetype):
         output = {
-            "responses": [{"identifier": "default", "format": {"type": mimetype.get_string()}}],
+            "responses": [
+                {"identifier": "default", "format": {"type": mimetype.get_string()}},
+                {"identifier": "userdata", "format": {"type": "application/json"}},
+            ],
         }
         if width is not None:
             output["width"] = width
