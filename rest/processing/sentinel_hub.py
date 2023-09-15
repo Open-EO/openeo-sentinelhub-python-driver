@@ -113,8 +113,8 @@ class SentinelHub:
     def construct_output(self, width, height, mimetype):
         output = {
             "responses": [
-                {"identifier": ShBatchResponseOutput.DATA, "format": {"type": mimetype.get_string()}},
-                {"identifier": ShBatchResponseOutput.METADATA, "format": {"type": "application/json"}},
+                {"identifier": ShBatchResponseOutput.DATA.value, "format": {"type": mimetype.get_string()}},
+                {"identifier": ShBatchResponseOutput.METADATA.value, "format": {"type": "application/json"}},
             ],
         }
         if width is not None:
