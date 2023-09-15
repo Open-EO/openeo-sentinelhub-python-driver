@@ -625,37 +625,27 @@ def test_sample_type(
 
 
 @pytest.mark.parametrize(
-    "collection_id,bands,expected_tiling_grid_id,expected_tiling_grid_resolution,expected_tiling_grid_tile_width",
+    "collection_id,bands,expected_tiling_grid_id,expected_tiling_grid_resolution",
     [
-        ("sentinel-2-l1c", ["B01"], 0, 60, 20040),
-        ("sentinel-2-l1c", ["B01", "B05"], 1, 20, 10000),
-        ("sentinel-2-l1c", ["B01", "B02"], 1, 10, 10000),
-        ("sentinel-2-l1c", ["B01", "CLM"], 0, 60, 20040),
-        ("sentinel-2-l1c", ["CLM"], 2, 120, 100080),
-        ("sentinel-2-l1c", ["sunAzimuthAngles"], 2, 360, 100080),
+        ("sentinel-2-l1c", ["B01"], 0, 60),
+        ("sentinel-2-l1c", ["B01", "B05"], 1, 20),
+        ("sentinel-2-l1c", ["B01", "B02"], 1, 10),
+        ("sentinel-2-l1c", ["B01", "CLM"], 0, 60),
+        ("sentinel-2-l1c", ["CLM"], 2, 120),
+        ("sentinel-2-l1c", ["sunAzimuthAngles"], 2, 360),
     ],
 )
 def test_tiling_grids(
-    get_process_graph,
-    collection_id,
-    bands,
-    expected_tiling_grid_id,
-    expected_tiling_grid_resolution,
-    expected_tiling_grid_tile_width,
+    get_process_graph, collection_id, bands, expected_tiling_grid_id, expected_tiling_grid_resolution
 ):
     process = Process(
         {"process_graph": get_process_graph(collection_id=collection_id, bands=bands)},
         request_type=ProcessingRequestTypes.BATCH,
     )
-    (
-        tiling_grid_id,
-        tiling_grid_resolution,
-        tiling_grid_tile_width,
-    ) = process.get_appropriate_tiling_grid_and_resolution()
+    tiling_grid_id, tiling_grid_resolution = process.get_appropriate_tiling_grid_and_resolution()
 
     assert expected_tiling_grid_id == tiling_grid_id
     assert expected_tiling_grid_resolution == tiling_grid_resolution
-    assert expected_tiling_grid_tile_width == tiling_grid_tile_width
 
 
 @pytest.mark.parametrize(
@@ -745,7 +735,6 @@ def test_sentinel_hub_access_token(access_token):
             to_date=datetime.now(),
             tiling_grid_id=1,
             tiling_grid_resolution=20,
-            tiling_grid_tile_width=10000,
             mimetype=MimeType.PNG,
         )
 
