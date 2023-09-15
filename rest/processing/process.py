@@ -12,9 +12,7 @@ from shapely.geometry import shape, mapping
 from processing.openeo_process_errors import FormatUnsuitable, NoDataAvailable
 from processing.sentinel_hub import SentinelHub
 from processing.const import (
-    CustomMimeType,
     SampleType,
-    TilingGridUnit,
     default_sample_type_for_mimetype,
     supported_sample_types,
     sample_types_to_bytes,
@@ -403,9 +401,7 @@ class Process:
         return resolution
 
     def get_appropriate_tiling_grid_and_resolution(self):
-
-        only_single_crs = self.mimetype == CustomMimeType.ZARR
-        tiling_grids = self.sentinel_hub.get_tiling_grids(TilingGridUnit.METRE, only_single_crs)
+        utm_tiling_grids = self.sentinel_hub.get_utm_tiling_grids()
 
         if self.pisp_resolution:
             # If desired resolution was explicitly set in partially defined spatial processes.
@@ -413,7 +409,7 @@ class Process:
             if self.pisp_resolution[0] != self.pisp_resolution[1]:
                 raise BadRequest("X and Y resolution must be identical in Sentinel Hub batch processing request.")
 
-            for tiling_grid in tiling_grids:
+            for tiling_grid in utm_tiling_grids:
                 if self.pisp_resolution[0] in tiling_grid["properties"]["resolutions"]:
                     break
             else:
@@ -424,14 +420,13 @@ class Process:
         else:
             requested_resolution = min(self.get_highest_resolution())
 
-        tiling_grids = sorted(
-            tiling_grids, key=lambda tg: tg["properties"]["tileWidth"]
+        utm_tiling_grids = sorted(
+            utm_tiling_grids, key=lambda tg: tg["properties"]["tileWidth"]
         )  # We prefer grids with smaller tiles
         best_tiling_grid_id = None
         best_tiling_grid_resolution = math.inf
-        best_tiling_grid_tile_width = 0
 
-        for tiling_grid in tiling_grids:
+        for tiling_grid in utm_tiling_grids:
             resolutions = tiling_grid["properties"]["resolutions"]
 
             for resolution in resolutions:
@@ -440,16 +435,11 @@ class Process:
                 ):
                     best_tiling_grid_id = tiling_grid["id"]
                     best_tiling_grid_resolution = resolution
-                    best_tiling_grid_tile_width = tiling_grid["properties"]["tileWidth"]
 
         if best_tiling_grid_id is None and best_tiling_grid_resolution is None:
-            return (
-                tiling_grids[0]["id"],
-                min(tiling_grids[0]["properties"]["resolutions"]),
-                tiling_grids[0]["properties"]["tileWidth"],
-            )
+            return utm_tiling_grids[0]["id"], min(utm_tiling_grids[0]["properties"]["resolutions"])
 
-        return best_tiling_grid_id, best_tiling_grid_resolution, best_tiling_grid_tile_width
+        return best_tiling_grid_id, best_tiling_grid_resolution
 
     def estimate_file_size(self, n_pixels=None):
         if n_pixels is None:
@@ -510,11 +500,7 @@ class Process:
         )
 
     def create_batch_job(self):
-        (
-            self.tiling_grid_id,
-            self.tiling_grid_resolution,
-            self.tiling_grid_tile_width,
-        ) = self.get_appropriate_tiling_grid_and_resolution()
+        self.tiling_grid_id, self.tiling_grid_resolution = self.get_appropriate_tiling_grid_and_resolution()
         return (
             self.sentinel_hub.create_batch_job(
                 bbox=self.bbox,
@@ -526,10 +512,8 @@ class Process:
                 to_date=self.to_date,
                 tiling_grid_id=self.tiling_grid_id,
                 tiling_grid_resolution=self.tiling_grid_resolution,
-                tiling_grid_tile_width=self.tiling_grid_tile_width,
                 mimetype=self.mimetype,
                 resampling_method=self.pisp_resampling_method,
-                sample_type=self.sample_type,
             ),
             self.service_base_url,
         )
