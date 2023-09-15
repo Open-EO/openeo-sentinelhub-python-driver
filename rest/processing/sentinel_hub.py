@@ -3,7 +3,7 @@ import json
 
 from sentinelhub import SentinelHubBatch
 from sentinelhub.exceptions import DownloadFailedException
-from openeoerrors import ProcessGraphComplexity, Internal
+from openeoerrors import ProcessGraphComplexity
 import requests
 
 from buckets import BUCKET_NAMES
@@ -129,61 +129,6 @@ class SentinelHub:
             output["height"] = height
         return output
 
-    def construct_zarr_output(
-        self,
-        tiling_grid_resolution=None,
-        tiling_grid_tile_width=None,
-        sample_type=None,
-    ):
-
-        if tiling_grid_resolution == None or tiling_grid_tile_width == None:
-            raise Internal("construct_zarr_output: parameter tiling_grid_resolution or tiling_grid_tile_width is None")
-
-        # might not work for CREODIAS
-        zarr_path = f"s3://{self.S3_BUCKET_NAME}/<requestId>"
-
-        # Zarr format version. Currently only version 2 is supported.
-        # https://docs.sentinel-hub.com/api/latest/reference/#tag/batch_process/operation/createNewBatchProcessingRequest
-        zarr_format = 2
-
-        # Data type/encoding. More in rest/processing/const.py
-        default_sample_type = default_sample_type_for_mimetype.get(CustomMimeType.ZARR, SampleType.FLOAT32)
-        zarr_sample_type = sample_type if sample_type is not None else default_sample_type
-        zarr_dtype = sample_type_to_zarr_dtype.get(zarr_sample_type)
-
-        # Layout of values within each chunk of the array. Currently only "C" is supported, which means row-major order.
-        # https://docs.sentinel-hub.com/api/latest/reference/#tag/batch_process/operation/createNewBatchProcessingRequest
-        zarr_order = "C"
-
-        # A list of integers defining the length of each dimension of a chunk of the array, e.g. [1, 1000, 1000].
-        # The first element (time dimension chunking) must be 1.
-        # The second and third (latidude/y and longitude/x-dimension chunking, respectively) must evenly divide the batch output tile raster size. For example, when using the LAEA 100km grid with an output resolution of 50 m, each batch tile will be 2000 x 2000 pixels, thus valid chunking sizes are 2000, 1000, 500, 400 etc.
-        # https://docs.sentinel-hub.com/api/latest/reference/#tag/batch_process/operation/createNewBatchProcessingRequest
-        zarr_spatial_dimension_chunking = tiling_grid_tile_width / tiling_grid_resolution
-        zarr_chunks = [1, zarr_spatial_dimension_chunking, zarr_spatial_dimension_chunking]
-
-        # A scalar value providing the default value for portions of the array corresponding to non-existing chunks:
-        # - any chunks consisting solely of this value will not be written,
-        # - the value will be included in the output Zarr metadata.
-        # Note: fill_value must be representable by the array's dtype.
-        # Note: any grid tiles that are within Zarr envelope but outside of processRequest.input.bounds.geometry will not be processed by batch at all. No chunks will thus be written for those tiles, thus fill_value is required to ensure a valid Zarr is created.
-        # https://docs.sentinel-hub.com/api/latest/reference/#tag/batch_process/operation/createNewBatchProcessingRequest
-        zarr_fill_value = 0
-        # TODO: make this configurable by user
-
-        zarr_output = {
-            "path": zarr_path,
-            "group": {"zarr_format": zarr_format},
-            "arrayParameters": {
-                "dtype": zarr_dtype,
-                "order": zarr_order,
-                "chunks": zarr_chunks,
-                "fill_value": zarr_fill_value,
-            },
-        }
-
-        return zarr_output
-
     def create_batch_job(
         self,
         bbox=None,
@@ -195,10 +140,8 @@ class SentinelHub:
         to_date=None,
         tiling_grid_id=None,
         tiling_grid_resolution=None,
-        tiling_grid_tile_width=None,
         mimetype=None,
         resampling_method=None,
-        sample_type=None,
     ):
         request_raw_dict = self.get_request_dictionary(
             bbox=bbox,
@@ -218,10 +161,6 @@ class SentinelHub:
             tiling_grid=SentinelHubBatch.tiling_grid(
                 grid_id=tiling_grid_id, resolution=tiling_grid_resolution, buffer=(0, 0)
             ),
-            bucket_name=self.S3_BUCKET_NAME if mimetype != CustomMimeType.ZARR else None,
-            zarrOutput=self.construct_zarr_output(tiling_grid_resolution, tiling_grid_tile_width, sample_type)
-            if mimetype == CustomMimeType.ZARR
-            else None,
         )
         return batch_request.request_id
 
@@ -251,12 +190,9 @@ class SentinelHub:
         batch_request = self.batch.get_request(batch_request_id)
         self.batch.start_analysis(batch_request)
 
-    def get_tiling_grids(self, unit: TilingGridUnit, only_single_crs: bool):
+    def get_utm_tiling_grids(self):
         tiling_grids = []
         for tiling_grid in self.batch.iter_tiling_grids():
-            if tiling_grid["properties"]["unit"] == unit.value:
-                if only_single_crs is False or (
-                    only_single_crs is True and tiling_grid["properties"]["singleCrs"] is True
-                ):
-                    tiling_grids.append(tiling_grid)
+            if tiling_grid["properties"]["unit"] == "METRE":
+                tiling_grids.append(tiling_grid)
         return tiling_grids
