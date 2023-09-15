@@ -58,8 +58,8 @@ class ProcessingRequestTypes(Enum):
 supported_mime_types = {
     ProcessingRequestTypes.BATCH: {
         "gtiff": MimeType.TIFF,
-        "zarr": MimeType.TIFF,
-        "netcdf": MimeType.TIFF,
+        # "zarr": MimeType.TIFF,
+        # "netcdf": MimeType.TIFF,
     },
     ProcessingRequestTypes.SYNC: {
         "gtiff": MimeType.TIFF,
@@ -69,6 +69,6 @@ supported_mime_types = {
 }
 
 supported_mime_types_error_msg = {
-    ProcessingRequestTypes.BATCH: "Currently supported formats are GTIFF, NETCDF and ZARR",
+    ProcessingRequestTypes.BATCH: "Currently supported format is GTIFF.",
     ProcessingRequestTypes.SYNC: "Currently supported formats are GTIFF, PNG and JPEG",
 }
