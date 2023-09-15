@@ -1,11 +1,27 @@
 from enum import Enum
-
+import mimetypes
 from sentinelhub import MimeType
 
 
 class ShBatchResponseOutput(Enum):
     DATA = "default"
     METADATA = "userdata"
+
+
+# Driver needs a way to save the originally requested format in the Process class so that
+# the post-processing can parse geotiff from Sentinel Hub to the correct format.
+# inspired by sentinelhub.py MimeType class
+# https://github.com/sentinel-hub/sentinelhub-py/blob/master/sentinelhub/constants.py#L261
+class CustomMimeType(Enum):
+    ZARR = "zarr"
+    NETCDF = "netcdf"
+
+    # This method is needed because mimetype.get_string() is called in construct_output() in rest/processing/sentinel_hub.py
+    def get_string(self) -> str:
+        # Need to get geotiff from Sentinel Hub (parsing to the correct format is done in post-processing)
+        if self is CustomMimeType.ZARR or self is CustomMimeType.NETCDF:
+            return MimeType.TIFF.get_string()
+        return mimetypes.types_map["." + self.value]
 
 
 class SampleType(Enum):
@@ -29,12 +45,16 @@ default_sample_type_for_mimetype = {
     MimeType.PNG: SampleType.UINT8,
     MimeType.JPG: SampleType.UINT8,
     MimeType.TIFF: SampleType.FLOAT32,
+    CustomMimeType.ZARR: SampleType.FLOAT32,
+    CustomMimeType.NETCDF: SampleType.FLOAT32,
 }
 
 supported_sample_types = {
     MimeType.PNG: [SampleType.UINT8, SampleType.UINT16],
     MimeType.JPG: [SampleType.UINT8],
     MimeType.TIFF: [SampleType.UINT8, SampleType.UINT16, SampleType.FLOAT32],
+    CustomMimeType.ZARR: [SampleType.UINT8, SampleType.UINT16, SampleType.FLOAT32],
+    CustomMimeType.NETCDF: [SampleType.UINT8, SampleType.UINT16, SampleType.FLOAT32],
 }
 
 sample_types_to_bytes = {
@@ -58,8 +78,8 @@ class ProcessingRequestTypes(Enum):
 supported_mime_types = {
     ProcessingRequestTypes.BATCH: {
         "gtiff": MimeType.TIFF,
-        # "zarr": MimeType.TIFF,
-        # "netcdf": MimeType.TIFF,
+        "zarr": CustomMimeType.ZARR,
+        "netcdf": CustomMimeType.NETCDF,
     },
     ProcessingRequestTypes.SYNC: {
         "gtiff": MimeType.TIFF,
@@ -69,6 +89,6 @@ supported_mime_types = {
 }
 
 supported_mime_types_error_msg = {
-    ProcessingRequestTypes.BATCH: "Currently supported format is GTIFF.",
-    ProcessingRequestTypes.SYNC: "Currently supported formats are GTIFF, PNG and JPEG",
+    ProcessingRequestTypes.BATCH: "Currently supported format are GTIFF, NETCDF and ZARR.",
+    ProcessingRequestTypes.SYNC: "Currently supported formats are GTIFF, PNG and JPEG.",
 }
