@@ -155,6 +155,7 @@ class SentinelHub:
             tiling_grid=SentinelHubBatch.tiling_grid(
                 grid_id=tiling_grid_id, resolution=tiling_grid_resolution, buffer=(0, 0)
             ),
+            bucket_name=self.S3_BUCKET_NAME,
         )
         return batch_request.request_id
 
