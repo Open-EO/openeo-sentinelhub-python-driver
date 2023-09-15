@@ -8,13 +8,7 @@ import requests
 
 from buckets import BUCKET_NAMES
 from processing.processing_api_request import ProcessingAPIRequest
-from processing.const import (
-    SampleType,
-    TilingGridUnit,
-    CustomMimeType,
-    sample_type_to_zarr_dtype,
-    default_sample_type_for_mimetype,
-)
+from processing.const import ShBatchResponseOutput
 
 
 class SentinelHub:
@@ -119,8 +113,8 @@ class SentinelHub:
     def construct_output(self, width, height, mimetype):
         output = {
             "responses": [
-                {"identifier": "default", "format": {"type": mimetype.get_string()}},
-                {"identifier": "userdata", "format": {"type": "application/json"}},
+                {"identifier": ShBatchResponseOutput.DATA, "format": {"type": mimetype.get_string()}},
+                {"identifier": ShBatchResponseOutput.METADATA, "format": {"type": "application/json"}},
             ],
         }
         if width is not None:
