@@ -1,4 +1,5 @@
 import os
+import shutil
 import rioxarray
 from dateutil import parser
 import pandas as pd
@@ -12,7 +13,7 @@ from processing.const import CustomMimeType
 from openeoerrors import Internal
 
 
-def parse_multitemporal_gtiff_to_netcdf_zarr(input_tiff, input_metadata, output_dir, output_format):
+def parse_multitemporal_gtiff_to_netcdf_zarr(input_tiff, input_metadata, output_dir, output_name, output_format):
     datacube_time_as_bands = rioxarray.open_rasterio(input_tiff)
 
     # for local use:
@@ -61,17 +62,18 @@ def parse_multitemporal_gtiff_to_netcdf_zarr(input_tiff, input_metadata, output_
     datacube_with_time_dimension = xr.combine_by_coords(list_of_timestamp_arrays)
 
     if output_format == CustomMimeType.NETCDF:
-        output_file_name = "output.nc"
-        output_file_path = os.path.join(output_dir, output_file_name)
+        output_file_path = os.path.join(output_dir, output_name)
         datacube_with_time_dimension.to_netcdf(output_file_path)
     elif output_format == CustomMimeType.ZARR:
-        output_file_name = "output.zarr"
-        output_file_path = os.path.join(output_dir, output_file_name)
+        output_file_path = os.path.join(output_dir, output_name)
         datacube_with_time_dimension.to_zarr(output_file_path)
+        # zip the zarr folder
+        shutil.make_archive(output_file_path, "zip", output_file_path)
+        output_file_path = f"{output_file_path}.zip"
     else:
         raise Internal(f"Parsing to format {output_format} is not supported")
 
-    return output_file_path, output_file_name
+    return output_file_path
 
 
 # parse_multitemporal_gtiff_to_netcdf_zarr(

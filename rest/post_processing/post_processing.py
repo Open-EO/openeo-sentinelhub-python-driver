@@ -31,20 +31,9 @@ def generate_subfolder_groups(batch_request_id, bucket, results):
     return subfolder_groups
 
 
-def upload_output_to_bucket(local_file_path, bucket, output_format):
-    if output_format == CustomMimeType.NETCDF:
-        s3_path = local_file_path[len(f"{TMP_FOLDER}") :]
-        bucket.put_file_to_bucket(local_file_path, None, s3_path)
-    elif output_format == CustomMimeType.ZARR:
-        for root, dirs, files in os.walk(local_file_path):
-            for file in files:
-                s3_path = os.path.join(root, file)[len(f"{TMP_FOLDER}") :]
-                bucket.put_file_to_bucket(file, None, s3_path)
-    else:
-        raise Internal(f"Unknown output format: {output_format}")
-
-    # remove folder after the folder/file has been uploaded
-    # shutil.rmtree( f"/tmp/{s3_prefix}")
+def upload_output_to_bucket(local_file_path, bucket):
+    s3_path = local_file_path[len(f"{TMP_FOLDER}") :]
+    bucket.upload_file_to_bucket(local_file_path, None, s3_path)
 
 
 def parse_sh_gtiff_to_format(job, bucket):
@@ -52,7 +41,7 @@ def parse_sh_gtiff_to_format(job, bucket):
     results = bucket.get_data_from_bucket(prefix=batch_request_id)
 
     process = new_process(json.loads(job["process"]), request_type=ProcessingRequestTypes.BATCH)
-    output_format = process.get_mimetype() 
+    output_format = process.get_mimetype()
 
     if check_if_already_parsed(results, output_format):
         return
@@ -64,11 +53,16 @@ def parse_sh_gtiff_to_format(job, bucket):
         input_metadata = subfolder_group[ShBatchResponseOutput.METADATA.value]
 
         # preventively remove directory and create it again
-        batch_output_dir = f"{batch_request_id}/{subfolder_id}"
-        tmp_dir = f"{TMP_FOLDER}{batch_output_dir}"
-        if os.path.exists(tmp_dir):
-            shutil.rmtree(tmp_dir)
-        os.makedirs(tmp_dir)
+        batch_request_dir = f"{TMP_FOLDER}{batch_request_id}"
+        batch_subfolder = f"{batch_request_dir}/{subfolder_id}/"
+        if os.path.exists(batch_request_dir):
+            shutil.rmtree(batch_request_dir)
+        os.makedirs(batch_subfolder)
 
-        output_file_path = parse_multitemporal_gtiff_to_netcdf_zarr(input_tiff, input_metadata, tmp_dir, output_format)
-        upload_output_to_bucket(output_file_path, bucket, output_format)
+        output_file_path = parse_multitemporal_gtiff_to_netcdf_zarr(
+            input_tiff, input_metadata, batch_subfolder, parsed_output_file_name[output_format], output_format
+        )
+        upload_output_to_bucket(output_file_path, bucket)
+
+        # remove folder after the folder/file has been uploaded
+        shutil.rmtree(batch_request_dir)
