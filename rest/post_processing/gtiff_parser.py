@@ -1,11 +1,12 @@
 import os
-import shutil
-# import json
 import rioxarray
 from dateutil import parser
 import pandas as pd
 import xarray as xr
 import requests
+
+# for local use:
+# import json
 
 from processing.const import CustomMimeType
 from openeoerrors import Internal
@@ -60,14 +61,17 @@ def parse_multitemporal_gtiff_to_netcdf_zarr(input_tiff, input_metadata, output_
     datacube_with_time_dimension = xr.combine_by_coords(list_of_timestamp_arrays)
 
     if output_format == CustomMimeType.NETCDF:
-        datacube_with_time_dimension.to_netcdf(os.path.join(output_dir, "output.nc"))
+        output_file_name = "output.nc"
+        output_file_path = os.path.join(output_dir, output_file_name)
+        datacube_with_time_dimension.to_netcdf(output_file_path)
     elif output_format == CustomMimeType.ZARR:
-        datacube_with_time_dimension.to_zarr(os.path.join(output_dir, "output.zarr"))
+        output_file_name = "output.zarr"
+        output_file_path = os.path.join(output_dir, output_file_name)
+        datacube_with_time_dimension.to_zarr(output_file_path)
     else:
         raise Internal(f"Parsing to format {output_format} is not supported")
 
-    # remove folder after the folder/file has been uploaded
-    # shutil.rmtree(output_dir)
+    return output_file_path, output_file_name
 
 
 # parse_multitemporal_gtiff_to_netcdf_zarr(
