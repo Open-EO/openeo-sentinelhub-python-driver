@@ -2,8 +2,7 @@ import os
 import json
 import shutil
 
-from openeoerrors import Internal
-from processing.const import CustomMimeType, ShBatchResponseOutput, ProcessingRequestTypes
+from processing.const import ShBatchResponseOutput, ProcessingRequestTypes
 from processing.processing import new_process
 from post_processing.gtiff_parser import parse_multitemporal_gtiff_to_format
 from post_processing.const import TMP_FOLDER, parsed_output_file_name
