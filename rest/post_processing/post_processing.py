@@ -5,13 +5,17 @@ import shutil
 from openeoerrors import Internal
 from processing.const import CustomMimeType, ShBatchResponseOutput, ProcessingRequestTypes
 from processing.processing import new_process
-from post_processing.gtiff_parser import parse_multitemporal_gtiff_to_netcdf_zarr
+from post_processing.gtiff_parser import parse_multitemporal_gtiff_to_format
 from post_processing.const import TMP_FOLDER, parsed_output_file_name
 
 
 def check_if_already_parsed(results, output_format):
     for result in results:
-        if parsed_output_file_name[output_format] in result["Key"]:
+        if (
+            parsed_output_file_name[output_format]["name"] in result["Key"]
+            and parsed_output_file_name[output_format]["ext"] in result["Key"]
+        ):
+            print("true")
             return True
 
 
@@ -31,9 +35,10 @@ def generate_subfolder_groups(batch_request_id, bucket, results):
     return subfolder_groups
 
 
-def upload_output_to_bucket(local_file_path, bucket):
-    s3_path = local_file_path[len(f"{TMP_FOLDER}") :]
-    bucket.upload_file_to_bucket(local_file_path, None, s3_path)
+def upload_output_to_bucket(local_file_paths, bucket):
+    for path in local_file_paths:
+        s3_path = path[len(f"{TMP_FOLDER}") :]
+        bucket.upload_file_to_bucket(path, None, s3_path)
 
 
 def parse_sh_gtiff_to_format(job, bucket):
@@ -59,10 +64,10 @@ def parse_sh_gtiff_to_format(job, bucket):
             shutil.rmtree(batch_request_dir)
         os.makedirs(batch_subfolder)
 
-        output_file_path = parse_multitemporal_gtiff_to_netcdf_zarr(
+        output_file_paths = parse_multitemporal_gtiff_to_format(
             input_tiff, input_metadata, batch_subfolder, parsed_output_file_name[output_format], output_format
         )
-        upload_output_to_bucket(output_file_path, bucket)
+        upload_output_to_bucket(output_file_paths, bucket)
 
         # remove folder after the folder/file has been uploaded
         shutil.rmtree(batch_request_dir)
