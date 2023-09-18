@@ -29,7 +29,5 @@ pyjwt = {extras = ["crypto"], version = "==2.3.0"}
 cryptography = "==36.0.1"
 placebo = "==0.9.0"
 rioxarray = "*"
-image = "*"
-matplotlib = "*"
 zarr = "*"
 netcdf4 = "*"
