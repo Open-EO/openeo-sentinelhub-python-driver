@@ -87,6 +87,11 @@ def parse_multitemporal_gtiff_to_format(input_tiff, input_metadata, output_dir, 
     time_dimensions = [dim for dim in datacube_metadata["outputDimensions"] if dim["type"] == "temporal"]
     bands_dimensions = [dim for dim in datacube_metadata["outputDimensions"] if dim["type"] == "bands"]
 
+    # mock a bands dimension (with 1 band) if it's not present in the data
+    # e.g. save_result process right after ndvi process which doesn't have a target band set
+    if len(bands_dimensions) == 0:
+        bands_dimensions = [{"name": "bands", "type": "bands", "labels": ["results"]}]
+
     check_dimensions(time_dimensions, bands_dimensions)
 
     list_of_timestamps, list_of_timestamp_arrays = get_timestamps_arrays(
