@@ -18,6 +18,7 @@ def check_if_already_parsed(results, output_format):
 
     return False
 
+
 def generate_subfolder_groups(batch_request_id, bucket, results):
     subfolder_groups = {}
     for result in results:
