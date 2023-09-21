@@ -14,9 +14,9 @@ def check_if_already_parsed(results, output_format):
             parsed_output_file_name[output_format]["name"] in result["Key"]
             and parsed_output_file_name[output_format]["ext"] in result["Key"]
         ):
-            print("true")
             return True
 
+    return False
 
 def generate_subfolder_groups(batch_request_id, bucket, results):
     subfolder_groups = {}
