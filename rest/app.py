@@ -39,7 +39,6 @@ from processing.processing import (
     get_batch_job_estimate,
     get_batch_job_status,
 )
-from post_processing.post_processing import parse_sh_gtiff_to_format
 from processing.utils import inject_variables_in_process_graph, overwrite_spatial_extent_without_parameters
 from processing.openeo_process_errors import OpenEOProcessError
 from authentication.authentication import authentication_provider
@@ -571,8 +570,6 @@ def add_job_to_queue(job_id):
 
         # START OF POST_PROCESSING
         # post-process gtiffs to appropriate formats
-
-        parse_sh_gtiff_to_format(job, bucket)
 
         # END OF POST_PROCESSING
 
