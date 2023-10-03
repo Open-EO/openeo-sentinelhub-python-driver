@@ -655,7 +655,7 @@ def estimate_job_cost(job_id):
     job = JobsPersistence.get_by_id(job_id)
     if job is None:
         raise JobNotFound()
-    
+
     # if estimate == 0, it has not been estimated yet, so do estimate and save it to db
     if float(job["estimated_pu"]) == 0 and float(job["estimated_file_size"]) == 0:
         estimated_pu, estimated_file_size = get_batch_job_estimate(
@@ -666,7 +666,7 @@ def estimate_job_cost(job_id):
     else:
         estimated_pu = float(job["estimated_pu"])
         estimated_file_size = float(job["estimated_file_size"])
-        
+
     return flask.make_response(
         jsonify(costs=estimated_pu, size=estimated_file_size),
         200,
