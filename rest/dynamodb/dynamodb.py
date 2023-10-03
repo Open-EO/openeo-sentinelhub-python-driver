@@ -204,7 +204,7 @@ class JobsPersistence(Persistence):
             "http_code": {"N": data.get("http_code", "200")},
             "results": {"S": json.dumps(data.get("results"))},
             "deployment_endpoint": {"S": data.get("deployment_endpoint", "https://services.sentinel-hub.com")},
-            "sh_pu_estimate": {"N": data.get("sh_pu_estimate", "0")}
+            "estimated_pu": {"N": data.get("estimated_pu", "0")}
         }
         if data.get("title"):
             item["title"] = {"S": str(data.get("title"))}

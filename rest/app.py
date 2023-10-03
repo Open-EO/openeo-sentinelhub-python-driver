@@ -613,8 +613,8 @@ def add_job_to_queue(job_id):
                 "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json",
             ],
             "id": job_id,
-            "estimated_sentinel_hub_processing_units": float(job["sh_pu_estimate"]),
-            "platform_credits": float(job["sh_pu_estimate"]) * 0.15,
+            "estimated_sentinel_hub_processing_units": float(job["estimated_pu"]),
+            "platform_credits": float(job["estimated_pu"]) * 0.15,
             "geometry": None,
             "properties": {
                 "title": job.get("title", None),
