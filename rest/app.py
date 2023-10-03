@@ -604,10 +604,6 @@ def add_job_to_queue(job_id):
 
         # we can create a /results_metadata.json file here
         # the contents of the batch job folder in the bucket isn't revealed anywhere else anyway
-
-        estimated_pu, _ = get_batch_job_estimate(
-            job["batch_request_id"], json.loads(job["process"]), job["deployment_endpoint"]
-        )
         metadata_creation_time = datetime.utcnow().strftime(ISO8601_UTC_FORMAT)
         batch_job_metadata = {
             "type": "Feature",
@@ -617,8 +613,8 @@ def add_job_to_queue(job_id):
                 "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json",
             ],
             "id": job_id,
-            "estimated_sentinel_hub_processing_units": estimated_pu,
-            "platform_credits": estimated_pu * 0.15,
+            "estimated_sentinel_hub_processing_units": float(job["sh_pu_estimate"]),
+            "platform_credits": float(job["sh_pu_estimate"]) * 0.15,
             "geometry": None,
             "properties": {
                 "title": job.get("title", None),
@@ -659,7 +655,7 @@ def estimate_job_cost(job_id):
     job = JobsPersistence.get_by_id(job_id)
     if job is None:
         raise JobNotFound()
-
+    
     estimated_pu, estimated_file_size = get_batch_job_estimate(
         job["batch_request_id"], json.loads(job["process"]), job["deployment_endpoint"]
     )
