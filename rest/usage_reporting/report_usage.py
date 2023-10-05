@@ -57,6 +57,18 @@ class UsageReporting:
         content = r.json()
 
         return r.status_code == 200 and content["status"] == "ok"
+    
+    def get_leftover_credits(self):
+        user_url = f"{self.base_url}user"
+        reporting_token = self.get_token()
+
+        headers = {"Authorization": f"Bearer {reporting_token['access_token']}"}
+
+        r = requests.get(user_url, headers=headers)
+        content = r.json()
+        credits = content["credits"]
+
+        return credits
 
     def report_usage(self, user_id, pu_spent, job_id=None, max_tries=5):
         reporting_token = self.get_token()
