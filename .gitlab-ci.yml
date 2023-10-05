@@ -144,7 +144,7 @@ deploy-testing-rest-lambda_docker:
     - sed -i "s#@@LOGGING_LEVEL@@#$LOGGING_LEVEL_TESTING#g" zappa_settings.json
     - pipenv run zappa save-python-settings-file testing
     # needs to be run only once!!!
-    - aws ecr create-repository --repository-name openeo-zappa-docker --image-scanning-configuration scanOnPush=true --region region
+    - pipenv run aws ecr create-repository --repository-name openeo-zappa-docker --image-scanning-configuration scanOnPush=true --region region
     # - pipenv run zappa deploy testing || pipenv run zappa update testing
     
     # HOW TO DO THAT IN DOCKER?
