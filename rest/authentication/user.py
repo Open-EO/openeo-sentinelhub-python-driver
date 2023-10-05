@@ -24,7 +24,7 @@ class User:
         if self.default_plan:
             user_info["default_plan"] = self.default_plan.name
         return user_info
-    
+
     def get_leftover_credits(self):
         pass
 
@@ -62,7 +62,7 @@ class OIDCUser(User):
         user_info = super().get_user_info()
         user_info["info"] = {"oidc_userinfo": self.oidc_userinfo}
         return user_info
-    
+
     def get_leftover_credits(self):
         return usageReporting.get_leftover_credits()
 
