@@ -103,6 +103,58 @@ deploy-testing-rest-lambda:
     - pipenv run bash -c "DEPLOYMENT_TYPE=testing python dynamodb/dynamodb.py"
 
 
+deploy-testing-rest-lambda_docker:
+  stage: deploy
+  when: manual
+  only:
+    variables:
+      - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+[-]rc.[0-9]+$/
+  image: python:3.9.13
+  before_script:
+    # configure aws access credentials:
+    - mkdir -p ~/.aws
+    - echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
+    - echo -e "[default]\naws_access_key_id=$TESTINGZAPPA_AWS_ACCESS_KEY_ID\naws_secret_access_key=$TESTINGZAPPA_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
+    - pip install pipenv==2021.5.29
+  script:
+    - chmod +x download-process-definitions.sh
+    - ./download-process-definitions.sh
+    - cd rest/
+    - pipenv install --dev
+    # create zappa_settings.json on-the-fly:
+    - cp zappa_settings.json.template zappa_settings.json
+    - sed -i "s/@@AWS_ACCESS_KEY_ID@@/$TESTINGDATA_AWS_ACCESS_KEY_ID/g" zappa_settings.json
+    - sed -i "s#@@AWS_SECRET_ACCESS_KEY@@#$TESTINGDATA_AWS_SECRET_ACCESS_KEY#g" zappa_settings.json
+    - sed -i "s/@@TESTING_SH_CLIENT_ID@@/$TESTING_SH_CLIENT_ID/g" zappa_settings.json
+    - sed -i "s/@@TESTING_SH_CLIENT_SECRET@@/$TESTING_SH_CLIENT_SECRET/g" zappa_settings.json
+    - sed -i "s/@@BACKEND_VERSION@@/$CI_COMMIT_TAG/g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_NAME_MAIN@@/$RESULTS_S3_BUCKET_NAME_MAIN/g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_NAME_CREODIAS@@/$RESULTS_S3_BUCKET_NAME_CREODIAS/g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_NAME_USWEST@@/$RESULTS_S3_BUCKET_NAME_USWEST/g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN/g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS/g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST/g" zappa_settings.json
+    - sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN@@#$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN#g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS@@/$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS/g" zappa_settings.json
+    - sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST@@#$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST#g" zappa_settings.json
+    - sed -i "s#@@USAGE_REPORTING_BASE_URL_TESTING@@#$USAGE_REPORTING_BASE_URL_TESTING#g" zappa_settings.json
+    - sed -i "s#@@USAGE_REPORTING_AUTH_URL_TESTING@@#$USAGE_REPORTING_AUTH_URL_TESTING#g" zappa_settings.json
+    - sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_ID_TESTING@@#$USAGE_REPORTING_AUTH_CLIENT_ID_TESTING#g" zappa_settings.json
+    - sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING@@#$USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING#g" zappa_settings.json
+    - sed -i "s#@@LOGGING_LEVEL@@#$LOGGING_LEVEL_TESTING#g" zappa_settings.json
+    - zappa save-python-settings-file testing
+    # needs to be run only once!!!
+    - aws ecr create-repository --repository-name openeo-zappa-docker --image-scanning-configuration scanOnPush=true --region region
+    # - pipenv run zappa deploy testing || pipenv run zappa update testing
+    
+    # HOW TO DO THAT IN DOCKER?
+    # ensure tables are created:
+    # - export AWS_ACCESS_KEY_ID="$TESTING_AWS_ACCESS_KEY_ID"
+    # - export AWS_SECRET_ACCESS_KEY="$TESTING_AWS_SECRET_ACCESS_KEY"
+    # - pipenv run bash -c "DEPLOYMENT_TYPE=testing python dynamodb/dynamodb.py"
+
+
+
 deploy-production-rest-lambda:
   stage: deploy
   when: manual
