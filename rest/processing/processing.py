@@ -10,7 +10,7 @@ from processing.sentinel_hub import SentinelHub
 from processing.partially_supported_processes import partially_supported_processes
 from dynamodb.utils import get_user_defined_processes_graphs
 from const import openEOBatchJobStatus
-from openeoerrors import Timeout
+from openeoerrors import InsufficientCredits, Timeout
 
 
 def check_process_graph_conversion_validity(process_graph):
@@ -54,12 +54,13 @@ def create_batch_job(process):
 
 
 def start_new_batch_job(sentinel_hub, process, job_id):
-    # add check here (after merge MR !318) and raise error if needed
-    # leftover_credits = g.user.get_leftover_credits()
-    # if leftover_credits < estimated_pu:
-    # raise InsufficientCredits()
     new_batch_request_id, deployment_endpoint = create_batch_job(process)
     estimated_pu, _ = get_batch_job_estimate(new_batch_request_id, process, deployment_endpoint)
+
+    leftover_credits = g.user.get_leftover_credits()
+    if leftover_credits < estimated_pu:
+        raise InsufficientCredits()
+
     sentinel_hub.start_batch_job(new_batch_request_id)
     g.user.report_usage(estimated_pu, job_id)
     return new_batch_request_id
@@ -89,11 +90,12 @@ def start_batch_job(batch_request_id, process, deployment_endpoint, job_id):
     if batch_request_info is None:
         return start_new_batch_job(sentinel_hub, process, job_id)
     elif batch_request_info.status in [BatchRequestStatus.CREATED, BatchRequestStatus.ANALYSIS_DONE]:
-        # add check here (after merge MR !318) and raise error if needed
-        # leftover_credits = g.user.get_leftover_credits()
-        # if leftover_credits < estimated_pu:
-        # raise InsufficientCredits()
         estimated_pu, _ = get_batch_job_estimate(batch_request_id, process, deployment_endpoint)
+
+        leftover_credits = g.user.get_leftover_credits()
+        if leftover_credits < estimated_pu:
+            raise InsufficientCredits()
+
         sentinel_hub.start_batch_job(batch_request_id)
         g.user.report_usage(estimated_pu, job_id)
     elif batch_request_info.status == BatchRequestStatus.PARTIAL:
