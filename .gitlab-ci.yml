@@ -111,6 +111,9 @@ deploy-testing-rest-lambda-docker:
       - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+[-]rc.[0-9]+$/
   # image: python:3.9.13
   before_script:
+    - python -m ensurepip --upgrade || python get-pip.py
+    - python --version
+    - pip --version
     # configure aws access credentials:
     - mkdir -p ~/.aws
     - echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
@@ -120,8 +123,6 @@ deploy-testing-rest-lambda-docker:
     - chmod +x download-process-definitions.sh
     - ./download-process-definitions.sh
     - cd rest/
-    - python --version
-    - pip --version
     - pipenv install --dev
     # create zappa_settings.json on-the-fly:
     - cp zappa_settings.json.template zappa_settings.json
