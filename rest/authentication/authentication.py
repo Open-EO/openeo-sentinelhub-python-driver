@@ -15,6 +15,7 @@ from openeoerrors import (
     Internal,
     CredentialsInvalid,
     BillingPlanInvalid,
+    TokenInvalid,
 )
 from authentication.oidc_providers import oidc_providers
 from authentication.user import OIDCUser, SHUser
