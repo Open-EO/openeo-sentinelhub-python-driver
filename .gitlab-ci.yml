@@ -111,7 +111,7 @@ deploy-testing-rest-lambda-docker:
       - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+[-]rc.[0-9]+$/
   # image: python:3.9.13
   before_script:
-    - python -m ensurepip --upgrade || python get-pip.py
+    - apk add --update python python-dev py-pip
     - python --version
     - pip --version
     # configure aws access credentials:
