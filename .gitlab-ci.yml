@@ -161,7 +161,8 @@ build-docker-testing-rest-lambda-docker:
   - build-python-testing-rest-lambda-docker
   # image: python:3.9.13
   before_script:
-    - apk add --no-cache aws-cli
+    - apk add --update python python-dev py-pip git
+    - pip install awscli --no-build-isolation
     # configure aws access credentials:
     - mkdir -p ~/.aws
     - echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
