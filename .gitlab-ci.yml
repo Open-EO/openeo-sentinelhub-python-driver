@@ -103,7 +103,7 @@ deploy-testing-rest-lambda:
     - pipenv run bash -c "DEPLOYMENT_TYPE=testing python dynamodb/dynamodb.py"
 
 
-deploy-testing-rest-lambda_docker:
+deploy-testing-rest-lambda-docker:
   stage: deploy
   when: manual
   only:
@@ -142,16 +142,26 @@ deploy-testing-rest-lambda_docker:
     - sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_ID_TESTING@@#$USAGE_REPORTING_AUTH_CLIENT_ID_TESTING#g" zappa_settings.json
     - sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING@@#$USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING#g" zappa_settings.json
     - sed -i "s#@@LOGGING_LEVEL@@#$LOGGING_LEVEL_TESTING#g" zappa_settings.json
+    # generate zappa_settings.py for docker image
     - pipenv run zappa save-python-settings-file testing
-    # needs to be run only once!!!
-    - pipenv run aws ecr create-repository --repository-name openeo-zappa-docker --image-scanning-configuration scanOnPush=true --region region
-    # - pipenv run zappa deploy testing || pipenv run zappa update testing
-    
-    # HOW TO DO THAT IN DOCKER?
+    # build docker image
+    - docker build -t openeo-sh-zappa:latest .
+    # login for AWS ECR docker
+    - aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin 127163565383.dkr.ecr.eu-central-1.amazonaws.com
+    # re-tag the built image 
+    - docker tag openeo-sh-zappa:latest 127163565383.dkr.ecr.eu-central-1.amazonaws.com/openeo-sh-zappa:latest
+    # push docker image to AWS ECR
+    - docker push 127163565383.dkr.ecr.eu-central-1.amazonaws.com/openeo-sh-zappa:latest
+    # deploy lambda with new docker image
+    - pipenv run zappa deploy testing-docker -d 127163565383.dkr.ecr.eu-central-1.amazonaws.com/openeo-sh-zappa:latest || pipenv run zappa update testing-docker -d 127163565383.dkr.ecr.eu-central-1.amazonaws.com/openeo-sh-zappa:latest
     # ensure tables are created:
-    # - export AWS_ACCESS_KEY_ID="$TESTING_AWS_ACCESS_KEY_ID"
-    # - export AWS_SECRET_ACCESS_KEY="$TESTING_AWS_SECRET_ACCESS_KEY"
-    # - pipenv run bash -c "DEPLOYMENT_TYPE=testing python dynamodb/dynamodb.py"
+    - export AWS_ACCESS_KEY_ID="$TESTING_AWS_ACCESS_KEY_ID"
+    - export AWS_SECRET_ACCESS_KEY="$TESTING_AWS_SECRET_ACCESS_KEY"
+    - pipenv run bash -c "DEPLOYMENT_TYPE=testing python dynamodb/dynamodb.py"
+
+
+    # needs to be run only once!!!
+    # - pipenv run aws ecr create-repository --repository-name openeo-zappa-docker --image-scanning-configuration scanOnPush=true --region region
 
 
 
