@@ -141,7 +141,7 @@ def get_batch_job_estimate(batch_request_id, process, deployment_endpoint):
     if batch_request.value_estimate is None:
         analysis_sleep_time_s = 5
         total_sleep_time = 0
-        MAX_TOTAL_TIME = 39
+        MAX_TOTAL_TIME = 29
         sentinel_hub.start_batch_job_analysis(batch_request_id)
 
     while batch_request.value_estimate is None and batch_request.status in [
