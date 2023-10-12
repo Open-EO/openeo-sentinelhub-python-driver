@@ -11,7 +11,7 @@ from processing.partially_supported_processes import partially_supported_process
 from dynamodb.utils import get_user_defined_processes_graphs
 from dynamodb import JobsPersistence
 from const import openEOBatchJobStatus
-from openeoerrors import Timeout
+from openeoerrors import JobNotFound, Timeout
 
 
 def check_process_graph_conversion_validity(process_graph):
@@ -55,12 +55,14 @@ def create_batch_job(process):
 
 
 def start_new_batch_job(sentinel_hub, process, job_id):
-    new_batch_request_id, deployment_endpoint = create_batch_job(process)
-    estimated_pu, estimated_file_size = get_batch_job_estimate(new_batch_request_id, process, deployment_endpoint)
+    job = JobsPersistence.get_by_id(job_id)
+    if job is None:
+        raise JobNotFound()
+    
+    estimated_pu = float(job["estimated_pu"])
+    new_batch_request_id, _ = create_batch_job(process)
     sentinel_hub.start_batch_job(new_batch_request_id)
     g.user.report_usage(estimated_pu, job_id)
-    JobsPersistence.update_key(job_id, "estimated_pu", estimated_pu)
-    JobsPersistence.update_key(job_id, "estimated_file_size", estimated_file_size)
     return new_batch_request_id
 
 
@@ -88,11 +90,13 @@ def start_batch_job(batch_request_id, process, deployment_endpoint, job_id):
     if batch_request_info is None:
         return start_new_batch_job(sentinel_hub, process, job_id)
     elif batch_request_info.status in [BatchRequestStatus.CREATED, BatchRequestStatus.ANALYSIS_DONE]:
-        estimated_pu, estimated_file_size = get_batch_job_estimate(batch_request_id, process, deployment_endpoint)
+        job = JobsPersistence.get_by_id(job_id)
+        if job is None:
+            raise JobNotFound()
+        
+        estimated_pu = float(job["estimated_pu"])
         sentinel_hub.start_batch_job(batch_request_id)
         g.user.report_usage(estimated_pu, job_id)
-        JobsPersistence.update_key(job_id, "estimated_pu", estimated_pu)
-        JobsPersistence.update_key(job_id, "estimated_file_size", estimated_file_size)
     elif batch_request_info.status == BatchRequestStatus.PARTIAL:
         sentinel_hub.restart_batch_job(batch_request_id)
     elif batch_request_info.status in [

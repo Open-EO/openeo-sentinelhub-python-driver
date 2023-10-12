@@ -456,9 +456,13 @@ def api_jobs():
 
         batch_request_id, deployment_endpoint = create_batch_job(data["process"])
 
+        estimated_pu, estimated_file_size = get_batch_job_estimate(batch_request_id, data["process"], deployment_endpoint)
+    
         data["batch_request_id"] = batch_request_id
         data["user_id"] = g.user.user_id
         data["deployment_endpoint"] = deployment_endpoint
+        data["estimated_pu"] = str(estimated_pu)
+        data["estimated_file_size"] = str(estimated_file_size)
 
         record_id = JobsPersistence.create(data)
 
