@@ -461,7 +461,8 @@ def api_jobs():
         data["batch_request_id"] = batch_request_id
         data["user_id"] = g.user.user_id
         data["deployment_endpoint"] = deployment_endpoint
-        data["estimated_pu"] = str(estimated_pu)
+        data["estimated_sentinelhub_pu"] = str(round(estimated_pu, 3))
+        data["estimated_platform_credits"] = str(round(estimated_pu * 0.15, 3))
         data["estimated_file_size"] = str(estimated_file_size)
 
         record_id = JobsPersistence.create(data)
@@ -493,9 +494,9 @@ def api_batch_job(job_id):
                 error=error,
                 created=convert_timestamp_to_simpler_format(job["created"]),
                 updated=convert_timestamp_to_simpler_format(job["last_updated"]),
-                costs=float(job.get("estimated_pu", 0)) * 0.15,
-                usage={"Platform Credits": {"unit": "credits", "value": float(job.get("estimated_pu", 0)) * 0.15},
-                       "Sentinel Hub": {"unit": "sentinelhub_processing_unit", "value": float(job.get("estimated_pu", 0))}}
+                costs=float(job.get("estimated_platform_credits", 0)),
+                usage={"Platform Credits": {"unit": "credits", "value": float(job.get("estimated_platform_credits", 0))},
+                       "Sentinel Hub": {"unit": "sentinelhub_processing_unit", "value": float(job.get("estimated_sentinelhub_pu", 0))}}
             ),
             200,
         )
@@ -626,8 +627,8 @@ def add_job_to_queue(job_id):
                 "datetime": metadata_creation_time,
                 "expires": metadata_valid,
                 "usage": {
-                    "Platform credits": {"unit": "credits", "value": float(job["estimated_pu"]) * 0.15},
-                    "Sentinel Hub": {"unit": "sentinelhub_processing_unit", "value": float(job["estimated_pu"])},
+                    "Platform credits": {"unit": "credits", "value": float(job["estimated_platform_credits"])},
+                    "Sentinel Hub": {"unit": "sentinelhub_processing_unit", "value": float(job["estimated_sentinelhub_pu"])},
                 },
                 "processing:expression": {"format": "openeo", "expression": json.loads(job["process"])},
             },
@@ -665,11 +666,11 @@ def estimate_job_cost(job_id):
     if job is None:
         raise JobNotFound()
     
-    estimated_pu = float(job["estimated_pu"])
+    estimated_sentinelhub_pu = float(job["estimated_sentinelhub_pu"])
     estimated_file_size = float(job["estimated_file_size"])
 
     return flask.make_response(
-        jsonify(costs=estimated_pu, size=estimated_file_size),
+        jsonify(costs=estimated_sentinelhub_pu, size=estimated_file_size),
         200,
     )
 
