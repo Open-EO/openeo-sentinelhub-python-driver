@@ -494,7 +494,8 @@ def api_batch_job(job_id):
                 created=convert_timestamp_to_simpler_format(job["created"]),
                 updated=convert_timestamp_to_simpler_format(job["last_updated"]),
                 costs=float(job.get("estimated_pu", 0)) * 0.15,
-                usage={"Sentinel Hub": {"unit": "sentinelhub_processing_unit", "value": float(job.get("estimated_pu", 0))}}
+                usage={"Platform Credits": {"unit": "credits", "value": float(job.get("estimated_pu", 0)) * 0.15},
+                       "Sentinel Hub": {"unit": "sentinelhub_processing_unit", "value": float(job.get("estimated_pu", 0))}}
             ),
             200,
         )
