@@ -141,7 +141,7 @@ def get_batch_job_estimate(batch_request_id, process, deployment_endpoint):
     if batch_request.value_estimate is None:
         analysis_sleep_time_s = 5
         total_sleep_time = 0
-        MAX_TOTAL_TIME = 29
+        MAX_TOTAL_TIME = 39
         sentinel_hub.start_batch_job_analysis(batch_request_id)
 
     while batch_request.value_estimate is None and batch_request.status in [
@@ -178,7 +178,10 @@ def get_batch_job_estimate(batch_request_id, process, deployment_endpoint):
     if temporal_interval is None:
         temporal_interval = default_temporal_interval
 
-    estimated_pu = estimate_secure_factor * batch_request.value_estimate * default_temporal_interval / temporal_interval
+    estimated_batch_request_value = batch_request.value_estimate if batch_request.value_estimate is not None else 0
+    estimated_pu = (
+        estimate_secure_factor * estimated_batch_request_value * default_temporal_interval / temporal_interval
+    )
 
     n_pixels = batch_request.tile_count * batch_request.tile_width_px * batch_request.tile_height_px
     estimated_file_size = p.estimate_file_size(n_pixels=n_pixels)
