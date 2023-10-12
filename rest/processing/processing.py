@@ -58,7 +58,7 @@ def start_new_batch_job(sentinel_hub, process, job_id):
     job = JobsPersistence.get_by_id(job_id)
     if job is None:
         raise JobNotFound()
-    
+
     estimated_sentinelhub_pu = float(job["estimated_sentinelhub_pu"])
     new_batch_request_id, _ = create_batch_job(process)
     sentinel_hub.start_batch_job(new_batch_request_id)
@@ -93,7 +93,7 @@ def start_batch_job(batch_request_id, process, deployment_endpoint, job_id):
         job = JobsPersistence.get_by_id(job_id)
         if job is None:
             raise JobNotFound()
-        
+
         estimated_sentinelhub_pu = float(job["estimated_sentinelhub_pu"])
         sentinel_hub.start_batch_job(batch_request_id)
         g.user.report_usage(estimated_sentinelhub_pu, job_id)
