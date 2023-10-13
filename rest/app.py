@@ -36,8 +36,8 @@ from processing.processing import (
     start_batch_job,
     cancel_batch_job,
     modify_batch_job,
-    get_batch_job_estimate,
     get_batch_job_status,
+    create_or_get_estimate_values_from_db,
 )
 from processing.utils import inject_variables_in_process_graph, overwrite_spatial_extent_without_parameters
 from processing.openeo_process_errors import OpenEOProcessError
@@ -456,16 +456,9 @@ def api_jobs():
 
         batch_request_id, deployment_endpoint = create_batch_job(data["process"])
 
-        estimated_pu, estimated_file_size = get_batch_job_estimate(
-            batch_request_id, data["process"], deployment_endpoint
-        )
-
         data["batch_request_id"] = batch_request_id
         data["user_id"] = g.user.user_id
         data["deployment_endpoint"] = deployment_endpoint
-        data["estimated_sentinelhub_pu"] = str(round(estimated_pu, 3))
-        data["estimated_platform_credits"] = str(round(estimated_pu * 0.15, 3))
-        data["estimated_file_size"] = str(estimated_file_size)
 
         record_id = JobsPersistence.create(data)
 
@@ -486,25 +479,28 @@ def api_batch_job(job_id):
 
     if flask.request.method == "GET":
         status, error = get_batch_job_status(job["batch_request_id"], job["deployment_endpoint"])
-        return flask.make_response(
-            jsonify(
-                id=job_id,
-                title=job.get("title", None),
-                description=job.get("description", None),
-                process={"process_graph": json.loads(job["process"])["process_graph"]},
-                status=status.value,
-                error=error,
-                created=convert_timestamp_to_simpler_format(job["created"]),
-                updated=convert_timestamp_to_simpler_format(job["last_updated"]),
-                costs=float(job.get("estimated_platform_credits", 0)),
-                usage={
-                    "Platform Credits": {"unit": "credits", "value": float(job.get("estimated_platform_credits", 0))},
-                    "Sentinel Hub": {
-                        "unit": "sentinelhub_processing_unit",
-                        "value": float(job.get("estimated_sentinelhub_pu", 0)),
-                    },
+        data_to_jsonify = {
+            "id": job_id,
+            "title": job.get("title", None),
+            "description": job.get("description", None),
+            "process": {"process_graph": json.loads(job["process"])["process_graph"]},
+            "status": status.value,
+            "error": error,
+            "created": convert_timestamp_to_simpler_format(job["created"]),
+            "updated": convert_timestamp_to_simpler_format(job["last_updated"]),
+        }
+
+        if status is not openEOBatchJobStatus.CREATED:
+            data_to_jsonify["costs"] = float(job.get("estimated_platform_credits", 0))
+            data_to_jsonify["usage"] = {
+                "Platform Credits": {"unit": "credits", "value": float(job.get("estimated_platform_credits", 0))},
+                "Sentinel Hub": {
+                    "unit": "sentinelhub_processing_unit",
+                    "value": float(job.get("estimated_sentinelhub_pu", 0)),
                 },
-            ),
+            }
+        return flask.make_response(
+            jsonify(data_to_jsonify),
             200,
         )
 
@@ -634,10 +630,10 @@ def add_job_to_queue(job_id):
                 "datetime": metadata_creation_time,
                 "expires": metadata_valid,
                 "usage": {
-                    "Platform credits": {"unit": "credits", "value": float(job["estimated_platform_credits"])},
+                    "Platform credits": {"unit": "credits", "value": job["estimated_platform_credits"]},
                     "Sentinel Hub": {
                         "unit": "sentinelhub_processing_unit",
-                        "value": float(job["estimated_sentinelhub_pu"]),
+                        "value": job["estimated_sentinelhub_pu"],
                     },
                 },
                 "processing:expression": {"format": "openeo", "expression": json.loads(job["process"])},
@@ -676,8 +672,9 @@ def estimate_job_cost(job_id):
     if job is None:
         raise JobNotFound()
 
-    estimated_sentinelhub_pu = float(job["estimated_sentinelhub_pu"])
-    estimated_file_size = float(job["estimated_file_size"])
+    estimated_sentinelhub_pu, _, estimated_file_size = create_or_get_estimate_values_from_db(
+        job, job["batch_request_id"]
+    )
 
     return flask.make_response(
         jsonify(costs=estimated_sentinelhub_pu, size=estimated_file_size),

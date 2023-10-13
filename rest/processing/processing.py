@@ -1,3 +1,4 @@
+import json
 import time
 
 from pg_to_evalscript import convert_from_process_graph
@@ -55,12 +56,13 @@ def create_batch_job(process):
 
 
 def start_new_batch_job(sentinel_hub, process, job_id):
+    new_batch_request_id, _ = create_batch_job(process)
+
     job = JobsPersistence.get_by_id(job_id)
     if job is None:
         raise JobNotFound()
 
-    estimated_sentinelhub_pu = float(job["estimated_sentinelhub_pu"])
-    new_batch_request_id, _ = create_batch_job(process)
+    estimated_sentinelhub_pu, _, _ = create_or_get_estimate_values_from_db(job, new_batch_request_id)
     sentinel_hub.start_batch_job(new_batch_request_id)
     g.user.report_usage(estimated_sentinelhub_pu, job_id)
     return new_batch_request_id
@@ -94,7 +96,7 @@ def start_batch_job(batch_request_id, process, deployment_endpoint, job_id):
         if job is None:
             raise JobNotFound()
 
-        estimated_sentinelhub_pu = float(job["estimated_sentinelhub_pu"])
+        estimated_sentinelhub_pu, _, _ = create_or_get_estimate_values_from_db(job, job["batch_request_id"])
         sentinel_hub.start_batch_job(batch_request_id)
         g.user.report_usage(estimated_sentinelhub_pu, job_id)
     elif batch_request_info.status == BatchRequestStatus.PARTIAL:
@@ -178,10 +180,7 @@ def get_batch_job_estimate(batch_request_id, process, deployment_endpoint):
     if temporal_interval is None:
         temporal_interval = default_temporal_interval
 
-    estimated_batch_request_value = batch_request.value_estimate if batch_request.value_estimate is not None else 0
-    estimated_pu = (
-        estimate_secure_factor * estimated_batch_request_value * default_temporal_interval / temporal_interval
-    )
+    estimated_pu = estimate_secure_factor * batch_request.value_estimate * default_temporal_interval / temporal_interval
 
     n_pixels = batch_request.tile_count * batch_request.tile_width_px * batch_request.tile_height_px
     estimated_file_size = p.estimate_file_size(n_pixels=n_pixels)
@@ -200,3 +199,20 @@ def get_batch_job_status(batch_request_id, deployment_endpoint):
         )
     else:
         return openEOBatchJobStatus.FINISHED, None
+
+
+def create_or_get_estimate_values_from_db(job, batch_request_id):
+    if float(job["estimated_sentinelhub_pu"]) == 0 and float(job["estimated_file_size"]) == 0:
+        estimated_sentinelhub_pu, estimated_file_size = get_batch_job_estimate(
+            batch_request_id, json.loads(job["process"]), job["deployment_endpoint"]
+        )
+        estimated_platform_credits = round(estimated_sentinelhub_pu * 0.15, 3)
+        JobsPersistence.update_key(job["id"], "estimated_sentinelhub_pu", str(round(estimated_sentinelhub_pu, 3)))
+        JobsPersistence.update_key(job["id"], "estimated_platform_credits", str(estimated_platform_credits))
+        JobsPersistence.update_key(job["id"], "estimated_file_size", str(estimated_file_size))
+    else:
+        estimated_sentinelhub_pu = float(job["estimated_sentinelhub_pu"])
+        estimated_platform_credits = float(job["estimated_platform_credits"])
+        estimated_file_size = float(job["estimated_file_size"])
+
+    return estimated_sentinelhub_pu, estimated_platform_credits, estimated_file_size
