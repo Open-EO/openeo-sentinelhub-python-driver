@@ -237,7 +237,7 @@ deploy-testing-rest-lambda-docker:
     - sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING@@#$USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING#g" zappa_settings.json
     - sed -i "s#@@LOGGING_LEVEL@@#$LOGGING_LEVEL_TESTING#g" zappa_settings.json
     # deploy lambda with new docker image
-    - pipenv run zappa deploy "$DEPLOYMENT_NAME"-d "$CI_REGISTRY/$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG" || pipenv run zappa update testing-docker -d "$CI_REGISTRY/$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"
+    - pipenv run zappa deploy "$DEPLOYMENT_NAME" -d "$CI_REGISTRY/$CI_REGISTRY_IMAGE:latest" || pipenv run zappa update "$DEPLOYMENT_NAME" -d "$CI_REGISTRY/$CI_REGISTRY_IMAGE:latest"
     # ensure tables are created:
     # - export AWS_ACCESS_KEY_ID="$TESTING_AWS_ACCESS_KEY_ID"
     # - export AWS_SECRET_ACCESS_KEY="$TESTING_AWS_SECRET_ACCESS_KEY"
