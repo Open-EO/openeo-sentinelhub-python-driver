@@ -58,7 +58,7 @@ class UsageReporting:
 
         return r.status_code == 200 and content["status"] == "ok"
 
-    def get_leftover_credits(self, max_tries=5):
+    def get_leftover_credits(self):
         user_url = f"{self.base_url}user"
         reporting_token = self.get_token()
 
@@ -68,21 +68,19 @@ class UsageReporting:
             log(ERROR, "Services for usage reporting are not healthy")
             raise Internal("Services for usage reporting are not healthy")
 
-        for try_number in range(max_tries):
-            r = requests.get(user_url, headers=headers)
+        r = requests.get(user_url, headers=headers)
 
-            if r.status_code == 200:
-                content = r.json()
-                credits = content.get("credits")
+        if r.status_code == 200:
+            content = r.json()
+            credits = content.get("credits")
 
-                return credits
-            else:
-                log(ERROR, f"Error fetching leftover credits on try #{try_number+1}: {r.status_code} {r.text}")
-                raise Internal(
-                    f"Problems during fetching leftover credits on try #{try_number+1}: {r.status_code} {r.text}"
+            return credits
+        else:
+            log(ERROR, f"Error fetching leftover credits: {r.status_code} {r.text}")
+            raise Internal(
+                f"Problems during fetching leftover credits: {r.status_code} {r.text}"
                 )
 
-        raise Internal(f"Out of retries. Fetching leftover credits failed: {r.status_code} {r.text}")
 
     def report_usage(self, user_id, pu_spent, job_id=None, max_tries=5):
         reporting_token = self.get_token()
