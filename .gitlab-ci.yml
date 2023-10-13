@@ -147,6 +147,9 @@ build-python-testing-rest-lambda-docker:
     # generate zappa_settings.py for docker image
     - pipenv run zappa save-python-settings-file testing-docker
     - ls
+  artifacts:
+    untracked: true
+    expire_in: 1 day
 
     # needs to be run only once!!!
     # - pipenv run aws ecr create-repository --repository-name openeo-zappa-docker --image-scanning-configuration scanOnPush=true --region region
@@ -183,7 +186,9 @@ build-docker-testing-rest-lambda-docker:
     # - docker push 127163565383.dkr.ecr.eu-central-1.amazonaws.com/openeo-sh-zappa:latest
     - docker push "$CI_REGISTRY/$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"
     - docker push "$CI_REGISTRY/$CI_REGISTRY_IMAGE:latest"
-
+  artifacts:
+    untracked: true
+    expire_in: 1 day
 
 
 deploy-testing-rest-lambda-docker:
