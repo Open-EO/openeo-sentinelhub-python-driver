@@ -89,6 +89,6 @@ supported_mime_types = {
 }
 
 supported_mime_types_error_msg = {
-    ProcessingRequestTypes.BATCH: "Currently supported format are GTIFF, NETCDF and ZARR.",
+    ProcessingRequestTypes.BATCH: "Currently supported formats are GTIFF, NETCDF and ZARR.",
     ProcessingRequestTypes.SYNC: "Currently supported formats are GTIFF, PNG and JPEG.",
 }
