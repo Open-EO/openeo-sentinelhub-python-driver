@@ -289,7 +289,7 @@ deploy-production-rest-lambda:
     - pipenv run bash -c "DEPLOYMENT_TYPE=production python dynamodb/dynamodb.py"
 
 # AFTER 2023-10-16
-# DEPLOY PRODUCTION: DOCKER ON LAMBDA
+# DEPLOY PRODUCTION: create docker image, upload it to AWS ECR and use it in AWS Lambda
 # - step 1: generate zappa settings for the app inside the docker image
 # - step 2: create docker image and push it to AWS ECR
 # - step 3: update lambda function to use the new docker image
