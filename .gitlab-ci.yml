@@ -248,7 +248,7 @@ deploy-production-rest-lambda:
   when: manual
   only:
     variables:
-      - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]$/
+      - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+$/
   image: python:3.9.13
   before_script:
     # configure aws access credentials:
@@ -300,7 +300,7 @@ deploy-production-generate-zappa-settings:
   when: manual
   only:
     variables:
-      - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+[-]rc.[0-9]+$/
+      - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+$/
   image: python:3.9.13
   before_script:
     # configure aws access credentials:
@@ -347,7 +347,7 @@ deploy-production-create-docker-image:
   stage: deploy-create-docker-image
   only:
     variables:
-      - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+[-]rc.[0-9]+$/
+      - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+$/
   dependencies:
     - deploy-production-generate-zappa-settings
   needs: ["deploy-production-generate-zappa-settings"]
@@ -375,7 +375,7 @@ deploy-production-rest-lambda-docker:
   stage: deploy-update-lambda
   only:
     variables:
-      - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+[-]rc.[0-9]+$/
+      - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+$/
   dependencies:
     - deploy-production-create-docker-image
   needs: ["deploy-production-create-docker-image"]
