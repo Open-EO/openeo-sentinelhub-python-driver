@@ -121,7 +121,7 @@
       "env": "prod",
       "project": "openEO"
     }
-  }
+  },
   "production-docker": {
     "app_function": "app.app",
     "aws_region": "eu-central-1",

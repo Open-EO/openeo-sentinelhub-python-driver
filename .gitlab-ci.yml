@@ -60,6 +60,7 @@ publish_github:
     - if git remote | grep github > /dev/null; then git remote rm github; fi
 
 
+# BEFORE 2023-10-16
 # DEPLOY TESTING: uploading .zip file on lambda
 deploy-testing-rest-lambda:
   stage: deploy
@@ -106,6 +107,7 @@ deploy-testing-rest-lambda:
     - export AWS_SECRET_ACCESS_KEY="$TESTING_AWS_SECRET_ACCESS_KEY"
     - pipenv run bash -c "DEPLOYMENT_TYPE=testing python dynamodb/dynamodb.py"
 
+# AFTER 2023-10-16
 # DEPLOY TESTING: create docker image, upload it to AWS ECR and use it in AWS Lambda
 # - step 1: generate zappa settings for the app inside the docker image
 # - step 2: create docker image and push it to AWS ECR
@@ -178,14 +180,14 @@ deploy-testing-create-docker-image:
   script:
     - cd rest/
     # build docker image with correct tags
-    - docker build -t "$CI_REGISTRY/$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG" -t "$CI_REGISTRY/$CI_REGISTRY_IMAGE:latest" --build-arg VERSION=$CI_COMMIT_TAG --build-arg VCS_REF=$CI_COMMIT_SHA --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') .
+    - docker build -t "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:$CI_COMMIT_TAG" -t "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest" --build-arg VERSION=$CI_COMMIT_TAG --build-arg VCS_REF=$CI_COMMIT_SHA --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') .
     # login for AWS ECR docker
-    - aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin "$CI_REGISTRY"
+    - aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin "$TESTING_ECR_REGISTRY"
     # create a repository - needs to be executed only once!
     # - aws ecr create-repository --repository-name openeo-sh-zappa --image-scanning-configuration scanOnPush=true --region eu-central-1
     # push docker images (versioned with CI tag and "latest") to AWS ECR with docker
-    - docker push "$CI_REGISTRY/$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"
-    - docker push "$CI_REGISTRY/$CI_REGISTRY_IMAGE:latest"
+    - docker push "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:$CI_COMMIT_TAG"
+    - docker push "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
 
 # update lambda function to use the new docker image
 deploy-testing-rest-lambda-docker:
@@ -233,12 +235,13 @@ deploy-testing-rest-lambda-docker:
     - sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING@@#$USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING#g" zappa_settings.json
     - sed -i "s#@@LOGGING_LEVEL@@#$LOGGING_LEVEL_TESTING#g" zappa_settings.json
     # deploy lambda with new docker image
-    - pipenv run zappa deploy "$DEPLOYMENT_NAME" -d "$CI_REGISTRY/$CI_REGISTRY_IMAGE:latest" || pipenv run zappa update "$DEPLOYMENT_NAME" -d "$CI_REGISTRY/$CI_REGISTRY_IMAGE:latest"
+    - pipenv run zappa deploy "$DEPLOYMENT_NAME" -d "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest" || pipenv run zappa update "$DEPLOYMENT_NAME" -d "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
     # ensure tables are created:
     # - export AWS_ACCESS_KEY_ID="$TESTING_AWS_ACCESS_KEY_ID"
     # - export AWS_SECRET_ACCESS_KEY="$TESTING_AWS_SECRET_ACCESS_KEY"
     # - pipenv run bash -c "DEPLOYMENT_TYPE=testing python dynamodb/dynamodb.py"
 
+# BEFORE 2023-10-16
 # DEPLOY PRODUCTION: uploading .zip file on lambda
 deploy-production-rest-lambda:
   stage: deploy
@@ -285,5 +288,136 @@ deploy-production-rest-lambda:
     - export AWS_SECRET_ACCESS_KEY="$PRODDATA_AWS_SECRET_ACCESS_KEY"
     - pipenv run bash -c "DEPLOYMENT_TYPE=production python dynamodb/dynamodb.py"
 
+# AFTER 2023-10-16
+# DEPLOY PRODUCTION: DOCKER ON LAMBDA
+# - step 1: generate zappa settings for the app inside the docker image
+# - step 2: create docker image and push it to AWS ECR
+# - step 3: update lambda function to use the new docker image
 
-### DEPLOY PRODUCTION: DOCKER ON LAMBDA
+# generate zappa settings for the app inside the docker image
+deploy-production-generate-zappa-settings:
+  stage: deploy-generate-zappa-settings
+  when: manual
+  only:
+    variables:
+      - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+[-]rc.[0-9]+$/
+  image: python:3.9.13
+  before_script:
+    # configure aws access credentials:
+    - mkdir -p ~/.aws
+    - echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
+    - echo -e "[default]\naws_access_key_id=$PRODZAPPA_AWS_ACCESS_KEY_ID\naws_secret_access_key=$PRODZAPPA_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
+    - pip install pipenv==2021.5.29
+  script:
+    - chmod +x download-process-definitions.sh
+    - ./download-process-definitions.sh
+    - cd rest/
+    - pipenv install --dev
+    # create zappa_settings.json on-the-fly:
+    - cp zappa_settings.json.template zappa_settings.json
+    - sed -i "s/@@AWS_ACCESS_KEY_ID@@/$PRODDATA_AWS_ACCESS_KEY_ID/g" zappa_settings.json
+    - sed -i "s#@@AWS_SECRET_ACCESS_KEY@@#$PRODDATA_AWS_SECRET_ACCESS_KEY#g" zappa_settings.json
+    - sed -i "s/@@PRODUCTION_SH_CLIENT_ID@@/$PRODUCTION_SH_CLIENT_ID/g" zappa_settings.json
+    - sed -i "s/@@PRODUCTION_SH_CLIENT_SECRET@@/$PRODUCTION_SH_CLIENT_SECRET/g" zappa_settings.json
+    - sed -i "s/@@BACKEND_VERSION@@/$CI_COMMIT_TAG/g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_NAME_MAIN@@/$RESULTS_S3_BUCKET_NAME_MAIN_PRODUCTION/g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_NAME_CREODIAS@@/$RESULTS_S3_BUCKET_NAME_CREODIAS_PRODUCTION/g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_NAME_USWEST@@/$RESULTS_S3_BUCKET_NAME_USWEST_PRODUCTION/g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN_PRODUCTION/g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS_PRODUCTION/g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST_PRODUCTION/g" zappa_settings.json
+    - sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN@@#$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN_PRODUCTION#g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS@@/$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS_PRODUCTION/g" zappa_settings.json
+    - sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST@@#$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST_PRODUCTION#g" zappa_settings.json
+    - sed -i "s#@@USAGE_REPORTING_BASE_URL_PRODUCTION@@#$USAGE_REPORTING_BASE_URL_PRODUCTION#g" zappa_settings.json
+    - sed -i "s#@@USAGE_REPORTING_AUTH_URL_PRODUCTION@@#$USAGE_REPORTING_AUTH_URL_PRODUCTION#g" zappa_settings.json
+    - sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_ID_PRODUCTION@@#$USAGE_REPORTING_AUTH_CLIENT_ID_PRODUCTION#g" zappa_settings.json
+    - sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_SECRET_PRODUCTION@@#$USAGE_REPORTING_AUTH_CLIENT_SECRET_PRODUCTION#g" zappa_settings.json
+    - sed -i "s#@@LOGGING_LEVEL@@#$LOGGING_LEVEL_PRODUCTION#g" zappa_settings.json
+    # generate zappa_settings.py for docker image from zappa_settings.json
+    - pipenv run zappa save-python-settings-file testing-docker
+  # save downloaded process definitions and zappa configuration 
+  # for CI job that creates docker image
+  artifacts:
+    untracked: true
+    expire_in: 1 day
+
+# create docker image and push it to AWS ECR
+deploy-production-create-docker-image:
+  stage: deploy-create-docker-image
+  only:
+    variables:
+      - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+[-]rc.[0-9]+$/
+  dependencies:
+    - deploy-production-generate-zappa-settings
+  needs: ["deploy-production-generate-zappa-settings"]
+  before_script:
+    - apk add --update python python-dev py-pip
+    - pip install awscli --no-build-isolation
+    # configure aws access credentials:
+    - mkdir -p ~/.aws
+    - echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
+    - echo -e "[default]\naws_access_key_id=$TESTINGZAPPA_AWS_ACCESS_KEY_ID\naws_secret_access_key=$TESTINGZAPPA_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
+  script:
+    - cd rest/
+    # build docker image with correct tags
+    - docker build -t "$PROD_ECR_REGISTRY/$PROD_ECR_REGISTRY_IMAGE:$CI_COMMIT_TAG" -t "$PROD_ECR_REGISTRY/$PROD_ECR_REGISTRY_IMAGE:latest" --build-arg VERSION=$CI_COMMIT_TAG --build-arg VCS_REF=$CI_COMMIT_SHA --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') .
+    # login for AWS ECR docker
+    - aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin "$PROD_ECR_REGISTRY"
+    # create a repository - needs to be executed only once!
+    # - aws ecr create-repository --repository-name openeo-sh-zappa --image-scanning-configuration scanOnPush=true --region eu-central-1
+    # push docker images (versioned with CI tag and "latest") to AWS ECR with docker
+    - docker push "$PROD_ECR_REGISTRY/$PROD_ECR_REGISTRY_IMAGE:$CI_COMMIT_TAG"
+    - docker push "$PROD_ECR_REGISTRY/$PROD_ECR_REGISTRY_IMAGE:latest"
+
+# update lambda function to use the new docker image
+deploy-production-rest-lambda-docker:
+  stage: deploy-update-lambda
+  only:
+    variables:
+      - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+[-]rc.[0-9]+$/
+  dependencies:
+    - deploy-production-create-docker-image
+  needs: ["deploy-production-create-docker-image"]
+  image: python:3.9.13
+  variables:
+    DEPLOYMENT_NAME: "production-docker"
+  before_script:
+    # configure aws access credentials:
+    - mkdir -p ~/.aws
+    - echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
+    - echo -e "[default]\naws_access_key_id=$TESTINGZAPPA_AWS_ACCESS_KEY_ID\naws_secret_access_key=$TESTINGZAPPA_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
+    - pip install pipenv==2021.5.29
+  script:
+    - chmod +x download-process-definitions.sh
+    - ./download-process-definitions.sh
+    - cd rest/
+    - ls
+    - pipenv install --dev
+    # create zappa_settings.json on-the-fly:
+    - cp zappa_settings.json.template zappa_settings.json
+    - sed -i "s/@@AWS_ACCESS_KEY_ID@@/$PRODDATA_AWS_ACCESS_KEY_ID/g" zappa_settings.json
+    - sed -i "s#@@AWS_SECRET_ACCESS_KEY@@#$PRODDATA_AWS_SECRET_ACCESS_KEY#g" zappa_settings.json
+    - sed -i "s/@@PRODUCTION_SH_CLIENT_ID@@/$PRODUCTION_SH_CLIENT_ID/g" zappa_settings.json
+    - sed -i "s/@@PRODUCTION_SH_CLIENT_SECRET@@/$PRODUCTION_SH_CLIENT_SECRET/g" zappa_settings.json
+    - sed -i "s/@@BACKEND_VERSION@@/$CI_COMMIT_TAG/g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_NAME_MAIN@@/$RESULTS_S3_BUCKET_NAME_MAIN_PRODUCTION/g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_NAME_CREODIAS@@/$RESULTS_S3_BUCKET_NAME_CREODIAS_PRODUCTION/g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_NAME_USWEST@@/$RESULTS_S3_BUCKET_NAME_USWEST_PRODUCTION/g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN_PRODUCTION/g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS_PRODUCTION/g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST_PRODUCTION/g" zappa_settings.json
+    - sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN@@#$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN_PRODUCTION#g" zappa_settings.json
+    - sed -i "s/@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS@@/$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS_PRODUCTION/g" zappa_settings.json
+    - sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST@@#$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST_PRODUCTION#g" zappa_settings.json
+    - sed -i "s#@@USAGE_REPORTING_BASE_URL_PRODUCTION@@#$USAGE_REPORTING_BASE_URL_PRODUCTION#g" zappa_settings.json
+    - sed -i "s#@@USAGE_REPORTING_AUTH_URL_PRODUCTION@@#$USAGE_REPORTING_AUTH_URL_PRODUCTION#g" zappa_settings.json
+    - sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_ID_PRODUCTION@@#$USAGE_REPORTING_AUTH_CLIENT_ID_PRODUCTION#g" zappa_settings.json
+    - sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_SECRET_PRODUCTION@@#$USAGE_REPORTING_AUTH_CLIENT_SECRET_PRODUCTION#g" zappa_settings.json
+    - sed -i "s#@@LOGGING_LEVEL@@#$LOGGING_LEVEL_PRODUCTION#g" zappa_settings.json
+    # deploy lambda with new docker image
+    - pipenv run zappa deploy "$DEPLOYMENT_NAME" -d "$PROD_ECR_REGISTRY/$PROD_ECR_REGISTRY_IMAGE:latest" || pipenv run zappa update "$DEPLOYMENT_NAME" -d "$PROD_ECR_REGISTRY/$PROD_ECR_REGISTRY_IMAGE:latest"
+    # ensure tables are created:
+    # - export AWS_ACCESS_KEY_ID="$PRODDATA_AWS_ACCESS_KEY_ID"
+    # - export AWS_SECRET_ACCESS_KEY="$PRODDATA_AWS_SECRET_ACCESS_KEY"
+    # - pipenv run bash -c "DEPLOYMENT_TYPE=production python dynamodb/dynamodb.py"
