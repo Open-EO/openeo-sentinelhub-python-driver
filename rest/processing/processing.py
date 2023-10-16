@@ -202,7 +202,7 @@ def get_batch_job_status(batch_request_id, deployment_endpoint):
 
 
 def create_or_get_estimate_values_from_db(job, batch_request_id):
-    if float(job["estimated_sentinelhub_pu"]) == 0 and float(job["estimated_file_size"]) == 0:
+    if float(job.get("estimated_sentinelhub_pu", 0)) == 0 and float(job.get("estimated_file_size", 0)) == 0:
         estimated_sentinelhub_pu, estimated_file_size = get_batch_job_estimate(
             batch_request_id, json.loads(job["process"]), job["deployment_endpoint"]
         )
@@ -211,8 +211,8 @@ def create_or_get_estimate_values_from_db(job, batch_request_id):
         JobsPersistence.update_key(job["id"], "estimated_platform_credits", str(estimated_platform_credits))
         JobsPersistence.update_key(job["id"], "estimated_file_size", str(estimated_file_size))
     else:
-        estimated_sentinelhub_pu = float(job["estimated_sentinelhub_pu"])
-        estimated_platform_credits = float(job["estimated_platform_credits"])
-        estimated_file_size = float(job["estimated_file_size"])
+        estimated_sentinelhub_pu = float(job.get("estimated_sentinelhub_pu", 0))
+        estimated_platform_credits = float(job.get("estimated_platform_credits", 0))
+        estimated_file_size = float(job.get("estimated_file_size", 0))
 
     return estimated_sentinelhub_pu, estimated_platform_credits, estimated_file_size

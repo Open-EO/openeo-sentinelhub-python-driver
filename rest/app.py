@@ -630,10 +630,10 @@ def add_job_to_queue(job_id):
                 "datetime": metadata_creation_time,
                 "expires": metadata_valid,
                 "usage": {
-                    "Platform credits": {"unit": "credits", "value": job["estimated_platform_credits"]},
+                    "Platform credits": {"unit": "credits", "value": job.get("estimated_platform_credits", 0)},
                     "Sentinel Hub": {
                         "unit": "sentinelhub_processing_unit",
-                        "value": job["estimated_sentinelhub_pu"],
+                        "value": job.get("estimated_sentinelhub_pu", 0),
                     },
                 },
                 "processing:expression": {"format": "openeo", "expression": json.loads(job["process"])},
