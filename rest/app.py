@@ -492,12 +492,12 @@ def api_batch_job(job_id):
         }
 
         if status is not openEOBatchJobStatus.CREATED:
-            data_to_jsonify["costs"] = float(job.get("estimated_sentinelhub_pu", 0))
+            data_to_jsonify["costs"] = float(job.get("sum_costs", 0))
             data_to_jsonify["usage"] = {
-                "Platform Credits": {"unit": "credits", "value": float(job.get("estimated_platform_credits", 0))},
+                "Platform Credits": {"unit": "credits", "value": round(float(job.get("sum_costs", 0)) * 0.15, 3)},
                 "Sentinel Hub": {
                     "unit": "sentinelhub_processing_unit",
-                    "value": float(job.get("estimated_sentinelhub_pu", 0)),
+                    "value": float(job.get("sum_costs", 0)),
                 },
             }
         return flask.make_response(
@@ -524,12 +524,16 @@ def api_batch_job(job_id):
             update_batch_request_id(job_id, job, new_batch_request_id)
             data["deployment_endpoint"] = deployment_endpoint
 
-            if json.dumps(data.get("process"), sort_keys=True) != json.dumps(json.loads(job.get("process")), sort_keys=True):
+            if json.dumps(data.get("process"), sort_keys=True) != json.dumps(
+                json.loads(job.get("process")), sort_keys=True
+            ):
                 estimated_sentinelhub_pu, estimated_file_size = get_batch_job_estimate(
                     new_batch_request_id, data.get("process"), deployment_endpoint
                 )
                 estimated_platform_credits = round(estimated_sentinelhub_pu * 0.15, 3)
-                JobsPersistence.update_key(job["id"], "estimated_sentinelhub_pu", str(round(estimated_sentinelhub_pu, 3)))
+                JobsPersistence.update_key(
+                    job["id"], "estimated_sentinelhub_pu", str(round(estimated_sentinelhub_pu, 3))
+                )
                 JobsPersistence.update_key(job["id"], "estimated_platform_credits", str(estimated_platform_credits))
                 JobsPersistence.update_key(job["id"], "estimated_file_size", str(estimated_file_size))
 

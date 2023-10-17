@@ -63,6 +63,7 @@ def start_new_batch_job(sentinel_hub, process, job_id):
         raise JobNotFound()
 
     estimated_sentinelhub_pu, _, _ = create_or_get_estimate_values_from_db(job, new_batch_request_id)
+    JobsPersistence.update_key(job["id"], "sum_costs", str(round(float(job.get("sum_costs", 0)) + estimated_sentinelhub_pu, 3)))
     sentinel_hub.start_batch_job(new_batch_request_id)
     g.user.report_usage(estimated_sentinelhub_pu, job_id)
     return new_batch_request_id
@@ -97,6 +98,7 @@ def start_batch_job(batch_request_id, process, deployment_endpoint, job_id):
             raise JobNotFound()
 
         estimated_sentinelhub_pu, _, _ = create_or_get_estimate_values_from_db(job, job["batch_request_id"])
+        JobsPersistence.update_key(job["id"], "sum_costs", str(round(float(job.get("sum_costs", 0)) + estimated_sentinelhub_pu, 3)))
         sentinel_hub.start_batch_job(batch_request_id)
         g.user.report_usage(estimated_sentinelhub_pu, job_id)
     elif batch_request_info.status == BatchRequestStatus.PARTIAL:

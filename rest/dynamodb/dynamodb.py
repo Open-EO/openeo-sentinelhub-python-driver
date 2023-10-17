@@ -207,6 +207,7 @@ class JobsPersistence(Persistence):
             "estimated_sentinelhub_pu": {"N": data.get("estimated_sentinelhub_pu", "0")},
             "estimated_platform_credits": {"N": data.get("estimated_platform_credits", "0")},
             "estimated_file_size": {"N": data.get("estimated_file_size", "0")},
+            "sum_costs": {"N": data.get("sum_costs", "0")},
         }
         if data.get("title"):
             item["title"] = {"S": str(data.get("title"))}
