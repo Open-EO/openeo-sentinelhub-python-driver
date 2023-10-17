@@ -31,6 +31,7 @@ from schemas import (
 from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
 from processing.processing import (
     check_process_graph_conversion_validity,
+    get_batch_job_estimate,
     process_data_synchronously,
     create_batch_job,
     start_batch_job,
@@ -522,6 +523,15 @@ def api_batch_job(job_id):
             new_batch_request_id, deployment_endpoint = modify_batch_job(data["process"])
             update_batch_request_id(job_id, job, new_batch_request_id)
             data["deployment_endpoint"] = deployment_endpoint
+
+            if json.dumps(data.get("process"), sort_keys=True) != json.dumps(json.loads(job.get("process")), sort_keys=True):
+                estimated_sentinelhub_pu, estimated_file_size = get_batch_job_estimate(
+                    new_batch_request_id, data.get("process"), deployment_endpoint
+                )
+                estimated_platform_credits = round(estimated_sentinelhub_pu * 0.15, 3)
+                JobsPersistence.update_key(job["id"], "estimated_sentinelhub_pu", str(round(estimated_sentinelhub_pu, 3)))
+                JobsPersistence.update_key(job["id"], "estimated_platform_credits", str(estimated_platform_credits))
+                JobsPersistence.update_key(job["id"], "estimated_file_size", str(estimated_file_size))
 
         for key in data:
             JobsPersistence.update_key(job_id, key, data[key])
