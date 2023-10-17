@@ -121,6 +121,8 @@ deploy-testing-generate-zappa-settings:
     variables:
       - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+[-]rc.[0-9]+$/
   image: python:3.9.13
+  variables:
+    DEPLOYMENT_NAME: "testing-docker"
   before_script:
     # configure aws access credentials:
     - mkdir -p ~/.aws
@@ -154,7 +156,7 @@ deploy-testing-generate-zappa-settings:
     - sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING@@#$USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING#g" zappa_settings.json
     - sed -i "s#@@LOGGING_LEVEL@@#$LOGGING_LEVEL_TESTING#g" zappa_settings.json
     # generate zappa_settings.py for docker image from zappa_settings.json
-    - pipenv run zappa save-python-settings-file testing-docker
+    - pipenv run zappa save-python-settings-file "$DEPLOYMENT_NAME"
   # keep downloaded process definitions and zappa configuration for the following CI jobs
   artifacts:
     untracked: true
@@ -283,6 +285,8 @@ deploy-production-generate-zappa-settings:
     variables:
       - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+$/
   image: python:3.9.13
+  variables:
+    DEPLOYMENT_NAME: "testing-docker"
   before_script:
     # configure aws access credentials:
     - mkdir -p ~/.aws
@@ -316,7 +320,7 @@ deploy-production-generate-zappa-settings:
     - sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_SECRET_PRODUCTION@@#$USAGE_REPORTING_AUTH_CLIENT_SECRET_PRODUCTION#g" zappa_settings.json
     - sed -i "s#@@LOGGING_LEVEL@@#$LOGGING_LEVEL_PRODUCTION#g" zappa_settings.json
     # generate zappa_settings.py for docker image from zappa_settings.json
-    - pipenv run zappa save-python-settings-file testing-docker
+    - pipenv run zappa save-python-settings-file "$DEPLOYMENT_NAME"
   # keep downloaded process definitions and zappa configuration for the following CI jobs
   artifacts:
     untracked: true
