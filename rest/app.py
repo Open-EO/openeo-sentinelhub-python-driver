@@ -492,7 +492,7 @@ def api_batch_job(job_id):
         }
 
         if status is not openEOBatchJobStatus.CREATED:
-            data_to_jsonify["costs"] = float(job.get("estimated_platform_credits", 0))
+            data_to_jsonify["costs"] = float(job.get("estimated_sentinelhub_pu", 0))
             data_to_jsonify["usage"] = {
                 "Platform Credits": {"unit": "credits", "value": float(job.get("estimated_platform_credits", 0))},
                 "Sentinel Hub": {
