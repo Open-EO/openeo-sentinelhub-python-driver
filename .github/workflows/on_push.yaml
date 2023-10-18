@@ -33,4 +33,5 @@ jobs:
         run: docker-compose -f docker-compose.yml -f docker-compose.pytest.yml up --exit-code-from pytest
       
       - name: Docker-compose cleanup
+        if: always()
         run: docker-compose -f docker-compose.yml -f docker-compose.pytest.yml down -v
