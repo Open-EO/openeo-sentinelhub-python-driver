@@ -1,0 +1,95 @@
+name: Deploy testing
+on:
+  workflow_dispatch
+
+jobs:
+  deploy-testing:
+    if: success() && startsWith(github.ref, 'refs/tags/v')
+
+    runs-on: ubuntu-latest
+
+    env:
+      GITHUB_REF_TAG: ${{ github.ref }}
+      DEPLOYMENT_NAME: "testing-docker"
+      TESTINGDATA_AWS_ACCESS_KEY_ID: ${{ secrets.TESTINGDATA_AWS_ACCESS_KEY_ID }}
+      TESTINGDATA_AWS_SECRET_ACCESS_KEY: ${{ secrets.TESTINGDATA_AWS_SECRET_ACCESS_KEY }}
+      TESTING_SH_CLIENT_ID: ${{ secrets.TESTING_SH_CLIENT_ID }}
+      TESTING_SH_CLIENT_SECRET: ${{ secrets.TESTING_SH_CLIENT_SECRET }}
+      RESULTS_S3_BUCKET_NAME_MAIN: ${{ secrets.RESULTS_S3_BUCKET_NAME_MAIN }}
+      RESULTS_S3_BUCKET_NAME_CREODIAS: ${{ secrets.RESULTS_S3_BUCKET_NAME_CREODIAS }}
+      RESULTS_S3_BUCKET_NAME_USWEST: ${{ secrets.RESULTS_S3_BUCKET_NAME_USWEST }}
+      RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN: ${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN }}
+      RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS: ${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS }}
+      RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST: ${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST }}
+      RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN: ${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN }}
+      RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS: ${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS }}
+      RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST: ${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST }}
+      USAGE_REPORTING_BASE_URL_TESTING: ${{ secrets.USAGE_REPORTING_BASE_URL_TESTING }}
+      USAGE_REPORTING_AUTH_URL_TESTING: ${{ secrets.USAGE_REPORTING_AUTH_URL_TESTING }}
+      USAGE_REPORTING_AUTH_CLIENT_ID_TESTING: ${{ secrets.USAGE_REPORTING_AUTH_CLIENT_ID_TESTING }}
+      USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING: ${{ secrets.USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING }}
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: configure aws access credentials
+        run: |
+          mkdir -p ~/.aws
+          echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
+          echo -e "[default]\naws_access_key_id=$TESTINGZAPPA_AWS_ACCESS_KEY_ID\naws_secret_access_key=$TESTINGZAPPA_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
+
+      - name: install pipenv and aws
+        run: |
+          pip install pipenv==2021.5.29
+          pip install awscli --no-build-isolation
+
+      - name: download process definitions
+        run: |
+          chmod +x download-process-definitions.sh
+          ./download-process-definitions.sh
+      
+      - name: move to rest folder
+        run: cd rest/
+      
+      - name: install dependencies needed for deployment
+        run: pipenv install --dev
+      
+      - name: create zappa_settings.json on-the-fly
+        run: |
+          cp zappa_settings.json.template zappa_settings.json
+          sed -i "s/@@AWS_ACCESS_KEY_ID@@/$TESTINGDATA_AWS_ACCESS_KEY_ID/g" zappa_settings.json
+          sed -i "s#@@AWS_SECRET_ACCESS_KEY@@#$TESTINGDATA_AWS_SECRET_ACCESS_KEY#g" zappa_settings.json
+          sed -i "s/@@TESTING_SH_CLIENT_ID@@/$TESTING_SH_CLIENT_ID/g" zappa_settings.json
+          sed -i "s/@@TESTING_SH_CLIENT_SECRET@@/$TESTING_SH_CLIENT_SECRET/g" zappa_settings.json
+          sed -i "s/@@BACKEND_VERSION@@/$CI_COMMIT_TAG/g" zappa_settings.json
+          sed -i "s/@@RESULTS_S3_BUCKET_NAME_MAIN@@/$RESULTS_S3_BUCKET_NAME_MAIN/g" zappa_settings.json
+          sed -i "s/@@RESULTS_S3_BUCKET_NAME_CREODIAS@@/$RESULTS_S3_BUCKET_NAME_CREODIAS/g" zappa_settings.json
+          sed -i "s/@@RESULTS_S3_BUCKET_NAME_USWEST@@/$RESULTS_S3_BUCKET_NAME_USWEST/g" zappa_settings.json
+          sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN/g" zappa_settings.json
+          sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS/g" zappa_settings.json
+          sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST/g" zappa_settings.json
+          sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN@@#$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN#g" zappa_settings.json
+          sed -i "s/@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS@@/$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS/g" zappa_settings.json
+          sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST@@#$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST#g" zappa_settings.json
+          sed -i "s#@@USAGE_REPORTING_BASE_URL_TESTING@@#$USAGE_REPORTING_BASE_URL_TESTING#g" zappa_settings.json
+          sed -i "s#@@USAGE_REPORTING_AUTH_URL_TESTING@@#$USAGE_REPORTING_AUTH_URL_TESTING#g" zappa_settings.json
+          sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_ID_TESTING@@#$USAGE_REPORTING_AUTH_CLIENT_ID_TESTING#g" zappa_settings.json
+          sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING@@#$USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING#g" zappa_settings.json
+          sed -i "s#@@LOGGING_LEVEL@@#$LOGGING_LEVEL_TESTING#g" zappa_settings.json
+
+      - name: generate zappa_settings.py for docker image from zappa_settings.json
+        run: pipenv run zappa save-python-settings-file "$DEPLOYMENT_NAME"
+
+      - name: build docker image with correct tags
+        run: docker build -t "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:$GITHUB_REF_TAG" -t "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest" --build-arg VERSION=$GITHUB_REF_TAG --build-arg VCS_REF=$GITHUB_SHA --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') .
+
+      - name: login for AWS ECR docker
+        run: aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin "$TESTING_ECR_REGISTRY"
+      
+      - name: push docker images (versioned with CI tag and "latest") to AWS ECR with docker
+        run: |
+          docker push "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:$GITHUB_REF_TAG"
+          docker push "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
+      
+      - name: deploy lambda with new docker image
+        run: pipenv run zappa deploy "$DEPLOYMENT_NAME" -d "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest" || pipenv run zappa update "$DEPLOYMENT_NAME" -d "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
