@@ -39,7 +39,7 @@ jobs:
         run: |
           echo "Tag name from GITHUB_REF_NAME: $GITHUB_REF_NAME"
           echo "Tag name from github.ref_name: ${{ github.ref_name }}"
-          echo "Tag name from GITHUB_REF_TAG: ${{ GITHUB_REF_TAG }}"
+          echo "Tag name from GITHUB_REF_TAG: $GITHUB_REF_TAG"
 
       - name: Set up Python
         uses: actions/setup-python@v4
