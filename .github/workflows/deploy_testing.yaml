@@ -12,34 +12,12 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GITHUB_REF_TAG: ${{ github.ref_name }}
       DEPLOYMENT_NAME: "testing-docker"
-      TESTINGDATA_AWS_ACCESS_KEY_ID: ${{ secrets.TESTINGDATA_AWS_ACCESS_KEY_ID }}
-      TESTINGDATA_AWS_SECRET_ACCESS_KEY: ${{ secrets.TESTINGDATA_AWS_SECRET_ACCESS_KEY }}
-      TESTING_SH_CLIENT_ID: ${{ secrets.TESTING_SH_CLIENT_ID }}
-      TESTING_SH_CLIENT_SECRET: ${{ secrets.TESTING_SH_CLIENT_SECRET }}
-      RESULTS_S3_BUCKET_NAME_MAIN: ${{ secrets.RESULTS_S3_BUCKET_NAME_MAIN }}
-      RESULTS_S3_BUCKET_NAME_CREODIAS: ${{ secrets.RESULTS_S3_BUCKET_NAME_CREODIAS }}
-      RESULTS_S3_BUCKET_NAME_USWEST: ${{ secrets.RESULTS_S3_BUCKET_NAME_USWEST }}
-      RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN: ${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN }}
-      RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS: ${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS }}
-      RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST: ${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST }}
-      RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN: ${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN }}
-      RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS: ${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS }}
-      RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST: ${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST }}
-      USAGE_REPORTING_BASE_URL_TESTING: ${{ secrets.USAGE_REPORTING_BASE_URL_TESTING }}
-      USAGE_REPORTING_AUTH_URL_TESTING: ${{ secrets.USAGE_REPORTING_AUTH_URL_TESTING }}
-      USAGE_REPORTING_AUTH_CLIENT_ID_TESTING: ${{ secrets.USAGE_REPORTING_AUTH_CLIENT_ID_TESTING }}
-      USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING: ${{ secrets.USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING }}
+      TESTING_ECR_REGISTRY: ${{ secrets.TESTING_ECR_REGISTRY }}
+      TESTING_ECR_REGISTRY_IMAGE: ${{ secrets.TESTING_ECR_REGISTRY_IMAGE }}
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: GitHub Tag Name example
-        run: |
-          echo "Tag name from GITHUB_REF_NAME: $GITHUB_REF_NAME"
-          echo "Tag name from github.ref_name: ${{ github.ref_name }}"
-          echo "Tag name from GITHUB_REF_TAG: $GITHUB_REF_TAG"
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -50,7 +28,7 @@ jobs:
         run: |
           mkdir -p ~/.aws
           echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
-          echo -e "[default]\naws_access_key_id=$TESTINGZAPPA_AWS_ACCESS_KEY_ID\naws_secret_access_key=$TESTINGZAPPA_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
+          echo -e "[default]\naws_access_key_id=${{ secrets.TESTINGZAPPA_AWS_ACCESS_KEY_ID }}\naws_secret_access_key=${{ secrets.TESTINGZAPPA_AWS_SECRET_ACCESS_KEY }}" > ~/.aws/credentials
 
       - name: install pipenv and aws
         run: |
@@ -70,24 +48,24 @@ jobs:
         working-directory: ./rest
         run: |
           cp zappa_settings.json.template zappa_settings.json
-          sed -i "s/@@AWS_ACCESS_KEY_ID@@/$TESTINGDATA_AWS_ACCESS_KEY_ID/g" zappa_settings.json
-          sed -i "s#@@AWS_SECRET_ACCESS_KEY@@#$TESTINGDATA_AWS_SECRET_ACCESS_KEY#g" zappa_settings.json
-          sed -i "s/@@TESTING_SH_CLIENT_ID@@/$TESTING_SH_CLIENT_ID/g" zappa_settings.json
-          sed -i "s/@@TESTING_SH_CLIENT_SECRET@@/$TESTING_SH_CLIENT_SECRET/g" zappa_settings.json
-          sed -i "s/@@BACKEND_VERSION@@/$CI_COMMIT_TAG/g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_NAME_MAIN@@/$RESULTS_S3_BUCKET_NAME_MAIN/g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_NAME_CREODIAS@@/$RESULTS_S3_BUCKET_NAME_CREODIAS/g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_NAME_USWEST@@/$RESULTS_S3_BUCKET_NAME_USWEST/g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN/g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS/g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST@@/$RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST/g" zappa_settings.json
-          sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN@@#$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN#g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS@@/$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS/g" zappa_settings.json
-          sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST@@#$RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST#g" zappa_settings.json
-          sed -i "s#@@USAGE_REPORTING_BASE_URL_TESTING@@#$USAGE_REPORTING_BASE_URL_TESTING#g" zappa_settings.json
-          sed -i "s#@@USAGE_REPORTING_AUTH_URL_TESTING@@#$USAGE_REPORTING_AUTH_URL_TESTING#g" zappa_settings.json
-          sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_ID_TESTING@@#$USAGE_REPORTING_AUTH_CLIENT_ID_TESTING#g" zappa_settings.json
-          sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING@@#$USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING#g" zappa_settings.json
+          sed -i "s/@@AWS_ACCESS_KEY_ID@@/${{ secrets.TESTINGDATA_AWS_ACCESS_KEY_ID }}/g" zappa_settings.json
+          sed -i "s#@@AWS_SECRET_ACCESS_KEY@@#${{ secrets.TESTINGDATA_AWS_SECRET_ACCESS_KEY }}#g" zappa_settings.json
+          sed -i "s/@@TESTING_SH_CLIENT_ID@@/${{ secrets.TESTING_SH_CLIENT_ID }}/g" zappa_settings.json
+          sed -i "s/@@TESTING_SH_CLIENT_SECRET@@/${{ secrets.TESTING_SH_CLIENT_SECRET }}/g" zappa_settings.json
+          sed -i "s/@@BACKEND_VERSION@@/$GITHUB_REF_NAME/g" zappa_settings.json
+          sed -i "s/@@RESULTS_S3_BUCKET_NAME_MAIN@@/${{ secrets.RESULTS_S3_BUCKET_NAME_MAIN }}/g" zappa_settings.json
+          sed -i "s/@@RESULTS_S3_BUCKET_NAME_CREODIAS@@/${{ secrets.RESULTS_S3_BUCKET_NAME_CREODIAS }}/g" zappa_settings.json
+          sed -i "s/@@RESULTS_S3_BUCKET_NAME_USWEST@@/${{ secrets.RESULTS_S3_BUCKET_NAME_USWEST }}/g" zappa_settings.json
+          sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN@@/${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN }}/g" zappa_settings.json
+          sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS@@/${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS }}/g" zappa_settings.json
+          sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST@@/${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST }}/g" zappa_settings.json
+          sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN@@#${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN }}#g" zappa_settings.json
+          sed -i "s/@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS@@/${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS }}/g" zappa_settings.json
+          sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST@@#${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST }}#g" zappa_settings.json
+          sed -i "s#@@USAGE_REPORTING_BASE_URL_TESTING@@#${{ secrets.USAGE_REPORTING_BASE_URL_TESTING }}#g" zappa_settings.json
+          sed -i "s#@@USAGE_REPORTING_AUTH_URL_TESTING@@#${{ secrets.USAGE_REPORTING_AUTH_URL_TESTING }}#g" zappa_settings.json
+          sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_ID_TESTING@@#${{ secrets.USAGE_REPORTING_AUTH_CLIENT_ID_TESTING }}#g" zappa_settings.json
+          sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING@@#${{ secrets.USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING }}#g" zappa_settings.json
           sed -i "s#@@LOGGING_LEVEL@@#$LOGGING_LEVEL_TESTING#g" zappa_settings.json
 
       - name: generate zappa_settings.py for docker image from zappa_settings.json
