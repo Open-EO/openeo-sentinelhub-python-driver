@@ -58,7 +58,7 @@ def start_new_batch_job(sentinel_hub, process, job_id):
     estimated_pu, _ = get_batch_job_estimate(new_batch_request_id, process, deployment_endpoint)
 
     leftover_credits = g.user.get_leftover_credits()
-    if leftover_credits < estimated_pu:
+    if leftover_credits is not None and leftover_credits < estimated_pu:
         raise InsufficientCredits()
 
     sentinel_hub.start_batch_job(new_batch_request_id)
@@ -93,7 +93,7 @@ def start_batch_job(batch_request_id, process, deployment_endpoint, job_id):
         estimated_pu, _ = get_batch_job_estimate(batch_request_id, process, deployment_endpoint)
 
         leftover_credits = g.user.get_leftover_credits()
-        if leftover_credits < estimated_pu:
+        if leftover_credits is not None and leftover_credits < estimated_pu:
             raise InsufficientCredits()
 
         sentinel_hub.start_batch_job(batch_request_id)
