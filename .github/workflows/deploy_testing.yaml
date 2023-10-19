@@ -66,7 +66,7 @@ jobs:
           sed -i "s#@@USAGE_REPORTING_AUTH_URL_TESTING@@#${{ secrets.USAGE_REPORTING_AUTH_URL_TESTING }}#g" zappa_settings.json
           sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_ID_TESTING@@#${{ secrets.USAGE_REPORTING_AUTH_CLIENT_ID_TESTING }}#g" zappa_settings.json
           sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING@@#${{ secrets.USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING }}#g" zappa_settings.json
-          sed -i "s#@@LOGGING_LEVEL@@#$LOGGING_LEVEL_TESTING#g" zappa_settings.json
+          sed -i "s#@@LOGGING_LEVEL@@#${{ secrets.LOGGING_LEVEL_TESTING }}#g" zappa_settings.json
 
       - name: print zappa settings
         working-directory: ./rest
