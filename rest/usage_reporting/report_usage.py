@@ -76,10 +76,7 @@ class UsageReporting:
             return credits
         else:
             log(ERROR, f"Error fetching leftover credits: {r.status_code} {r.text}")
-            raise Internal(
-                f"Problems during fetching leftover credits: {r.status_code} {r.text}"
-                )
-
+            raise Internal(f"Problems during fetching leftover credits: {r.status_code} {r.text}")
 
     def report_usage(self, user_id, pu_spent, job_id=None, max_tries=5):
         reporting_token = self.get_token()
