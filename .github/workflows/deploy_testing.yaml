@@ -17,6 +17,14 @@ jobs:
       TESTING_ECR_REGISTRY_IMAGE: ${{ secrets.TESTING_ECR_REGISTRY_IMAGE }}
 
     steps:
+      - name: Wait for other checks to succeed
+        uses: lewagon/wait-on-check-action@v1.3.1
+        with:
+          ref: ${{ github.ref }}
+          running-workflow-name: 'Lint and test'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+
       - uses: actions/checkout@v4
 
       - name: Set up Python
