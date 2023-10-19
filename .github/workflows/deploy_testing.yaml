@@ -56,7 +56,10 @@ jobs:
       
       - name: install dependencies needed for deployment
         run: pipenv install --dev
-      
+
+      - name: list dir
+        run: ls
+
       - name: create zappa_settings.json on-the-fly
         run: |
           cp zappa_settings.json.template zappa_settings.json
