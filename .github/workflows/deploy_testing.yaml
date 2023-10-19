@@ -51,16 +51,12 @@ jobs:
           chmod +x download-process-definitions.sh
           ./download-process-definitions.sh
       
-      - name: move to rest folder
-        run: cd rest/
-      
       - name: install dependencies needed for deployment
+        working-directory: ./rest
         run: pipenv install --dev
 
-      - name: list dir
-        run: ls
-
       - name: create zappa_settings.json on-the-fly
+        working-directory: ./rest
         run: |
           cp zappa_settings.json.template zappa_settings.json
           sed -i "s/@@AWS_ACCESS_KEY_ID@@/$TESTINGDATA_AWS_ACCESS_KEY_ID/g" zappa_settings.json
@@ -84,18 +80,23 @@ jobs:
           sed -i "s#@@LOGGING_LEVEL@@#$LOGGING_LEVEL_TESTING#g" zappa_settings.json
 
       - name: generate zappa_settings.py for docker image from zappa_settings.json
+        working-directory: ./rest
         run: pipenv run zappa save-python-settings-file "$DEPLOYMENT_NAME"
 
       - name: build docker image with correct tags
+        working-directory: ./rest
         run: docker build -t "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:$GITHUB_REF_TAG" -t "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest" --build-arg VERSION=$GITHUB_REF_TAG --build-arg VCS_REF=$GITHUB_SHA --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') .
 
       - name: login for AWS ECR docker
+        working-directory: ./rest
         run: aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin "$TESTING_ECR_REGISTRY"
       
       - name: push docker images (versioned with CI tag and "latest") to AWS ECR with docker
+        working-directory: ./rest
         run: |
           docker push "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:$GITHUB_REF_TAG"
           docker push "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
       
       - name: deploy lambda with new docker image
+        working-directory: ./rest
         run: pipenv run zappa deploy "$DEPLOYMENT_NAME" -d "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest" || pipenv run zappa update "$DEPLOYMENT_NAME" -d "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
