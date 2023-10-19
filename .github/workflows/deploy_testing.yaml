@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GITHUB_REF_TAG: ${{ github.ref }}
+      GITHUB_REF_TAG: ${{ github.ref_name }}
       DEPLOYMENT_NAME: "testing-docker"
       TESTINGDATA_AWS_ACCESS_KEY_ID: ${{ secrets.TESTINGDATA_AWS_ACCESS_KEY_ID }}
       TESTINGDATA_AWS_SECRET_ACCESS_KEY: ${{ secrets.TESTINGDATA_AWS_SECRET_ACCESS_KEY }}
