@@ -72,6 +72,10 @@ jobs:
         working-directory: ./rest
         run: cat zappa_settings.json
 
+      - name: list process definitions
+        working-directory: ./rest/process_definitions
+        run: ls
+
       - name: generate zappa_settings.py for docker image from zappa_settings.json
         working-directory: ./rest
         run: pipenv run zappa save-python-settings-file "$DEPLOYMENT_NAME"
