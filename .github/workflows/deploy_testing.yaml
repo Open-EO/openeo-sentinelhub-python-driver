@@ -68,14 +68,6 @@ jobs:
           sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING@@#${{ secrets.USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING }}#g" zappa_settings.json
           sed -i "s#@@LOGGING_LEVEL@@#${{ secrets.LOGGING_LEVEL_TESTING }}#g" zappa_settings.json
 
-      - name: print zappa settings
-        working-directory: ./rest
-        run: cat zappa_settings.json
-
-      - name: list process definitions
-        working-directory: ./rest/process_definitions
-        run: ls
-
       - name: generate zappa_settings.py for docker image from zappa_settings.json
         working-directory: ./rest
         run: pipenv run zappa save-python-settings-file "$DEPLOYMENT_NAME"
