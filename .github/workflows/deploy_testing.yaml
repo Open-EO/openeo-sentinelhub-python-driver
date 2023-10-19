@@ -33,7 +33,12 @@ jobs:
       USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING: ${{ secrets.USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING }}
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
 
       - name: configure aws access credentials
         run: |
