@@ -58,11 +58,10 @@ class UsageReporting:
 
         return r.status_code == 200 and content["status"] == "ok"
 
-    def get_leftover_credits(self):
+    def get_leftover_credits_for_user(self, user_access_token):
         user_url = f"{self.base_url}user"
-        reporting_token = self.get_token()
 
-        headers = {"content-type": "application/json", "Authorization": f"Bearer {reporting_token['access_token']}"}
+        headers = {"content-type": "application/json", "Authorization": f"Bearer {user_access_token}"}
 
         if not self.reporting_check_health():
             log(ERROR, "Services for usage reporting are not healthy")

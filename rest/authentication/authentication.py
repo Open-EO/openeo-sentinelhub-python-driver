@@ -61,7 +61,7 @@ class AuthenticationProvider:
         user_id = userinfo["sub"]
 
         try:
-            user = OIDCUser(user_id, oidc_userinfo=userinfo)
+            user = OIDCUser(user_id, oidc_userinfo=userinfo, access_token=access_token)
         except BillingPlanInvalid:
             return None
 
