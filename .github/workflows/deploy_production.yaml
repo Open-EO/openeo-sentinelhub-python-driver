@@ -10,7 +10,7 @@ jobs:
     uses: ./.github/workflows/reusable_lint_and_test.yaml
     secrets: inherit
   
-  deploy-testing:
+  deploy-production:
     needs: run-reusable-lint-and-test
 
     if: startsWith(github.ref, 'refs/tags/v')
@@ -56,8 +56,8 @@ jobs:
           cp zappa_settings.json.template zappa_settings.json
           sed -i "s/@@AWS_ACCESS_KEY_ID@@/${{ secrets.PRODDATA_AWS_ACCESS_KEY_ID }}/g" zappa_settings.json
           sed -i "s#@@AWS_SECRET_ACCESS_KEY@@#${{ secrets.PRODDATA_AWS_SECRET_ACCESS_KEY }}#g" zappa_settings.json
-          sed -i "s/@@TESTING_SH_CLIENT_ID@@/${{ secrets.PRODUCTION_SH_CLIENT_ID }}/g" zappa_settings.json
-          sed -i "s/@@TESTING_SH_CLIENT_SECRET@@/${{ secrets.PRODUCTION_SH_CLIENT_SECRET }}/g" zappa_settings.json
+          sed -i "s/@@PRODUCTION_SH_CLIENT_ID@@/${{ secrets.PRODUCTION_SH_CLIENT_ID }}/g" zappa_settings.json
+          sed -i "s/@@PRODUCTION_SH_CLIENT_SECRET@@/${{ secrets.PRODUCTION_SH_CLIENT_SECRET }}/g" zappa_settings.json
           sed -i "s/@@BACKEND_VERSION@@/$GITHUB_REF_NAME/g" zappa_settings.json
           sed -i "s/@@RESULTS_S3_BUCKET_NAME_MAIN@@/${{ secrets.RESULTS_S3_BUCKET_NAME_MAIN_PRODUCTION }}/g" zappa_settings.json
           sed -i "s/@@RESULTS_S3_BUCKET_NAME_CREODIAS@@/${{ secrets.RESULTS_S3_BUCKET_NAME_CREODIAS_PRODUCTION }}/g" zappa_settings.json
@@ -68,10 +68,10 @@ jobs:
           sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN@@#${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN_PRODUCTION }}#g" zappa_settings.json
           sed -i "s/@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS@@/${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS_PRODUCTION }}/g" zappa_settings.json
           sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST@@#${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST_PRODUCTION }}#g" zappa_settings.json
-          sed -i "s#@@USAGE_REPORTING_BASE_URL_TESTING@@#${{ secrets.USAGE_REPORTING_BASE_URL_PRODUCTION }}#g" zappa_settings.json
-          sed -i "s#@@USAGE_REPORTING_AUTH_URL_TESTING@@#${{ secrets.USAGE_REPORTING_AUTH_URL_PRODUCTION }}#g" zappa_settings.json
-          sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_ID_TESTING@@#${{ secrets.USAGE_REPORTING_AUTH_CLIENT_ID_PRODUCTION }}#g" zappa_settings.json
-          sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING@@#${{ secrets.USAGE_REPORTING_AUTH_CLIENT_SECRET_PRODUCTION }}#g" zappa_settings.json
+          sed -i "s#@@USAGE_REPORTING_BASE_URL_PRODUCTION@@#${{ secrets.USAGE_REPORTING_BASE_URL_PRODUCTION }}#g" zappa_settings.json
+          sed -i "s#@@USAGE_REPORTING_AUTH_URL_PRODUCTION@@#${{ secrets.USAGE_REPORTING_AUTH_URL_PRODUCTION }}#g" zappa_settings.json
+          sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_ID_PRODUCTION@@#${{ secrets.USAGE_REPORTING_AUTH_CLIENT_ID_PRODUCTION }}#g" zappa_settings.json
+          sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_SECRET_PRODUCTION@@#${{ secrets.USAGE_REPORTING_AUTH_CLIENT_SECRET_PRODUCTION }}#g" zappa_settings.json
           sed -i "s#@@LOGGING_LEVEL@@#${{ secrets.LOGGING_LEVEL_PRODUCTION }}#g" zappa_settings.json
 
       - name: generate zappa_settings.py for docker image from zappa_settings.json
