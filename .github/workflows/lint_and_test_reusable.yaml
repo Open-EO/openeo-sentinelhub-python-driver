@@ -45,6 +45,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: print usage auth url
+        run: echo "$USAGE_REPORTING_AUTH_URL_TESTING"
+
       - name: Docker-compose build
         run: docker-compose -f docker-compose.yml -f docker-compose.pytest.yml build
 
