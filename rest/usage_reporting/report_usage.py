@@ -15,6 +15,22 @@ class UsageReporting:
         self.auth_client_secret = os.environ.get("USAGE_REPORTING_AUTH_CLIENT_SECRET")
         self.base_url = os.environ.get("USAGE_REPORTING_BASE_URL")
 
+        if self.auth_url is None:
+            log(ERROR, "USAGE_REPORTING_AUTH_URL environment variable is not set")
+            raise Internal("USAGE_REPORTING_AUTH_URL environment variable is not set")
+
+        if self.auth_client_id is None:
+            log(ERROR, "USAGE_REPORTING_AUTH_CLIENT_ID environment variable is not set")
+            raise Internal("USAGE_REPORTING_AUTH_CLIENT_ID environment variable is not set")
+
+        if self.auth_client_secret is None:
+            log(ERROR, "USAGE_REPORTING_AUTH_CLIENT_SECRET environment variable is not set")
+            raise Internal("USAGE_REPORTING_AUTH_CLIENT_SECRET environment variable is not set")
+
+        if self.base_url is None:
+            log(ERROR, "USAGE_REPORTING_BASE_URL environment variable is not set")
+            raise Internal("USAGE_REPORTING_BASE_URL environment variable is not set")
+
         self.authenticate()
 
     def authenticate(self, max_tries=5):
