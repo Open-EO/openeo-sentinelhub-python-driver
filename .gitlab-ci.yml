@@ -286,7 +286,7 @@ deploy-production-generate-zappa-settings:
       - $CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+$/
   image: python:3.9.13
   variables:
-    DEPLOYMENT_NAME: "testing-docker"
+    DEPLOYMENT_NAME: "production-docker"
   before_script:
     # configure aws access credentials:
     - mkdir -p ~/.aws
@@ -341,7 +341,7 @@ deploy-production-create-docker-image:
     # configure aws access credentials:
     - mkdir -p ~/.aws
     - echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
-    - echo -e "[default]\naws_access_key_id=$TESTINGZAPPA_AWS_ACCESS_KEY_ID\naws_secret_access_key=$TESTINGZAPPA_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
+    - echo -e "[default]\naws_access_key_id=$PRODZAPPA_AWS_ACCESS_KEY_ID\naws_secret_access_key=$PRODZAPPA_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
   script:
     - cd rest/
     # build docker image with correct tags
@@ -374,7 +374,7 @@ deploy-production-rest-lambda-docker:
     # configure aws access credentials:
     - mkdir -p ~/.aws
     - echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
-    - echo -e "[default]\naws_access_key_id=$TESTINGZAPPA_AWS_ACCESS_KEY_ID\naws_secret_access_key=$TESTINGZAPPA_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
+    - echo -e "[default]\naws_access_key_id=$PRODZAPPA_AWS_ACCESS_KEY_ID\naws_secret_access_key=$PRODZAPPA_AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
     - pip install pipenv==2021.5.29
   script:
     - chmod +x download-process-definitions.sh
