@@ -9,6 +9,7 @@ jobs:
 
   run-reusable-lint-and-test:
     uses: ./.github/workflows/lint_and_test_reusable.yaml
+    secrets: inherit
   
   deploy-testing:
     needs: run-reusable-lint-and-test
