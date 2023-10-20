@@ -3,5 +3,5 @@ on: [push, pull_request]
 
 jobs:
   run-reusable-lint-and-test:
-    uses: ./.github/workflows/lint_and_test_reusable.yaml
+    uses: ./.github/workflows/reusable_lint_and_test.yaml
     secrets: inherit
