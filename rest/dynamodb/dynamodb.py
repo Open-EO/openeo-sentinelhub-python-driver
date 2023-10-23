@@ -211,6 +211,10 @@ class JobsPersistence(Persistence):
             "http_code": {"N": data.get("http_code", "200")},
             "results": {"S": json.dumps(data.get("results"))},
             "deployment_endpoint": {"S": data.get("deployment_endpoint", "https://services.sentinel-hub.com")},
+            "estimated_sentinelhub_pu": {"N": data.get("estimated_sentinelhub_pu", "0")},
+            "estimated_platform_credits": {"N": data.get("estimated_platform_credits", "0")},
+            "estimated_file_size": {"N": data.get("estimated_file_size", "0")},
+            "sum_costs": {"N": data.get("sum_costs", "0")},
         }
         if data.get("title"):
             item["title"] = {"S": str(data.get("title"))}
