@@ -16,6 +16,8 @@ logging.basicConfig(level=logging.INFO)
 FAKE_AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
 FAKE_AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
+USED_RESERVED_WORDS = ["plan"]
+
 
 class DeploymentTypes(Enum):
     PRODUCTION = "production"
@@ -121,12 +123,17 @@ class Persistence(object):
             else:
                 new_value = str(new_value)
 
-        updated_item = cls.dynamodb.update_item(
+        kwargs = dict(
             TableName=cls.TABLE_NAME,
             Key={"id": {"S": record_id}},
             UpdateExpression="SET {} = :new_content".format(key),
             ExpressionAttributeValues={":new_content": {data_type: new_value}},
         )
+        if key in USED_RESERVED_WORDS:
+            kwargs["UpdateExpression"] = "SET #{} = :new_content".format(key)
+            kwargs["ExpressionAttributeNames"] = {"#{}".format(key): "{}".format(key)}
+
+        updated_item = cls.dynamodb.update_item(**kwargs)
         return updated_item
 
     @classmethod
@@ -316,7 +323,6 @@ class ServicesPersistence(Persistence):
 
 
 if __name__ == "__main__":
-
     # To create tables, run:
     #   $ pipenv shell
     #   <shell> $ DEPLOYMENT_TYPE="production" ./dynamodb.py
