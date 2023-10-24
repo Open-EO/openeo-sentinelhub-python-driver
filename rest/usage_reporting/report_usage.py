@@ -87,9 +87,9 @@ class UsageReporting:
 
         if r.status_code == 200:
             content = r.json()
-            credits = content.get("credits")
+            platform_credits = content.get("credits")
 
-            return credits
+            return platform_credits
         else:
             log(ERROR, f"Error fetching leftover credits: {r.status_code} {r.text}")
             raise Internal(f"Problems during fetching leftover credits: {r.status_code} {r.text}")
