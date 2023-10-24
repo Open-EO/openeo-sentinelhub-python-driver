@@ -12,7 +12,7 @@ from processing.partially_supported_processes import partially_supported_process
 from dynamodb.utils import get_user_defined_processes_graphs
 from dynamodb import JobsPersistence
 from const import openEOBatchJobStatus
-from openeoerrors import JobNotFound, Timeout
+from openeoerrors import InsufficientCredits, JobNotFound, Timeout
 
 
 def check_process_graph_conversion_validity(process_graph):
@@ -63,6 +63,9 @@ def start_new_batch_job(sentinel_hub, process, job_id):
         raise JobNotFound()
 
     estimated_sentinelhub_pu, _, _ = create_or_get_estimate_values_from_db(job, new_batch_request_id)
+
+    check_leftover_credits(estimated_sentinelhub_pu)
+
     JobsPersistence.update_key(
         job["id"], "sum_costs", str(round(float(job.get("sum_costs", 0)) + estimated_sentinelhub_pu, 3))
     )
@@ -100,6 +103,9 @@ def start_batch_job(batch_request_id, process, deployment_endpoint, job_id):
             raise JobNotFound()
 
         estimated_sentinelhub_pu, _, _ = create_or_get_estimate_values_from_db(job, job["batch_request_id"])
+
+        check_leftover_credits(estimated_sentinelhub_pu)
+
         JobsPersistence.update_key(
             job["id"], "sum_costs", str(round(float(job.get("sum_costs", 0)) + estimated_sentinelhub_pu, 3))
         )
@@ -222,3 +228,10 @@ def create_or_get_estimate_values_from_db(job, batch_request_id):
         estimated_file_size = float(job.get("estimated_file_size", 0))
 
     return estimated_sentinelhub_pu, estimated_platform_credits, estimated_file_size
+
+
+def check_leftover_credits(estimated_pu):
+    leftover_credits = g.user.get_leftover_credits()
+    estimated_pu_as_credits = estimated_pu * 0.15  # platform credits === SH PU's * 0.15
+    if leftover_credits is not None and leftover_credits < estimated_pu_as_credits:
+        raise InsufficientCredits()
