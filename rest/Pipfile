@@ -19,7 +19,7 @@ pytest = "==7.0.1"
 boto3 = "==1.21.18"
 flask-marshmallow = "==0.14.0"
 openeo-pg-parser = {editable = true,git = "https://github.com/Ardweaden/openeo-pg-parser-python",ref = "7e652cb656187cdd8f0b0168d2eea937807fdb34"}
-requests = "==2.27.1"
+requests = "==2.31.0"
 flask-cors = "==3.0.10"
 honeycomb-beeline = "==3.2.0"
 pg-to-evalscript = "==0.2.8"
