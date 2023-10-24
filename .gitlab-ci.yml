@@ -30,7 +30,6 @@ integration tests:
     - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml up --exit-code-from pytest
   after_script:
     - docker-compose -f docker-compose.yml -f docker-compose.pytest.yml down -v
-  allow_failure: true
 
 ## GITHUB:
 publish_github:
