@@ -31,13 +31,14 @@ from schemas import (
 from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
 from processing.processing import (
     check_process_graph_conversion_validity,
+    get_batch_job_estimate,
     process_data_synchronously,
     create_batch_job,
     start_batch_job,
     cancel_batch_job,
     modify_batch_job,
-    get_batch_job_estimate,
     get_batch_job_status,
+    create_or_get_estimate_values_from_db,
 )
 from post_processing.post_processing import parse_sh_gtiff_to_format
 from processing.utils import inject_variables_in_process_graph, overwrite_spatial_extent_without_parameters
@@ -480,17 +481,28 @@ def api_batch_job(job_id):
 
     if flask.request.method == "GET":
         status, error = get_batch_job_status(job["batch_request_id"], job["deployment_endpoint"])
+        data_to_jsonify = {
+            "id": job_id,
+            "title": job.get("title", None),
+            "description": job.get("description", None),
+            "process": {"process_graph": json.loads(job["process"])["process_graph"]},
+            "status": status.value,
+            "error": error,
+            "created": convert_timestamp_to_simpler_format(job["created"]),
+            "updated": convert_timestamp_to_simpler_format(job["last_updated"]),
+        }
+
+        if status is not openEOBatchJobStatus.CREATED:
+            data_to_jsonify["costs"] = float(job.get("sum_costs", 0))
+            data_to_jsonify["usage"] = {
+                "Platform Credits": {"unit": "credits", "value": round(float(job.get("sum_costs", 0)) * 0.15, 3)},
+                "Sentinel Hub": {
+                    "unit": "sentinelhub_processing_unit",
+                    "value": float(job.get("sum_costs", 0)),
+                },
+            }
         return flask.make_response(
-            jsonify(
-                id=job_id,
-                title=job.get("title", None),
-                description=job.get("description", None),
-                process={"process_graph": json.loads(job["process"])["process_graph"]},
-                status=status.value,
-                error=error,
-                created=convert_timestamp_to_simpler_format(job["created"]),
-                updated=convert_timestamp_to_simpler_format(job["last_updated"]),
-            ),
+            jsonify(data_to_jsonify),
             200,
         )
 
@@ -512,6 +524,19 @@ def api_batch_job(job_id):
             new_batch_request_id, deployment_endpoint = modify_batch_job(data["process"])
             update_batch_request_id(job_id, job, new_batch_request_id)
             data["deployment_endpoint"] = deployment_endpoint
+
+            if json.dumps(data.get("process"), sort_keys=True) != json.dumps(
+                json.loads(job.get("process")), sort_keys=True
+            ):
+                estimated_sentinelhub_pu, estimated_file_size = get_batch_job_estimate(
+                    new_batch_request_id, data.get("process"), deployment_endpoint
+                )
+                estimated_platform_credits = round(estimated_sentinelhub_pu * 0.15, 3)
+                JobsPersistence.update_key(
+                    job["id"], "estimated_sentinelhub_pu", str(round(estimated_sentinelhub_pu, 3))
+                )
+                JobsPersistence.update_key(job["id"], "estimated_platform_credits", str(estimated_platform_credits))
+                JobsPersistence.update_key(job["id"], "estimated_file_size", str(estimated_file_size))
 
         for key in data:
             JobsPersistence.update_key(job_id, key, data[key])
@@ -612,7 +637,6 @@ def add_job_to_queue(job_id):
 
         # we can create a /results_metadata.json file here
         # the contents of the batch job folder in the bucket isn't revealed anywhere else anyway
-
         metadata_creation_time = datetime.utcnow().strftime(ISO8601_UTC_FORMAT)
         batch_job_metadata = {
             "type": "Feature",
@@ -627,6 +651,13 @@ def add_job_to_queue(job_id):
                 "title": job.get("title", None),
                 "datetime": metadata_creation_time,
                 "expires": metadata_valid,
+                "usage": {
+                    "Platform credits": {"unit": "credits", "value": job.get("estimated_platform_credits", 0)},
+                    "Sentinel Hub": {
+                        "unit": "sentinelhub_processing_unit",
+                        "value": job.get("estimated_sentinelhub_pu", 0),
+                    },
+                },
                 "processing:expression": {"format": "openeo", "expression": json.loads(job["process"])},
             },
             "links": links,
@@ -663,11 +694,12 @@ def estimate_job_cost(job_id):
     if job is None:
         raise JobNotFound()
 
-    estimated_pu, estimated_file_size = get_batch_job_estimate(
-        job["batch_request_id"], json.loads(job["process"]), job["deployment_endpoint"]
+    estimated_sentinelhub_pu, _, estimated_file_size = create_or_get_estimate_values_from_db(
+        job, job["batch_request_id"]
     )
+
     return flask.make_response(
-        jsonify(costs=estimated_pu, size=estimated_file_size),
+        jsonify(costs=estimated_sentinelhub_pu, size=estimated_file_size),
         200,
     )
 

@@ -16,6 +16,8 @@ logging.basicConfig(level=logging.INFO)
 FAKE_AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
 FAKE_AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
+USED_RESERVED_WORDS = ["plan"]
+
 
 class DeploymentTypes(Enum):
     PRODUCTION = "production"
@@ -121,12 +123,17 @@ class Persistence(object):
             else:
                 new_value = str(new_value)
 
-        updated_item = cls.dynamodb.update_item(
+        kwargs = dict(
             TableName=cls.TABLE_NAME,
             Key={"id": {"S": record_id}},
             UpdateExpression="SET {} = :new_content".format(key),
             ExpressionAttributeValues={":new_content": {data_type: new_value}},
         )
+        if key in USED_RESERVED_WORDS:
+            kwargs["UpdateExpression"] = "SET #{} = :new_content".format(key)
+            kwargs["ExpressionAttributeNames"] = {"#{}".format(key): "{}".format(key)}
+
+        updated_item = cls.dynamodb.update_item(**kwargs)
         return updated_item
 
     @classmethod
@@ -204,6 +211,10 @@ class JobsPersistence(Persistence):
             "http_code": {"N": data.get("http_code", "200")},
             "results": {"S": json.dumps(data.get("results"))},
             "deployment_endpoint": {"S": data.get("deployment_endpoint", "https://services.sentinel-hub.com")},
+            "estimated_sentinelhub_pu": {"N": data.get("estimated_sentinelhub_pu", "0")},
+            "estimated_platform_credits": {"N": data.get("estimated_platform_credits", "0")},
+            "estimated_file_size": {"N": data.get("estimated_file_size", "0")},
+            "sum_costs": {"N": data.get("sum_costs", "0")},
         }
         if data.get("title"):
             item["title"] = {"S": str(data.get("title"))}
@@ -316,7 +327,6 @@ class ServicesPersistence(Persistence):
 
 
 if __name__ == "__main__":
-
     # To create tables, run:
     #   $ pipenv shell
     #   <shell> $ DEPLOYMENT_TYPE="production" ./dynamodb.py
