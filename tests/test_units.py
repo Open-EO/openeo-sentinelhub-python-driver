@@ -57,6 +57,7 @@ def test_collections(get_process_graph, collection_id):
             [
                 "SPOT",
                 "PLEIADES",
+                "SKYSAT",
                 "WORLDVIEW",
                 "PLANETSCOPE",
                 "landsat-7-etm+-l2",
