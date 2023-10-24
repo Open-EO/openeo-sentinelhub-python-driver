@@ -232,6 +232,6 @@ def create_or_get_estimate_values_from_db(job, batch_request_id):
 
 def check_leftover_credits(estimated_pu):
     leftover_credits = g.user.get_leftover_credits()
-    estimated_pu_as_credits = estimated_pu * 0.15 # platform credits === SH PU's * 0.15
+    estimated_pu_as_credits = estimated_pu * 0.15  # platform credits === SH PU's * 0.15
     if leftover_credits is not None and leftover_credits < estimated_pu_as_credits:
         raise InsufficientCredits()
