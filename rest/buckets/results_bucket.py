@@ -17,6 +17,11 @@ class ResultsBucket:
 
         self.client.put_object(Bucket=self.bucket_name, Key=file_path, Body=content_as_string)
 
+    def upload_file_to_bucket(self, local_file_path, prefix=None, file_name="file"):
+        s3_file_path = prefix + "/" + file_name if prefix else file_name
+
+        self.client.upload_file(local_file_path, self.bucket_name, s3_file_path)
+
     def get_data_from_bucket(self, prefix=None):
         continuation_token = None
         results = []
