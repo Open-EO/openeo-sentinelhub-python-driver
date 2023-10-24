@@ -21,6 +21,8 @@ from authentication.oidc_providers import oidc_providers
 from authentication.user import OIDCUser, SHUser
 from authentication.utils import decode_sh_access_token
 
+from openeoerrors import TokenInvalid
+
 
 class AuthScheme(Enum):
     BASIC = "basic"

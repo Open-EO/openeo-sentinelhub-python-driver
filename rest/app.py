@@ -40,6 +40,7 @@ from processing.processing import (
     get_batch_job_status,
     create_or_get_estimate_values_from_db,
 )
+from post_processing.post_processing import parse_sh_gtiff_to_format
 from processing.utils import inject_variables_in_process_graph, overwrite_spatial_extent_without_parameters
 from processing.openeo_process_errors import OpenEOProcessError
 from authentication.authentication import authentication_provider
@@ -592,6 +593,13 @@ def add_job_to_queue(job_id):
         # and the code for generating presigned urls can stay the same
         metadata_filename = "metadata.json"
         bucket.put_file_to_bucket("", prefix=job["batch_request_id"], file_name=metadata_filename)
+
+        # START OF POST_PROCESSING
+        # post-process gtiffs to appropriate formats
+
+        parse_sh_gtiff_to_format(job, bucket)
+
+        # END OF POST_PROCESSING
 
         results = bucket.get_data_from_bucket(prefix=job["batch_request_id"])
         log(INFO, f"Fetched all results: {str(results)}")
