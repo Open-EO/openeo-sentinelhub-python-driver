@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DEPLOYMENT_NAME: "testing-docker"
+      DEPLOYMENT_NAME: "testing"
       TESTING_ECR_REGISTRY: ${{ secrets.TESTING_ECR_REGISTRY }}
       TESTING_ECR_REGISTRY_IMAGE: ${{ secrets.TESTING_ECR_REGISTRY_IMAGE }}
 
