@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DEPLOYMENT_NAME: "production-docker"
+      DEPLOYMENT_NAME: "production"
       PROD_ECR_REGISTRY: ${{ secrets.PROD_ECR_REGISTRY }}
       PROD_ECR_REGISTRY_IMAGE: ${{ secrets.PROD_ECR_REGISTRY_IMAGE }}
 
