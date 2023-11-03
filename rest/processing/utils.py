@@ -293,7 +293,7 @@ def get_node_by_process_id(process_graph, process_id):
     for node in process_graph.values():
         if node["process_id"] == process_id:
             return node
-        
+
 
 def get_all_load_collection_nodes(process_graph):
     nodes = {}
