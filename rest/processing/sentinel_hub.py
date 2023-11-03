@@ -76,7 +76,7 @@ class SentinelHub:
         return {
             "input": {
                 "bounds": self.construct_input_bounds(bbox, epsg_code, geometry),
-                "data": [
+                "data": [ # fix here so mutliple {} are here
                     {
                         "type": collection.api_id,
                         "dataFilter": {
@@ -137,7 +137,7 @@ class SentinelHub:
         mimetype=None,
         resampling_method=None,
     ):
-        request_raw_dict = self.get_request_dictionary(
+        request_raw_dict = self.get_request_dictionary( # fix this so multiple collections are allowed
             bbox=bbox,
             geometry=geometry,
             epsg_code=epsg_code,

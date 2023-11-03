@@ -35,6 +35,7 @@ from processing.utils import (
     construct_geojson,
     convert_geometry_crs,
     convert_bbox_crs,
+    get_all_load_collection_nodes,
     remove_partially_supported_processes_from_process_graph,
     is_geojson,
     validate_geojson,
@@ -90,9 +91,12 @@ class Process:
             self.process_graph, partially_supported_processes
         )
 
-        load_collection_node = self.get_node_by_process_id("load_collection")
-        collection = collections.get_collection(load_collection_node["arguments"]["id"])
-        bands_metadata = collection.get("summaries", {}).get("eo:bands")
+        load_collection_nodes = self.get_all_load_collection_nodes()
+        bands_metadata = {} 
+        for node_id, load_collection_node in load_collection_nodes.items():
+            collection = collections.get_collection(load_collection_node["arguments"]["id"])
+            bands = collection.get("summaries", {}).get("eo:bands")
+            bands_metadata[node_id] = bands
 
         results = convert_from_process_graph(
             process_graph,
@@ -104,14 +108,14 @@ class Process:
         evalscript = results[0]["evalscript"]
         evalscript.mosaicking = self.get_appropriate_mosaicking()
 
-        if self.get_input_bands() is None:
-            all_bands = collection["cube:dimensions"]["bands"]["values"]
-            evalscript.set_input_bands(all_bands)
+        if self.get_input_bands() is None: # fix this
+            all_bands = collection["cube:dimensions"]["bands"]["values"] #fix this
+            evalscript.set_input_bands(all_bands) #fix this
 
         return evalscript
 
     def get_appropriate_mosaicking(self):
-        load_collection_node = self.get_node_by_process_id("load_collection")
+        load_collection_node = self.get_node_by_process_id("load_collection") #fix this?
         openeo_collection = collections.get_collection(load_collection_node["arguments"]["id"])
         from_time, to_time = openeo_collection.get("extent").get("temporal")["interval"][0]
 
@@ -137,7 +141,7 @@ class Process:
         collection_type = collection_info["datasource_type"]
 
         if collection_type == "byoc-ID":
-            load_collection_node = self.get_node_by_process_id("load_collection")
+            load_collection_node = self.get_node_by_process_id("load_collection") # fix this
             featureflags = load_collection_node["arguments"].get("featureflags", {})
             byoc_collection_id = featureflags.get("byoc_collection_id")
 
@@ -164,8 +168,11 @@ class Process:
 
     def get_node_by_process_id(self, process_id):
         return get_node_by_process_id(self.process_graph, process_id)
+    
+    def get_all_load_collection_nodes(self):
+        return get_all_load_collection_nodes(self.process_graph)
 
-    def get_collection(self):
+    def get_collection(self): # fix this also for multiple collections
         load_collection_node = self.get_node_by_process_id("load_collection")
         return self.id_to_data_collection(load_collection_node["arguments"]["id"])
 
@@ -173,7 +180,7 @@ class Process:
         """
         Returns bbox, EPSG code, geometry
         """
-        load_collection_node = self.get_node_by_process_id("load_collection")
+        load_collection_node = self.get_node_by_process_id("load_collection") # fix this?
         spatial_extent = load_collection_node["arguments"]["spatial_extent"]
 
         if spatial_extent is None:
@@ -235,7 +242,7 @@ class Process:
         return final_geometry.bounds, partial_processes_crs, mapping(final_geometry)
 
     def get_collection_temporal_step(self):
-        load_collection_node = self.get_node_by_process_id("load_collection")
+        load_collection_node = self.get_node_by_process_id("load_collection") # fix this?
         collection = collections.get_collection(load_collection_node["arguments"]["id"])
         if not collection:
             return None
@@ -255,7 +262,7 @@ class Process:
         return temporal_interval.total_seconds()
 
     def get_maximum_temporal_extent_for_collection(self):
-        load_collection_node = self.get_node_by_process_id("load_collection")
+        load_collection_node = self.get_node_by_process_id("load_collection") # fix this?
         openeo_collection = collections.get_collection(load_collection_node["arguments"]["id"])
         from_time, to_time = openeo_collection.get("extent").get("temporal")["interval"][0]
 
@@ -276,7 +283,7 @@ class Process:
         """
         Returns from_time, to_time
         """
-        load_collection_node = self.get_node_by_process_id("load_collection")
+        load_collection_node = self.get_node_by_process_id("load_collection") # fix this?
         temporal_extent = load_collection_node["arguments"].get("temporal_extent")
         if temporal_extent is None:
             temporal_extent = self.get_maximum_temporal_extent_for_collection()
@@ -309,8 +316,8 @@ class Process:
 
         return from_time, to_time
 
-    def get_input_bands(self):
-        load_collection_node = self.get_node_by_process_id("load_collection")
+    def get_input_bands(self): 
+        load_collection_node = self.get_node_by_process_id("load_collection") # fix this
         return load_collection_node["arguments"].get("bands")
 
     def format_to_mimetype(self, output_format):
@@ -357,9 +364,9 @@ class Process:
         return width, height
 
     def get_highest_resolution(self):
-        load_collection_node = self.get_node_by_process_id("load_collection")
+        load_collection_node = self.get_node_by_process_id("load_collection") # fix this
         collection = collections.get_collection(load_collection_node["arguments"]["id"])
-        selected_bands = self.get_input_bands()
+        selected_bands = self.get_input_bands() # fix this
         summaries = collection.get("summaries", {})
 
         if selected_bands is None:
@@ -502,7 +509,7 @@ class Process:
     def create_batch_job(self):
         self.tiling_grid_id, self.tiling_grid_resolution = self.get_appropriate_tiling_grid_and_resolution()
         return (
-            self.sentinel_hub.create_batch_job(
+            self.sentinel_hub.create_batch_job( # fix this
                 bbox=self.bbox,
                 epsg_code=self.epsg_code,
                 geometry=self.geometry,
