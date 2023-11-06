@@ -25,7 +25,9 @@ def get_all_process_definitions():
         partially_supported_process.process_id for partially_supported_process in partially_supported_processes
     ]
 
-    for supported_process in list_supported_processes() + partially_supported_processes_ids:
+    unique_supported_processes = list(set(list_supported_processes() + partially_supported_processes_ids))
+
+    for supported_process in unique_supported_processes:
         files.extend(glob.glob(get_abs_file_path(f"process_definitions/{supported_process}.json")))
 
     for file in files:
