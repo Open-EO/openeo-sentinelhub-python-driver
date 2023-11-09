@@ -22,7 +22,7 @@ openeo-pg-parser = {editable = true,git = "https://github.com/Ardweaden/openeo-p
 requests = "==2.27.1"
 flask-cors = "==3.0.10"
 honeycomb-beeline = "==3.2.0"
-pg-to-evalscript = "==0.2.8"
+pg-to-evalscript = {editable = true, path = "../../openeo-pg-evalscript-converter"}
 sentinelhub = "==3.6.3"
 isodate = "==0.6.1"
 pyjwt = {extras = ["crypto"], version = "==2.3.0"}
@@ -32,3 +32,4 @@ rioxarray = "*"
 zarr = "*"
 netcdf4 = "*"
 pip-tools = "==6.1.0"
+werkzeug = "==2.3.7"
