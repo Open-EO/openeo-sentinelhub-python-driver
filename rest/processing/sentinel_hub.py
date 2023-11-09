@@ -28,10 +28,8 @@ class SentinelHub:
         bbox=None,
         geometry=None,
         epsg_code=None,
-        collection=None,
+        collections=None,
         evalscript=None,
-        from_date=None,
-        to_date=None,
         width=None,
         height=None,
         mimetype=None,
@@ -44,18 +42,15 @@ class SentinelHub:
             bbox=bbox,
             geometry=geometry,
             epsg_code=epsg_code,
-            collection=collection,
+            collections=collections,
             evalscript=evalscript,
-            from_date=from_date,
-            to_date=to_date,
             width=width,
             height=height,
             mimetype=mimetype,
             resampling_method=resampling_method,
         )
-
         return ProcessingAPIRequest(
-            f"{collection.service_url}/api/v1/process", request_raw_dict, user=self.user
+            f"{list(collections.values())[0].service_url}/api/v1/process", request_raw_dict, user=self.user
         ).fetch()
 
     def get_request_dictionary(
@@ -63,10 +58,8 @@ class SentinelHub:
         bbox=None,
         geometry=None,
         epsg_code=None,
-        collection=None,
+        collections=None,
         evalscript=None,
-        from_date=None,
-        to_date=None,
         width=None,
         height=None,
         mimetype=None,
@@ -76,18 +69,19 @@ class SentinelHub:
         return {
             "input": {
                 "bounds": self.construct_input_bounds(bbox, epsg_code, geometry),
-                "data": [  # fix here so mutliple {} are here
+                "data": [
                     {
-                        "type": collection.api_id,
+                        "id": node_id,
+                        "type": collection["data_collection"].api_id,
                         "dataFilter": {
                             "timeRange": {
-                                "from": from_date.isoformat(),
-                                "to": to_date.isoformat(),
+                                "from": collection["from_date"].isoformat(),
+                                "to": collection["to_date"].isoformat(),
                             },
                             "previewMode": preview_mode,
                         },
                         "processing": self.construct_data_processing(resampling_method),
-                    }
+                    } for node_id, collection in collections.items()
                 ],
             },
             "output": self.construct_output(width, height, mimetype),
@@ -128,10 +122,8 @@ class SentinelHub:
         bbox=None,
         geometry=None,
         epsg_code=None,
-        collection=None,
+        collections=None,
         evalscript=None,
-        from_date=None,
-        to_date=None,
         tiling_grid_id=None,
         tiling_grid_resolution=None,
         mimetype=None,
@@ -141,15 +133,12 @@ class SentinelHub:
             bbox=bbox,
             geometry=geometry,
             epsg_code=epsg_code,
-            collection=collection,
+            collections=collections,
             evalscript=evalscript,
-            from_date=from_date,
-            to_date=to_date,
             mimetype=mimetype,
             resampling_method=resampling_method,
             preview_mode="DETAIL",
         )
-
         batch_request = self.batch.create(
             request_raw_dict,
             tiling_grid=SentinelHubBatch.tiling_grid(
