@@ -81,7 +81,8 @@ class SentinelHub:
                             "previewMode": preview_mode,
                         },
                         "processing": self.construct_data_processing(resampling_method),
-                    } for node_id, collection in collections.items()
+                    }
+                    for node_id, collection in collections.items()
                 ],
             },
             "output": self.construct_output(width, height, mimetype),

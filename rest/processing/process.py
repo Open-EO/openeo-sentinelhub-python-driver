@@ -76,8 +76,12 @@ class Process:
         self.bbox, self.epsg_code, self.geometry = self.get_bounds()
         self.collections = self.get_collections()
         # check that collections have at least 1 SH provider the same and set it as service_base_url and sentinel_hub
-        self.service_base_url = list(self.collections.values())[0]["data_collection"].service_url # fix this is it possible that different collections have different deployments of SH
-        self.sentinel_hub = SentinelHub(user=user, service_base_url=self.service_base_url) # fix this is it possbile that different collections have different deployments of SH
+        self.service_base_url = list(self.collections.values())[0][
+            "data_collection"
+        ].service_url  # fix this is it possible that different collections have different deployments of SH
+        self.sentinel_hub = SentinelHub(
+            user=user, service_base_url=self.service_base_url
+        )  # fix this is it possbile that different collections have different deployments of SH
         self.mimetype = self.get_mimetype()
         self.width = width or self.get_dimensions()[0]
         self.height = height or self.get_dimensions()[1]
@@ -109,11 +113,16 @@ class Process:
         evalscript = results[0]["evalscript"]
         evalscript.mosaicking = self.get_appropriate_mosaicking()
 
-        if all(bnds is None for bnds in [datasource_with_bands["bands"] for datasource_with_bands in self.get_input_bands()]):
+        if all(
+            bnds is None
+            for bnds in [datasource_with_bands["bands"] for datasource_with_bands in self.get_input_bands()]
+        ):
             all_bands = []
             for node_id, load_collection_node in load_collection_nodes.items():
                 collection = collections.get_collection(load_collection_node["arguments"]["id"])
-                all_bands.append({"datasource": "node_" + node_id, "bands": collection["cube:dimensions"]["bands"]["values"]})
+                all_bands.append(
+                    {"datasource": "node_" + node_id, "bands": collection["cube:dimensions"]["bands"]["values"]}
+                )
             evalscript.set_input_bands(all_bands)
 
         return evalscript
@@ -130,7 +139,7 @@ class Process:
                 # Collection has no time extent so it's one of the "timeless" collections as e.g. DEM
                 # Mosaicking: "ORBIT" or "TILE" is not supported.
                 return "SIMPLE"
-            
+
         return "ORBIT"
 
     def _create_custom_datacollection(self, collection_type, collection_info, subtype):
@@ -149,7 +158,9 @@ class Process:
         collection_type = collection_info["datasource_type"]
 
         if collection_type == "byoc-ID":
-            load_collection_node = self.get_node_by_process_id("load_collection")  # fix this - get all and find correct one
+            load_collection_node = self.get_node_by_process_id(
+                "load_collection"
+            )  # fix this - get all and find correct one
             featureflags = load_collection_node["arguments"].get("featureflags", {})
             byoc_collection_id = featureflags.get("byoc_collection_id")
 
@@ -186,8 +197,12 @@ class Process:
         for node_id, load_collection_node in load_collection_nodes.items():
             from_time, to_time = self.get_temporal_extent(load_collection_node)
             data_collection = self.id_to_data_collection(load_collection_node["arguments"]["id"])
-            collections[f"node_{node_id}"] = {"data_collection": data_collection, "from_date": from_time, "to_date": to_time}
-        
+            collections[f"node_{node_id}"] = {
+                "data_collection": data_collection,
+                "from_date": from_time,
+                "to_date": to_time,
+            }
+
         return collections
 
     def get_bounds_from_load_collection(self):
@@ -261,10 +276,14 @@ class Process:
         collection = collections.get_collection(load_collection_node["arguments"]["id"])
         if not collection:
             return None
-        return collection["cube:dimensions"]["t"].get("step") # what should the step be if there are multiple different ones
+        return collection["cube:dimensions"]["t"].get(
+            "step"
+        )  # what should the step be if there are multiple different ones
 
     def get_temporal_interval(self, in_days=False):
-        step = self.get_collection_temporal_step() # fix this - not really important though, as it is only used for file size
+        step = (
+            self.get_collection_temporal_step()
+        )  # fix this - not really important though, as it is only used for file size
 
         if step is None:
             return None
@@ -386,11 +405,13 @@ class Process:
         y_resolutions = []
         for node_id, load_collection_node in load_collection_nodes.items():
             collection = collections.get_collection(load_collection_node["arguments"]["id"])
-            summaries = collection.get("summaries", {}) # fix this
+            summaries = collection.get("summaries", {})  # fix this
             selected_bands = self.get_input_bands()  # fix this
 
-            if all(bnds is None for bnds in [datasource_with_bands["bands"] for datasource_with_bands in selected_bands]):
-                selected_bands = collection["cube:dimensions"]["bands"]["values"] # still fix this
+            if all(
+                bnds is None for bnds in [datasource_with_bands["bands"] for datasource_with_bands in selected_bands]
+            ):
+                selected_bands = collection["cube:dimensions"]["bands"]["values"]  # still fix this
 
             bands_summaries = None
             for key in ["eo:bands", "raster:bands"]:
@@ -402,7 +423,8 @@ class Process:
             list_of_resolutions = [
                 self.get_band_resolution(band_summary)
                 for band_summary in bands_summaries
-                if band_summary["name"] in [b for datasource_with_bands in selected_bands for b in datasource_with_bands["bands"]]
+                if band_summary["name"]
+                in [b for datasource_with_bands in selected_bands for b in datasource_with_bands["bands"]]
             ]
             x_resolutions.append(min(list_of_resolutions, key=lambda x: x[0])[0])
             y_resolutions.append(min(list_of_resolutions, key=lambda x: x[1])[1])
@@ -429,7 +451,7 @@ class Process:
         return resolution
 
     def get_appropriate_tiling_grid_and_resolution(self):
-        utm_tiling_grids = self.sentinel_hub.get_utm_tiling_grids() # fix this somehow
+        utm_tiling_grids = self.sentinel_hub.get_utm_tiling_grids()  # fix this somehow
 
         if self.pisp_resolution:
             # If desired resolution was explicitly set in partially defined spatial processes.
@@ -485,14 +507,16 @@ class Process:
                 n_output_bands *= output_dimension["size"]
 
         if n_original_temporal_dimensions > 0:
-            temporal_interval = self.get_temporal_interval() # can this be just an average of all file sizes for each collection
+            temporal_interval = (
+                self.get_temporal_interval()
+            )  # can this be just an average of all file sizes for each collection
 
             if temporal_interval is None:
                 n_seconds_per_day = 86400
                 default_temporal_interval = 3
                 temporal_interval = default_temporal_interval * n_seconds_per_day
 
-            date_diff = 3 # fix this
+            date_diff = 3  # fix this
             # date_diff = (self.to_date - self.from_date).total_seconds() # fix this
             n_dates = math.ceil(date_diff / temporal_interval) + 1
             n_output_bands *= n_dates * n_original_temporal_dimensions
@@ -503,7 +527,7 @@ class Process:
             n_output_bands = min(n_output_bands, 3)
 
         return n_pixels * n_bytes * n_output_bands
-    
+
     def check_if_data_fusion_possible(self):
         """
         Checks if different collections are hosted by same SH deployment
@@ -522,10 +546,10 @@ class Process:
 
         if self.width == 0 or self.height == 0:
             raise ImageDimensionInvalid(self.width, self.height)
-        
+
         self.check_if_data_fusion_possible()
 
-        return self.sentinel_hub.create_processing_request( # fix this - how to handle this that self.sh doesn't exist anymore
+        return self.sentinel_hub.create_processing_request(  # fix this - how to handle this that self.sh doesn't exist anymore
             bbox=self.bbox,
             epsg_code=self.epsg_code,
             geometry=self.geometry,
@@ -539,9 +563,9 @@ class Process:
 
     def create_batch_job(self):
         self.tiling_grid_id, self.tiling_grid_resolution = self.get_appropriate_tiling_grid_and_resolution()
-        
+
         self.check_if_data_fusion_possible()
-        
+
         return (
             self.sentinel_hub.create_batch_job(  # fix this - how to handle this that self.sh doesn't exist anymore if I create instacne for each collection
                 # how to handle that if I create a SH instance for first collection, the second collection may not exist there????

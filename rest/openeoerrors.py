@@ -160,6 +160,7 @@ class InsufficientCredits(SHOpenEOError):
     http_code = 402
     message = "You do not have sufficient credits to perform this request. Please visit https://portal.terrascope.be/pages/pricing to find more information on how to buy additional credits."
 
+
 class DataFusionNotPossibleDifferentSHDeployments(SHOpenEOError):
     error_code = "DataFusionNotPossible"
     http_code = 400
