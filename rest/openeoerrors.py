@@ -159,3 +159,8 @@ class InsufficientCredits(SHOpenEOError):
     error_code = "InsufficientCredits"
     http_code = 402
     message = "You do not have sufficient credits to perform this request. Please visit https://portal.terrascope.be/pages/pricing to find more information on how to buy additional credits."
+
+class DataFusionNotPossibleDifferentSHDeployments(SHOpenEOError):
+    error_code = "DataFusionNotPossible"
+    http_code = 400
+    message = "Data fusion not available with selected collections because they are not all available on the same SH deployment."
