@@ -187,7 +187,8 @@ def get_batch_job_estimate(batch_request_id, process, deployment_endpoint):
         user_defined_processes=user_defined_processes_graphs,
         request_type=ProcessingRequestTypes.BATCH,
     )
-    temporal_interval = p.get_temporal_interval(in_days=True)
+    temporal_interval = p.get_temporal_interval(in_days=True)  # fix this similar to process.py#275
+    temporal_interval = None
 
     if temporal_interval is None:
         temporal_interval = default_temporal_interval
