@@ -205,7 +205,7 @@ class Process:
         Returns bbox, EPSG code, geometry
         """
         load_collection_nodes = list(self.get_all_load_collection_nodes().values())
-        load_collection_node = load_collection_nodes[0]  # fix this - do all collections have the same bbox?
+        load_collection_node = load_collection_nodes[0]
         spatial_extent = load_collection_node["arguments"]["spatial_extent"]
 
         if spatial_extent is None:
@@ -273,22 +273,22 @@ class Process:
         return collection["cube:dimensions"]["t"].get("step")
 
     def get_temporal_interval(self, in_days=False):
-        # fix this - iterate over all load colelction nodes and get steps
         load_collection_nodes = self.get_all_load_collection_nodes()
+        temporal_intervals = {}
         for node_id, load_collection_node in load_collection_nodes.items():
-            s = self.get_collection_temporal_step(load_collection_node)
+            step = self.get_collection_temporal_step(load_collection_node)
 
-        step = self.get_collection_temporal_step()
+            if step is None:
+                return None
 
-        if step is None:
-            return None
+            temporal_interval = parse_duration(step)
 
-        temporal_interval = parse_duration(step)
+            if in_days:
+                n_seconds_per_day = 86400
+                temporal_intervals[node_id] = temporal_interval.total_seconds() / n_seconds_per_day
+            temporal_intervals[node_id] = temporal_interval.total_seconds()
 
-        if in_days:
-            n_seconds_per_day = 86400
-            return temporal_interval.total_seconds() / n_seconds_per_day
-        return temporal_interval.total_seconds()
+        return temporal_intervals
 
     def get_maximum_temporal_extent_for_collection(self, load_collection_node):
         openeo_collection = collections.get_collection(load_collection_node["arguments"]["id"])
@@ -400,13 +400,11 @@ class Process:
         y_resolutions = []
         for node_id, load_collection_node in load_collection_nodes.items():
             collection = collections.get_collection(load_collection_node["arguments"]["id"])
-            summaries = collection.get("summaries", {})  # fix this
-            selected_bands = self.get_input_bands()  # fix this
+            summaries = collection.get("summaries", {})
+            selected_bands = load_collection_node["arguments"].get("bands")
 
-            if all(
-                bnds is None for bnds in [datasource_with_bands["bands"] for datasource_with_bands in selected_bands]
-            ):
-                selected_bands = collection["cube:dimensions"]["bands"]["values"]  # still fix this
+            if selected_bands is None:
+                selected_bands = collection["cube:dimensions"]["bands"]["values"]
 
             bands_summaries = None
             for key in ["eo:bands", "raster:bands"]:
@@ -415,11 +413,10 @@ class Process:
             if bands_summaries is None:
                 return self.DEFAULT_RESOLUTION
 
-            list_of_resolutions = [
+            list_of_resolutions = [  # fix this
                 self.get_band_resolution(band_summary)
                 for band_summary in bands_summaries
-                if band_summary["name"]
-                in [b for datasource_with_bands in selected_bands for b in datasource_with_bands["bands"]]
+                if band_summary["name"] in selected_bands
             ]
             x_resolutions.append(min(list_of_resolutions, key=lambda x: x[0])[0])
             y_resolutions.append(min(list_of_resolutions, key=lambda x: x[1])[1])
@@ -446,7 +443,7 @@ class Process:
         return resolution
 
     def get_appropriate_tiling_grid_and_resolution(self):
-        utm_tiling_grids = self.sentinel_hub.get_utm_tiling_grids()  # fix this
+        utm_tiling_grids = self.sentinel_hub.get_utm_tiling_grids()
 
         if self.pisp_resolution:
             # If desired resolution was explicitly set in partially defined spatial processes.
@@ -502,18 +499,22 @@ class Process:
                 n_output_bands *= output_dimension["size"]
 
         if n_original_temporal_dimensions > 0:
-            temporal_interval = (
-                self.get_temporal_interval()
-            )  # fix this - can this be just an average of all file sizes for each collection
+            temporal_intervals = self.get_temporal_interval()
 
-            if temporal_interval is None:
-                n_seconds_per_day = 86400
-                default_temporal_interval = 3
-                temporal_interval = default_temporal_interval * n_seconds_per_day
+            n_dates = 0
+            for node_id, temporal_interval in temporal_intervals.items():
+                if temporal_interval is None:
+                    n_seconds_per_day = 86400
+                    default_temporal_interval = 3
+                    temporal_interval = default_temporal_interval * n_seconds_per_day
 
-            date_diff = 3  # fix this
-            # date_diff = (self.to_date - self.from_date).total_seconds() # fix this
-            n_dates = math.ceil(date_diff / temporal_interval) + 1
+                collection = self.collections[f"node_{node_id}"]
+                from_date = collection["from_date"]
+                to_date = collection["to_date"]
+
+                date_diff = (to_date - from_date).total_seconds()
+                n_dates += math.ceil(date_diff / temporal_interval) + 1
+
             n_output_bands *= n_dates * n_original_temporal_dimensions
 
         if self.mimetype == MimeType.PNG:
@@ -541,8 +542,6 @@ class Process:
 
         if self.width == 0 or self.height == 0:
             raise ImageDimensionInvalid(self.width, self.height)
-
-        self.check_if_data_fusion_possible()
 
         return self.sentinel_hub.create_processing_request(
             bbox=self.bbox,
