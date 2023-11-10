@@ -75,13 +75,8 @@ class Process:
         ) = get_spatial_info_from_partial_processes(partially_supported_processes, self.process_graph)
         self.bbox, self.epsg_code, self.geometry = self.get_bounds()
         self.collections = self.get_collections()
-        # check that collections have at least 1 SH provider the same and set it as service_base_url and sentinel_hub
-        self.service_base_url = list(self.collections.values())[0][
-            "data_collection"
-        ].service_url  # fix this is it possible that different collections have different deployments of SH
-        self.sentinel_hub = SentinelHub(
-            user=user, service_base_url=self.service_base_url
-        )  # fix this is it possbile that different collections have different deployments of SH
+        self.service_base_url = list(self.collections.values())[0]["data_collection"].service_url
+        self.sentinel_hub = SentinelHub(user=user, service_base_url=self.service_base_url)
         self.mimetype = self.get_mimetype()
         self.width = width or self.get_dimensions()[0]
         self.height = height or self.get_dimensions()[1]
@@ -210,7 +205,7 @@ class Process:
         Returns bbox, EPSG code, geometry
         """
         load_collection_nodes = list(self.get_all_load_collection_nodes().values())
-        load_collection_node = load_collection_nodes[0]
+        load_collection_node = load_collection_nodes[0]  # fix this - do all collections have the same bbox?
         spatial_extent = load_collection_node["arguments"]["spatial_extent"]
 
         if spatial_extent is None:
@@ -271,19 +266,19 @@ class Process:
 
         return final_geometry.bounds, partial_processes_crs, mapping(final_geometry)
 
-    def get_collection_temporal_step(self):
-        load_collection_node = self.get_node_by_process_id("load_collection")  # fix this?
+    def get_collection_temporal_step(self, load_collection_node):
         collection = collections.get_collection(load_collection_node["arguments"]["id"])
         if not collection:
             return None
-        return collection["cube:dimensions"]["t"].get(
-            "step"
-        )  # what should the step be if there are multiple different ones
+        return collection["cube:dimensions"]["t"].get("step")
 
     def get_temporal_interval(self, in_days=False):
-        step = (
-            self.get_collection_temporal_step()
-        )  # fix this - not really important though, as it is only used for file size
+        # fix this - iterate over all load colelction nodes and get steps
+        load_collection_nodes = self.get_all_load_collection_nodes()
+        for node_id, load_collection_node in load_collection_nodes.items():
+            s = self.get_collection_temporal_step(load_collection_node)
+
+        step = self.get_collection_temporal_step()
 
         if step is None:
             return None
@@ -451,7 +446,7 @@ class Process:
         return resolution
 
     def get_appropriate_tiling_grid_and_resolution(self):
-        utm_tiling_grids = self.sentinel_hub.get_utm_tiling_grids()  # fix this somehow
+        utm_tiling_grids = self.sentinel_hub.get_utm_tiling_grids()  # fix this
 
         if self.pisp_resolution:
             # If desired resolution was explicitly set in partially defined spatial processes.
@@ -509,7 +504,7 @@ class Process:
         if n_original_temporal_dimensions > 0:
             temporal_interval = (
                 self.get_temporal_interval()
-            )  # can this be just an average of all file sizes for each collection
+            )  # fix this - can this be just an average of all file sizes for each collection
 
             if temporal_interval is None:
                 n_seconds_per_day = 86400
@@ -549,7 +544,7 @@ class Process:
 
         self.check_if_data_fusion_possible()
 
-        return self.sentinel_hub.create_processing_request(  # fix this - how to handle this that self.sh doesn't exist anymore
+        return self.sentinel_hub.create_processing_request(
             bbox=self.bbox,
             epsg_code=self.epsg_code,
             geometry=self.geometry,
@@ -567,8 +562,7 @@ class Process:
         self.check_if_data_fusion_possible()
 
         return (
-            self.sentinel_hub.create_batch_job(  # fix this - how to handle this that self.sh doesn't exist anymore if I create instacne for each collection
-                # how to handle that if I create a SH instance for first collection, the second collection may not exist there????
+            self.sentinel_hub.create_batch_job(
                 bbox=self.bbox,
                 epsg_code=self.epsg_code,
                 geometry=self.geometry,
