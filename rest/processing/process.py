@@ -413,7 +413,7 @@ class Process:
             if bands_summaries is None:
                 return self.DEFAULT_RESOLUTION
 
-            list_of_resolutions = [  # fix this
+            list_of_resolutions = [
                 self.get_band_resolution(band_summary)
                 for band_summary in bands_summaries
                 if band_summary["name"] in selected_bands
