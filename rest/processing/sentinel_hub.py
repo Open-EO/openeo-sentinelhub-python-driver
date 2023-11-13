@@ -130,7 +130,7 @@ class SentinelHub:
         mimetype=None,
         resampling_method=None,
     ):
-        request_raw_dict = self.get_request_dictionary(  # fix this so multiple collections are allowed
+        request_raw_dict = self.get_request_dictionary(
             bbox=bbox,
             geometry=geometry,
             epsg_code=epsg_code,
