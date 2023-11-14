@@ -154,7 +154,9 @@ class Process:
 
         if collection_type == "byoc-ID":
             load_collection_nodes = self.get_all_load_collection_nodes()
-            load_collection_node = next(lcn for lcn in load_collection_nodes.values() if lcn["arguments"]["id"] is collection_id)
+            load_collection_node = next(
+                lcn for lcn in load_collection_nodes.values() if lcn["arguments"]["id"] is collection_id
+            )
             featureflags = load_collection_node["arguments"].get("featureflags", {})
             byoc_collection_id = featureflags.get("byoc_collection_id")
 
