@@ -187,13 +187,16 @@ def get_batch_job_estimate(batch_request_id, process, deployment_endpoint):
         user_defined_processes=user_defined_processes_graphs,
         request_type=ProcessingRequestTypes.BATCH,
     )
-    temporal_interval = p.get_temporal_interval(in_days=True)  # fix this similar to process.py#275
-    temporal_interval = None
+    temporal_intervals = p.get_temporal_interval(in_days=True)
+    average_temporal_interval = 0
+    for node_id, temporal_interval in temporal_intervals.items():    
+        if temporal_interval is None:
+            temporal_interval = default_temporal_interval
 
-    if temporal_interval is None:
-        temporal_interval = default_temporal_interval
+        average_temporal_interval += temporal_interval
 
-    estimated_pu = estimate_secure_factor * batch_request.value_estimate * default_temporal_interval / temporal_interval
+    average_temporal_interval = average_temporal_interval / len(temporal_intervals)
+    estimated_pu = estimate_secure_factor * batch_request.value_estimate * default_temporal_interval / average_temporal_interval
 
     n_pixels = batch_request.tile_count * batch_request.tile_width_px * batch_request.tile_height_px
     estimated_file_size = p.estimate_file_size(n_pixels=n_pixels)
