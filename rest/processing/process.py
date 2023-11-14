@@ -279,13 +279,16 @@ class Process:
             step = self.get_collection_temporal_step(load_collection_node)
 
             if step is None:
-                return None
+                temporal_intervals[node_id] = None
+                continue
 
             temporal_interval = parse_duration(step)
 
             if in_days:
                 n_seconds_per_day = 86400
                 temporal_intervals[node_id] = temporal_interval.total_seconds() / n_seconds_per_day
+                continue
+
             temporal_intervals[node_id] = temporal_interval.total_seconds()
 
         return temporal_intervals
