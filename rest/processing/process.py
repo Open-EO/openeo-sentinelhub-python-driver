@@ -96,7 +96,7 @@ class Process:
         for node_id, load_collection_node in load_collection_nodes.items():
             collection = collections.get_collection(load_collection_node["arguments"]["id"])
             bands = collection.get("summaries", {}).get("eo:bands")
-            bands_metadata[node_id] = bands
+            bands_metadata[f"node_{node_id}"] = bands
 
         results = convert_from_process_graph(
             process_graph,
@@ -116,7 +116,7 @@ class Process:
             for node_id, load_collection_node in load_collection_nodes.items():
                 collection = collections.get_collection(load_collection_node["arguments"]["id"])
                 all_bands.append(
-                    {"datasource": "node_" + node_id, "bands": collection["cube:dimensions"]["bands"]["values"]}
+                    {"datasource": f"node_{node_id}", "bands": collection["cube:dimensions"]["bands"]["values"]}
                 )
             evalscript.set_input_bands(all_bands)
 
