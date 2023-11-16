@@ -964,8 +964,10 @@ def test_temporal_extent(get_process_graph, fixture, expected_result):
             },
             request_type=ProcessingRequestTypes.SYNC,
         )
-        assert process.from_date == expected_result["from_date"]
-        assert process.to_date == expected_result["to_date"]
+        all_collections = process.get_collections()
+        collection = all_collections["node_loadco1"]
+        assert collection["from_date"] == expected_result["from_date"]
+        assert collection["to_date"] == expected_result["to_date"]
 
 
 @pytest.mark.parametrize(
