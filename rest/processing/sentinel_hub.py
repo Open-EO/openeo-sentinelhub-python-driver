@@ -51,8 +51,10 @@ class SentinelHub:
         )
         print(collections)
         return ProcessingAPIRequest(
-            f"{list(collections.values())[0]['data_collection'].service_url}/api/v1/process", request_raw_dict, user=self.user
-        ).fetch() # fix this - should this always be SentinelhubDeployments.MAIN as it will then also work for cross-deployment data fusion?
+            f"{list(collections.values())[0]['data_collection'].service_url}/api/v1/process",
+            request_raw_dict,
+            user=self.user,
+        ).fetch()  # fix this - should this always be SentinelhubDeployments.MAIN as it will then also work for cross-deployment data fusion?
 
     def get_request_dictionary(
         self,
