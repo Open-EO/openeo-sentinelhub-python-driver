@@ -36,14 +36,14 @@ def test_collections(get_process_graph, collection_id):
         {"process_graph": get_process_graph(collection_id=collection_id, bands=None)},
         request_type=ProcessingRequestTypes.SYNC,
     )
-    assert process.evalscript.input_bands == all_bands
+    assert process.evalscript.input_bands[0]["bands"] == all_bands
 
     example_bands = ["B01", "B02"]
     process = Process(
         {"process_graph": get_process_graph(collection_id=collection_id, bands=example_bands)},
         request_type=ProcessingRequestTypes.SYNC,
     )
-    assert process.evalscript.input_bands == example_bands
+    assert process.evalscript.input_bands[0]["bands"] == example_bands
 
 
 @responses.activate
