@@ -722,7 +722,13 @@ def test_sentinel_hub_access_token(access_token):
         sh = SentinelHub(user=user)
         sh.create_processing_request(
             bbox=BBox((1, 2, 3, 4), crs=CRS.WGS84),
-            collections={"node_loadco1": {"data_collection": DataCollection.SENTINEL2_L2A, "from_date": datetime.now(),"to_date":datetime.now()}},
+            collections={
+                "node_loadco1": {
+                    "data_collection": DataCollection.SENTINEL2_L2A,
+                    "from_date": datetime.now(),
+                    "to_date": datetime.now(),
+                }
+            },
             evalscript="",
             width=1,
             height=1,
@@ -730,7 +736,13 @@ def test_sentinel_hub_access_token(access_token):
         )
         sh = SentinelHub(user=user)
         sh.create_batch_job(
-            collections={"node_loadco1": {"data_collection": DataCollection.SENTINEL2_L2A, "from_date": datetime.now(),"to_date":datetime.now()}},
+            collections={
+                "node_loadco1": {
+                    "data_collection": DataCollection.SENTINEL2_L2A,
+                    "from_date": datetime.now(),
+                    "to_date": datetime.now(),
+                }
+            },
             evalscript="",
             tiling_grid_id=1,
             tiling_grid_resolution=20,
