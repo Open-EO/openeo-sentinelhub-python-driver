@@ -1854,4 +1854,4 @@ def test_bands_metadata(process_graph):
             collection_id = node["arguments"]["id"]
     bands_metadata = collections.get_collection(collection_id)["summaries"]["eo:bands"]
     process = Process({"process_graph": process_graph}, request_type=ProcessingRequestTypes.SYNC)
-    assert process.evalscript.bands_metadata == bands_metadata
+    assert process.evalscript.bands_metadata["node_1"] == bands_metadata
