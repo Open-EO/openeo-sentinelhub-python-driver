@@ -765,7 +765,8 @@ def test_get_maximum_temporal_extent(get_process_graph, collection_id, expected_
     process = Process(
         {"process_graph": get_process_graph(collection_id=collection_id)}, request_type=ProcessingRequestTypes.SYNC
     )
-    from_time, to_time = process.get_maximum_temporal_extent_for_collection()
+    load_collection_nodes = process.get_all_load_collection_nodes()
+    from_time, to_time = process.get_maximum_temporal_extent_for_collection(load_collection_nodes[0])
 
     assert expected_from_time == from_time
     assert expected_to_time == to_time
