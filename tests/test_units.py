@@ -722,20 +722,16 @@ def test_sentinel_hub_access_token(access_token):
         sh = SentinelHub(user=user)
         sh.create_processing_request(
             bbox=BBox((1, 2, 3, 4), crs=CRS.WGS84),
-            collection=DataCollection.SENTINEL2_L2A,
+            collections={"node_loadco1": {"data_collection": DataCollection.SENTINEL2_L2A, "from_date": datetime.now(),"to_date":datetime.now()}},
             evalscript="",
-            from_date=datetime.now(),
-            to_date=datetime.now(),
             width=1,
             height=1,
             mimetype=MimeType.PNG,
         )
         sh = SentinelHub(user=user)
         sh.create_batch_job(
-            collection=DataCollection.SENTINEL2_L2A,
+            collections={"node_loadco1": {"data_collection": DataCollection.SENTINEL2_L2A, "from_date": datetime.now(),"to_date":datetime.now()}},
             evalscript="",
-            from_date=datetime.now(),
-            to_date=datetime.now(),
             tiling_grid_id=1,
             tiling_grid_resolution=20,
             mimetype=MimeType.PNG,
