@@ -672,7 +672,9 @@ def test_get_collection(
             {"process_graph": get_process_graph(collection_id=collection_id, featureflags=featureflags)},
             request_type=ProcessingRequestTypes.SYNC,
         )
-        assert process.collection.api_id == expected_datacollection_api_id
+        all_collections = process.get_collections()
+        collection = all_collections["node_loadco1"]["data_collection"]
+        assert collection.api_id == expected_datacollection_api_id
 
 
 @responses.activate
