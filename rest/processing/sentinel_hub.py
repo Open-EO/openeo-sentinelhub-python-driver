@@ -49,7 +49,6 @@ class SentinelHub:
             mimetype=mimetype,
             resampling_method=resampling_method,
         )
-        print(collections)
         return ProcessingAPIRequest(
             f"{list(collections.values())[0]['data_collection'].service_url}/api/v1/process",
             request_raw_dict,
