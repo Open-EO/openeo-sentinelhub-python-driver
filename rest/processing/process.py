@@ -548,7 +548,7 @@ class Process:
             raise ImageDimensionInvalid(self.width, self.height)
 
         self.check_if_data_fusion_possible()
-        
+
         return self.sentinel_hub.create_processing_request(
             bbox=self.bbox,
             epsg_code=self.epsg_code,
