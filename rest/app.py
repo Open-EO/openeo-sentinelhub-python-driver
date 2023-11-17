@@ -597,7 +597,12 @@ def add_job_to_queue(job_id):
         # START OF POST_PROCESSING
         # post-process gtiffs to appropriate formats
 
-        parse_sh_gtiff_to_format(job, bucket)
+        try:
+            parse_sh_gtiff_to_format(job, bucket)
+        except Exception as e:
+            print("parsing didn't succeed")
+            print(e)
+
 
         # END OF POST_PROCESSING
 
