@@ -10,7 +10,6 @@ from sentinelhub import MimeType
 from processing.const import CustomMimeType
 from openeoerrors import Internal
 
-import json
 
 # assume it's only 1 time and 1 bands dimension
 def check_dimensions(time_dimensions, bands_dimensions):
