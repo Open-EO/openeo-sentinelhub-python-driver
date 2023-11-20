@@ -40,9 +40,14 @@ def get_timestamps_arrays(datacube_time_as_bands, time_dimensions, bands_dimensi
         date = time_dimension["labels"][int(i / num_of_band_labels)] if time_dimension else None
         timestamp_array = datacube_time_as_bands[i : i + num_of_band_labels]
 
+        # datacube_time_as_bands of type xarray DataArray already has bands dimension, we need to
+        # - update its labels or remove it
+        # - add time dimension and its labels
         if output_format in [CustomMimeType.NETCDF, CustomMimeType.ZARR]:
             if bands_dimension:
                 timestamp_array = timestamp_array.assign_coords(band=bands_dimension["labels"])
+            else:
+                timestamp_array = timestamp_array.drop_vars("band")
             if time_dimension:
                 timestamp_array = timestamp_array.assign_coords(t=pd.to_datetime(parser.parse(date)))
                 timestamp_array = timestamp_array.expand_dims(dim="t")
