@@ -600,9 +600,8 @@ def add_job_to_queue(job_id):
         try:
             parse_sh_gtiff_to_format(job, bucket)
         except Exception as e:
-            print("parsing didn't succeed")
-            print(e)
-
+            raise Internal("Post-processing did not succeed")
+            log(ERROR, f"Post-processing did not succeed:  {e}")
 
         # END OF POST_PROCESSING
 
