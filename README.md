@@ -312,3 +312,13 @@ $ gdalinfo /tmp/results/result-0.tiff
 Driver: GTiff/GeoTIFF
 ...
 ```
+
+## License 
+
+© Sinergise Solutions d.o.o., 2023. Licensed under the [Apache License](LICENSE).
+
+## Funding
+
+This work has received funding from the European Commision (EC) through the projects:
+
+- [Open-Earth-Monitor Cyberinfrastructure](https://earthmonitor.org/): Environmental information to support EU’s Green Deal (1 Jun. 2022 – 31 May 2026 - [101059548](https://cordis.europa.eu/project/id/101059548))
