@@ -1,5 +1,21 @@
-## Running locally
+# Sentinel Hub openEO backend
 
+## Overview
+
+The Sentinel Hub openEO backend offers access to Sentinel Hub through an openEO interface. 
+
+### Deployments
+
+There exist two different deployments (production and testing). The testing deploy might offer some more functionality but is not considered stable and new features might still slightly change.
+
+The backend can be accessed either directly using existing Sentinel Hub credentials (ClientID + Secret) but its also integrated within the [openEO Platform](https://openeo.cloud/) (EGI Check-in).
+
+| Environment | URL                                         | 
+| ----------- | ------------------------------------------- | 
+| Production  | https://openeo.sentinel-hub.com/production/ | 
+| Testing (Development) | https://openeo-dev.sinergise.com/testing/ |
+
+## Running locally
 
 ### Prerequisites
 Mandatory: 
