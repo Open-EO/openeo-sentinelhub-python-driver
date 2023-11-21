@@ -2,13 +2,13 @@
 
 ## Overview
 
-The Sentinel Hub openEO backend offers access to Sentinel Hub through an openEO interface. 
+The Sentinel Hub openEO backend provides access to Sentinel Hub via an openEO interface. 
 
 ### Deployments
 
-There exist two different deployments (production and testing). The testing deploy might offer some more functionality but is not considered stable and new features might still slightly change.
+There are two different deployments (production and test). Although the test version offers slightly more functionality, it is not considered stable and new functions may still change slightly.
 
-The backend can be accessed either directly using existing Sentinel Hub credentials (ClientID + Secret) but its also integrated within the [openEO Platform](https://openeo.cloud/) (EGI Check-in).
+The backend can be accessed either directly via existing Sentinel Hub credentials (ClientID + Secret), but is also integrated into the [openEO Platform](https://openeo.cloud/) (EGI Check-in).
 
 | Environment | URL                                         | 
 | ----------- | ------------------------------------------- | 
@@ -342,6 +342,6 @@ Driver: GTiff/GeoTIFF
 
 ## Funding
 
-This work has received funding from the European Commision (EC) through the projects:
+This work has received funding from the European Commission (EC) through the projects:
 
 - [Open-Earth-Monitor Cyberinfrastructure](https://earthmonitor.org/): Environmental information to support EU’s Green Deal (1 Jun. 2022 – 31 May 2026 - [101059548](https://cordis.europa.eu/project/id/101059548))
