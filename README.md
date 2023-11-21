@@ -55,6 +55,13 @@ Then the REST API server can be run:
 <pipenv> $ python app.py
 ```
 
+To locally run the REST API server on HTTPS, start it with:
+```
+<pipenv> $ python app.py https
+```
+
+To use it in the [openEO editor](https://editor.openeo.org/), you must first access the endpoint directly via a Browser and "Accept the Risk and Continue" (there is no valid security certificate behind this secure connection).
+
 ### Troubleshooting
 
 If validator complains about process graphs that are clearly correct (and which are valid on production deployment), there are two things than can be done:

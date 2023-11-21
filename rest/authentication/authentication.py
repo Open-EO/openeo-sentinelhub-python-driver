@@ -15,10 +15,13 @@ from openeoerrors import (
     Internal,
     CredentialsInvalid,
     BillingPlanInvalid,
+    TokenInvalid,
 )
 from authentication.oidc_providers import oidc_providers
 from authentication.user import OIDCUser, SHUser
 from authentication.utils import decode_sh_access_token
+
+from openeoerrors import TokenInvalid
 
 
 class AuthScheme(Enum):
@@ -60,7 +63,7 @@ class AuthenticationProvider:
         user_id = userinfo["sub"]
 
         try:
-            user = OIDCUser(user_id, oidc_userinfo=userinfo)
+            user = OIDCUser(user_id, oidc_userinfo=userinfo, access_token=access_token)
         except BillingPlanInvalid:
             return None
 

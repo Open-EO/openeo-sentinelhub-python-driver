@@ -2,7 +2,7 @@ import warnings
 import math
 from datetime import datetime, date, timedelta, timezone
 
-from sentinelhub import DataCollection, MimeType, BBox, Geometry, CRS
+from sentinelhub import DataCollection, MimeType, BBox, Geometry, CRS, ServiceUrl
 from sentinelhub.time_utils import parse_time
 from pg_to_evalscript import convert_from_process_graph
 from sentinelhub.geo_utils import bbox_to_dimensions
@@ -16,6 +16,7 @@ from processing.const import (
     default_sample_type_for_mimetype,
     supported_sample_types,
     sample_types_to_bytes,
+    ProcessingRequestTypes,
 )
 from openeo_collections.collections import collections
 from openeoerrors import (
@@ -25,6 +26,7 @@ from openeoerrors import (
     ProcessGraphComplexity,
     TemporalExtentError,
     BadRequest,
+    ImageDimensionInvalid,
 )
 from processing.partially_supported_processes import partially_supported_processes
 from processing.utils import (
@@ -38,12 +40,21 @@ from processing.utils import (
     validate_geojson,
     parse_geojson,
     get_spatial_info_from_partial_processes,
+    get_node_by_process_id,
 )
 from authentication.user import User
 
 
+HLS_COLLECTION = DataCollection.define(
+    "hls",
+    api_id="hls",
+    service_url=ServiceUrl.USWEST,
+    collection_type="hls",
+)
+
+
 class Process:
-    def __init__(self, process, width=None, height=None, user=User(), user_defined_processes={}):
+    def __init__(self, process, width=None, height=None, user=User(), user_defined_processes={}, request_type=None):
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_RESOLUTION = (10, 10)
         self.MAXIMUM_SYNC_FILESIZE_BYTES = 5000000
@@ -52,7 +63,7 @@ class Process:
         }
         partially_supported_processes_as_udp.update(user_defined_processes)
         self.user_defined_processes = partially_supported_processes_as_udp
-
+        self.request_type = request_type
         self.process_graph = process["process_graph"]
         (
             self.pisp_geometry,
@@ -142,6 +153,9 @@ class Process:
         if collection_type.startswith("batch"):
             return self._create_custom_datacollection(collection_type, collection_info, "batch")
 
+        if collection_type.startswith("hls"):
+            return HLS_COLLECTION
+
         for data_collection in DataCollection:
             if data_collection.value.api_id == collection_type:
                 return data_collection
@@ -149,9 +163,7 @@ class Process:
         raise Internal(f"Collection {collection_id} could not be mapped to a Sentinel Hub collection type.")
 
     def get_node_by_process_id(self, process_id):
-        for node in self.process_graph.values():
-            if node["process_id"] == process_id:
-                return node
+        return get_node_by_process_id(self.process_graph, process_id)
 
     def get_collection(self):
         load_collection_node = self.get_node_by_process_id("load_collection")
@@ -302,16 +314,12 @@ class Process:
         return load_collection_node["arguments"].get("bands")
 
     def format_to_mimetype(self, output_format):
-        OUTPUT_FORMATS = {
-            "gtiff": MimeType.TIFF,
-            "png": MimeType.PNG,
-            "jpeg": MimeType.JPG,
-        }
+        OUTPUT_FORMATS = self.request_type.get_supported_mime_types()
         output_format = output_format.lower()
         if output_format in OUTPUT_FORMATS:
             return OUTPUT_FORMATS[output_format]
         else:
-            raise FormatUnsuitable()
+            raise FormatUnsuitable(self.request_type.get_unsupported_mimetype_message())
 
     def get_mimetype(self):
         save_result_node = self.get_node_by_process_id("save_result")
@@ -473,6 +481,9 @@ class Process:
             raise ProcessGraphComplexity(
                 f"estimated size of generated output of {estimated_file_size} bytes exceeds maximum supported size of {self.MAXIMUM_SYNC_FILESIZE_BYTES} bytes."
             )
+
+        if self.width == 0 or self.height == 0:
+            raise ImageDimensionInvalid(self.width, self.height)
 
         return self.sentinel_hub.create_processing_request(
             bbox=self.bbox,

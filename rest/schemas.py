@@ -32,7 +32,7 @@ def validate_graph_with_known_processes(graph, parameters=None):
             process, collections_src, process_definitions, parameters=parameters
         )
         if not pg_valid:
-            raise ValidationError("Invalid process graph: " + "".join(pg_err_msgs))
+            raise ValidationError("".join(pg_err_msgs))
 
     except Exception as e:
         log(INFO, traceback.format_exc())

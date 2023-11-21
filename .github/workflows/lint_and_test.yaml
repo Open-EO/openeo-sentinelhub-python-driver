@@ -1,0 +1,7 @@
+name: Lint and test
+on: [push, pull_request]
+
+jobs:
+  run-reusable-lint-and-test:
+    uses: ./.github/workflows/reusable_lint_and_test.yaml
+    secrets: inherit

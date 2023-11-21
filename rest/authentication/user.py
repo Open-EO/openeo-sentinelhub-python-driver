@@ -25,12 +25,15 @@ class User:
             user_info["default_plan"] = self.default_plan.name
         return user_info
 
+    def get_leftover_credits(self):
+        pass
+
     def report_usage(self, pu_spent, job_id=None):
         pass
 
 
 class OIDCUser(User):
-    def __init__(self, user_id=None, oidc_userinfo={}):
+    def __init__(self, user_id=None, oidc_userinfo={}, access_token=None):
         super().__init__(user_id)
         self.entitlements = [
             self.convert_entitlement(entitlement) for entitlement in oidc_userinfo.get("eduperson_entitlement", [])
@@ -38,6 +41,7 @@ class OIDCUser(User):
         self.oidc_userinfo = oidc_userinfo
         self.default_plan = OpenEOPBillingPlan.get_billing_plan(self.entitlements)
         self.session = central_user_sentinelhub_session
+        self.access_token = access_token
 
     def __str__(self):
         return f"{self.__class__.__name__}: {self.user_id}"
@@ -59,6 +63,9 @@ class OIDCUser(User):
         user_info = super().get_user_info()
         user_info["info"] = {"oidc_userinfo": self.oidc_userinfo}
         return user_info
+
+    def get_leftover_credits(self):
+        return usageReporting.get_leftover_credits_for_user(self.access_token)
 
     def report_usage(self, pu_spent, job_id=None):
         usageReporting.report_usage(self.user_id, pu_spent, job_id)

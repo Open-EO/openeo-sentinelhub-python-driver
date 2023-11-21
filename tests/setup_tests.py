@@ -6,6 +6,7 @@ import sys
 import time
 import re
 from functools import wraps
+from copy import deepcopy
 
 import pytest
 import requests
@@ -14,6 +15,7 @@ from responses import matchers
 from responses.registries import OrderedRegistry
 import numpy as np
 from sentinelhub import BBox, DataCollection, MimeType, CRS, ResamplingType
+from mocked_batch_request import create_mocked_batch_request
 
 
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rest"))
@@ -25,7 +27,7 @@ from authentication.user import SHUser, User
 from processing.process import Process
 from processing.sentinel_hub import SentinelHub
 from processing.processing import delete_batch_job
-from openeoerrors import ProcessGraphComplexity
+from openeoerrors import ProcessGraphComplexity, ImageDimensionInvalid
 from buckets import get_bucket
 
 
@@ -70,6 +72,35 @@ def with_mocked_auth(func):
                 ],
             },
         )
+        responses.add_passthru(re.compile(".*"))
+        return func(*args, **kwargs)
+
+    return decorated_function
+
+
+def with_mocked_batch_request_info(func):
+    @wraps(func)
+    @responses.activate
+    def decorated_function(*args, **kwargs):
+        uuid_regex = r"[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$"
+
+        def request_callback(request):
+            batch_request_id_search = re.search(uuid_regex, request.path_url)
+            batch_request_id = batch_request_id_search.group()
+            auth_header = request.headers.get("Authorization")
+            if auth_header is None:
+                return 401
+
+            resp_body = create_mocked_batch_request(batch_request_id)
+            return (200, request.headers, json.dumps(resp_body))
+
+        url = re.compile(r"https://services.sentinel-hub.com/api/v1/batch/process/{}".format(uuid_regex))
+        responses.add_callback(
+            responses.GET,
+            url,
+            callback=request_callback,
+        )
+
         responses.add_passthru(re.compile(".*"))
         return func(*args, **kwargs)
 
@@ -232,10 +263,48 @@ def process_graph_with_udp():
         },
         "result1": {
             "process_id": "save_result",
-            "arguments": {"data": {"from_node": "apply"}, "format": "jpeg"},
+            "arguments": {"data": {"from_node": "apply"}, "format": "gtiff"},
             "result": True,
         },
     }
+
+
+@pytest.fixture
+def service_factory(app_client, example_authorization_header_with_oidc):
+    def wrapped(process_graph, title="MyService", service_type="xyz", tile_size=None):
+        data = {
+            "title": title,
+            "process": {
+                "process_graph": process_graph,
+            },
+            "type": service_type,
+        }
+        if tile_size is not None:
+            data["configuration"] = {"tile_size": tile_size}
+        r = app_client.post(
+            "/services",
+            data=json.dumps(data),
+            content_type="application/json",
+            headers=example_authorization_header_with_oidc,
+        )
+        assert r.status_code == 201, r.data
+        service_id = r.headers["OpenEO-Identifier"]
+        return service_id
+
+    return wrapped
+
+
+@pytest.fixture
+def app_client():
+    # set env vars used by the app:
+    os.environ["BACKEND_VERSION"] = "v6.7.8"
+    app.testing = True
+    return app.test_client()
+
+
+@pytest.fixture
+def example_authorization_header_with_oidc(oidc_provider_id="egi"):
+    return {"Authorization": f"Bearer oidc/{oidc_provider_id}/<token>"}
 
 
 def setup_function(function):

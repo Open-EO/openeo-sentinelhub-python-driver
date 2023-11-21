@@ -6,6 +6,7 @@ import os
 import re
 import sys
 import uuid
+from datetime import datetime, timedelta
 
 import flask
 from flask import Flask, jsonify, g
@@ -14,6 +15,7 @@ import beeline
 from beeline.middleware.flask import HoneyMiddleware
 from pg_to_evalscript import list_supported_processes
 from werkzeug.exceptions import HTTPException
+from urllib.parse import urlparse, parse_qs
 
 import globalmaptiles
 from logs.logging import with_logging
@@ -29,15 +31,17 @@ from schemas import (
 from dynamodb import JobsPersistence, ProcessGraphsPersistence, ServicesPersistence
 from processing.processing import (
     check_process_graph_conversion_validity,
+    get_batch_job_estimate,
     process_data_synchronously,
     create_batch_job,
     start_batch_job,
     cancel_batch_job,
     modify_batch_job,
-    get_batch_job_estimate,
     get_batch_job_status,
+    create_or_get_estimate_values_from_db,
 )
-from processing.utils import inject_variables_in_process_graph
+from post_processing.post_processing import parse_sh_gtiff_to_format
+from processing.utils import inject_variables_in_process_graph, overwrite_spatial_extent_without_parameters
 from processing.openeo_process_errors import OpenEOProcessError
 from authentication.authentication import authentication_provider
 from openeoerrors import (
@@ -55,7 +59,7 @@ from openeoerrors import (
 )
 from authentication.user import User
 from const import openEOBatchJobStatus, optional_process_parameters, SentinelHubBillingPlan
-from utils import get_all_process_definitions, convert_timestamp_to_simpler_format, get_roles
+from utils import get_all_process_definitions, convert_timestamp_to_simpler_format, get_roles, ISO8601_UTC_FORMAT
 from buckets import get_bucket
 
 from openeo_collections.collections import collections
@@ -90,7 +94,7 @@ if HONEYCOMP_APM_API_KEY:
     HoneyMiddleware(app, db_events=False)  # db_events: we do not use SQLAlchemy
 
 
-STAC_VERSION = "0.9.0"
+STAC_VERSION = "1.0.0"
 
 
 def update_batch_request_id(job_id, job, new_batch_request_id):
@@ -345,14 +349,16 @@ def api_process_graph(process_graph_id):
     elif flask.request.method == "PUT":
         data = flask.request.get_json()
 
+        if not re.match(r"^\w+$", process_graph_id):
+            raise BadRequest("Process graph id does not match the required pattern")
+
         process_graph_schema = PutProcessGraphSchema()
         errors = process_graph_schema.validate(data)
 
-        if not re.match(r"^\w+$", process_graph_id):
-            errors = "Process graph id does not match the required pattern"
-
         if errors:
-            raise BadRequest(str(errors))
+            if isinstance(errors, dict):
+                if errors.get("_schema"):
+                    raise BadRequest(errors.get("_schema"))
 
         if "id" in data and data["id"] != process_graph_id:
             data["id"] = process_graph_id
@@ -377,8 +383,10 @@ def api_result():
         errors = schema.validate(job_data)
 
         if errors:
-            log(WARN, "Invalid request: {}".format(errors))
-            return flask.make_response(jsonify(id=None, code=400, message=errors, links=[]), 400)
+            if errors.get("process").get("process_graph"):
+                return flask.make_response(
+                    jsonify(id=None, code=400, message=errors.get("process").get("process_graph")[0], links=[]), 400
+                )
 
         invalid_node_id = check_process_graph_conversion_validity(job_data["process"]["process_graph"])
 
@@ -438,8 +446,10 @@ def api_jobs():
         errors = process_graph_schema.validate(data)
 
         if errors:
-            # Response procedure for validation will depend on how openeo_pg_parser_python will work
-            return flask.make_response("Invalid request: {}".format(errors), 400)
+            if errors.get("process").get("process_graph"):
+                return flask.make_response(
+                    jsonify(id=None, code=400, message=errors.get("process").get("process_graph")[0], links=[]), 400
+                )
 
         invalid_node_id = check_process_graph_conversion_validity(data["process"]["process_graph"])
 
@@ -471,17 +481,28 @@ def api_batch_job(job_id):
 
     if flask.request.method == "GET":
         status, error = get_batch_job_status(job["batch_request_id"], job["deployment_endpoint"])
+        data_to_jsonify = {
+            "id": job_id,
+            "title": job.get("title", None),
+            "description": job.get("description", None),
+            "process": {"process_graph": json.loads(job["process"])["process_graph"]},
+            "status": status.value,
+            "error": error,
+            "created": convert_timestamp_to_simpler_format(job["created"]),
+            "updated": convert_timestamp_to_simpler_format(job["last_updated"]),
+        }
+
+        if status is not openEOBatchJobStatus.CREATED:
+            data_to_jsonify["costs"] = float(job.get("sum_costs", 0))
+            data_to_jsonify["usage"] = {
+                "Platform Credits": {"unit": "credits", "value": round(float(job.get("sum_costs", 0)) * 0.15, 3)},
+                "Sentinel Hub": {
+                    "unit": "sentinelhub_processing_unit",
+                    "value": float(job.get("sum_costs", 0)),
+                },
+            }
         return flask.make_response(
-            jsonify(
-                id=job_id,
-                title=job.get("title", None),
-                description=job.get("description", None),
-                process={"process_graph": json.loads(job["process"])["process_graph"]},
-                status=status.value,
-                error=error,
-                created=convert_timestamp_to_simpler_format(job["created"]),
-                updated=convert_timestamp_to_simpler_format(job["last_updated"]),
-            ),
+            jsonify(data_to_jsonify),
             200,
         )
 
@@ -494,13 +515,28 @@ def api_batch_job(job_id):
         data = flask.request.get_json()
         errors = PatchJobsSchema().validate(data)
         if errors:
-            # Response procedure for validation will depend on how openeo_pg_parser_python will work
-            return flask.make_response(jsonify(id=job_id, code=400, message=errors, links=[]), 400)
+            if errors.get("process").get("process_graph"):
+                return flask.make_response(
+                    jsonify(id=None, code=400, message=errors.get("process").get("process_graph")[0], links=[]), 400
+                )
 
         if data.get("process"):
             new_batch_request_id, deployment_endpoint = modify_batch_job(data["process"])
             update_batch_request_id(job_id, job, new_batch_request_id)
             data["deployment_endpoint"] = deployment_endpoint
+
+            if json.dumps(data.get("process"), sort_keys=True) != json.dumps(
+                json.loads(job.get("process")), sort_keys=True
+            ):
+                estimated_sentinelhub_pu, estimated_file_size = get_batch_job_estimate(
+                    new_batch_request_id, data.get("process"), deployment_endpoint
+                )
+                estimated_platform_credits = round(estimated_sentinelhub_pu * 0.15, 3)
+                JobsPersistence.update_key(
+                    job["id"], "estimated_sentinelhub_pu", str(round(estimated_sentinelhub_pu, 3))
+                )
+                JobsPersistence.update_key(job["id"], "estimated_platform_credits", str(estimated_platform_credits))
+                JobsPersistence.update_key(job["id"], "estimated_file_size", str(estimated_file_size))
 
         for key in data:
             JobsPersistence.update_key(job_id, key, data[key])
@@ -532,6 +568,10 @@ def add_job_to_queue(job_id):
         if new_batch_request_id and new_batch_request_id != job["batch_request_id"]:
             update_batch_request_id(job_id, job, new_batch_request_id)
 
+        # can we create a /results_metadata.json file already here?
+        # we don't have the contents of the folder yet to create presigned URLs
+        # also, how does SH batch API handle already existing folder in the bucket?
+
         return flask.make_response("The creation of the resource has been queued successfully.", 202)
 
     elif flask.request.method == "GET":
@@ -547,30 +587,90 @@ def add_job_to_queue(job_id):
             return flask.make_response(jsonify(id=job_id, code=424, level="error", message=error, links=[]), 424)
 
         bucket = get_bucket(job["deployment_endpoint"])
-        results = bucket.get_data_from_bucket(prefix=job["batch_request_id"])
 
-        assets = {}
+        # naively generate dummy metadata.json in the bucket so that it will already be
+        # in the response of first bucket.get_data_from_bucket() call
+        # and the code for generating presigned urls can stay the same
+        metadata_filename = "metadata.json"
+        bucket.put_file_to_bucket("", prefix=job["batch_request_id"], file_name=metadata_filename)
+
+        # START OF POST_PROCESSING
+        # post-process gtiffs to appropriate formats
+
+        parse_sh_gtiff_to_format(job, bucket)
+
+        # END OF POST_PROCESSING
+
+        results = bucket.get_data_from_bucket(prefix=job["batch_request_id"])
         log(INFO, f"Fetched all results: {str(results)}")
 
+        assets = {}
+        links = []
+        metadata_valid = None
         for result in results:
+
+            # do not add json file created by SH batch job API to the list of assets
+            sh_batch_job_json_filename = f"request-{job['batch_request_id']}.json"
+            if sh_batch_job_json_filename in result["Key"]:
+                continue
+
             # create signed url:
             object_key = result["Key"]
             url = bucket.generate_presigned_url(object_key=object_key)
-            roles = get_roles(object_key)
-            assets[object_key] = {"href": url, "roles": roles}
 
-        return flask.make_response(
-            jsonify(
-                stac_version=STAC_VERSION,
-                id=job_id,
-                type="Feature",
-                geometry=None,
-                properties={"datetime": None},
-                assets=assets,
-                links=[],
-            ),
-            200,
+            parsed_url = urlparse(url)
+            parsed_query = parse_qs(parsed_url.query)
+            time_url_generated = datetime.strptime(parsed_query["X-Amz-Date"][0], "%Y%m%dT%H%M%SZ")
+            time_expires = timedelta(seconds=int(parsed_query["X-Amz-Expires"][0]))
+            time_valid = time_url_generated + time_expires
+            time_valid_iso8601 = time_valid.strftime(ISO8601_UTC_FORMAT)
+
+            # add signed url (that links to metadata) to links with rel type "canonical"
+            if metadata_filename in result["Key"]:
+                metadata_valid = time_valid_iso8601
+                links.append(
+                    {"href": url, "rel": "canonical", "type": "application/json", "expires": time_valid_iso8601}
+                )
+            else:
+                roles = get_roles(object_key)
+                assets[object_key] = {"href": url, "roles": roles, "expires": time_valid_iso8601}
+
+        # we can create a /results_metadata.json file here
+        # the contents of the batch job folder in the bucket isn't revealed anywhere else anyway
+        metadata_creation_time = datetime.utcnow().strftime(ISO8601_UTC_FORMAT)
+        batch_job_metadata = {
+            "type": "Feature",
+            "stac_version": STAC_VERSION,
+            "stac_extensions": [
+                "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
+                "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json",
+            ],
+            "id": job_id,
+            "geometry": None,
+            "properties": {
+                "title": job.get("title", None),
+                "datetime": metadata_creation_time,
+                "expires": metadata_valid,
+                "usage": {
+                    "Platform credits": {"unit": "credits", "value": job.get("estimated_platform_credits", 0)},
+                    "Sentinel Hub": {
+                        "unit": "sentinelhub_processing_unit",
+                        "value": job.get("estimated_sentinelhub_pu", 0),
+                    },
+                },
+                "processing:expression": {"format": "openeo", "expression": json.loads(job["process"])},
+            },
+            "links": links,
+            "assets": assets,
+        }
+
+        # boto3 put_object() used in this method simply overwrites existing file
+        # no need to check if file already exists
+        bucket.put_file_to_bucket(
+            json.dumps(batch_job_metadata), prefix=job["batch_request_id"], file_name=metadata_filename
         )
+
+        return flask.make_response(jsonify(batch_job_metadata), 200)
 
     elif flask.request.method == "DELETE":
         new_batch_request_id, _ = cancel_batch_job(
@@ -594,11 +694,12 @@ def estimate_job_cost(job_id):
     if job is None:
         raise JobNotFound()
 
-    estimated_pu, estimated_file_size = get_batch_job_estimate(
-        job["batch_request_id"], json.loads(job["process"]), job["deployment_endpoint"]
+    estimated_sentinelhub_pu, _, estimated_file_size = create_or_get_estimate_values_from_db(
+        job, job["batch_request_id"]
     )
+
     return flask.make_response(
-        jsonify(costs=estimated_pu, size=estimated_file_size),
+        jsonify(costs=estimated_sentinelhub_pu, size=estimated_file_size),
         200,
     )
 
@@ -650,9 +751,13 @@ def api_services():
         process_graph_schema = PostServicesSchema()
         errors = process_graph_schema.validate(data)
         if errors:
-            return flask.make_response("Invalid request: {}".format(errors), 400)
+            if errors.get("process").get("process_graph"):
+                return flask.make_response(
+                    jsonify(id=None, code=400, message=errors.get("process").get("process_graph")[0], links=[]), 400
+                )
 
         invalid_node_id = check_process_graph_conversion_validity(data["process"]["process_graph"])
+        data["process"]["process_graph"] = overwrite_spatial_extent_without_parameters(data["process"]["process_graph"])
 
         if invalid_node_id is not None:
             raise ProcessUnsupported(data["process"]["process_graph"][invalid_node_id]["process_id"])
@@ -705,13 +810,18 @@ def api_service(service_id):
 
         errors = process_graph_schema.validate(data)
         if errors:
-            # Response procedure for validation will depend on how openeo_pg_parser_python will work
-            return flask.make_response(jsonify(id=service_id, code=400, message=errors, links=[]), 400)
+            if errors.get("process").get("process_graph"):
+                return flask.make_response(
+                    jsonify(id=None, code=400, message=errors.get("process").get("process_graph")[0], links=[]), 400
+                )
 
         if data.get("process"):
             invalid_node_id = check_process_graph_conversion_validity(data["process"]["process_graph"])
             if invalid_node_id is not None:
                 raise ProcessUnsupported(data["process"]["process_graph"][invalid_node_id]["process_id"])
+            data["process"]["process_graph"] = overwrite_spatial_extent_without_parameters(
+                data["process"]["process_graph"]
+            )
 
         for key in data:
             ServicesPersistence.update_key(service_id, key, data[key])

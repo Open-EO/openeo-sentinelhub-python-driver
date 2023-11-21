@@ -5,7 +5,6 @@ import warnings
 
 from sentinelhub.time_utils import parse_time
 
-
 from pg_to_evalscript import list_supported_processes
 
 from processing.utils import iterate
@@ -26,7 +25,9 @@ def get_all_process_definitions():
         partially_supported_process.process_id for partially_supported_process in partially_supported_processes
     ]
 
-    for supported_process in list_supported_processes() + partially_supported_processes_ids:
+    unique_supported_processes = list(set(list_supported_processes() + partially_supported_processes_ids))
+
+    for supported_process in unique_supported_processes:
         files.extend(glob.glob(get_abs_file_path(f"process_definitions/{supported_process}.json")))
 
     for file in files:
@@ -102,8 +103,11 @@ def get_data_from_bucket(s3, bucket_name, batch_request_id):
     return results
 
 
+ISO8601_UTC_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+
+
 def convert_timestamp_to_simpler_format(datetime_str):
-    return parse_time(datetime_str).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return parse_time(datetime_str).strftime(ISO8601_UTC_FORMAT)
 
 
 def get_roles(object_key):

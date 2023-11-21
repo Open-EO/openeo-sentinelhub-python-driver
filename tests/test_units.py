@@ -18,6 +18,7 @@ from processing.sentinel_hub import SentinelHub
 from processing.partially_supported_processes import FilterBBox, FilterSpatial, ResampleSpatial
 from processing.processing_api_request import ProcessingAPIRequest
 from processing.openeo_process_errors import NoDataAvailable
+from processing.const import ProcessingRequestTypes
 from fixtures.geojson_fixtures import GeoJSON_Fixtures
 from utils import get_roles
 
@@ -31,11 +32,17 @@ from authentication.user import User
 )
 def test_collections(get_process_graph, collection_id):
     all_bands = collections.get_collection(collection_id)["cube:dimensions"]["bands"]["values"]
-    process = Process({"process_graph": get_process_graph(collection_id=collection_id, bands=None)})
+    process = Process(
+        {"process_graph": get_process_graph(collection_id=collection_id, bands=None)},
+        request_type=ProcessingRequestTypes.SYNC,
+    )
     assert process.evalscript.input_bands == all_bands
 
     example_bands = ["B01", "B02"]
-    process = Process({"process_graph": get_process_graph(collection_id=collection_id, bands=example_bands)})
+    process = Process(
+        {"process_graph": get_process_graph(collection_id=collection_id, bands=example_bands)},
+        request_type=ProcessingRequestTypes.SYNC,
+    )
     assert process.evalscript.input_bands == example_bands
 
 
@@ -50,12 +57,17 @@ def test_collections(get_process_graph, collection_id):
             [
                 "SPOT",
                 "PLEIADES",
+                "SKYSAT",
                 "WORLDVIEW",
                 "PLANETSCOPE",
                 "landsat-7-etm+-l2",
                 "sentinel-2-l1c",
                 "corine-land-cover",
                 "S2L1C",
+                "SENTINEL2_L1C",
+                "SENTINEL2_L1C_SENTINELHUB",
+                "SENTINEL2_L2A",
+                "SENTINEL2_L2A_SENTINELHUB",
                 "mapzen-dem",
                 "sentinel-3-l1b-slstr",
                 "sentinel-1-grd",
@@ -64,6 +76,7 @@ def test_collections(get_process_graph, collection_id):
     ],
 )
 def test_collections_provider(url, directory, expected_collection_ids):
+    # this gets all jsons in the directory
     collections_provider = CollectionsProvider("test", url=url, directory=directory)
     if url is not None:
         responses.add(
@@ -530,6 +543,7 @@ def test_dimensions(get_process_graph, fixture, expected_result):
         },
         width=fixture["params"].get("width", None),
         height=fixture["params"].get("height", None),
+        request_type=ProcessingRequestTypes.SYNC,
     )
 
     assert expected_result[0] == process.width
@@ -592,7 +606,8 @@ def test_sample_type(
                         spatial_extent={"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
                         collection_id="sentinel-2-l1c",
                     )
-                }
+                },
+                request_type=ProcessingRequestTypes.SYNC,
             )
         assert ex.value.args == error_args
     else:
@@ -604,7 +619,8 @@ def test_sample_type(
                     spatial_extent={"west": 16.1, "east": 16.6, "north": 48.6, "south": 47.2},
                     collection_id="sentinel-2-l1c",
                 )
-            }
+            },
+            request_type=ProcessingRequestTypes.SYNC,
         )
         assert process.sample_type.value == expected_sample_type
 
@@ -623,7 +639,10 @@ def test_sample_type(
 def test_tiling_grids(
     get_process_graph, collection_id, bands, expected_tiling_grid_id, expected_tiling_grid_resolution
 ):
-    process = Process({"process_graph": get_process_graph(collection_id=collection_id, bands=bands)})
+    process = Process(
+        {"process_graph": get_process_graph(collection_id=collection_id, bands=bands)},
+        request_type=ProcessingRequestTypes.BATCH,
+    )
     tiling_grid_id, tiling_grid_resolution = process.get_appropriate_tiling_grid_and_resolution()
 
     assert expected_tiling_grid_id == tiling_grid_id
@@ -645,10 +664,14 @@ def test_get_collection(
     if should_raise_error:
         with pytest.raises(error) as e:
             process = Process(
-                {"process_graph": get_process_graph(collection_id=collection_id, featureflags=featureflags)}
+                {"process_graph": get_process_graph(collection_id=collection_id, featureflags=featureflags)},
+                request_type=ProcessingRequestTypes.SYNC,
             )
     else:
-        process = Process({"process_graph": get_process_graph(collection_id=collection_id, featureflags=featureflags)})
+        process = Process(
+            {"process_graph": get_process_graph(collection_id=collection_id, featureflags=featureflags)},
+            request_type=ProcessingRequestTypes.SYNC,
+        )
         assert process.collection.api_id == expected_datacollection_api_id
 
 
@@ -739,7 +762,9 @@ def test_sentinel_hub_access_token(access_token):
     ],
 )
 def test_get_maximum_temporal_extent(get_process_graph, collection_id, expected_from_time, expected_to_time):
-    process = Process({"process_graph": get_process_graph(collection_id=collection_id)})
+    process = Process(
+        {"process_graph": get_process_graph(collection_id=collection_id)}, request_type=ProcessingRequestTypes.SYNC
+    )
     from_time, to_time = process.get_maximum_temporal_extent_for_collection()
 
     assert expected_from_time == from_time
@@ -924,7 +949,8 @@ def test_temporal_extent(get_process_graph, fixture, expected_result):
                         bands=None,
                         temporal_extent=fixture["params"]["temporal_extent"],
                     )
-                }
+                },
+                request_type=ProcessingRequestTypes.SYNC,
             )
     else:
         process = Process(
@@ -934,7 +960,8 @@ def test_temporal_extent(get_process_graph, fixture, expected_result):
                     bands=None,
                     temporal_extent=fixture["params"]["temporal_extent"],
                 )
-            }
+            },
+            request_type=ProcessingRequestTypes.SYNC,
         )
         assert process.from_date == expected_result["from_date"]
         assert process.to_date == expected_result["to_date"]
@@ -960,9 +987,40 @@ def test_get_roles(filename, expected_roles):
     "endpoint,access_token,api_responses,min_exec_time,should_raise_error,expected_error",
     [
         ("https://services.sentinel-hub.com", None, [{"status": 200}], 0, False, None),
-        ("https://services.sentinel-hub.com", None, [{"status": 429}], 0, True, "Too Many Requests"),
-        ("https://services.sentinel-hub.com", "some-token", [{"status": 200}], 0, False, None),
-        ("https://services.sentinel-hub.com", "some-token", [{"status": 429}], 0, True, "Too Many Requests"),
+        (
+            "https://services.sentinel-hub.com",
+            None,
+            [
+                {"status": 429, "headers": {"retry-after": "2"}},
+                {"status": 429, "headers": {"retry-after": "7"}},
+                {"status": 200},
+            ],
+            9,
+            False,
+            None,
+        ),
+        (
+            "https://services.sentinel-hub.com",
+            None,
+            [
+                {"status": 429, "headers": {"retry-after": "2"}},
+                {"status": 429, "headers": {"retry-after": "2"}},
+                {"status": 429, "headers": {"retry-after": "2"}},
+                {"status": 429, "headers": {"retry-after": "2"}},
+            ],
+            0,
+            True,
+            "Out of retries.",
+        ),
+        (
+            "https://services.sentinel-hub.com",
+            None,
+            [{"status": 429, "headers": {"retry-after": "2"}}, {"status": 500}],
+            0,
+            True,
+            "Internal Server Error",
+        ),
+        ("https://services-uswest2.sentinel-hub.com", None, [{"status": 200}], 0, False, None),
         (
             "https://services-uswest2.sentinel-hub.com",
             None,
@@ -990,6 +1048,40 @@ def test_get_roles(filename, expected_roles):
         ),
         (
             "https://services-uswest2.sentinel-hub.com",
+            None,
+            [{"status": 429, "headers": {"retry-after": "2"}}, {"status": 500}],
+            0,
+            True,
+            "Internal Server Error",
+        ),
+        ("https://creodias.sentinel-hub.com", None, [{"status": 200}], 0, False, None),
+        (
+            "https://creodias.sentinel-hub.com",
+            None,
+            [
+                {"status": 429, "headers": {"retry-after": "2"}},
+                {"status": 429, "headers": {"retry-after": "7"}},
+                {"status": 200},
+            ],
+            9,
+            False,
+            None,
+        ),
+        (
+            "https://creodias.sentinel-hub.com",
+            None,
+            [
+                {"status": 429, "headers": {"retry-after": "2"}},
+                {"status": 429, "headers": {"retry-after": "2"}},
+                {"status": 429, "headers": {"retry-after": "2"}},
+                {"status": 429, "headers": {"retry-after": "2"}},
+            ],
+            0,
+            True,
+            "Out of retries.",
+        ),
+        (
+            "https://creodias.sentinel-hub.com",
             None,
             [{"status": 429, "headers": {"retry-after": "2"}}, {"status": 500}],
             0,
@@ -1445,7 +1537,7 @@ def test_filter_bbox_process(process_graph, expected_is_usage_valid, expected_er
 )
 def test_get_bounds(process_graph, expected_bbox, expected_crs, expected_geometry, error):
     try:
-        process = Process({"process_graph": process_graph})
+        process = Process({"process_graph": process_graph}, request_type=ProcessingRequestTypes.SYNC)
         assert pytest.approx(process.bbox) == expected_bbox
         assert process.epsg_code == expected_crs
         if not expected_geometry:
@@ -1760,5 +1852,5 @@ def test_bands_metadata(process_graph):
         if node["process_id"] == "load_collection":
             collection_id = node["arguments"]["id"]
     bands_metadata = collections.get_collection(collection_id)["summaries"]["eo:bands"]
-    process = Process({"process_graph": process_graph})
+    process = Process({"process_graph": process_graph}, request_type=ProcessingRequestTypes.SYNC)
     assert process.evalscript.bands_metadata == bands_metadata

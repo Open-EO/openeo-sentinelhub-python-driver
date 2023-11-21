@@ -60,6 +60,10 @@ class ProcessingAPIRequest:
         return requests.post(self.url, data=json.dumps(self.data), headers=self.get_headers())
 
     def has_rate_limiting_with_backoff(self):
-        if self.url.startswith(SentinelhubDeployments.USWEST):
+        if (
+            self.url.startswith(SentinelhubDeployments.MAIN)
+            or self.url.startswith(SentinelhubDeployments.USWEST)
+            or self.url.startswith(SentinelhubDeployments.CREODIAS)
+        ):
             return True
         return False

@@ -1,15 +1,18 @@
+import json
 import time
 
 from pg_to_evalscript import convert_from_process_graph
 from flask import g
 from sentinelhub import BatchRequestStatus, BatchUserAction, SentinelHubBatch
 
+from processing.const import ProcessingRequestTypes
 from processing.process import Process
 from processing.sentinel_hub import SentinelHub
 from processing.partially_supported_processes import partially_supported_processes
 from dynamodb.utils import get_user_defined_processes_graphs
+from dynamodb import JobsPersistence
 from const import openEOBatchJobStatus
-from openeoerrors import Timeout
+from openeoerrors import InsufficientCredits, JobNotFound, Timeout
 
 
 def check_process_graph_conversion_validity(process_graph):
@@ -27,7 +30,7 @@ def check_process_graph_conversion_validity(process_graph):
     return results[0]["invalid_node_id"]
 
 
-def new_process(process, width=None, height=None):
+def new_process(process, width=None, height=None, request_type=None):
     user_defined_processes_graphs = get_user_defined_processes_graphs()
     return Process(
         process,
@@ -35,6 +38,7 @@ def new_process(process, width=None, height=None):
         height=height,
         user=g.get("user"),
         user_defined_processes=user_defined_processes_graphs,
+        request_type=request_type,
     )
 
 
@@ -43,19 +47,30 @@ def new_sentinel_hub(deployment_endpoint=None):
 
 
 def process_data_synchronously(process, width=None, height=None):
-    p = new_process(process, width=width, height=height)
+    p = new_process(process, width=width, height=height, request_type=ProcessingRequestTypes.SYNC)
     return p.execute_sync(), p.mimetype.get_string()
 
 
 def create_batch_job(process):
-    return new_process(process).create_batch_job()
+    return new_process(process, request_type=ProcessingRequestTypes.BATCH).create_batch_job()
 
 
 def start_new_batch_job(sentinel_hub, process, job_id):
-    new_batch_request_id, deployment_endpoint = create_batch_job(process)
-    estimated_pu, _ = get_batch_job_estimate(new_batch_request_id, process, deployment_endpoint)
+    new_batch_request_id, _ = create_batch_job(process)
+
+    job = JobsPersistence.get_by_id(job_id)
+    if job is None:
+        raise JobNotFound()
+
+    estimated_sentinelhub_pu, _, _ = create_or_get_estimate_values_from_db(job, new_batch_request_id)
+
+    check_leftover_credits(estimated_sentinelhub_pu)
+
+    JobsPersistence.update_key(
+        job["id"], "sum_costs", str(round(float(job.get("sum_costs", 0)) + estimated_sentinelhub_pu, 3))
+    )
     sentinel_hub.start_batch_job(new_batch_request_id)
-    g.user.report_usage(estimated_pu, job_id)
+    g.user.report_usage(estimated_sentinelhub_pu, job_id)
     return new_batch_request_id
 
 
@@ -83,9 +98,19 @@ def start_batch_job(batch_request_id, process, deployment_endpoint, job_id):
     if batch_request_info is None:
         return start_new_batch_job(sentinel_hub, process, job_id)
     elif batch_request_info.status in [BatchRequestStatus.CREATED, BatchRequestStatus.ANALYSIS_DONE]:
-        estimated_pu, _ = get_batch_job_estimate(batch_request_id, process, deployment_endpoint)
+        job = JobsPersistence.get_by_id(job_id)
+        if job is None:
+            raise JobNotFound()
+
+        estimated_sentinelhub_pu, _, _ = create_or_get_estimate_values_from_db(job, job["batch_request_id"])
+
+        check_leftover_credits(estimated_sentinelhub_pu)
+
+        JobsPersistence.update_key(
+            job["id"], "sum_costs", str(round(float(job.get("sum_costs", 0)) + estimated_sentinelhub_pu, 3))
+        )
         sentinel_hub.start_batch_job(batch_request_id)
-        g.user.report_usage(estimated_pu, job_id)
+        g.user.report_usage(estimated_sentinelhub_pu, job_id)
     elif batch_request_info.status == BatchRequestStatus.PARTIAL:
         sentinel_hub.restart_batch_job(batch_request_id)
     elif batch_request_info.status in [
@@ -156,7 +181,12 @@ def get_batch_job_estimate(batch_request_id, process, deployment_endpoint):
     estimate_secure_factor = actual_pu_to_estimate_ratio * 2
 
     user_defined_processes_graphs = get_user_defined_processes_graphs()
-    p = Process(process, user=g.get("user"), user_defined_processes=user_defined_processes_graphs)
+    p = Process(
+        process,
+        user=g.get("user"),
+        user_defined_processes=user_defined_processes_graphs,
+        request_type=ProcessingRequestTypes.BATCH,
+    )
     temporal_interval = p.get_temporal_interval(in_days=True)
 
     if temporal_interval is None:
@@ -181,3 +211,27 @@ def get_batch_job_status(batch_request_id, deployment_endpoint):
         )
     else:
         return openEOBatchJobStatus.FINISHED, None
+
+
+def create_or_get_estimate_values_from_db(job, batch_request_id):
+    if float(job.get("estimated_sentinelhub_pu", 0)) == 0 and float(job.get("estimated_file_size", 0)) == 0:
+        estimated_sentinelhub_pu, estimated_file_size = get_batch_job_estimate(
+            batch_request_id, json.loads(job["process"]), job["deployment_endpoint"]
+        )
+        estimated_platform_credits = round(estimated_sentinelhub_pu * 0.15, 3)
+        JobsPersistence.update_key(job["id"], "estimated_sentinelhub_pu", str(round(estimated_sentinelhub_pu, 3)))
+        JobsPersistence.update_key(job["id"], "estimated_platform_credits", str(estimated_platform_credits))
+        JobsPersistence.update_key(job["id"], "estimated_file_size", str(estimated_file_size))
+    else:
+        estimated_sentinelhub_pu = float(job.get("estimated_sentinelhub_pu", 0))
+        estimated_platform_credits = float(job.get("estimated_platform_credits", 0))
+        estimated_file_size = float(job.get("estimated_file_size", 0))
+
+    return estimated_sentinelhub_pu, estimated_platform_credits, estimated_file_size
+
+
+def check_leftover_credits(estimated_pu):
+    leftover_credits = g.user.get_leftover_credits()
+    estimated_pu_as_credits = estimated_pu * 0.15  # platform credits === SH PU's * 0.15
+    if leftover_credits is not None and leftover_credits < estimated_pu_as_credits:
+        raise InsufficientCredits()
