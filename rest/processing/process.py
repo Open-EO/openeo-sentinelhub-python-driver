@@ -22,6 +22,7 @@ from openeo_collections.collections import collections
 from openeoerrors import (
     CollectionNotFound,
     DataFusionNotPossibleDifferentSHDeployments,
+    DataFusionNotPossibleDifferentSpatialExtents,
     Internal,
     ProcessParameterInvalid,
     ProcessGraphComplexity,
@@ -208,7 +209,14 @@ class Process:
         Returns bbox, EPSG code, geometry
         """
         load_collection_nodes = list(self.get_all_load_collection_nodes().values())
+        # data fusion can only happen if all of the collections have the same bbox
+        # so we perform a check that this is actually true (otherwise raise an error)
+        # and if it is true, we can just take the first collection's bbox
         load_collection_node = load_collection_nodes[0]
+        for lcn in load_collection_nodes:
+            if lcn["arguments"]["spatial_extent"] != load_collection_node["arguments"]["spatial_extent"]:
+                raise DataFusionNotPossibleDifferentSpatialExtents()
+        
         spatial_extent = load_collection_node["arguments"]["spatial_extent"]
 
         if spatial_extent is None:
