@@ -108,15 +108,17 @@ class Process:
         evalscript = results[0]["evalscript"]
         evalscript.mosaicking = self.get_appropriate_mosaicking()
 
-        if all(
+        datasources_bands = [datasource_with_bands["bands"] for datasource_with_bands in self.get_input_bands()]
+        if any(
             bnds is None
-            for bnds in [datasource_with_bands["bands"] for datasource_with_bands in self.get_input_bands()]
+            for bnds in datasources_bands
         ):
             all_bands = []
             for node_id, load_collection_node in load_collection_nodes.items():
                 collection = collections.get_collection(load_collection_node["arguments"]["id"])
+                selected_bands = load_collection_node["arguments"].get("bands")
                 all_bands.append(
-                    {"datasource": f"node_{node_id}", "bands": collection["cube:dimensions"]["bands"]["values"]}
+                    {"datasource": f"node_{node_id}", "bands": selected_bands if selected_bands is not None else collection["cube:dimensions"]["bands"]["values"]}
                 )
             evalscript.set_input_bands(all_bands)
 
