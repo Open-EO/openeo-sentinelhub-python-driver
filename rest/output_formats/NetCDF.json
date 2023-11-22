@@ -2,6 +2,8 @@
   "gis_data_types": [
     "raster"
   ],
+  "title": "Network Common Data Form",
+  "description": "netCDF files allow to accurately represent an openEO datacube and its metadata.",
   "parameters": {
     "datatype": {
       "type": "string",
