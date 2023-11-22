@@ -68,24 +68,25 @@ class SentinelHub:
         resampling_method=None,
         preview_mode="EXTENDED_PREVIEW",
     ):
+        request_data_items = []
+        for node_id, collection in collections.items():
+            request_data_items.append({
+                "id": node_id,
+                "type": collection["data_collection"].api_id,
+                "dataFilter": {
+                    "timeRange": {
+                        "from": collection["from_time"].isoformat(),
+                        "to": collection["to_time"].isoformat(),
+                    },
+                    "previewMode": preview_mode,
+                },
+                "processing": self.construct_data_processing(resampling_method),
+            })
+            
         return {
             "input": {
                 "bounds": self.construct_input_bounds(bbox, epsg_code, geometry),
-                "data": [
-                    {
-                        "id": node_id,
-                        "type": collection["data_collection"].api_id,
-                        "dataFilter": {
-                            "timeRange": {
-                                "from": collection["from_time"].isoformat(),
-                                "to": collection["to_time"].isoformat(),
-                            },
-                            "previewMode": preview_mode,
-                        },
-                        "processing": self.construct_data_processing(resampling_method),
-                    }
-                    for node_id, collection in collections.items()
-                ],
+                "data": request_data_items,
             },
             "output": self.construct_output(width, height, mimetype),
             "evalscript": evalscript,
