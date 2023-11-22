@@ -608,7 +608,6 @@ def add_job_to_queue(job_id):
         links = []
         metadata_valid = None
         for result in results:
-
             # do not add json file created by SH batch job API to the list of assets
             sh_batch_job_json_filename = f"request-{job['batch_request_id']}.json"
             if sh_batch_job_json_filename in result["Key"]:
@@ -938,4 +937,4 @@ if __name__ == "__main__":
         print("Running as HTTPS!")
         app.run(ssl_context="adhoc")
     else:
-        app.run(debug=True, host='0.0.0.0')
+        app.run(debug=True, host="0.0.0.0")
