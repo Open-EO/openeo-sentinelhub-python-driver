@@ -275,7 +275,7 @@ class Process:
             return None
         return collection["cube:dimensions"]["t"].get("step")
 
-    def get_temporal_interval(self, in_days=False):
+    def get_temporal_intervals(self, in_days=False):
         load_collection_nodes = self.get_all_load_collection_nodes()
         temporal_intervals = {}
         for node_id, load_collection_node in load_collection_nodes.items():
@@ -505,7 +505,7 @@ class Process:
                 n_output_bands *= output_dimension["size"]
 
         if n_original_temporal_dimensions > 0:
-            temporal_intervals = self.get_temporal_interval()
+            temporal_intervals = self.get_temporal_intervals()
 
             n_dates = 0
             for node_id, temporal_interval in temporal_intervals.items():
