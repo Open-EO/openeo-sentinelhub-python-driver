@@ -22,6 +22,9 @@ jobs:
       DEPLOYMENT_NAME: "testing"
       TESTING_ECR_REGISTRY: ${{ secrets.TESTING_EC2_ECR_REGISTRY }}
       TESTING_ECR_REGISTRY_IMAGE: ${{ secrets.TESTING_EC2_ECR_REGISTRY_IMAGE }}
+      PRIVATE_KEY: ${{ secrets.TESTING_SSH_PRIVATE_KEY }}
+      HOSTNAME: ${{secrets.TESTING_SSH_HOST}}
+      USER_NAME: ${{secrets.TESTING_USER_NAME}}
 
     steps:
       - uses: actions/checkout@v4
@@ -51,6 +54,30 @@ jobs:
         working-directory: ./rest
         run: pipenv install --dev
 
+      - name: create env file
+        working-directory: ./rest/
+        run: | 
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.TESTINGDATA_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY=${{ secrets.TESTINGDATA_AWS_SECRET_ACCESS_KEY }}
+          TESTING_SH_CLIENT_ID=${{ secrets.TESTING_SH_CLIENT_ID }}
+          TESTING_SH_CLIENT_SECRET=${{ secrets.TESTING_SH_CLIENT_SECRET }}
+          BACKEND_VERSION=$GITHUB_REF_NAME
+          RESULTS_S3_BUCKET_NAME_MAIN=${{ secrets.RESULTS_S3_BUCKET_NAME_MAIN }}
+          RESULTS_S3_BUCKET_NAME_CREODIAS=${{ secrets.RESULTS_S3_BUCKET_NAME_CREODIAS }}
+          RESULTS_S3_BUCKET_NAME_USWEST=${{ secrets.RESULTS_S3_BUCKET_NAME_USWEST }}
+          RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN=${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN }}
+          RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS=${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS }}
+          RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST=${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST }}
+          RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN=${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN }}
+          RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS=${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS }}
+          RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST=${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST }}
+          USAGE_REPORTING_BASE_URL_TESTING=${{ secrets.USAGE_REPORTING_BASE_URL_TESTING }}
+          USAGE_REPORTING_AUTH_URL_TESTING=${{ secrets.USAGE_REPORTING_AUTH_URL_TESTING }}
+          USAGE_REPORTING_AUTH_CLIENT_ID_TESTING=${{ secrets.USAGE_REPORTING_AUTH_CLIENT_ID_TESTING }}
+          USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING=${{ secrets.USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING }}
+          LOGGING_LEVEL=${{ secrets.LOGGING_LEVEL_TESTING }}
+          " > .env
+
       - name: build docker image with correct tags
         working-directory: ./rest
         run: docker build -t "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:$GITHUB_REF_NAME" -t "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest" --build-arg VERSION=$GITHUB_REF_NAME --build-arg VCS_REF=$GITHUB_SHA --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') .
@@ -64,3 +91,20 @@ jobs:
         run: |
           docker push "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:$GITHUB_REF_NAME"
           docker push "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
+
+      - name: pull docker image and run
+        working-directory: ./rest/
+        run: | 
+         echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+         scp -i ${{ secrets.TESTING_PRIVATE_KEY }} .env  ${USER_NAME}@${HOSTNAME}
+         ssh -i ${{ secrets.TESTING_PRIVATE_KEY }} ${USER_NAME}@${HOSTNAME}
+
+            # Now we have got the access of EC2 and we will start the deploy .
+            aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin "$TESTING_ECR_REGISTRY"
+            docker pull "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
+            docker rm $(docker stop $(docker ps -a -q --filter ancestor=$TESTING_ECR_REGISTRY_IMAGE --format="{{.ID}}"))
+            docker run -p 8000:8000 -d --env-file env.txt openeo-dev-ec2:latest
+
+
+
+  
