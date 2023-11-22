@@ -20,8 +20,8 @@ jobs:
 
     env:
       DEPLOYMENT_NAME: "testing"
-      TESTING_ECR_REGISTRY: ${{ secrets.TESTING_ECR_REGISTRY }}
-      TESTING_ECR_REGISTRY_IMAGE: ${{ secrets.TESTING_ECR_REGISTRY_IMAGE }}
+      TESTING_ECR_REGISTRY: ${{ secrets.TESTING_EC2_ECR_REGISTRY }}
+      TESTING_ECR_REGISTRY_IMAGE: ${{ secrets.TESTING_EC2_ECR_REGISTRY_IMAGE }}
 
     steps:
       - uses: actions/checkout@v4
@@ -51,34 +51,6 @@ jobs:
         working-directory: ./rest
         run: pipenv install --dev
 
-      - name: create zappa_settings.json on-the-fly
-        working-directory: ./rest
-        run: |
-          cp zappa_settings.json.template zappa_settings.json
-          sed -i "s/@@AWS_ACCESS_KEY_ID@@/${{ secrets.TESTINGDATA_AWS_ACCESS_KEY_ID }}/g" zappa_settings.json
-          sed -i "s#@@AWS_SECRET_ACCESS_KEY@@#${{ secrets.TESTINGDATA_AWS_SECRET_ACCESS_KEY }}#g" zappa_settings.json
-          sed -i "s/@@TESTING_SH_CLIENT_ID@@/${{ secrets.TESTING_SH_CLIENT_ID }}/g" zappa_settings.json
-          sed -i "s/@@TESTING_SH_CLIENT_SECRET@@/${{ secrets.TESTING_SH_CLIENT_SECRET }}/g" zappa_settings.json
-          sed -i "s/@@BACKEND_VERSION@@/$GITHUB_REF_NAME/g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_NAME_MAIN@@/${{ secrets.RESULTS_S3_BUCKET_NAME_MAIN }}/g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_NAME_CREODIAS@@/${{ secrets.RESULTS_S3_BUCKET_NAME_CREODIAS }}/g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_NAME_USWEST@@/${{ secrets.RESULTS_S3_BUCKET_NAME_USWEST }}/g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN@@/${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN }}/g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS@@/${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS }}/g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST@@/${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST }}/g" zappa_settings.json
-          sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN@@#${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN }}#g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS@@/${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS }}/g" zappa_settings.json
-          sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST@@#${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST }}#g" zappa_settings.json
-          sed -i "s#@@USAGE_REPORTING_BASE_URL_TESTING@@#${{ secrets.USAGE_REPORTING_BASE_URL_TESTING }}#g" zappa_settings.json
-          sed -i "s#@@USAGE_REPORTING_AUTH_URL_TESTING@@#${{ secrets.USAGE_REPORTING_AUTH_URL_TESTING }}#g" zappa_settings.json
-          sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_ID_TESTING@@#${{ secrets.USAGE_REPORTING_AUTH_CLIENT_ID_TESTING }}#g" zappa_settings.json
-          sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING@@#${{ secrets.USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING }}#g" zappa_settings.json
-          sed -i "s#@@LOGGING_LEVEL@@#${{ secrets.LOGGING_LEVEL_TESTING }}#g" zappa_settings.json
-
-      - name: generate zappa_settings.py for docker image from zappa_settings.json
-        working-directory: ./rest
-        run: pipenv run zappa save-python-settings-file "$DEPLOYMENT_NAME"
-
       - name: build docker image with correct tags
         working-directory: ./rest
         run: docker build -t "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:$GITHUB_REF_NAME" -t "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest" --build-arg VERSION=$GITHUB_REF_NAME --build-arg VCS_REF=$GITHUB_SHA --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') .
@@ -92,7 +64,3 @@ jobs:
         run: |
           docker push "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:$GITHUB_REF_NAME"
           docker push "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
-      
-      - name: deploy lambda with new docker image
-        working-directory: ./rest
-        run: pipenv run zappa deploy "$DEPLOYMENT_NAME" -d "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest" || pipenv run zappa update "$DEPLOYMENT_NAME" -d "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
