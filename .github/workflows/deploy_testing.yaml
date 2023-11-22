@@ -96,8 +96,8 @@ jobs:
         working-directory: ./rest/
         run: | 
          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
-         scp -i ${{ secrets.TESTING_PRIVATE_KEY }} .env  ${USER_NAME}@${HOSTNAME}
-         ssh -i ${{ secrets.TESTING_PRIVATE_KEY }} ${USER_NAME}@${HOSTNAME}
+         scp -i private_key .env  ${USER_NAME}@${HOSTNAME}
+         ssh -i private_key ${USER_NAME}@${HOSTNAME}
 
             # Now we have got the access of EC2 and we will start the deploy .
             aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin "$TESTING_ECR_REGISTRY"
