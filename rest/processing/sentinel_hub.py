@@ -77,8 +77,8 @@ class SentinelHub:
                         "type": collection["data_collection"].api_id,
                         "dataFilter": {
                             "timeRange": {
-                                "from": collection["from_date"].isoformat(),
-                                "to": collection["to_date"].isoformat(),
+                                "from": collection["from_time"].isoformat(),
+                                "to": collection["to_time"].isoformat(),
                             },
                             "previewMode": preview_mode,
                         },

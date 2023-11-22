@@ -195,8 +195,8 @@ class Process:
             data_collection = self.id_to_data_collection(load_collection_node["arguments"]["id"])
             collections[f"node_{node_id}"] = {
                 "data_collection": data_collection,
-                "from_date": from_time,
-                "to_date": to_time,
+                "from_time": from_time,
+                "to_time": to_time,
             }
 
         return collections
@@ -513,10 +513,10 @@ class Process:
                     temporal_interval = default_temporal_interval * n_seconds_per_day
 
                 collection = self.collections[f"node_{node_id}"]
-                from_date = collection["from_date"]
-                to_date = collection["to_date"]
+                from_time = collection["from_time"]
+                to_time = collection["to_time"]
 
-                date_diff = (to_date - from_date).total_seconds()
+                date_diff = (to_time - from_time).total_seconds()
                 n_dates += math.ceil(date_diff / temporal_interval) + 1
 
             n_output_bands *= n_dates * n_original_temporal_dimensions
