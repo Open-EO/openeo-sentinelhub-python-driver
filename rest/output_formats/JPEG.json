@@ -2,6 +2,8 @@
   "gis_data_types": [
     "raster"
   ],
+  "title":" Joint Photographic Experts Group",
+  "description": "",
   "parameters": {
     "datatype": {
       "type": "string",

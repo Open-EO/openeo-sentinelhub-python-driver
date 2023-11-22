@@ -2,6 +2,8 @@
   "gis_data_types": [
     "raster"
   ],
+  "title": "ZARR",
+  "description": "Zarr is a file storage format for chunked, compressed, N-dimensional arrays based on an open-source specification.",
   "parameters": {
     "datatype": {
       "type": "string",
