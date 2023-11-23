@@ -97,13 +97,7 @@ jobs:
         run: | 
          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
          scp -o StrictHostKeyChecking=no -T Disable pseudo-tty allocation-i private_key .env  ${USER_NAME}@${HOSTNAME}
-         ssh  -o StrictHostKeyChecking=no -T -i private_key ${USER_NAME}@${HOSTNAME}
 
-            # Now we have got the access of EC2 and we will start the deploy .
-            aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin "$TESTING_ECR_REGISTRY"
-            docker pull "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
-            docker rm $(docker stop $(docker ps -a -q --filter ancestor=$TESTING_ECR_REGISTRY_IMAGE --format="{{.ID}}"))
-            docker run -p 8000:8000 -d --env-file .env openeo-dev-ec2:latest
 
 
 
