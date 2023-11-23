@@ -23,8 +23,8 @@ jobs:
       TESTING_ECR_REGISTRY: ${{ secrets.TESTING_EC2_ECR_REGISTRY }}
       TESTING_ECR_REGISTRY_IMAGE: ${{ secrets.TESTING_EC2_ECR_REGISTRY_IMAGE }}
       PRIVATE_KEY: ${{ secrets.TESTING_SSH_PRIVATE_KEY }}
-      HOSTNAME: ${{secrets.TESTING_SSH_HOST}}
-      USER_NAME: ${{secrets.TESTING_USER_NAME}}
+      HOSTNAME: ${{ secrets.TESTING_SSH_HOST }}
+      USER_NAME: ${{ secrets.TESTING_USER_NAME }}
 
     steps:
       - uses: actions/checkout@v4
@@ -95,7 +95,7 @@ jobs:
       - name: pull docker image and run
         working-directory: ./rest
         run: | 
-         echo "PRIVATE_KEY" > private_key && chmod 600 private_key
+         echo "${PRIVATE_KEY}" > private_key && chmod 600 private_key
          scp -o StrictHostKeyChecking=no -i private_key .env  ${USER_NAME}@${HOSTNAME}
          ssh  -o StrictHostKeyChecking=no -T -i private_key ${USER_NAME}@${HOSTNAME}
          
