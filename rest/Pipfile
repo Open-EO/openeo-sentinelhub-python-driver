@@ -24,7 +24,7 @@ openeo-pg-parser = {editable = true,git = "https://github.com/Ardweaden/openeo-p
 requests = "==2.27.1"
 flask-cors = "==3.0.10"
 honeycomb-beeline = "==3.2.0"
-pg-to-evalscript = "==0.2.9rc1"
+pg-to-evalscript = "==0.2.9"
 sentinelhub = "==3.9.2"
 isodate = "==0.6.1"
 pyjwt = {extras = ["crypto"], version = "==2.3.0"}
