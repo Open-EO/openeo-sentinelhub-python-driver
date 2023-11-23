@@ -14,10 +14,14 @@ from openeoerrors import Internal
 # assume it's only 1 time and 1 bands dimension
 def check_dimensions(time_dimensions, bands_dimensions):
     if len(time_dimensions) > 1:
-        raise Internal("Returned data has more than 1 time dimension. Parsing to correct format supports 0 or 1 time dimension.")
+        raise Internal(
+            "Returned data has more than 1 time dimension. Parsing to correct format supports 0 or 1 time dimension."
+        )
 
     if len(bands_dimensions) > 1:
-        raise Internal("Returned data has more than 1 bands dimension. Parsing to correct format supports 0 or 1 bands dimension.")
+        raise Internal(
+            "Returned data has more than 1 bands dimension. Parsing to correct format supports 0 or 1 bands dimension."
+        )
 
 
 def get_timestamps_arrays(datacube_time_as_bands, time_dimensions, bands_dimensions, output_format):
