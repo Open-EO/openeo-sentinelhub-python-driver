@@ -170,4 +170,4 @@ class DataFusionNotPossibleDifferentSHDeployments(SHOpenEOError):
 class DataFusionNotPossibleDifferentSpatialExtents(SHOpenEOError):
     error_code = "DataFusionNotPossibleDifferentSpatialExtents"
     http_code = 400
-    message = "Data fusion not available with collections having different spatial extents."
+    message = "Data fusion is possible only if all load_collection processes have the same spatial extent."
