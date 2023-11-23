@@ -95,8 +95,8 @@ jobs:
       - name: pull docker image and run
         working-directory: ./rest
         run: | 
-         echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
-         scp -o StrictHostKeyChecking=no -T Disable pseudo-tty allocation-i private_key .env  ${USER_NAME}@${HOSTNAME}
+         echo "'${PRIVATE_KEY}'" > private_key && chmod 600 private_key
+         scp -o StrictHostKeyChecking=no -i private_key .env  ${USER_NAME}@${HOSTNAME}
 
 
 
