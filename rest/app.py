@@ -597,7 +597,7 @@ def add_job_to_queue(job_id):
         # START OF POST_PROCESSING
         # post-process gtiffs to appropriate formats
 
-        # parse_sh_gtiff_to_format(job, bucket)
+        parse_sh_gtiff_to_format(job, bucket)
 
         # END OF POST_PROCESSING
 
