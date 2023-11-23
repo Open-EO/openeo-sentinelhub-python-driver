@@ -3,7 +3,7 @@
     "raster"
   ],
   "title":" Joint Photographic Experts Group",
-  "description": "",
+  "description": "JPEG is a image file compressed with lossy compression and is one of the most widely used image formats. Compared to other EO raster formats, it is less flexible and standardized regarding number of bands, embedding geospatial metadata, etc.",
   "parameters": {
     "datatype": {
       "type": "string",
