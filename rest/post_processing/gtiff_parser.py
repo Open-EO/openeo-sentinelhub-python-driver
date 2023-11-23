@@ -10,37 +10,50 @@ from sentinelhub import MimeType
 from processing.const import CustomMimeType
 from openeoerrors import Internal
 
+
 # assume it's only 1 time and 1 bands dimension
 def check_dimensions(time_dimensions, bands_dimensions):
-    if len(time_dimensions) == 0:
-        raise Internal("No time dimensions exist. Only 1 time dimension is supported.")
-
     if len(time_dimensions) > 1:
-        raise Internal("More than 1 time dimension exist. Only 1 time dimension is supported.")
-
-    if len(bands_dimensions) == 0:
-        raise Internal("No bands dimensions exist. Only 1 bands dimension is supported.")
+        raise Internal(
+            "Returned data has more than 1 time dimension. Parsing to correct format supports 0 or 1 time dimension."
+        )
 
     if len(bands_dimensions) > 1:
-        raise Internal("More than 1 bands dimension exist. Only 1 bands dimension is supported.")
+        raise Internal(
+            "Returned data has more than 1 bands dimension. Parsing to correct format supports 0 or 1 bands dimension."
+        )
 
 
 def get_timestamps_arrays(datacube_time_as_bands, time_dimensions, bands_dimensions, output_format):
+    bands_dimension = bands_dimensions[0] if len(bands_dimensions) > 0 else None
+    time_dimension = time_dimensions[0] if len(time_dimensions) > 0 else None
+
     num_of_img_bands = len(datacube_time_as_bands["band"])
-    num_of_bands_dimension = len(bands_dimensions[0]["labels"])
+    num_of_band_labels = len(bands_dimension["labels"]) if bands_dimension else 1
+    num_of_time_labels = len(time_dimension["labels"]) if time_dimension else 1
+    num_of_usable_img_bands = num_of_time_labels * num_of_band_labels
+
+    if num_of_img_bands < num_of_usable_img_bands:
+        raise Internal(f"Datacube dimensions not compatible with returned image.")
 
     list_of_timestamps = []
     list_of_timestamp_arrays = []
 
-    for i in range(0, num_of_img_bands, num_of_bands_dimension):
-        date = time_dimensions[0]["labels"][int(i / num_of_bands_dimension)]
-        timestamp_array = datacube_time_as_bands[i : i + num_of_bands_dimension]
+    for i in range(0, num_of_usable_img_bands, num_of_band_labels):
+        date = time_dimension["labels"][int(i / num_of_band_labels)] if time_dimension else None
+        timestamp_array = datacube_time_as_bands[i : i + num_of_band_labels]
 
+        # datacube_time_as_bands of type xarray DataArray already has bands dimension, we need to
+        # - update its labels or remove it
+        # - add time dimension and its labels
         if output_format in [CustomMimeType.NETCDF, CustomMimeType.ZARR]:
-            pandas_time = pd.to_datetime(parser.parse(date))
-            timestamp_array = timestamp_array.assign_coords(band=bands_dimensions[0]["labels"])
-            timestamp_array = timestamp_array.assign_coords(t=pandas_time)
-            timestamp_array = timestamp_array.expand_dims(dim="t")
+            if bands_dimension:
+                timestamp_array = timestamp_array.assign_coords(band=bands_dimension["labels"])
+            else:
+                timestamp_array = timestamp_array.drop_vars("band")
+            if time_dimension:
+                timestamp_array = timestamp_array.assign_coords(t=pd.to_datetime(parser.parse(date)))
+                timestamp_array = timestamp_array.expand_dims(dim="t")
 
         list_of_timestamps.append(date)
         list_of_timestamp_arrays.append(timestamp_array)
@@ -51,7 +64,8 @@ def get_timestamps_arrays(datacube_time_as_bands, time_dimensions, bands_dimensi
 def save_as_gtiff(list_of_timestamps, list_of_timestamp_arrays, output_dir, output_name):
     output_file_paths = []
     for array, date in zip(list_of_timestamp_arrays, list_of_timestamps):
-        file_name = f"{output_name['name']}_{date}{output_name['ext']}"
+        date_string = f"_{date}" if date else ""
+        file_name = f"{output_name['name']}{date_string}{output_name['ext']}"
         file_path = os.path.join(output_dir, file_name)
         output_file_paths.append(file_path)
 
@@ -86,11 +100,6 @@ def parse_multitemporal_gtiff_to_format(input_tiff, input_metadata, output_dir, 
 
     time_dimensions = [dim for dim in datacube_metadata["outputDimensions"] if dim["type"] == "temporal"]
     bands_dimensions = [dim for dim in datacube_metadata["outputDimensions"] if dim["type"] == "bands"]
-
-    # mock a bands dimension (with 1 band) if it's not present in the data
-    # e.g. save_result process right after ndvi process which doesn't have a target band set
-    if len(bands_dimensions) == 0:
-        bands_dimensions = [{"name": "bands", "type": "bands", "labels": ["results"]}]
 
     check_dimensions(time_dimensions, bands_dimensions)
 
