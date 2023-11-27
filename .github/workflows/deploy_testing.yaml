@@ -71,8 +71,8 @@ jobs:
           RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN=${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN }}
           RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS=${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS }}
           RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST=${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST }}
-          USAGE_REPORTING_BASE_URL_TESTING=${{ secrets.USAGE_REPORTING_BASE_URL_TESTING }}
-          USAGE_REPORTING_AUTH_URL_TESTING=${{ secrets.USAGE_REPORTING_AUTH_URL_TESTING }}
+          USAGE_REPORTING_BASE_URL=${{ secrets.USAGE_REPORTING_BASE_URL_TESTING }}
+          USAGE_REPORTING_AUTH_URL=${{ secrets.USAGE_REPORTING_AUTH_URL_TESTING }}
           USAGE_REPORTING_AUTH_CLIENT_ID_TESTING=${{ secrets.USAGE_REPORTING_AUTH_CLIENT_ID_TESTING }}
           USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING=${{ secrets.USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING }}
           LOGGING_LEVEL=${{ secrets.LOGGING_LEVEL_TESTING }}
@@ -101,7 +101,7 @@ jobs:
          
             # Now we have got the access of EC2 and we will start the deploy .
             aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin  127163565383.dkr.ecr.eu-central-1.amazonaws.com/openeo-dev-ec2
-            docker pull "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
+            docker pull "$TESTING_ECR_REGISTRY/latest"
             docker run -p 8000:8000 -d --env-file .env openeo-dev-ec2:latest
             '
 
