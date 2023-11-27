@@ -76,7 +76,7 @@ jobs:
           USAGE_REPORTING_AUTH_CLIENT_ID_TESTING=${{ secrets.USAGE_REPORTING_AUTH_CLIENT_ID_TESTING }}
           USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING=${{ secrets.USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING }}
           LOGGING_LEVEL=${{ secrets.LOGGING_LEVEL_TESTING }}
-          " > env.txt
+          " > .env
 
       - name: build docker image with correct tags
         working-directory: ./rest
@@ -96,7 +96,7 @@ jobs:
         working-directory: ./rest
         run: | 
          echo "${PRIVATE_KEY}" > private_key && chmod 600 private_key
-         scp -o StrictHostKeyChecking=no -i private_key env.txt ${USER_NAME}@${HOSTNAME}
+         scp -o StrictHostKeyChecking=no -i private_key ./.env ${USER_NAME}@${HOSTNAME}:.env
          ssh  -o StrictHostKeyChecking=no -T -i private_key ${USER_NAME}@${HOSTNAME} '
          
             # Now we have got the access of EC2 and we will start the deploy .
