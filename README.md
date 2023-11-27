@@ -8,7 +8,7 @@ The Sentinel Hub openEO backend provides access to Sentinel Hub via an openEO in
 
 There are two different deployments (production and test). Although the test version offers slightly more functionality, it is not considered stable and new functions may still change slightly.
 
-The backend can be accessed either directly via existing Sentinel Hub credentials (ClientID + Secret), but is also integrated into the [openEO Platform](https://openeo.cloud/) (EGI Check-in).
+Authentication at the backend can be done either with existing Sentinel Hub credentials (Basic through ClientID + Secret) or with [openEO Platform](https://openeo.cloud/) credentials (OpenID connect through EGI Check-in).
 
 | Environment | URL                                         | 
 | ----------- | ------------------------------------------- | 
