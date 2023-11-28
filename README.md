@@ -1,5 +1,21 @@
-## Running locally
+# Sentinel Hub openEO backend
 
+## Overview
+
+The Sentinel Hub openEO backend provides access to Sentinel Hub via an openEO interface. 
+
+### Deployments
+
+There are two different deployments (production and test). Although the test version offers slightly more functionality, it is not considered stable and new functions may still change slightly.
+
+Authentication at the backend can be done either with existing Sentinel Hub credentials (Basic through ClientID + Secret) or with [openEO Platform](https://openeo.cloud/) credentials (OpenID connect through EGI Check-in).
+
+| Environment | URL                                         | 
+| ----------- | ------------------------------------------- | 
+| Production  | https://openeo.sentinel-hub.com/production/ | 
+| Testing (Development) | https://openeo-dev.sinergise.com/testing/ |
+
+## Running locally
 
 ### Prerequisites
 Mandatory: 
@@ -319,3 +335,13 @@ $ gdalinfo /tmp/results/result-0.tiff
 Driver: GTiff/GeoTIFF
 ...
 ```
+
+## License 
+
+© Sinergise Solutions d.o.o., 2023. Licensed under the [Apache License](LICENSE).
+
+## Funding
+
+This work has received funding from the European Commission (EC) through the projects:
+
+- [Open-Earth-Monitor Cyberinfrastructure](https://earthmonitor.org/): Environmental information to support EU’s Green Deal (1 Jun. 2022 – 31 May 2026 - [101059548](https://cordis.europa.eu/project/id/101059548))
