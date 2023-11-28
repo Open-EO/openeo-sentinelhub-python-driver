@@ -920,7 +920,8 @@ def validate_process_graph():
 @with_logging
 def well_known():
     return flask.make_response(
-        jsonify(versions=[{"api_version": "1.0.0", "production": False, "url": "http://openeo-dev.sinergise.com/"}]), 200
+        jsonify(versions=[{"api_version": "1.0.0", "production": False, "url": "http://openeo-dev.sinergise.com/"}]),
+        200,
     )
 
 
