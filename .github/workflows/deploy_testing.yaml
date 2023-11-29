@@ -76,6 +76,7 @@ jobs:
           USAGE_REPORTING_AUTH_CLIENT_ID=${{ secrets.USAGE_REPORTING_AUTH_CLIENT_ID_TESTING }}
           USAGE_REPORTING_AUTH_CLIENT_SECRET=${{ secrets.USAGE_REPORTING_AUTH_CLIENT_SECRET_TESTING }}
           LOGGING_LEVEL=${{ secrets.LOGGING_LEVEL_TESTING }}
+          DEPLOYMENT_TYPE=testing
           " > .env
 
       - name: build docker image with correct tags
