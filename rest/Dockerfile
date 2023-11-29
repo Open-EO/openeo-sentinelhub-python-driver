@@ -10,4 +10,4 @@ RUN pipenv requirements > requirements.txt
 RUN pip install -r requirements.txt
 RUN pip install gunicorn
 
-CMD ["gunicorn","--bind","0.0.0.0:8000", "--timeout", "300", "--threads", "2" ,"wsgi:app"]
+CMD ["gunicorn","--bind","0.0.0.0:8000", "--timeout", "300", "--threads", "20" ,"wsgi:app"]
