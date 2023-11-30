@@ -102,7 +102,7 @@ jobs:
          
             # Now we have got the access of EC2 and we will start the deploy .
             aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin  "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:$GITHUB_REF_NAME"
-            docker pull "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:$GITHUB_REF_NAME"
+            docker pull "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
             '
 
 
