@@ -102,7 +102,10 @@ jobs:
          
             # Now we have got the access of EC2 and we will start the deploy .
             aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin  "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:$GITHUB_REF_NAME"
-            docker pull 127163565383.dkr.ecr.eu-central-1.amazonaws.com/openeo-dev-ec2:latest
+            docker pull "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:$GITHUB_REF_NAME"
+            # stop and remove all containers
+            docker ps -aq | xargs docker stop | xargs docker rm
+            docker run -p 8000:8000 -d --env-file .env "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:$GITHUB_REF_NAME"
             '
 
 
