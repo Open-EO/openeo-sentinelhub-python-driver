@@ -78,6 +78,7 @@ jobs:
           LOGGING_LEVEL=${{ secrets.LOGGING_LEVEL_TESTING }}
           DEPLOYMENT_TYPE=testing
           " > .env
+          scp -o StrictHostKeyChecking=no -i private_key ./.env ${USER_NAME}@${HOSTNAME}:.env
 
       - name: build docker image with correct tags
         working-directory: ./rest
@@ -94,20 +95,13 @@ jobs:
           docker push "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
 
       - name: pull docker image and run
-        working-directory: ./rest
-        run: | 
-         echo "${PRIVATE_KEY}" > private_key && chmod 600 private_key
-         scp -o StrictHostKeyChecking=no -i private_key ./.env ${USER_NAME}@${HOSTNAME}:.env
-         ssh  -o StrictHostKeyChecking=no -T -i private_key ${USER_NAME}@${HOSTNAME} '
-         
-            # Now we have got the access of EC2 and we will start the deploy .
-            echo "$DEPLOYMENT_NAME" > test.txt
-            aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin  "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:$GITHUB_REF_NAME"
-            docker pull 127163565383.dkr.ecr.eu-central-1.amazonaws.com/openeo-dev-ec2:latest
-            # stop and remove all containers
-            docker ps -aq | xargs docker stop | xargs docker rm
-            docker run -p 8000:8000 -d --env-file .env 127163565383.dkr.ecr.eu-central-1.amazonaws.com/openeo-dev-ec2:latest
-            '
+        uses: appleboy/ssh-action@v1.0.0
+        with: 
+          key: ${{ secrets.TESTING_SSH_PRIVATE_KEY }}
+          host: ${{ secrets.TESTING_SSH_HOST }}
+          username: ${{ secrets.TESTING_USER_NAME }}
+          envs: DEPLOYMENT_NAME
+          script:  echo "$DEPLOYMENT_NAME" > test.txt
 
 
 
