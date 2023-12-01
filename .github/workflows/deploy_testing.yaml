@@ -99,8 +99,13 @@ jobs:
           key: ${{ secrets.TESTING_SSH_PRIVATE_KEY }}
           host: ${{ secrets.TESTING_SSH_HOST }}
           username: ${{ secrets.TESTING_USER_NAME }}
-          envs: DEPLOYMENT_NAME
-          script:  echo "$DEPLOYMENT_NAME" > test.txt
+          envs: TESTING_ECR_REGISTRY, TESTING_ECR_REGISTRY_IMAGE
+          script: |
+            aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin  "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE"
+            docker pull "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
+            # stop and remove all containers
+            docker ps -aq | xargs docker stop | xargs docker rm
+            docker run -p 8000:8000 -d --env-file .env "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
 
 
 
