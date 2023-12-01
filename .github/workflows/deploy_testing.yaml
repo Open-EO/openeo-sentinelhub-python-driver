@@ -25,7 +25,6 @@ jobs:
       PRIVATE_KEY: ${{ secrets.TESTING_SSH_PRIVATE_KEY }}
       HOSTNAME: ${{ secrets.TESTING_SSH_HOST }}
       USER_NAME: ${{ secrets.TESTING_USER_NAME }}
-      TEST_VAR: testing 
 
     steps:
       - uses: actions/checkout@v4
@@ -96,15 +95,13 @@ jobs:
 
       - name: pull docker image and run
         working-directory: ./rest
-        with: 
-          key: testing_key
         run: | 
          echo "${PRIVATE_KEY}" > private_key && chmod 600 private_key
          scp -o StrictHostKeyChecking=no -i private_key ./.env ${USER_NAME}@${HOSTNAME}:.env
          ssh  -o StrictHostKeyChecking=no -T -i private_key ${USER_NAME}@${HOSTNAME} '
          
             # Now we have got the access of EC2 and we will start the deploy .
-            echo "${key}" > test.txt
+            echo "$DEPLOYMENT_NAME" > test.txt
             aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin  "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:$GITHUB_REF_NAME"
             docker pull 127163565383.dkr.ecr.eu-central-1.amazonaws.com/openeo-dev-ec2:latest
             # stop and remove all containers
