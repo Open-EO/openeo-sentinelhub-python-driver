@@ -78,7 +78,6 @@ jobs:
           LOGGING_LEVEL=${{ secrets.LOGGING_LEVEL_TESTING }}
           DEPLOYMENT_TYPE=testing
           " > .env
-          scp -o StrictHostKeyChecking=no -i private_key ./.env ${USER_NAME}@${HOSTNAME}:.env
 
       - name: build docker image with correct tags
         working-directory: ./rest
