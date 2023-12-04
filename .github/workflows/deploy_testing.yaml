@@ -106,7 +106,8 @@ jobs:
             # stop and remove all containers
             docker ps -aq | xargs docker stop | xargs docker rm
             docker run -p 8000:8000 -d --env-file .env "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
-
+            # remove all dangling images
+            docker image prune --force
 
 
   
