@@ -925,8 +925,7 @@ def well_known():
                 {
                     "api_version": "1.0.0",
                     "production": True,
-                    "url": "https://openeo-dev.sinergise.com/",
-                    "url1": flask.request.url_root,
+                    "url": flask.request.url_root,
                 }
             ]
         ),
