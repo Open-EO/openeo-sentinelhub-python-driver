@@ -54,7 +54,7 @@ jobs:
         working-directory: ./rest
         run: pipenv install --dev
 
-      - name: create andenv file
+      - name: create env file
         working-directory: ./rest/
         run: | 
           echo "AWS_ACCESS_KEY_ID=${{ secrets.TESTINGDATA_AWS_ACCESS_KEY_ID }}
@@ -93,7 +93,7 @@ jobs:
           docker push "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:$GITHUB_REF_NAME"
           docker push "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
 
-      - name: copy file via ssh key
+      - name: copy env file
         uses: appleboy/scp-action@v0.1.4
         with:
           key: ${{ secrets.TESTING_SSH_PRIVATE_KEY }}
@@ -101,6 +101,7 @@ jobs:
           username: ${{ secrets.TESTING_USER_NAME }}
           source: "rest/.env"
           target: /openEO
+          rm: true
           overwrite: true
 
       - name: pull docker image and run
