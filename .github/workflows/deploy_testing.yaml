@@ -94,15 +94,10 @@ jobs:
           docker push "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
 
       - name: copy env file
-        uses: appleboy/scp-action@v0.1.4
-        with:
-          key: ${{ secrets.TESTING_SSH_PRIVATE_KEY }}
-          host: ${{ secrets.TESTING_SSH_HOST }}
-          username: ${{ secrets.TESTING_USER_NAME }}
-          source: "rest/.env"
-          target: /openEO
-          rm: true
-          overwrite: true
+        working-directory: ./rest
+        run: |
+         echo "${PRIVATE_KEY}" > private_key && chmod 600 private_key
+         scp -o StrictHostKeyChecking=no -i private_key ./.env ${USER_NAME}@${HOSTNAME}:openEO/.env
 
       - name: pull docker image and run
         uses: appleboy/ssh-action@v1.0.0
