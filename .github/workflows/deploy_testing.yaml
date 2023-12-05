@@ -115,6 +115,7 @@ jobs:
             docker pull "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
             # stop and remove all containers
             docker ps -aq | xargs docker stop | xargs docker rm
+            cd openEO
             docker run -p 8000:8000 -d --env-file .env "$TESTING_ECR_REGISTRY/$TESTING_ECR_REGISTRY_IMAGE:latest"
             # remove all dangling images
             docker image prune --force
