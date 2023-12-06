@@ -201,7 +201,7 @@ def get_links():
             "title": "Sentinel Hub homepage",
         },
         {
-            "href": f"{flask.request.url_root}.well-known/openeo",
+            "href": f"{flask.request.url_root.replace(flask.request.script_root, '')}.well-known/openeo",
             "rel": "version-history",
             "type": "application/json",
             "title": "List of supported openEO versions",
