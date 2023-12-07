@@ -4,7 +4,6 @@ verify_ssl = true
 name = "pypi"
 
 [dev-packages]
-zappa = "==0.54.1"
 pylint = "==2.12.2"
 responses = "==0.21.0"
 cryptography = "==36.0.1"
@@ -15,7 +14,6 @@ awscli = "*"
 python_version = "3.9"
 
 [packages]
-zappa = "==0.54.1"
 flask = "==2.0.3"
 pytest = "==7.0.1"
 boto3 = "==1.21.18"
