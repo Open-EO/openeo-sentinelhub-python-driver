@@ -19,8 +19,11 @@ jobs:
 
     env:
       DEPLOYMENT_NAME: "production"
-      PROD_ECR_REGISTRY: ${{ secrets.PROD_ECR_REGISTRY }}
-      PROD_ECR_REGISTRY_IMAGE: ${{ secrets.PROD_ECR_REGISTRY_IMAGE }}
+      ECR_REGISTRY: ${{ secrets.PROD_EC2_ECR_REGISTRY }}
+      ECR_REGISTRY_IMAGE: ${{ secrets.PROD_EC2_ECR_REGISTRY_IMAGE }}
+      PRIVATE_KEY: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+      HOSTNAME: ${{ secrets.PROD_SSH_HOST }}
+      USER_NAME: ${{ secrets.PROD_USER_NAME }}
 
     steps:
       - uses: actions/checkout@v4
@@ -34,7 +37,7 @@ jobs:
         run: |
           mkdir -p ~/.aws
           echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
-          echo -e "[default]\naws_access_key_id=${{ secrets.PRODZAPPA_AWS_ACCESS_KEY_ID }}\naws_secret_access_key=${{ secrets.PRODZAPPA_AWS_SECRET_ACCESS_KEY }}" > ~/.aws/credentials
+          echo -e "[default]\naws_access_key_id=${{ secrets.PRODATA_AWS_ACCESS_KEY_ID }}\naws_secret_access_key=${{ secrets.PRODATA_AWS_SECRET_ACCESS_KEY }}" > ~/.aws/credentials
 
       - name: install pipenv and aws
         run: |
@@ -50,48 +53,67 @@ jobs:
         working-directory: ./rest
         run: pipenv install --dev
 
-      - name: create zappa_settings.json on-the-fly
-        working-directory: ./rest
-        run: |
-          cp zappa_settings.json.template zappa_settings.json
-          sed -i "s/@@AWS_ACCESS_KEY_ID@@/${{ secrets.PRODDATA_AWS_ACCESS_KEY_ID }}/g" zappa_settings.json
-          sed -i "s#@@AWS_SECRET_ACCESS_KEY@@#${{ secrets.PRODDATA_AWS_SECRET_ACCESS_KEY }}#g" zappa_settings.json
-          sed -i "s/@@PRODUCTION_SH_CLIENT_ID@@/${{ secrets.PRODUCTION_SH_CLIENT_ID }}/g" zappa_settings.json
-          sed -i "s/@@PRODUCTION_SH_CLIENT_SECRET@@/${{ secrets.PRODUCTION_SH_CLIENT_SECRET }}/g" zappa_settings.json
-          sed -i "s/@@BACKEND_VERSION@@/$GITHUB_REF_NAME/g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_NAME_MAIN@@/${{ secrets.RESULTS_S3_BUCKET_NAME_MAIN_PRODUCTION }}/g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_NAME_CREODIAS@@/${{ secrets.RESULTS_S3_BUCKET_NAME_CREODIAS_PRODUCTION }}/g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_NAME_USWEST@@/${{ secrets.RESULTS_S3_BUCKET_NAME_USWEST_PRODUCTION }}/g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN@@/${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN_PRODUCTION }}/g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS@@/${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS_PRODUCTION }}/g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST@@/${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST_PRODUCTION }}/g" zappa_settings.json
-          sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN@@#${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN_PRODUCTION }}#g" zappa_settings.json
-          sed -i "s/@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS@@/${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS_PRODUCTION }}/g" zappa_settings.json
-          sed -i "s#@@RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST@@#${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST_PRODUCTION }}#g" zappa_settings.json
-          sed -i "s#@@USAGE_REPORTING_BASE_URL_PRODUCTION@@#${{ secrets.USAGE_REPORTING_BASE_URL_PRODUCTION }}#g" zappa_settings.json
-          sed -i "s#@@USAGE_REPORTING_AUTH_URL_PRODUCTION@@#${{ secrets.USAGE_REPORTING_AUTH_URL_PRODUCTION }}#g" zappa_settings.json
-          sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_ID_PRODUCTION@@#${{ secrets.USAGE_REPORTING_AUTH_CLIENT_ID_PRODUCTION }}#g" zappa_settings.json
-          sed -i "s#@@USAGE_REPORTING_AUTH_CLIENT_SECRET_PRODUCTION@@#${{ secrets.USAGE_REPORTING_AUTH_CLIENT_SECRET_PRODUCTION }}#g" zappa_settings.json
-          sed -i "s#@@LOGGING_LEVEL@@#${{ secrets.LOGGING_LEVEL_PRODUCTION }}#g" zappa_settings.json
-
-      - name: generate zappa_settings.py for docker image from zappa_settings.json
-        working-directory: ./rest
-        run: pipenv run zappa save-python-settings-file "$DEPLOYMENT_NAME"
+      - name: create env file
+        working-directory: ./rest/
+        run: | 
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.PRODATA_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY=${{ secrets.PRODATA_AWS_SECRET_ACCESS_KEY }}
+          PRODUCTION_SH_CLIENT_ID=${{ secrets.PRODUCTION_SH_CLIENT_ID }}
+          PRODUCTION_SH_CLIENT_SECRET=${{ secrets.PRODUCTION_SH_CLIENT_SECRET }}
+          BACKEND_VERSION=$GITHUB_REF_NAME
+          RESULTS_S3_BUCKET_NAME_MAIN=${{ secrets.RESULTS_S3_BUCKET_NAME_MAIN_PRODUCTION }}
+          RESULTS_S3_BUCKET_NAME_CREODIAS=${{ secrets.RESULTS_S3_BUCKET_NAME_CREODIAS_PRODUCTION }}
+          RESULTS_S3_BUCKET_NAME_USWEST=${{ secrets.RESULTS_S3_BUCKET_NAME_USWEST_PRODUCTION }}
+          RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN=${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_MAIN_PRODUCTION }}
+          RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS=${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_CREODIAS_PRODUCTION }}
+          RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST=${{ secrets.RESULTS_S3_BUCKET_ACCESS_KEY_ID_USWEST_PRODUCTION }}
+          RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN=${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_MAIN_PRODUCTION }}
+          RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS=${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_CREODIAS_PRODUCTION }}
+          RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST=${{ secrets.RESULTS_S3_BUCKET_SECRET_ACCESS_KEY_USWEST_PRODUCTION }}
+          USAGE_REPORTING_BASE_URL_PRODUCTION=${{ secrets.USAGE_REPORTING_BASE_URL_PRODUCTION }}
+          USAGE_REPORTING_AUTH_URL_PRODUCTION=${{ secrets.USAGE_REPORTING_AUTH_URL_PRODUCTION }}
+          USAGE_REPORTING_AUTH_CLIENT_ID_PRODUCTION=${{ secrets.USAGE_REPORTING_AUTH_CLIENT_ID_PRODUCTION }}
+          USAGE_REPORTING_AUTH_CLIENT_SECRET_PRODUCTION=${{ secrets.USAGE_REPORTING_AUTH_CLIENT_SECRET_PRODUCTION }}
+          LOGGING_LEVEL=${{ secrets.LOGGING_LEVEL_PRODUCTION }}
+          DEPLOYMENT_TYPE=production
+          " > .env
 
       - name: build docker image with correct tags
         working-directory: ./rest
-        run: docker build -t "$PROD_ECR_REGISTRY/$PROD_ECR_REGISTRY_IMAGE:$GITHUB_REF_NAME" -t "$PROD_ECR_REGISTRY/$PROD_ECR_REGISTRY_IMAGE:latest" --build-arg VERSION=$GITHUB_REF_NAME --build-arg VCS_REF=$GITHUB_SHA --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') .
+        run: docker build -t "$ECR_REGISTRY/$ECR_REGISTRY_IMAGE:$GITHUB_REF_NAME" -t "$ECR_REGISTRY/$ECR_REGISTRY_IMAGE:latest" --build-arg VERSION=$GITHUB_REF_NAME --build-arg VCS_REF=$GITHUB_SHA --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') .
 
       - name: login for AWS ECR docker
         working-directory: ./rest
-        run: aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin "$PROD_ECR_REGISTRY"
+        run: aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin "$ECR_REGISTRY"
       
       - name: push docker images (versioned with CI tag and "latest") to AWS ECR with docker
         working-directory: ./rest
         run: |
-          docker push "$PROD_ECR_REGISTRY/$PROD_ECR_REGISTRY_IMAGE:$GITHUB_REF_NAME"
-          docker push "$PROD_ECR_REGISTRY/$PROD_ECR_REGISTRY_IMAGE:latest"
-      
-      - name: deploy lambda with new docker image
+          docker push "$ECR_REGISTRY/$ECR_REGISTRY_IMAGE:$GITHUB_REF_NAME"
+          docker push "$ECR_REGISTRY/$ECR_REGISTRY_IMAGE:latest"
+
+      - name: copy env file
         working-directory: ./rest
-        run: pipenv run zappa deploy "$DEPLOYMENT_NAME" -d "$PROD_ECR_REGISTRY/$PROD_ECR_REGISTRY_IMAGE:latest" || pipenv run zappa update "$DEPLOYMENT_NAME" -d "$PROD_ECR_REGISTRY/$PROD_ECR_REGISTRY_IMAGE:latest"
+        run: |
+         echo "${PRIVATE_KEY}" > private_key && chmod 600 private_key
+         scp -o StrictHostKeyChecking=no -i private_key ./.env ${USER_NAME}@${HOSTNAME}:openEO/.env
+
+      - name: pull docker image and run
+        uses: appleboy/ssh-action@v1.0.0
+        with: 
+          key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_USER_NAME }}
+          envs: ECR_REGISTRY, ECR_REGISTRY_IMAGE
+          script: |
+            aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin  "$ECR_REGISTRY/$ECR_REGISTRY_IMAGE"
+            docker pull "$ECR_REGISTRY/$ECR_REGISTRY_IMAGE:latest"
+            # stop and remove all containers
+            docker ps -aq | xargs docker stop | xargs docker rm
+            cd openEO
+            docker run -p 8000:8000 -d --env-file .env "$ECR_REGISTRY/$ECR_REGISTRY_IMAGE:latest"
+            # remove all dangling images
+            docker image prune --force
+
+
+  
