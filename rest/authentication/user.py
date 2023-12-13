@@ -94,7 +94,7 @@ class SHUser(User):
                 f"https://services.sentinel-hub.com/ims/accounts/{self.user_id}/account-info",
                 headers={"Authorization": f"Bearer {self.sh_access_token}"},
             )
-            
+
             data = json.loads(r.content.decode("utf-8"))
             return data["type"]
 
