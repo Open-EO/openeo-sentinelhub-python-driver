@@ -75,7 +75,7 @@ class AuthenticationProvider:
     def authenticate_user_basic(self, access_token):
         decoded = decode_sh_access_token(access_token)
         try:
-            user = SHUser(decoded["sub"], sh_access_token=access_token, sh_userinfo=decoded)
+            user = SHUser(decoded["account"], sh_access_token=access_token, sh_userinfo=decoded)
         except BillingPlanInvalid:
             return None
 
