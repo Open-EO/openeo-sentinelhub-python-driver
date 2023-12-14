@@ -10,8 +10,6 @@ jobs:
   deploy-production:
     needs: run-reusable-lint-and-test
 
-    if: startsWith(github.ref, 'refs/tags/v')
-
     runs-on: ubuntu-latest
 
     env:
