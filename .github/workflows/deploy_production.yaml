@@ -36,7 +36,8 @@ jobs:
         run: |
           mkdir -p ~/.aws
           echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
-          echo -e "[default]\naws_access_key_id=${{ secrets.PRODATA_AWS_ACCESS_KEY_ID }}\naws_secret_access_key=${{ secrets.PRODATA_AWS_SECRET_ACCESS_KEY }}" > ~/.aws/credentials
+          echo -e "[default]\naws_access_key_id=${{ secrets.PRODZAPPA_AWS_ACCESS_KEY_ID }}\naws_secret_access_key=${{ secrets.PRODZAPPA_AWS_SECRET_ACCESS_KEY }}" > ~/.aws/credentials
+
 
       - name: install pipenv and aws
         run: |
