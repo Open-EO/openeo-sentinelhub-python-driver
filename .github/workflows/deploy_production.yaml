@@ -36,7 +36,7 @@ jobs:
         run: |
           mkdir -p ~/.aws
           echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
-          echo -e "[default]\naws_access_key_id=${{ secrets.PRODATA_AWS_ACCESS_KEY_ID }}\naws_secret_access_key=${{ secrets.PRODATA_AWS_SECRET_ACCESS_KEY }}" > ~/.aws/credentials
+          echo -e "[default]\naws_access_key_id=${{ secrets.PRODDATA_AWS_ACCESS_KEY_ID }}\naws_secret_access_key=${{ secrets.PRODDATA_AWS_SECRET_ACCESS_KEY }}" > ~/.aws/credentials
 
       - name: install pipenv and aws
         run: |
@@ -55,8 +55,8 @@ jobs:
       - name: create env file
         working-directory: ./rest/
         run: | 
-          echo "AWS_ACCESS_KEY_ID=${{ secrets.PRODATA_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY=${{ secrets.PRODATA_AWS_SECRET_ACCESS_KEY }}
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.PRODDATA_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY=${{ secrets.PRODDATA_AWS_SECRET_ACCESS_KEY }}
           SH_CLIENT_ID=${{ secrets.PRODUCTION_SH_CLIENT_ID }}
           SH_CLIENT_SECRET=${{ secrets.PRODUCTION_SH_CLIENT_SECRET }}
           BACKEND_VERSION=$GITHUB_REF_NAME
