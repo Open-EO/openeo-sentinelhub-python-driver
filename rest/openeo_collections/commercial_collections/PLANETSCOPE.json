@@ -220,10 +220,11 @@
       }
    ],
    "sci:citation":"\u00a9 Planet (YYYY), contains PlanetScope data processed by Sentinel Hub",
+   "type": "Collection",
    "stac_extensions":[
       "datacube"
    ],
-   "stac_version":"0.9.0",
+   "stac_version":"1.0.0",
    "summaries":{
       "eo:bands":[
          {
