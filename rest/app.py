@@ -201,7 +201,7 @@ def get_links():
             "title": "Sentinel Hub homepage",
         },
         {
-            "href": f"{flask.request.url_root}.well-known/openeo",
+            "href": f"{flask.request.url_root.replace(flask.request.script_root, '')}.well-known/openeo",
             "rel": "version-history",
             "type": "application/json",
             "title": "List of supported openEO versions",
@@ -608,7 +608,6 @@ def add_job_to_queue(job_id):
         links = []
         metadata_valid = None
         for result in results:
-
             # do not add json file created by SH batch job API to the list of assets
             sh_batch_job_json_filename = f"request-{job['batch_request_id']}.json"
             if sh_batch_job_json_filename in result["Key"]:
@@ -921,7 +920,16 @@ def validate_process_graph():
 @with_logging
 def well_known():
     return flask.make_response(
-        jsonify(versions=[{"api_version": "1.0.0", "production": False, "url": flask.request.url_root}]), 200
+        jsonify(
+            versions=[
+                {
+                    "api_version": "1.0.0",
+                    "production": True,
+                    "url": flask.request.url_root,
+                }
+            ]
+        ),
+        200,
     )
 
 
@@ -938,4 +946,4 @@ if __name__ == "__main__":
         print("Running as HTTPS!")
         app.run(ssl_context="adhoc")
     else:
-        app.run(debug=True)
+        app.run(debug=True, host="0.0.0.0")

@@ -60,7 +60,6 @@ class Process:
     def __init__(self, process, width=None, height=None, user=User(), user_defined_processes={}, request_type=None):
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_RESOLUTION = (10, 10)
-        self.MAXIMUM_SYNC_FILESIZE_BYTES = 5000000
         partially_supported_processes_as_udp = {
             partially_supported_process.process_id: {} for partially_supported_process in partially_supported_processes
         }
@@ -550,12 +549,6 @@ class Process:
             raise DataFusionNotPossibleDifferentSHDeployments()
 
     def execute_sync(self):
-        estimated_file_size = self.estimate_file_size()
-        if estimated_file_size > self.MAXIMUM_SYNC_FILESIZE_BYTES:
-            raise ProcessGraphComplexity(
-                f"estimated size of generated output of {estimated_file_size} bytes exceeds maximum supported size of {self.MAXIMUM_SYNC_FILESIZE_BYTES} bytes."
-            )
-
         if self.width == 0 or self.height == 0:
             raise ImageDimensionInvalid(self.width, self.height)
 
