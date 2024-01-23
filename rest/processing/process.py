@@ -60,7 +60,6 @@ class Process:
     def __init__(self, process, width=None, height=None, user=User(), user_defined_processes={}, request_type=None):
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_RESOLUTION = (10, 10)
-        self.MAXIMUM_SYNC_FILESIZE_BYTES = 100000000
         partially_supported_processes_as_udp = {
             partially_supported_process.process_id: {} for partially_supported_process in partially_supported_processes
         }
