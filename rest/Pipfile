@@ -6,7 +6,7 @@ name = "pypi"
 [dev-packages]
 pylint = "==2.12.2"
 responses = "==0.21.0"
-cryptography = "==36.0.1"
+cryptography = "==42.0.0"
 black = "==22.3.0"
 awscli = "*"
 
@@ -26,7 +26,7 @@ pg-to-evalscript = "==0.2.9"
 sentinelhub = "==3.9.2"
 isodate = "==0.6.1"
 pyjwt = {extras = ["crypto"], version = "==2.3.0"}
-cryptography = "==36.0.1"
+cryptography = "==42.0.0"
 placebo = "==0.9.0"
 rioxarray = "*"
 zarr = "*"
