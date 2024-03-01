@@ -161,7 +161,7 @@ def set_valid_sh_token():
         raise Exception("This test needs SH_CLIENT_ID and SH_CLIENT_SECRET env vars to be set.")
 
     r = requests.post(
-        "https://services.sentinel-hub.com/oauth/token",
+        "https://services.sentinel-hub.com/auth/realms/main/protocol/openid-connect/token",
         data={
             "grant_type": "client_credentials",
             "client_id": SH_CLIENT_ID,
