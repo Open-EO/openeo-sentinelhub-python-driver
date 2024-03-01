@@ -1,4 +1,5 @@
 import boto3
+from botocore.client import Config
 
 
 class ResultsBucket:
@@ -10,6 +11,7 @@ class ResultsBucket:
             endpoint_url=endpoint_url,
             aws_access_key_id=access_key_id,
             aws_secret_access_key=secret_access_key,
+            config=Config(signature_version="s3v4"),
         )
 
     def put_file_to_bucket(self, content_as_string, prefix=None, file_name="file"):
