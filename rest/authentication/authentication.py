@@ -129,7 +129,7 @@ class AuthenticationProvider:
         username, password = self.parse_credentials_from_header()
         secret = password if len(password) <= 50 else base64.b64decode(bytes(password, "ascii")).decode("ascii")
         r = requests.post(
-            "https://services.sentinel-hub.com/oauth/token",
+            "https://services.sentinel-hub.com/auth/realms/main/protocol/openid-connect/token",
             data={
                 "grant_type": "client_credentials",
                 "client_id": username,

@@ -691,7 +691,7 @@ def test_sentinel_hub_access_token(access_token):
 
         responses.add(
             responses.POST,
-            "https://services.sentinel-hub.com/oauth/token",
+            "https://services.sentinel-hub.com/auth/realms/main/protocol/openid-connect/token",
             body=json.dumps({"access_token": example_token, "expires_at": 2147483647}),
         )
 
