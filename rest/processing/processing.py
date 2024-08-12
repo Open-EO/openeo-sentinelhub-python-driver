@@ -5,7 +5,7 @@ from pg_to_evalscript import convert_from_process_graph
 from flask import g
 from sentinelhub import BatchRequestStatus, BatchUserAction, SentinelHubBatch
 
-from processing.const import ProcessingRequestTypes
+from processing.const import ProcessingRequestTypes, SH_PU_TO_PLATFORM_CREDIT_CONVERSION_RATE
 from processing.process import Process
 from processing.sentinel_hub import SentinelHub
 from processing.partially_supported_processes import partially_supported_processes
@@ -48,6 +48,11 @@ def new_sentinel_hub(deployment_endpoint=None):
 
 def process_data_synchronously(process, width=None, height=None):
     p = new_process(process, width=width, height=height, request_type=ProcessingRequestTypes.SYNC)
+
+    # need a comment here explaining why 10 credits exactly
+    ten_credits_as_pu = 10 / SH_PU_TO_PLATFORM_CREDIT_CONVERSION_RATE
+    check_leftover_credits(ten_credits_as_pu)
+
     return p.execute_sync(), p.mimetype.get_string()
 
 
@@ -224,7 +229,7 @@ def create_or_get_estimate_values_from_db(job, batch_request_id):
         estimated_sentinelhub_pu, estimated_file_size = get_batch_job_estimate(
             batch_request_id, json.loads(job["process"]), job["deployment_endpoint"]
         )
-        estimated_platform_credits = round(estimated_sentinelhub_pu * 0.15, 3)
+        estimated_platform_credits = round(estimated_sentinelhub_pu * SH_PU_TO_PLATFORM_CREDIT_CONVERSION_RATE, 3)
         JobsPersistence.update_key(job["id"], "estimated_sentinelhub_pu", str(round(estimated_sentinelhub_pu, 3)))
         JobsPersistence.update_key(job["id"], "estimated_platform_credits", str(estimated_platform_credits))
         JobsPersistence.update_key(job["id"], "estimated_file_size", str(estimated_file_size))
@@ -238,6 +243,6 @@ def create_or_get_estimate_values_from_db(job, batch_request_id):
 
 def check_leftover_credits(estimated_pu):
     leftover_credits = g.user.get_leftover_credits()
-    estimated_pu_as_credits = estimated_pu * 0.15  # platform credits === SH PU's * 0.15
+    estimated_pu_as_credits = estimated_pu * SH_PU_TO_PLATFORM_CREDIT_CONVERSION_RATE
     if leftover_credits is not None and leftover_credits < estimated_pu_as_credits:
         raise InsufficientCredits()
