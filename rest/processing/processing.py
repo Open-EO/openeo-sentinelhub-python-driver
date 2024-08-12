@@ -49,7 +49,8 @@ def new_sentinel_hub(deployment_endpoint=None):
 def process_data_synchronously(process, width=None, height=None):
     p = new_process(process, width=width, height=height, request_type=ProcessingRequestTypes.SYNC)
 
-    # need a comment here explaining why 10 credits exactly
+    # As we don't know before the execution of a sync job how much it will cost, we can check
+    # if the user has X amount of credits that will most likely cover the execution costs
     ten_credits_as_pu = 10 / SH_PU_TO_PLATFORM_CREDIT_CONVERSION_RATE
     check_leftover_credits(ten_credits_as_pu)
 
