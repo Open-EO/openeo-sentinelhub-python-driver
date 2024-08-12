@@ -90,14 +90,14 @@ class SHUser(User):
         if "d" in self.sh_userinfo and "1" in self.sh_userinfo["d"] and "t" in self.sh_userinfo["d"]["1"]:
             return self.sh_userinfo["d"]["1"]["t"]
         else:
+            account_id = self.sh_userinfo["account"]
             r = requests.get(
-                f"https://services.sentinel-hub.com/oauth/users/{self.user_id}/accounts",
+                f"https://services.sentinel-hub.com/ims/accounts/{account_id}/account-info",
                 headers={"Authorization": f"Bearer {self.sh_access_token}"},
             )
+
             data = json.loads(r.content.decode("utf-8"))
-            for member in data["member"]:
-                if member["domainId"] == 1:
-                    return member["type"]
+            return data["type"]
 
     def get_user_info(self):
         user_info = super().get_user_info()

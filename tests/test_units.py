@@ -36,14 +36,14 @@ def test_collections(get_process_graph, collection_id):
         {"process_graph": get_process_graph(collection_id=collection_id, bands=None)},
         request_type=ProcessingRequestTypes.SYNC,
     )
-    assert process.evalscript.input_bands == all_bands
+    assert process.evalscript.input_bands[0]["bands"] == all_bands
 
     example_bands = ["B01", "B02"]
     process = Process(
         {"process_graph": get_process_graph(collection_id=collection_id, bands=example_bands)},
         request_type=ProcessingRequestTypes.SYNC,
     )
-    assert process.evalscript.input_bands == example_bands
+    assert process.evalscript.input_bands[0]["bands"] == example_bands
 
 
 @responses.activate
@@ -672,7 +672,9 @@ def test_get_collection(
             {"process_graph": get_process_graph(collection_id=collection_id, featureflags=featureflags)},
             request_type=ProcessingRequestTypes.SYNC,
         )
-        assert process.collection.api_id == expected_datacollection_api_id
+        all_collections = process.get_collections()
+        collection = all_collections["node_loadco1"]["data_collection"]
+        assert collection.api_id == expected_datacollection_api_id
 
 
 @responses.activate
@@ -689,7 +691,7 @@ def test_sentinel_hub_access_token(access_token):
 
         responses.add(
             responses.POST,
-            "https://services.sentinel-hub.com/oauth/token",
+            "https://services.sentinel-hub.com/auth/realms/main/protocol/openid-connect/token",
             body=json.dumps({"access_token": example_token, "expires_at": 2147483647}),
         )
 
@@ -720,20 +722,28 @@ def test_sentinel_hub_access_token(access_token):
         sh = SentinelHub(user=user)
         sh.create_processing_request(
             bbox=BBox((1, 2, 3, 4), crs=CRS.WGS84),
-            collection=DataCollection.SENTINEL2_L2A,
+            collections={
+                "node_loadco1": {
+                    "data_collection": DataCollection.SENTINEL2_L2A,
+                    "from_time": datetime.now(),
+                    "to_time": datetime.now(),
+                }
+            },
             evalscript="",
-            from_date=datetime.now(),
-            to_date=datetime.now(),
             width=1,
             height=1,
             mimetype=MimeType.PNG,
         )
         sh = SentinelHub(user=user)
         sh.create_batch_job(
-            collection=DataCollection.SENTINEL2_L2A,
+            collections={
+                "node_loadco1": {
+                    "data_collection": DataCollection.SENTINEL2_L2A,
+                    "from_time": datetime.now(),
+                    "to_time": datetime.now(),
+                }
+            },
             evalscript="",
-            from_date=datetime.now(),
-            to_date=datetime.now(),
             tiling_grid_id=1,
             tiling_grid_resolution=20,
             mimetype=MimeType.PNG,
@@ -765,7 +775,8 @@ def test_get_maximum_temporal_extent(get_process_graph, collection_id, expected_
     process = Process(
         {"process_graph": get_process_graph(collection_id=collection_id)}, request_type=ProcessingRequestTypes.SYNC
     )
-    from_time, to_time = process.get_maximum_temporal_extent_for_collection()
+    load_collection_nodes = process.get_all_load_collection_nodes()
+    from_time, to_time = process.get_maximum_temporal_extent_for_collection(list(load_collection_nodes.values())[0])
 
     assert expected_from_time == from_time
     assert expected_to_time == to_time
@@ -892,8 +903,8 @@ current_date = datetime.now()
         (
             {"params": {"collection_id": "sentinel-2-l1c", "temporal_extent": ["2019-01-01", None]}},
             {
-                "from_date": datetime(2019, 1, 1, tzinfo=timezone.utc),
-                "to_date": datetime(
+                "from_time": datetime(2019, 1, 1, tzinfo=timezone.utc),
+                "to_time": datetime(
                     current_date.year,
                     current_date.month,
                     current_date.day,
@@ -917,15 +928,15 @@ current_date = datetime.now()
                 }
             },
             {
-                "from_date": datetime(2018, 10, 1, tzinfo=timezone.utc),
-                "to_date": datetime(2018, 10, 1, hour=9, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc),
+                "from_time": datetime(2018, 10, 1, tzinfo=timezone.utc),
+                "to_time": datetime(2018, 10, 1, hour=9, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc),
             },
         ),
         (
             {"params": {"collection_id": "mapzen-dem", "temporal_extent": None}},
             {
-                "from_date": datetime(current_date.year, current_date.month, current_date.day, tzinfo=timezone.utc),
-                "to_date": datetime(
+                "from_time": datetime(current_date.year, current_date.month, current_date.day, tzinfo=timezone.utc),
+                "to_time": datetime(
                     current_date.year,
                     current_date.month,
                     current_date.day,
@@ -963,8 +974,10 @@ def test_temporal_extent(get_process_graph, fixture, expected_result):
             },
             request_type=ProcessingRequestTypes.SYNC,
         )
-        assert process.from_date == expected_result["from_date"]
-        assert process.to_date == expected_result["to_date"]
+        all_collections = process.get_collections()
+        collection = all_collections["node_loadco1"]
+        assert collection["from_time"] == expected_result["from_time"]
+        assert collection["to_time"] == expected_result["to_time"]
 
 
 @pytest.mark.parametrize(
@@ -1853,4 +1866,4 @@ def test_bands_metadata(process_graph):
             collection_id = node["arguments"]["id"]
     bands_metadata = collections.get_collection(collection_id)["summaries"]["eo:bands"]
     process = Process({"process_graph": process_graph}, request_type=ProcessingRequestTypes.SYNC)
-    assert process.evalscript.bands_metadata == bands_metadata
+    assert process.evalscript.bands_metadata["node_1"] == bands_metadata
