@@ -40,6 +40,7 @@ from processing.processing import (
     get_batch_job_status,
     create_or_get_estimate_values_from_db,
 )
+from processing.const import SH_PU_TO_PLATFORM_CREDIT_CONVERSION_RATE
 from post_processing.post_processing import parse_sh_gtiff_to_format
 from processing.utils import inject_variables_in_process_graph, overwrite_spatial_extent_without_parameters
 from processing.openeo_process_errors import OpenEOProcessError
@@ -495,7 +496,7 @@ def api_batch_job(job_id):
         if status is not openEOBatchJobStatus.CREATED:
             data_to_jsonify["costs"] = float(job.get("sum_costs", 0))
             data_to_jsonify["usage"] = {
-                "Platform Credits": {"unit": "credits", "value": round(float(job.get("sum_costs", 0)) * 0.15, 3)},
+                "Platform Credits": {"unit": "credits", "value": round(float(job.get("sum_costs", 0)) * SH_PU_TO_PLATFORM_CREDIT_CONVERSION_RATE, 3)},
                 "Sentinel Hub": {
                     "unit": "sentinelhub_processing_unit",
                     "value": float(job.get("sum_costs", 0)),
@@ -531,7 +532,7 @@ def api_batch_job(job_id):
                 estimated_sentinelhub_pu, estimated_file_size = get_batch_job_estimate(
                     new_batch_request_id, data.get("process"), deployment_endpoint
                 )
-                estimated_platform_credits = round(estimated_sentinelhub_pu * 0.15, 3)
+                estimated_platform_credits = round(estimated_sentinelhub_pu * SH_PU_TO_PLATFORM_CREDIT_CONVERSION_RATE, 3)
                 JobsPersistence.update_key(
                     job["id"], "estimated_sentinelhub_pu", str(round(estimated_sentinelhub_pu, 3))
                 )
