@@ -1571,6 +1571,7 @@ def test_user_workspace(app_client, example_authorization_header_with_oidc, exam
 
 
 @with_mocked_auth
+@with_mocked_reporting
 @pytest.mark.parametrize(
     "spatial_extent,temporal_extent",
     [
@@ -1882,6 +1883,7 @@ def test_describe_account(app_client, example_authorization_header_with_oidc):
 
 
 @with_mocked_auth
+@with_mocked_reporting
 @pytest.mark.parametrize(
     "spatial_extent, is_error",
     [

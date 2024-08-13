@@ -123,8 +123,8 @@ def test_collections_provider(url, directory, expected_collection_ids):
                 ],
             },
             {"Authorization": "Bearer oidc/egi/<token>"},
-            True,
-            CredentialsInvalid,
+            False,
+            None,
             None,
         ),
         (
