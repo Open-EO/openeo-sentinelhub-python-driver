@@ -21,6 +21,8 @@ from processing.const import (
 from openeo_collections.collections import collections
 from openeoerrors import (
     CollectionNotFound,
+    DataFusionNotPossibleDifferentSHDeployments,
+    DataFusionNotPossibleDifferentSpatialExtents,
     Internal,
     ProcessParameterInvalid,
     ProcessGraphComplexity,
@@ -35,6 +37,7 @@ from processing.utils import (
     construct_geojson,
     convert_geometry_crs,
     convert_bbox_crs,
+    get_all_load_collection_nodes,
     remove_partially_supported_processes_from_process_graph,
     is_geojson,
     validate_geojson,
@@ -57,7 +60,6 @@ class Process:
     def __init__(self, process, width=None, height=None, user=User(), user_defined_processes={}, request_type=None):
         self.DEFAULT_EPSG_CODE = 4326
         self.DEFAULT_RESOLUTION = (10, 10)
-        self.MAXIMUM_SYNC_FILESIZE_BYTES = 5000000
         partially_supported_processes_as_udp = {
             partially_supported_process.process_id: {} for partially_supported_process in partially_supported_processes
         }
@@ -72,10 +74,9 @@ class Process:
             self.pisp_resampling_method,
         ) = get_spatial_info_from_partial_processes(partially_supported_processes, self.process_graph)
         self.bbox, self.epsg_code, self.geometry = self.get_bounds()
-        self.collection = self.get_collection()
-        self.service_base_url = self.collection.service_url
+        self.collections = self.get_collections()
+        self.service_base_url = list(self.collections.values())[0]["data_collection"].service_url
         self.sentinel_hub = SentinelHub(user=user, service_base_url=self.service_base_url)
-        self.from_date, self.to_date = self.get_temporal_extent()
         self.mimetype = self.get_mimetype()
         self.width = width or self.get_dimensions()[0]
         self.height = height or self.get_dimensions()[1]
@@ -90,9 +91,12 @@ class Process:
             self.process_graph, partially_supported_processes
         )
 
-        load_collection_node = self.get_node_by_process_id("load_collection")
-        collection = collections.get_collection(load_collection_node["arguments"]["id"])
-        bands_metadata = collection.get("summaries", {}).get("eo:bands")
+        load_collection_nodes = self.get_all_load_collection_nodes()
+        bands_metadata = {}
+        for node_id, load_collection_node in load_collection_nodes.items():
+            collection = collections.get_collection(load_collection_node["arguments"]["id"])
+            bands = collection.get("summaries", {}).get("eo:bands")
+            bands_metadata[f"node_{node_id}"] = bands
 
         results = convert_from_process_graph(
             process_graph,
@@ -104,21 +108,37 @@ class Process:
         evalscript = results[0]["evalscript"]
         evalscript.mosaicking = self.get_appropriate_mosaicking()
 
-        if self.get_input_bands() is None:
-            all_bands = collection["cube:dimensions"]["bands"]["values"]
+        datasources_bands = [datasource_with_bands["bands"] for datasource_with_bands in self.get_input_bands()]
+        if any(bnds is None for bnds in datasources_bands):
+            all_bands = []
+            for node_id, load_collection_node in load_collection_nodes.items():
+                collection = collections.get_collection(load_collection_node["arguments"]["id"])
+                selected_bands = load_collection_node["arguments"].get("bands")
+                all_bands.append(
+                    {
+                        "datasource": f"node_{node_id}",
+                        "bands": selected_bands
+                        if selected_bands is not None
+                        else collection["cube:dimensions"]["bands"]["values"],
+                    }
+                )
             evalscript.set_input_bands(all_bands)
 
         return evalscript
 
     def get_appropriate_mosaicking(self):
-        load_collection_node = self.get_node_by_process_id("load_collection")
-        openeo_collection = collections.get_collection(load_collection_node["arguments"]["id"])
-        from_time, to_time = openeo_collection.get("extent").get("temporal")["interval"][0]
+        load_collection_nodes = self.get_all_load_collection_nodes()
 
-        if from_time is None and to_time is None:
-            # Collection has no time extent so it's one of the "timeless" collections as e.g. DEM
-            # Mosaicking: "ORBIT" or "TILE" is not supported.
-            return "SIMPLE"
+        for _, load_collection_node in load_collection_nodes.items():
+            openeo_collection = collections.get_collection(load_collection_node["arguments"]["id"])
+            from_time, to_time = openeo_collection.get("extent").get("temporal")["interval"][0]
+
+            # if any of the load_collection nodes is a "timeless collection" - return "SIMPLE" as usually all collections support at least "SIMPLE" mosaicking type
+            if from_time is None and to_time is None:
+                # Collection has no time extent so it's one of the "timeless" collections as e.g. DEM
+                # Mosaicking: "ORBIT" or "TILE" is not supported.
+                return "SIMPLE"
+
         return "ORBIT"
 
     def _create_custom_datacollection(self, collection_type, collection_info, subtype):
@@ -137,7 +157,10 @@ class Process:
         collection_type = collection_info["datasource_type"]
 
         if collection_type == "byoc-ID":
-            load_collection_node = self.get_node_by_process_id("load_collection")
+            load_collection_nodes = self.get_all_load_collection_nodes()
+            load_collection_node = next(
+                lcn for lcn in load_collection_nodes.values() if lcn["arguments"]["id"] is collection_id
+            )
             featureflags = load_collection_node["arguments"].get("featureflags", {})
             byoc_collection_id = featureflags.get("byoc_collection_id")
 
@@ -165,15 +188,36 @@ class Process:
     def get_node_by_process_id(self, process_id):
         return get_node_by_process_id(self.process_graph, process_id)
 
-    def get_collection(self):
-        load_collection_node = self.get_node_by_process_id("load_collection")
-        return self.id_to_data_collection(load_collection_node["arguments"]["id"])
+    def get_all_load_collection_nodes(self):
+        return get_all_load_collection_nodes(self.process_graph)
+
+    def get_collections(self):
+        collections = {}
+        load_collection_nodes = self.get_all_load_collection_nodes()
+        for node_id, load_collection_node in load_collection_nodes.items():
+            from_time, to_time = self.get_temporal_extent(load_collection_node)
+            data_collection = self.id_to_data_collection(load_collection_node["arguments"]["id"])
+            collections[f"node_{node_id}"] = {
+                "data_collection": data_collection,
+                "from_time": from_time,
+                "to_time": to_time,
+            }
+
+        return collections
 
     def get_bounds_from_load_collection(self):
         """
         Returns bbox, EPSG code, geometry
         """
-        load_collection_node = self.get_node_by_process_id("load_collection")
+        load_collection_nodes = list(self.get_all_load_collection_nodes().values())
+        # data fusion can only happen if all of the collections have the same bbox
+        # so we perform a check that this is actually true (otherwise raise an error)
+        # and if it is true, we can just take the first collection's bbox
+        load_collection_node = load_collection_nodes[0]
+        for lcn in load_collection_nodes:
+            if lcn["arguments"]["spatial_extent"] != load_collection_node["arguments"]["spatial_extent"]:
+                raise DataFusionNotPossibleDifferentSpatialExtents()
+
         spatial_extent = load_collection_node["arguments"]["spatial_extent"]
 
         if spatial_extent is None:
@@ -234,28 +278,34 @@ class Process:
 
         return final_geometry.bounds, partial_processes_crs, mapping(final_geometry)
 
-    def get_collection_temporal_step(self):
-        load_collection_node = self.get_node_by_process_id("load_collection")
+    def get_collection_temporal_step(self, load_collection_node):
         collection = collections.get_collection(load_collection_node["arguments"]["id"])
         if not collection:
             return None
         return collection["cube:dimensions"]["t"].get("step")
 
-    def get_temporal_interval(self, in_days=False):
-        step = self.get_collection_temporal_step()
+    def get_temporal_intervals(self, in_days=False):
+        load_collection_nodes = self.get_all_load_collection_nodes()
+        temporal_intervals = {}
+        for node_id, load_collection_node in load_collection_nodes.items():
+            step = self.get_collection_temporal_step(load_collection_node)
 
-        if step is None:
-            return None
+            if step is None:
+                temporal_intervals[node_id] = None
+                continue
 
-        temporal_interval = parse_duration(step)
+            temporal_interval = parse_duration(step)
 
-        if in_days:
-            n_seconds_per_day = 86400
-            return temporal_interval.total_seconds() / n_seconds_per_day
-        return temporal_interval.total_seconds()
+            if in_days:
+                n_seconds_per_day = 86400
+                temporal_intervals[node_id] = temporal_interval.total_seconds() / n_seconds_per_day
+                continue
 
-    def get_maximum_temporal_extent_for_collection(self):
-        load_collection_node = self.get_node_by_process_id("load_collection")
+            temporal_intervals[node_id] = temporal_interval.total_seconds()
+
+        return temporal_intervals
+
+    def get_maximum_temporal_extent_for_collection(self, load_collection_node):
         openeo_collection = collections.get_collection(load_collection_node["arguments"]["id"])
         from_time, to_time = openeo_collection.get("extent").get("temporal")["interval"][0]
 
@@ -272,23 +322,22 @@ class Process:
             to_time = current_date.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
         return from_time, to_time
 
-    def get_temporal_extent(self):
+    def get_temporal_extent(self, load_collection_node):
         """
         Returns from_time, to_time
         """
-        load_collection_node = self.get_node_by_process_id("load_collection")
         temporal_extent = load_collection_node["arguments"].get("temporal_extent")
         if temporal_extent is None:
-            temporal_extent = self.get_maximum_temporal_extent_for_collection()
+            temporal_extent = self.get_maximum_temporal_extent_for_collection(load_collection_node)
 
         interval_start, interval_end = temporal_extent
         if interval_start is None:
-            from_time, _ = self.get_maximum_temporal_extent_for_collection()
+            from_time, _ = self.get_maximum_temporal_extent_for_collection(load_collection_node)
         else:
             from_time = parse_time(interval_start)
 
         if interval_end is None:
-            _, to_time = self.get_maximum_temporal_extent_for_collection()
+            _, to_time = self.get_maximum_temporal_extent_for_collection(load_collection_node)
         else:
             to_time = parse_time(interval_end)
 
@@ -310,8 +359,12 @@ class Process:
         return from_time, to_time
 
     def get_input_bands(self):
-        load_collection_node = self.get_node_by_process_id("load_collection")
-        return load_collection_node["arguments"].get("bands")
+        input_bands = []
+        load_collection_nodes = self.get_all_load_collection_nodes()
+        for node_id, load_collection_node in load_collection_nodes.items():
+            bands = load_collection_node["arguments"].get("bands")
+            input_bands.append({"datasource": "node_" + node_id, "bands": bands})
+        return input_bands
 
     def format_to_mimetype(self, output_format):
         OUTPUT_FORMATS = self.request_type.get_supported_mime_types()
@@ -357,29 +410,33 @@ class Process:
         return width, height
 
     def get_highest_resolution(self):
-        load_collection_node = self.get_node_by_process_id("load_collection")
-        collection = collections.get_collection(load_collection_node["arguments"]["id"])
-        selected_bands = self.get_input_bands()
-        summaries = collection.get("summaries", {})
+        load_collection_nodes = self.get_all_load_collection_nodes()
+        x_resolutions = []
+        y_resolutions = []
+        for node_id, load_collection_node in load_collection_nodes.items():
+            collection = collections.get_collection(load_collection_node["arguments"]["id"])
+            summaries = collection.get("summaries", {})
+            selected_bands = load_collection_node["arguments"].get("bands")
 
-        if selected_bands is None:
-            selected_bands = collection["cube:dimensions"]["bands"]["values"]
+            if selected_bands is None:
+                selected_bands = collection["cube:dimensions"]["bands"]["values"]
 
-        bands_summaries = None
-        for key in ["eo:bands", "raster:bands"]:
-            bands_summaries = summaries.get(key, bands_summaries)
+            bands_summaries = None
+            for key in ["eo:bands", "raster:bands"]:
+                bands_summaries = summaries.get(key, bands_summaries)
 
-        if bands_summaries is None:
-            return self.DEFAULT_RESOLUTION
+            if bands_summaries is None:
+                return self.DEFAULT_RESOLUTION
 
-        list_of_resolutions = [
-            self.get_band_resolution(band_summary)
-            for band_summary in bands_summaries
-            if band_summary["name"] in selected_bands
-        ]
-        highest_x_resolution = min(list_of_resolutions, key=lambda x: x[0])[0]
-        highest_y_resolution = min(list_of_resolutions, key=lambda x: x[1])[1]
-        return (highest_x_resolution, highest_y_resolution)
+            list_of_resolutions = [
+                self.get_band_resolution(band_summary)
+                for band_summary in bands_summaries
+                if band_summary["name"] in selected_bands
+            ]
+            x_resolutions.append(min(list_of_resolutions, key=lambda x: x[0])[0])
+            y_resolutions.append(min(list_of_resolutions, key=lambda x: x[1])[1])
+
+        return (min(x_resolutions), min(y_resolutions))
 
     def get_band_resolution(self, band_summary):
         band_resolution_tuple = band_summary.get("openeo:gsd", {})
@@ -457,15 +514,22 @@ class Process:
                 n_output_bands *= output_dimension["size"]
 
         if n_original_temporal_dimensions > 0:
-            temporal_interval = self.get_temporal_interval()
+            temporal_intervals = self.get_temporal_intervals()
 
-            if temporal_interval is None:
-                n_seconds_per_day = 86400
-                default_temporal_interval = 3
-                temporal_interval = default_temporal_interval * n_seconds_per_day
+            n_dates = 0
+            for node_id, temporal_interval in temporal_intervals.items():
+                if temporal_interval is None:
+                    n_seconds_per_day = 86400
+                    default_temporal_interval = 3
+                    temporal_interval = default_temporal_interval * n_seconds_per_day
 
-            date_diff = (self.to_date - self.from_date).total_seconds()
-            n_dates = math.ceil(date_diff / temporal_interval) + 1
+                collection = self.collections[f"node_{node_id}"]
+                from_time = collection["from_time"]
+                to_time = collection["to_time"]
+
+                date_diff = (to_time - from_time).total_seconds()
+                n_dates += math.ceil(date_diff / temporal_interval) + 1
+
             n_output_bands *= n_dates * n_original_temporal_dimensions
 
         if self.mimetype == MimeType.PNG:
@@ -475,24 +539,27 @@ class Process:
 
         return n_pixels * n_bytes * n_output_bands
 
-    def execute_sync(self):
-        estimated_file_size = self.estimate_file_size()
-        if estimated_file_size > self.MAXIMUM_SYNC_FILESIZE_BYTES:
-            raise ProcessGraphComplexity(
-                f"estimated size of generated output of {estimated_file_size} bytes exceeds maximum supported size of {self.MAXIMUM_SYNC_FILESIZE_BYTES} bytes."
-            )
+    def check_if_data_fusion_possible(self):
+        """
+        Checks if different collections are hosted by same SH deployment
+        """
+        collections = [c["data_collection"] for c in self.collections.values()]
+        service_urls = [c.service_url for c in collections]
+        if len(set(service_urls)) > 1:
+            raise DataFusionNotPossibleDifferentSHDeployments()
 
+    def execute_sync(self):
         if self.width == 0 or self.height == 0:
             raise ImageDimensionInvalid(self.width, self.height)
+
+        self.check_if_data_fusion_possible()
 
         return self.sentinel_hub.create_processing_request(
             bbox=self.bbox,
             epsg_code=self.epsg_code,
             geometry=self.geometry,
-            collection=self.collection,
+            collections=self.collections,
             evalscript=self.evalscript.write(),
-            from_date=self.from_date,
-            to_date=self.to_date,
             width=self.width,
             height=self.height,
             mimetype=self.mimetype,
@@ -501,15 +568,16 @@ class Process:
 
     def create_batch_job(self):
         self.tiling_grid_id, self.tiling_grid_resolution = self.get_appropriate_tiling_grid_and_resolution()
+
+        self.check_if_data_fusion_possible()
+
         return (
             self.sentinel_hub.create_batch_job(
                 bbox=self.bbox,
                 epsg_code=self.epsg_code,
                 geometry=self.geometry,
-                collection=self.collection,
+                collections=self.collections,
                 evalscript=self.evalscript.write(),
-                from_date=self.from_date,
-                to_date=self.to_date,
                 tiling_grid_id=self.tiling_grid_id,
                 tiling_grid_resolution=self.tiling_grid_resolution,
                 mimetype=self.mimetype,

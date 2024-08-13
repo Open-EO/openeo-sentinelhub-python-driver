@@ -2,6 +2,8 @@
   "gis_data_types": [
     "raster"
   ],
+  "title":" Joint Photographic Experts Group",
+  "description": "JPEG is an image format that uses lossy compression and is one of the most widely used image formats. Compared to other EO raster formats, it is less flexible and standardized regarding number of bands, embedding geospatial metadata, etc.",
   "parameters": {
     "datatype": {
       "type": "string",

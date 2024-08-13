@@ -2,6 +2,8 @@
   "gis_data_types": [
     "raster"
   ],
+  "title": "Portable Network Graphics (PNG)",
+  "description": "PNG is a popular raster format used for graphics on the web. Compared to other EO raster formats, it is less flexible and standardized regarding number of bands, embedding geospatial metadata, etc.",
   "parameters": {
     "datatype": {
       "type": "string",
