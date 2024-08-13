@@ -30,7 +30,7 @@ Mandatory:
 
 First, start up all services:
 ```
-$ docker-compose up -d
+$ docker compose up -d
 ```
 
 Download definitions of defined processes:
