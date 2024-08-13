@@ -46,11 +46,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Docker-compose build
-        run: docker-compose -f docker-compose.yml -f docker-compose.pytest.yml build
+        run: docker compose -f docker-compose.yml -f docker-compose.pytest.yml build
 
       - name: Docker-compose up and run pytest
-        run: docker-compose -f docker-compose.yml -f docker-compose.pytest.yml up --exit-code-from pytest
+        run: docker compose -f docker-compose.yml -f docker-compose.pytest.yml up --exit-code-from pytest
       
       - name: Docker-compose cleanup
         if: always()
-        run: docker-compose -f docker-compose.yml -f docker-compose.pytest.yml down -v
+        run: docker compose -f docker-compose.yml -f docker-compose.pytest.yml down -v
