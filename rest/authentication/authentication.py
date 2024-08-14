@@ -67,9 +67,6 @@ class AuthenticationProvider:
         except BillingPlanInvalid:
             return None
 
-        if not user.is_in_group("vo.openeo.cloud"):
-            return None
-
         return user
 
     def authenticate_user_basic(self, access_token):

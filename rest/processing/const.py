@@ -92,3 +92,5 @@ supported_mime_types_error_msg = {
     ProcessingRequestTypes.BATCH: "Currently supported formats for batch processing jobs are GTIFF, NETCDF and ZARR.",
     ProcessingRequestTypes.SYNC: "Currently supported formats for synchronous processing jobs are GTIFF, PNG and JPEG.",
 }
+
+SH_PU_TO_PLATFORM_CREDIT_CONVERSION_RATE = 0.15  # platform credits === SH PU's * 0.15

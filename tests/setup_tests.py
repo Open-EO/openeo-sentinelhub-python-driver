@@ -139,6 +139,11 @@ def with_mocked_reporting(func):
                 }
             ],
         ),
+        responses.add(
+            responses.GET,
+            "https://etl.terrascope.be/user",
+            json={"credits": 50},
+        ),
 
         responses.add_passthru(re.compile(".*"))
         return func(*args, **kwargs)

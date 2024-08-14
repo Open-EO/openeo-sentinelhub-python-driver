@@ -92,9 +92,7 @@ class OpenEOPBillingPlan(BillingPlan):
         free_plan_supported = False
 
         for entitlement in entitlements:
-            if entitlement["namespace"] in ("urn:mace:egi.eu", "urn:mace:egi-dev.eu") and entitlement["group"] in (
-                "vo.openeo.cloud"
-            ):
+            if entitlement["namespace"] in ("urn:mace:egi.eu", "urn:mace:egi-dev.eu"):
                 if entitlement["role"].lower() in ("early_adopter", "early-adopter", "earlyadopter"):
                     return OpenEOPBillingPlan.EARLY_ADOPTER
                 free_plan_supported = True
