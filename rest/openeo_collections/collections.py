@@ -13,18 +13,19 @@ SH_COLLECTION_ID_ALIASES = {
     "SENTINEL2_L1C_SENTINELHUB": "SENTINEL2_L1C",
 }
 
+
 def build_basic_collection(collection_info):
     basic_collection = {
-                "stac_version": collection_info["stac_version"],
-                "id": collection_info["id"],
-                "description": collection_info["description"],
-                "license": collection_info["license"],
-                "extent": collection_info["extent"],
-                "links": collection_info["links"],
-            }
+        "stac_version": collection_info["stac_version"],
+        "id": collection_info["id"],
+        "description": collection_info["description"],
+        "license": collection_info["license"],
+        "extent": collection_info["extent"],
+        "links": collection_info["links"],
+    }
     if collection_info.get("experimental") is not None:
         basic_collection["experimental"] = collection_info.get("experimental")
-    
+
     return basic_collection
 
 
