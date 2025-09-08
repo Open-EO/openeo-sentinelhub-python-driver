@@ -45,7 +45,8 @@ jobs:
       
       - name: install pipenv and aws
         run: |
-          pip install pipenv==2021.5.29
+          pip install "importlib-metadata<5.0"
+          pip install pipenv
           pip install awscli --no-build-isolation
 
       - name: download process definitions
