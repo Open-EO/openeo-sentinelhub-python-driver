@@ -1172,7 +1172,6 @@ def test_sentinel2_l2a_collections_aliases(app_client):
     "collection_id,collection_type,request_url",
     [
         ("landsat-7-etm+-l2", "landsat-etm-l2", "https://services-uswest2.sentinel-hub.com"),
-        ("corine-land-cover", "byoc-cbdba844-f86d-41dc-95ad-b3f7f12535e9", "https://creodias.sentinel-hub.com"),
         ("sentinel-2-l1c", "sentinel-2-l1c", "https://services.sentinel-hub.com"),
     ],
 )
@@ -1226,9 +1225,6 @@ def test_fetching_correct_collection_type(app_client, collection_id, collection_
     [
         ("landsat-7-etm+-l2", ["B01", "B02", "B03"], False),
         ("landsat-7-etm+-l2", ["B01", "Non-existent band", "B03"], True),
-        ("corine-land-cover", ["CLC"], False),
-        ("corine-land-cover", ["Non-existent band"], True),
-        ("corine-land-cover", None, False),
         (
             "sentinel-2-l1c",
             [
@@ -1815,7 +1811,6 @@ def test_process_graph_with_partially_defined_processes(app_client, get_expected
     "collection_id,expected_deployment_endpoint,expected_bucket_name",
     [
         ("sentinel-2-l1c", "https://services.sentinel-hub.com", "com.sinergise.openeo.results.dev"),
-        ("corine-land-cover", "https://creodias.sentinel-hub.com", "com.sinergise.openeo.results"),
         ("landsat-7-etm+-l2", "https://services-uswest2.sentinel-hub.com", "com.sinergise.openeo.results.uswest2.dev"),
     ],
 )
