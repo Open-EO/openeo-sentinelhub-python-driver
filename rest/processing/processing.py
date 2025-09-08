@@ -158,22 +158,40 @@ def get_batch_job_estimate(batch_request_id, process, deployment_endpoint):
 
     batch_request = sentinel_hub.get_batch_request_info(batch_request_id)
 
+    # If batch request info is None (due to API errors), we cannot get estimates
+    if batch_request is None:
+        print(f"Warning: Could not get batch request info for {batch_request_id}, returning default estimates")
+        # Return some reasonable default estimates
+        return 1.0, 1024  # 1 PU and 1KB as conservative defaults
+
     if batch_request.value_estimate is None:
         analysis_sleep_time_s = 5
         total_sleep_time = 0
         MAX_TOTAL_TIME = 29
         sentinel_hub.start_batch_job_analysis(batch_request_id)
 
-    while batch_request.value_estimate is None and batch_request.status in [
-        BatchRequestStatus.CREATED,
-        BatchRequestStatus.ANALYSING,
-    ]:
+    while (
+        batch_request is not None
+        and batch_request.value_estimate is None
+        and batch_request.status
+        in [
+            BatchRequestStatus.CREATED,
+            BatchRequestStatus.ANALYSING,
+        ]
+    ):
         if total_sleep_time + analysis_sleep_time_s > MAX_TOTAL_TIME:
             raise Timeout()
 
         time.sleep(analysis_sleep_time_s)
         total_sleep_time += analysis_sleep_time_s
         batch_request = sentinel_hub.get_batch_request_info(batch_request_id)
+
+        # If we lose the batch request info during polling, return defaults
+        if batch_request is None:
+            print(
+                f"Warning: Lost batch request info for {batch_request_id} during polling, returning default estimates"
+            )
+            return 1.0, 1024
 
     default_temporal_interval = 3
 

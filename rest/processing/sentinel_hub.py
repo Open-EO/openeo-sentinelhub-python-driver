@@ -156,29 +156,45 @@ class SentinelHub:
 
     def start_batch_job(self, batch_request_id):
         batch_request = self.get_batch_request_info(batch_request_id)
+        if batch_request is None:
+            raise ValueError(f"Cannot start batch job {batch_request_id}: batch request not found")
         self.batch.start_job(batch_request)
 
     def restart_batch_job(self, batch_request_id):
         batch_request = self.get_batch_request_info(batch_request_id)
+        if batch_request is None:
+            raise ValueError(f"Cannot restart batch job {batch_request_id}: batch request not found")
         self.batch.restart_job(batch_request)
 
     def cancel_batch_job(self, batch_request_id):
         batch_request = self.get_batch_request_info(batch_request_id)
+        if batch_request is None:
+            print(f"Warning: Cannot cancel batch job {batch_request_id}: batch request not found")
+            return  # Silently handle this case as canceling a non-existent job is not critical
         self.batch.cancel_job(batch_request)
 
     def delete_batch_job(self, batch_request_id):
         batch_request = self.get_batch_request_info(batch_request_id)
+        if batch_request is None:
+            print(f"Warning: Cannot delete batch job {batch_request_id}: batch request not found")
+            return  # Silently handle this case as deleting a non-existent job is not critical
         self.batch.delete_request(batch_request)
 
     def get_batch_request_info(self, batch_request_id):
         try:
             return self.batch.get_request(batch_request_id)
-        except DownloadFailedException as e:
+        except (DownloadFailedException, json.JSONDecodeError, ValueError) as e:
+            # Log the error for debugging purposes
+            print(f"Error getting batch request info for {batch_request_id}: {e}")
             return None
 
     def start_batch_job_analysis(self, batch_request_id):
-        batch_request = self.batch.get_request(batch_request_id)
-        self.batch.start_analysis(batch_request)
+        try:
+            batch_request = self.batch.get_request(batch_request_id)
+            self.batch.start_analysis(batch_request)
+        except (DownloadFailedException, json.JSONDecodeError, ValueError) as e:
+            print(f"Error starting batch job analysis for {batch_request_id}: {e}")
+            raise
 
     def get_utm_tiling_grids(self):
         tiling_grids = []
