@@ -40,6 +40,9 @@ jobs:
           echo -e "[default]\nregion=eu-central-1" > ~/.aws/config
           echo -e "[default]\naws_access_key_id=${{ secrets.TESTINGDATA_AWS_ACCESS_KEY_ID }}\naws_secret_access_key=${{ secrets.TESTINGDATA_AWS_SECRET_ACCESS_KEY }}" > ~/.aws/credentials
 
+      - name: Ensure setuptools and wheel are installed
+        run: pip install --upgrade pip setuptools wheel
+      
       - name: install pipenv and aws
         run: |
           pip install pipenv==2021.5.29
