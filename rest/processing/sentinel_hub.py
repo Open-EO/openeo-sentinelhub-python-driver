@@ -183,8 +183,8 @@ class SentinelHub:
     def get_batch_request_info(self, batch_request_id):
         try:
             return self.batch.get_request(batch_request_id)
-        except (DownloadFailedException, json.JSONDecodeError, ValueError) as e:
-            # Log the error for debugging purposes
+        except Exception as e:
+            # Log the error for debugging purposes and handle any exception that might occur
             print(f"Error getting batch request info for {batch_request_id}: {e}")
             return None
 
